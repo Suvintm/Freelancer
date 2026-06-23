@@ -159,6 +159,15 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                   Log Out
                 </span>
               </button>
+
+              {/* Legal Links for AdSense / Mobile */}
+              <div className="pt-4 pb-2 px-2 border-t border-zinc-200/25 dark:border-zinc-800/25 flex items-center justify-between text-[11px] text-zinc-500 font-semibold select-none">
+                <button onClick={() => handleNavigate('/about')} className="hover:text-rose-500 transition-colors cursor-pointer">About Us</button>
+                <span className="w-1 h-1 rounded-full bg-zinc-500/50" />
+                <button onClick={() => handleNavigate('/privacy')} className="hover:text-rose-500 transition-colors cursor-pointer">Privacy Policy</button>
+                <span className="w-1 h-1 rounded-full bg-zinc-500/50" />
+                <button onClick={() => handleNavigate('/terms')} className="hover:text-rose-500 transition-colors cursor-pointer">Terms & Conditions</button>
+              </div>
             </div>
 
             {/* Bottom Section with Divider, Toggle, and Profile */}

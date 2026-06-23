@@ -324,6 +324,7 @@ interface DbFeedItem {
   votes?: number[];
 }
 
+
 export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -465,12 +466,13 @@ export default function Home() {
         {/* Logo, Widget, & Banner Container Group (To bypass parent gap-8 and remove whitespace) */}
         <div className="flex flex-col gap-0 w-full">
           {/* Logo Section */}
-          <div className="w-full px-2 mt-0 mb-1 flex items-center relative z-30">
+          <div className="w-full px-2 mt-0 mb-1 flex items-center justify-between relative z-30">
             <img 
               src={isDarkMode ? darkLogo : lightLogo} 
               alt="SuviX" 
               className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
             />
+            <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
           </div>
 
           {/* 1. Banner Section (Full Width Stacked) */}
@@ -518,10 +520,14 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="relative lg:hidden -mr-4 -ml-4 -mt-3 lg:mt-0 min-h-[310px]">
+      <div className="relative lg:hidden -mt-3 lg:mt-0 min-h-[310px]">
         
         {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
         <div className="w-full flex flex-col gap-1">
+          <div className="w-full px-4 pr-[88px] mb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Featured</span>
+            <span className="text-[9px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2 py-0.5 rounded uppercase tracking-wider select-none">Beta</span>
+          </div>
 
           <div className="w-full h-[226px] pr-[84px]">
             <UnifiedBanner className="h-full" />

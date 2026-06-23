@@ -101,44 +101,58 @@ export function FeedYoutube({
         isDarkMode ? 'bg-black lg:bg-[#0a0a0a]' : 'bg-white shadow-sm lg:shadow-2xl'
       }`}
     >
-      <div className="p-4 flex items-center justify-between z-10 relative">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full border-2 border-border-main p-0.5">
-            <img src={avatarSrc} alt={post.user} className="w-full h-full rounded-full object-cover" />
-          </div>
-          <div>
-            <h4 className="text-[13px] font-semibold text-text-main leading-none mb-1">{post.user}</h4>
-            <div className="flex items-center gap-1.5">
-              <p className="text-[10px] text-text-muted font-medium">{post.location}</p>
-              {isPlaying && !isMuted && (
-                <div className="flex items-end gap-[1.5px] h-[8px] w-[10px]">
-                  <span className={`w-[1.5px] rounded-full visualizer-bar ${isDarkMode ? 'bg-zinc-400' : 'bg-zinc-500'}`} style={{ animationDelay: '0.1s' }} />
-                  <span className={`w-[1.5px] rounded-full visualizer-bar ${isDarkMode ? 'bg-zinc-400' : 'bg-zinc-500'}`} style={{ animationDelay: '0.4s' }} />
-                  <span className={`w-[1.5px] rounded-full visualizer-bar ${isDarkMode ? 'bg-zinc-400' : 'bg-zinc-500'}`} style={{ animationDelay: '0.2s' }} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isPlaying && (
-            <button 
-              onClick={handleMuteClick}
-              className={`p-1.5 rounded-full transition-colors ${
-                isDarkMode ? 'bg-zinc-800 text-white hover:bg-zinc-700' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200'
-              }`}
-            >
-              {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} className="animate-pulse text-red-500" />}
-            </button>
-          )}
-          <button className={`p-2 transition-colors ${isDarkMode ? 'text-white hover:text-zinc-300' : 'text-zinc-950 hover:text-zinc-600'}`}><MoreHorizontal size={18} /></button>
-        </div>
-      </div>
-
       <div 
         className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`}
         onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}
       >
+        {/* Instagram-style overlaid header (top-left) */}
+        <div 
+          className="absolute top-4 left-4 flex items-center gap-2.5 z-20 select-none pointer-events-auto" 
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-8 rounded-full border border-white/60 p-[1.5px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] bg-black/20 shrink-0">
+            <img src={avatarSrc} alt={post.user} className="w-full h-full rounded-full object-cover" />
+          </div>
+          <div className="flex flex-col justify-center">
+            <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
+              {post.user}
+              <span className="bg-red-600 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm leading-none shrink-0 tracking-wider">
+                <Youtube size={8} fill="white" /> YT
+              </span>
+            </h4>
+            {post.location && (
+              <div className="flex items-center gap-1.5 mt-0.5 leading-none">
+                <p className="text-[10px] text-white/85 font-medium tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{post.location}</p>
+                {isPlaying && !isMuted && (
+                  <div className="flex items-end gap-[1px] h-[7px] w-[8px]">
+                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.1s' }} />
+                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.4s' }} />
+                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.2s' }} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Controls overlaid (top-right) */}
+        <div 
+          className="absolute top-4 right-4 flex items-center gap-2.5 z-20 pointer-events-auto" 
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isPlaying && (
+            <button 
+              onClick={handleMuteClick}
+              className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-md cursor-pointer"
+            >
+              {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} className="animate-pulse text-red-400" />}
+            </button>
+          )}
+          <button className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-md cursor-pointer">
+            <MoreHorizontal size={16} />
+          </button>
+        </div>
+
         <video 
           ref={videoRef}
           src={post.videoUrl}
@@ -150,11 +164,6 @@ export function FeedYoutube({
           }}
           className="w-full h-auto max-h-[min(75vh,580px)] object-contain"
         />
-
-        <div className="absolute top-3 left-3 bg-red-600 backdrop-blur-sm px-2.5 py-1 rounded-full flex items-center gap-1.5 text-white text-[9px] font-semibold tracking-wide border border-white/10 select-none z-15 shadow-md">
-          <Youtube size={10} fill="white" />
-          <span>YOUTUBE VIDEO</span>
-        </div>
 
         {isPlaying && (
           <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20 z-10">

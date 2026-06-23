@@ -1,17 +1,24 @@
 import { Search, Bell, Mail, Plus } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useTheme } from '../../hooks/useTheme';
 
 export const TopNavbar = () => {
+  const { isDarkMode } = useTheme();
+
   return (
-    <header className="h-20 bg-black/40 backdrop-blur-md border-b border-zinc-900/50 sticky top-0 z-40 px-8 lg:px-12 flex items-center justify-between">
+    <header className={`h-20 border-b sticky top-0 z-40 px-8 lg:px-12 flex items-center justify-between backdrop-blur-md ${isDarkMode ? 'bg-black/40 border-zinc-900/50' : 'bg-white/40 border-zinc-200'}`}>
       {/* Search Bar */}
       <div className="flex-1 max-w-xl">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-white transition-colors" size={16} />
+          <Search className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-zinc-600 group-focus-within:text-white' : 'text-zinc-400 group-focus-within:text-zinc-900'}`} size={16} />
           <input 
             type="text" 
             placeholder="Search creators, jobs, or inspiration..."
-            className="w-full h-11 bg-zinc-900/30 border border-zinc-800/50 rounded-[20px] pl-12 pr-4 text-[13px] text-black placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all"
+            className={`w-full h-11 rounded-[20px] pl-12 pr-4 text-[13px] transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 border ${
+              isDarkMode 
+                ? 'bg-zinc-900/30 border-zinc-800/50 text-white placeholder:text-zinc-650' 
+                : 'bg-white border-black text-black placeholder:text-zinc-400'
+            }`}
           />
         </div>
       </div>

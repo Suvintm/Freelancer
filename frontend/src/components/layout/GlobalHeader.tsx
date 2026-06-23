@@ -100,7 +100,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
                 onChange={(e) => setQuery(e.target.value)}
                 className={`
                   w-full h-9 rounded-full pl-9 pr-10 text-[13px] focus:outline-none border
-                  ${isDarkMode ? 'bg-[#0f0f12] border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-955'}
+                  ${isDarkMode ? 'bg-[#0f0f12] border-zinc-800 text-white' : 'bg-white border-black text-zinc-955'}
                 `}
               />
               {query && (
@@ -255,7 +255,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
                 transition-all border
                 ${isDarkMode 
                   ? 'bg-[#0f0f12] border-zinc-850 text-white placeholder:text-zinc-650 focus:border-zinc-700' 
-                  : 'bg-white border-zinc-200 text-zinc-950 placeholder:text-zinc-400 focus:border-zinc-350'
+                  : 'bg-white border-black text-zinc-950 placeholder:text-zinc-400 focus:border-zinc-350'
                 }
               `}
             />

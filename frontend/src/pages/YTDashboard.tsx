@@ -31,6 +31,27 @@ import DIAMOND_BTN from '../assets/playbuttons/diamondbtn.png';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1524666041070-9d87656c25bb?auto=format&fit=crop&q=80&w=400';
 
+const YouTubeVerificationBadge = () => {
+  const { isDarkMode } = useTheme();
+  return (
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[11px] font-semibold tracking-tight shadow-sm shrink-0 ${
+      isDarkMode 
+        ? 'bg-zinc-950/90 border-zinc-800/80 text-zinc-300 shadow-black/20' 
+        : 'bg-zinc-50 border-zinc-200 text-zinc-700 shadow-zinc-100'
+    }`}>
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>
+      <div className="flex items-center gap-1.5 leading-none">
+        <Youtube className="w-3.5 h-3.5 fill-[#FF0000] text-[#FF0000] stroke-none shrink-0" />
+        <span>Verified Partner</span>
+        <span className="opacity-60 font-normal text-[10px]">| Approved by Google & YouTube API</span>
+      </div>
+    </div>
+  );
+};
+
 export default function YTDashboard() {
   const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
@@ -146,9 +167,12 @@ export default function YTDashboard() {
         <h2 className={`text-xl font-bold mb-2 tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
           No YouTube Channel Linked
         </h2>
-        <p className={`text-sm max-w-sm mb-8 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+        <p className={`text-sm max-w-sm mb-6 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
           Connect your YouTube account to unlock creators analytics, deals, performance monitoring and media portfolios.
         </p>
+        <div className="mb-8">
+          <YouTubeVerificationBadge />
+        </div>
         <button
           onClick={() => navigate('/youtube-connect')}
           className={`px-8 py-3 rounded-full font-bold text-sm tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
@@ -170,9 +194,12 @@ export default function YTDashboard() {
         {/* Creator Hub Header & Welcome */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-main pb-6">
           <div>
-            <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
-              Creator Hub
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
+                Creator Hub
+              </h1>
+              <YouTubeVerificationBadge />
+            </div>
             <p className="text-xs text-text-muted mt-1 font-medium">
               Manage your connected channels, analytics workspaces, and portfolios.
             </p>
@@ -482,17 +509,20 @@ export default function YTDashboard() {
           </div>
         </div>
 
-        <button
-          onClick={() => navigate('/youtube-connect')}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all active:scale-[0.98] cursor-pointer ${
-            isDarkMode 
-              ? 'border-border-main bg-zinc-950 text-white hover:bg-border-secondary' 
-              : 'border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-50 hover:shadow-sm'
-          }`}
-        >
-          <Youtube size={14} className="fill-red-500 stroke-none" />
-          <span>Link Another Channel</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <YouTubeVerificationBadge />
+          <button
+            onClick={() => navigate('/youtube-connect')}
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all active:scale-[0.98] cursor-pointer ${
+              isDarkMode 
+                ? 'border-border-main bg-zinc-950 text-white hover:bg-border-secondary' 
+                : 'border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-50 hover:shadow-sm'
+            }`}
+          >
+            <Youtube size={14} className="fill-red-500 stroke-none" />
+            <span>Link Another Channel</span>
+          </button>
+        </div>
       </div>
 
       {/* ─── Hero Banner Box ─── */}
