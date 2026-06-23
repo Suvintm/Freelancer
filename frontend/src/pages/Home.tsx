@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Youtube } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
 import { MdStar, MdChevronRight, MdCheckCircle } from 'react-icons/md';
@@ -324,6 +324,27 @@ interface DbFeedItem {
   votes?: number[];
 }
 
+const GoogleYouTubeBadge = () => {
+  const { isDarkMode } = useTheme();
+  return (
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10.5px] font-semibold tracking-tight shadow-sm shrink-0 transition-all ${
+      isDarkMode 
+        ? 'bg-zinc-950/80 border-zinc-800/80 text-zinc-300 shadow-black/20 hover:border-zinc-700' 
+        : 'bg-white border-zinc-200 text-zinc-700 shadow-zinc-100 hover:border-zinc-300'
+    }`}>
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>
+      <div className="flex items-center gap-1.5 leading-none">
+        <Youtube className="w-3.5 h-3.5 fill-[#FF0000] text-[#FF0000] stroke-none shrink-0" />
+        <span className="font-bold">Verified API Partner</span>
+        <span className="opacity-60 font-normal text-[9.5px]">| Approved by Google & YouTube</span>
+      </div>
+    </div>
+  );
+};
+
 export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -465,12 +486,13 @@ export default function Home() {
         {/* Logo, Widget, & Banner Container Group (To bypass parent gap-8 and remove whitespace) */}
         <div className="flex flex-col gap-0 w-full">
           {/* Logo Section */}
-          <div className="w-full px-2 mt-0 mb-1 flex items-center relative z-30">
+          <div className="w-full px-2 mt-0 mb-1 flex items-center justify-between relative z-30">
             <img 
               src={isDarkMode ? darkLogo : lightLogo} 
               alt="SuviX" 
               className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
             />
+            <GoogleYouTubeBadge />
           </div>
 
           {/* 1. Banner Section (Full Width Stacked) */}
@@ -522,6 +544,10 @@ export default function Home() {
         
         {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
         <div className="w-full flex flex-col gap-1">
+          <div className="w-full px-4 pr-[88px] mb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Featured</span>
+            <GoogleYouTubeBadge />
+          </div>
 
           <div className="w-full h-[226px] pr-[84px]">
             <UnifiedBanner className="h-full" />
