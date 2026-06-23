@@ -540,7 +540,7 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="relative lg:hidden -mr-4 -ml-4 -mt-3 lg:mt-0 min-h-[310px]">
+      <div className="relative lg:hidden -mt-3 lg:mt-0 min-h-[310px]">
         
         {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
         <div className="w-full flex flex-col gap-1">

@@ -11,6 +11,7 @@ import { useState } from 'react';
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const isHomePage = location.pathname === '/home';
   const isExplorePage = location.pathname === '/explore';
   const isNotificationsPage = location.pathname === '/notifications';
   const isProfilePage = location.pathname === '/profile';
@@ -18,7 +19,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isChatPage = location.pathname === '/communication-hub';
   const hasActiveChat = searchParams.has('userId');
   const isFullPage = isExplorePage || isNotificationsPage || isChatPage;
-  const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage;
+  const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage || isHomePage;
   const { isDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
