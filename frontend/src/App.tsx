@@ -20,6 +20,9 @@ import Notifications from './pages/Notifications';
 import TempUploadPortal from './pages/TempUploadPortal';
 import YTDashboard from './pages/YTDashboard';
 import Subscription from './pages/Subscription';
+import About from './pages/About';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -154,6 +157,11 @@ function App() {
         />
 
         <Route path="/oauth-success" element={<OAuthSuccess />} />
+        
+        {/* Public Informational / Legal Pages */}
+        <Route path="/about" element={<AppLayout><About /></AppLayout>} />
+        <Route path="/privacy" element={<AppLayout><PrivacyPolicy /></AppLayout>} />
+        <Route path="/terms" element={<AppLayout><TermsAndConditions /></AppLayout>} />
         
         {/* Authenticated Protected Routes */}
         <Route 

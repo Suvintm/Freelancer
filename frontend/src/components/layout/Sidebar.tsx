@@ -359,9 +359,18 @@ export const Sidebar = () => {
 
         {/* Spacer */}
         <div className="flex-1" />
-        <p className="text-center text-[11px] text-text-muted pb-4">
-          © 2024 SuviX Inc.
-        </p>
+        <div className="text-center space-y-2.5 pb-4">
+          <div className="flex items-center justify-center gap-2.5 text-[10px] text-text-muted select-none">
+            <button onClick={() => navigate('/about')} className="hover:text-text-main transition-colors font-semibold cursor-pointer">About</button>
+            <span className="w-1 h-1 rounded-full bg-border-main" />
+            <button onClick={() => navigate('/privacy')} className="hover:text-text-main transition-colors font-semibold cursor-pointer">Privacy</button>
+            <span className="w-1 h-1 rounded-full bg-border-main" />
+            <button onClick={() => navigate('/terms')} className="hover:text-text-main transition-colors font-semibold cursor-pointer">Terms</button>
+          </div>
+          <p className="text-[10px] text-text-muted opacity-70">
+            © 2026 SuviX Inc.
+          </p>
+        </div>
       </div>
 
       <AccountSwitcher 
