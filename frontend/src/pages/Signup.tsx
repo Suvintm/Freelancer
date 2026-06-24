@@ -96,7 +96,8 @@ export default function Signup() {
     phone: '',
     password: '',
     motherTongue: 'English',
-    country: 'India'
+    country: 'India',
+    website: ''
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,6 +107,7 @@ export default function Signup() {
   const [enableNotifications, setEnableNotifications] = useState(false);
 
   const navigate = useNavigate();
+  const isClient = tempSignupData?.roleGroup === 'CLIENT';
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
   // If tempSignupData has no categoryId, the user navigated here without going
@@ -150,7 +152,7 @@ export default function Signup() {
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
 
     // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com'];
+    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com', 'uber@company.com'];
     if (!allowedEmails.includes(form.email.toLowerCase().trim())) {
       setError('Server busy ! Please try again later or contact SuviX team.');
       return;
@@ -282,22 +284,34 @@ export default function Signup() {
                     </label>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-white tracking-tight">Profile Picture</p>
+                    <p className="text-sm font-bold text-white tracking-tight">
+                      {isClient ? "Brand Logo" : "Profile Picture"}
+                    </p>
                     <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Recommended: Square, under 5MB</p>
                   </div>
                 </div>
 
                 {/* Name + Handle */}
                 <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Full Name" name="fullName" placeholder="John Doe" icon={<User size={16} />} value={form.fullName} onChange={handleChange} required />
+                  <InputField 
+                    label={isClient ? "Company / Brand Name" : "Full Name"} 
+                    name="fullName" 
+                    placeholder={isClient ? "e.g. Nike" : "John Doe"} 
+                    icon={<User size={16} />} 
+                    value={form.fullName} 
+                    onChange={handleChange} 
+                    required 
+                  />
 
                   <div className="space-y-1.5">
-                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Handle</label>
+                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
+                      {isClient ? "Brand Handle" : "Handle"}
+                    </label>
                     <div className="relative">
                       <AtSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input
                         name="username"
-                        placeholder="handle"
+                        placeholder={isClient ? "brandhandle" : "handle"}
                         value={form.username}
                         onChange={handleChange}
                         onBlur={handleUsernameBlur}
@@ -321,26 +335,47 @@ export default function Signup() {
                 </div>
 
                 {/* Email */}
-                <InputField label="Email Address" name="email" type="email" placeholder="name@example.com" icon={<Mail size={16} />} value={form.email} onChange={handleChange} required />
+                <InputField 
+                  label={isClient ? "Work Email Address" : "Email Address"} 
+                  name="email" 
+                  type="email" 
+                  placeholder={isClient ? "partnerships@company.com" : "name@example.com"} 
+                  icon={<Mail size={16} />} 
+                  value={form.email} 
+                  onChange={handleChange} 
+                  required 
+                />
 
-                {/* Phone + Language */}
+                {/* Phone + Language/Website */}
                 <div className="grid grid-cols-2 gap-4">
                   <InputField label="Phone" name="phone" placeholder="+91..." icon={<Phone size={16} />} value={form.phone} onChange={handleChange} required />
 
-                  <div className="space-y-1.5">
-                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Language</label>
-                    <div className="relative">
-                      <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                      <select
-                        name="motherTongue"
-                        value={form.motherTongue}
-                        onChange={handleChange}
-                        className="suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm appearance-none"
-                      >
-                        {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                      </select>
+                  {isClient ? (
+                    <InputField 
+                      label="Website / URL" 
+                      name="website" 
+                      placeholder="https://company.com" 
+                      icon={<Globe size={16} />} 
+                      value={form.website} 
+                      onChange={handleChange} 
+                      required 
+                    />
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Language</label>
+                      <div className="relative">
+                        <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <select
+                          name="motherTongue"
+                          value={form.motherTongue}
+                          onChange={handleChange}
+                          className="suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm appearance-none"
+                        >
+                          {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Country */}

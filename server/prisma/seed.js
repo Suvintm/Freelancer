@@ -42,12 +42,25 @@ const DUMMY_CATEGORIES = {
     subCategories: ['Classical', 'Hip Hop', 'Contemporary', 'Bollywood', 'Salsa', 'Ballet', 'Street Dance', 'Choreography', 'Musical Theater', 'Other'],
   },
   social_promoter: {
-    label: 'Ads & Promotions',
+    label: 'Brand Sponsor / Advertiser',
     icon: 'megaphone',
-    roleGroup: 'PROVIDER',
-    description: 'High-impact social media growth and advertising.',
-    info: 'Scale your reach with multi-channel amplification. From digital influencer marketing to local rickshaw branding.',
-    subCategories: ['Instagram Ads', 'YouTube Ads', 'SEO', 'Influencer Marketing', 'Rickshaw Branding', 'Wall Painting Ads', 'Bus Branding', 'Digital Billboards', 'Local Cable Ads', 'Radio Spots', 'Newspaper Classifieds', 'Pamphlet Distribution', 'Content Marketing', 'Brand Strategy', 'Affiliate', 'Other'],
+    roleGroup: 'CLIENT',
+    description: 'Sponsor top-tier YouTube creators and run advertising campaigns.',
+    info: 'Join as a Brand Sponsor to discover elite YouTube creators, launch advertising campaigns, and secure high-impact sponsorships.',
+    subCategories: [
+      'YouTube Sponsorship', 
+      'Product Placement', 
+      'Video Integration', 
+      'Dedicated Video', 
+      'Shoutouts', 
+      'Affiliate Marketing',
+      'Unboxing & Review',
+      'Shorts & Reels Integration',
+      'Community Post Promotion',
+      'Brand Ambassador',
+      'Livestream Sponsorship',
+      'Giveaway Collaboration'
+    ],
   },
   video_editor: {
     label: 'Video Editor',
@@ -103,12 +116,18 @@ async function main() {
   console.log('🌱 Starting seed...');
 
   for (const [slug, categoryData] of Object.entries(DUMMY_CATEGORIES)) {
-    console.log(`Creating category: ${categoryData.label}`);
+    console.log(`Creating/updating category: ${categoryData.label}`);
     
     // Create Role Category
     const category = await prisma.roleCategory.upsert({
       where: { slug: slug },
-      update: {},
+      update: {
+        name: categoryData.label,
+        icon: categoryData.icon,
+        roleGroup: categoryData.roleGroup,
+        description: categoryData.description,
+        info: categoryData.info,
+      },
       create: {
         slug: slug,
         name: categoryData.label,
@@ -117,6 +136,17 @@ async function main() {
         description: categoryData.description,
         info: categoryData.info,
       },
+    });
+
+    // Clean up old subcategories for this category
+    const validSubSlugs = categoryData.subCategories.map(subName => 
+      subName.toLowerCase().replace(/ \/ /g, '-').replace(/ /g, '-').replace(/[()]/g, '')
+    );
+    await prisma.roleSubCategory.deleteMany({
+      where: {
+        roleCategoryId: category.id,
+        slug: { notIn: validSubSlugs }
+      }
     });
 
     // Create Role Sub Categories

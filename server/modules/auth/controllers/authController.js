@@ -419,6 +419,7 @@ export const registerFull = asyncHandler(async (req, res) => {
     youtubeChannels,
     pushToken,
     platform,
+    website,
   } = req.body;
 
   let parsedSubIds = roleSubCategoryIds;
@@ -470,6 +471,7 @@ export const registerFull = asyncHandler(async (req, res) => {
       : [],
     pushToken,
     platform,
+    website,
     profilePictureBuffer: req.file ? req.file.buffer : null,
     googleId: req.body.googleId || null,
     authProvider: req.body.authProvider || "local",

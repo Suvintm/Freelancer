@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check, Trash2, X, Heart, MessageCircle, Play } from 'lucide-react';
+import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check, Trash2, X, Heart, MessageCircle, Play, Eye, ThumbsUp, MessageSquare } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
 import { useTheme } from '../../../hooks/useTheme';
@@ -556,15 +556,25 @@ export const DesktopProfile = () => {
                       {video.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-text-muted">{formatCount(video.viewCount)} views</span>
+                  <div className="flex items-center justify-between mt-2.5 text-[10.5px] font-semibold text-text-muted border-t border-white/5 pt-2">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1.5" title="Views">
+                        <Eye size={12} className="text-zinc-500" />
+                        {formatCount(video.view_count || video.viewCount)}
+                      </span>
+                      <span className="flex items-center gap-1.5" title="Likes">
+                        <ThumbsUp size={11} className="text-zinc-500" />
+                        {formatCount(video.like_count)}
+                      </span>
+                      <span className="flex items-center gap-1.5" title="Comments">
+                        <MessageSquare size={11} className="text-zinc-500" />
+                        {formatCount(video.comment_count)}
+                      </span>
+                    </div>
                     {(video.published_at || video.publishedAt) && (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-border-main" />
-                        <span className="text-[10px] font-bold text-text-muted">
-                          {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </>
+                      <span className="text-[10px] text-zinc-500">
+                        {new Date((video.published_at || video.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -788,15 +798,25 @@ export const DesktopProfile = () => {
                       <h3 className="text-[14px] font-bold text-text-main leading-snug line-clamp-2 group-hover:text-red-500 transition-colors">
                         {post.title}
                       </h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[11px] font-bold text-text-muted">{formatCount(post.viewCount)} views</span>
+                      <div className="flex items-center justify-between mt-3 text-[11px] font-semibold text-text-muted border-t border-white/5 pt-2">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1.5" title="Views">
+                            <Eye size={12} className="text-zinc-500" />
+                            {formatCount(post.view_count || post.viewCount)}
+                          </span>
+                          <span className="flex items-center gap-1.5" title="Likes">
+                            <ThumbsUp size={11} className="text-zinc-500" />
+                            {formatCount(post.like_count)}
+                          </span>
+                          <span className="flex items-center gap-1.5" title="Comments">
+                            <MessageSquare size={11} className="text-zinc-500" />
+                            {formatCount(post.comment_count)}
+                          </span>
+                        </div>
                         {(post.published_at || post.publishedAt) && (
-                          <>
-                            <span className="w-1 h-1 rounded-full bg-border-main" />
-                            <span className="text-[11px] font-bold text-text-muted">
-                              {new Date((post.published_at || post.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                          </>
+                          <span className="text-[10px] text-zinc-500">
+                            {new Date((post.published_at || post.publishedAt)!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
                         )}
                       </div>
                     </div>

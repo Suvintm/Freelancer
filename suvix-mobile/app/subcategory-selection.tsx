@@ -101,7 +101,9 @@ export default function SubcategorySelectionScreen() {
   const handleFinish = async () => {
     if (selectedSubs.length === 0 && category?.slug !== 'direct_client') {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert('Niche Required', 'Please choose at least one specialization.');
+      const title = category?.roleGroup === 'CLIENT' ? 'Campaign Type Required' : 'Niche Required';
+      const msg = category?.roleGroup === 'CLIENT' ? 'Please choose at least one campaign type.' : 'Please choose at least one specialization.';
+      Alert.alert(title, msg);
       return;
     }
     
@@ -127,16 +129,18 @@ export default function SubcategorySelectionScreen() {
           <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: theme.secondary }]}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Discover Niche</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            {category.roleGroup === 'CLIENT' ? 'Campaign Types' : 'Discover Niche'}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
-
+ 
         {/* 🔎 FLUENT DISCOVERY BAR */}
         <View style={styles.searchContainer}>
           <View style={[styles.searchBar, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <Feather name="search" size={16} color={theme.textSecondary} style={{ marginRight: 10 }} />
             <TextInput
-              placeholder="Search specific niches..."
+              placeholder={category.roleGroup === 'CLIENT' ? "Search campaign types..." : "Search specific niches..."}
               placeholderTextColor={theme.textSecondary}
               style={[styles.searchInput, { color: theme.text }]}
               value={searchQuery}
@@ -145,7 +149,7 @@ export default function SubcategorySelectionScreen() {
           </View>
         </View>
       </BlurView>
-
+ 
       <ScrollView 
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 130 }]} 
         showsVerticalScrollIndicator={false}
@@ -161,9 +165,14 @@ export default function SubcategorySelectionScreen() {
                  </View>
                )}
             </View>
-            <Text style={[styles.title, { color: theme.text }]}>How do you specialize?</Text>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {category.roleGroup === 'CLIENT' ? 'What campaigns will you run?' : 'How do you specialize?'}
+            </Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Selecting accurate niches helps SuviX match you with the highest-paying brands in your industry.
+              {category.roleGroup === 'CLIENT'
+                ? 'Selecting campaign types helps SuviX match you with the best-fitting creators for your brand.'
+                : 'Selecting accurate niches helps SuviX match you with the highest-paying brands in your industry.'
+              }
             </Text>
           </View>
 

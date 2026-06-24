@@ -92,7 +92,11 @@ export default function RoleSelectionScreen() {
       handleImpact(Haptics.ImpactFeedbackStyle.Heavy);
       
       const selected = categories.find((c) => c.id === selectedCategory);
-      setTempSignupData({ categoryId: selectedCategory, categorySlug: selected?.slug });
+      setTempSignupData({ 
+        categoryId: selectedCategory, 
+        categorySlug: selected?.slug,
+        roleGroup: selected?.roleGroup
+      });
 
       if (selected?.slug === 'direct_client') {
         router.push('/signup');

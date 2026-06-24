@@ -32,6 +32,7 @@ export const registerFullUser = async (userData) => {
     profilePictureBuffer,
     authProvider = "local",
     googleId = null,
+    website,
   } = userData;
 
   const normalizedEmail = email.toLowerCase();
@@ -232,6 +233,7 @@ export const registerFullUser = async (userData) => {
           phone: phone,
           auth_provider: authProvider,
           categoryId: resolvedCategoryId,
+          website: website || null,
         },
       });
 

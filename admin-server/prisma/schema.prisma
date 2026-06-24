@@ -54,6 +54,7 @@ model UserProfile {
   name              String             @db.VarChar(100)
   profile_picture   String?            @map("profile_picture")
   bio               String?
+  website           String?            @db.VarChar(255)
   mother_tongue     String?            @map("mother_tongue") @db.VarChar(50)
   auth_provider     AuthProvider?      @default(local) @map("auth_provider")
   location_city     String?            @map("location_city") @db.VarChar(100)
@@ -230,7 +231,7 @@ model Notification {
   read_at    DateTime?            @map("read_at")
   is_deleted Boolean              @default(false)
   created_at DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  sender     User?                @relation("TriggeredNotifications", fields: [senderId], references: [id])
+  sender     User?                @relation("TriggeredNotifications", fields: [senderId], references: [id], onDelete: Cascade)
   user       User                 @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, created_at])

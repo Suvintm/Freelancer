@@ -27,7 +27,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthInit } from './queries/useCurrentUser';
-import { AuthGuard, PublicRoute, OnboardingGuard } from './components/auth/AuthGuard';
+import { AuthGuard, PublicRoute, OnboardingGuard, RoleGuard } from './components/auth/AuthGuard';
 import LottieComponent from 'lottie-react';
 import loaderAnimation from './assets/lottie/loader.json';
 
@@ -278,9 +278,11 @@ function App() {
           path="/upload-portal" 
           element={
             <AuthGuard>
-              <AppLayout>
-                <TempUploadPortal />
-              </AppLayout>
+              <RoleGuard allowedCategories={['yt_influencer', 'video_editor', 'singer', 'dancer', 'videographer', 'photographer', 'actor', 'musician', 'fitness_expert', 'rent_service']}>
+                <AppLayout>
+                  <TempUploadPortal />
+                </AppLayout>
+              </RoleGuard>
             </AuthGuard>
           } 
         />
@@ -288,9 +290,11 @@ function App() {
           path="/youtube-dashboard" 
           element={
             <AuthGuard>
-              <AppLayout>
-                <YTDashboard />
-              </AppLayout>
+              <RoleGuard allowedCategories={['yt_influencer']}>
+                <AppLayout>
+                  <YTDashboard />
+                </AppLayout>
+              </RoleGuard>
             </AuthGuard>
           } 
         />
@@ -298,9 +302,11 @@ function App() {
           path="/youtube-dashboard/:channelId" 
           element={
             <AuthGuard>
-              <AppLayout>
-                <YTDashboard />
-              </AppLayout>
+              <RoleGuard allowedCategories={['yt_influencer']}>
+                <AppLayout>
+                  <YTDashboard />
+                </AppLayout>
+              </RoleGuard>
             </AuthGuard>
           } 
         />
@@ -308,9 +314,11 @@ function App() {
           path="/channel/:channelId" 
           element={
             <AuthGuard>
-              <AppLayout>
-                <YTDashboard />
-              </AppLayout>
+              <RoleGuard allowedCategories={['yt_influencer']}>
+                <AppLayout>
+                  <YTDashboard />
+                </AppLayout>
+              </RoleGuard>
             </AuthGuard>
           } 
         />

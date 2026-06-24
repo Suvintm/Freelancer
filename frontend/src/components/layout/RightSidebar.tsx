@@ -74,7 +74,11 @@ export const RightSidebar = () => {
   const hasYoutube = user?.youtubeProfile && user.youtubeProfile.length > 0;
 
   const menuItems = useMemo(() => {
-    const items = [...NAV_ITEMS];
+    let items = [...NAV_ITEMS];
+    const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.categorySlug || '');
+    if (isClientCategory) {
+      items = items.filter(item => item.path !== '/upload-portal' && item.path !== '/reels');
+    }
     if (hasYoutube) {
       const settingsIndex = items.findIndex(item => item.path === '/settings');
       if (settingsIndex !== -1) {
@@ -84,7 +88,7 @@ export const RightSidebar = () => {
       }
     }
     return items;
-  }, [hasYoutube]);
+  }, [hasYoutube, user?.role]);
 
   const visibleConvs = conversations.slice(activeCardIndex, activeCardIndex + 3);
 
