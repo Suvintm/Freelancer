@@ -4,7 +4,7 @@ import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  Youtube, Eye, Video, ArrowLeft, ExternalLink, 
+  Youtube, Eye, ArrowLeft, ExternalLink, 
   ChevronDown, Search, Play, ArrowUpRight, MapPin, 
   TrendingUp, ShieldAlert, Sparkles, Clock, Plus
 } from 'lucide-react';

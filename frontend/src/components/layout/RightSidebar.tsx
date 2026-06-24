@@ -88,7 +88,7 @@ export const RightSidebar = () => {
       }
     }
     return items;
-  }, [hasYoutube, user?.role]);
+  }, [hasYoutube, user?.primaryRole?.categorySlug]);
 
   const visibleConvs = conversations.slice(activeCardIndex, activeCardIndex + 3);
 

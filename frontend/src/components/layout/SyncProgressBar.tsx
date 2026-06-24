@@ -78,13 +78,21 @@ export const SyncProgressBar = () => {
     if (countdown === null) return;
     
     if (countdown <= 0) {
-      setShowNotification(false);
+      // Defer state update to next tick to avoid synchronous setState warnings inside effect body
+      const fadeTimeout = setTimeout(() => {
+        setShowNotification(false);
+      }, 0);
+
       const dismissTimeout = setTimeout(() => {
         setActiveSync(null);
         setIsExpanded(false);
         setCountdown(null);
       }, 400);
-      return () => clearTimeout(dismissTimeout);
+
+      return () => {
+        clearTimeout(fadeTimeout);
+        clearTimeout(dismissTimeout);
+      };
     }
 
     const timer = setTimeout(() => {
@@ -99,7 +107,32 @@ export const SyncProgressBar = () => {
 
     const socket = connectSocket(token);
 
-    const handleProgress = (data: any) => {
+    interface SyncProgressData {
+      type: string;
+      metadata: {
+        progress: number;
+        channelId: string;
+        channelName?: string;
+        step: string;
+        message?: string;
+      };
+    }
+
+    interface SyncFailureData {
+      type: string;
+      metadata: {
+        channelId?: string;
+        channelName?: string;
+        message?: string;
+      };
+    }
+
+    interface ProfileUpdatedPayload {
+      youtubeProfile?: unknown[];
+      youtubeVideos?: unknown[];
+    }
+
+    const handleProgress = (data: SyncProgressData) => {
       if (data.type === 'SYNC_PROGRESS') {
         const { progress, channelId, channelName, step, message } = data.metadata;
         
@@ -129,7 +162,7 @@ export const SyncProgressBar = () => {
       }
     };
 
-    const handleFailure = (data: any) => {
+    const handleFailure = (data: SyncFailureData) => {
       if (data.type === 'SYNC_FAILED') {
         const { channelId, channelName, message } = data.metadata;
 
@@ -150,7 +183,7 @@ export const SyncProgressBar = () => {
       }
     };
 
-    const handleProfileUpdated = (payload: any) => {
+    const handleProfileUpdated = (payload: ProfileUpdatedPayload) => {
       console.log('🛰️ [SyncProgressBar] Received user:profile_updated, refreshing Redux store...');
       if (payload && (payload.youtubeProfile || payload.youtubeVideos)) {
         dispatch(updateUser({
@@ -160,13 +193,14 @@ export const SyncProgressBar = () => {
       }
     };
 
-    socket.on('notification:new', (data) => {
-      if (data.type === 'SYNC_PROGRESS') {
-        handleProgress(data);
-      } else if (data.type === 'SYNC_COMPLETE') {
-        handleProgress(data);
-      } else if (data.type === 'SYNC_FAILED') {
-        handleFailure(data);
+    socket.on('notification:new', (data: unknown) => {
+      const syncData = data as { type: string };
+      if (syncData.type === 'SYNC_PROGRESS') {
+        handleProgress(data as SyncProgressData);
+      } else if (syncData.type === 'SYNC_COMPLETE') {
+        handleProgress(data as SyncProgressData);
+      } else if (syncData.type === 'SYNC_FAILED') {
+        handleFailure(data as SyncFailureData);
       }
     });
 
