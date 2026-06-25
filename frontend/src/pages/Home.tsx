@@ -330,6 +330,7 @@ export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isDarkMode } = useTheme();
+  const navigate = useNavigate();
   const user = useSelector(selectUser);
   const userAvatar = user?.profilePicture || defaultProfile;
 
@@ -435,7 +436,7 @@ export default function Home() {
 
 
 
-  const isSocialPromoter = user?.primaryRole?.categorySlug === 'social_promoter';
+  const isSocialPromoter = user?.primaryRole?.category === 'social_promoter';
 
   if (isSocialPromoter) {
     return (

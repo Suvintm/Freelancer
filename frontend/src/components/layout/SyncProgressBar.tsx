@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectToken, updateUser } from '../../store/slices/authSlice';
+import type { AuthUser } from '../../store/slices/authSlice';
 import { connectSocket } from '../../services/socketService';
 import { useTheme } from '../../hooks/useTheme';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -128,8 +129,8 @@ export const SyncProgressBar = () => {
     }
 
     interface ProfileUpdatedPayload {
-      youtubeProfile?: unknown[];
-      youtubeVideos?: unknown[];
+      youtubeProfile?: AuthUser['youtubeProfile'];
+      youtubeVideos?: AuthUser['youtubeVideos'];
     }
 
     const handleProgress = (data: SyncProgressData) => {
