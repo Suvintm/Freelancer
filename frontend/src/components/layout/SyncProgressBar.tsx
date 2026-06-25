@@ -128,8 +128,8 @@ export const SyncProgressBar = () => {
     }
 
     interface ProfileUpdatedPayload {
-      youtubeProfile?: any[];
-      youtubeVideos?: any[];
+      youtubeProfile?: unknown[];
+      youtubeVideos?: unknown[];
     }
 
     const handleProgress = (data: SyncProgressData) => {
