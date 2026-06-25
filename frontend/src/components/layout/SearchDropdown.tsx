@@ -242,8 +242,8 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
   ];
 
   // Filter lists based on role/category
-  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.categorySlug || '');
-  const isYtInfluencer = user?.primaryRole?.categorySlug === 'yt_influencer';
+  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+  const isYtInfluencer = user?.primaryRole?.category === 'yt_influencer';
 
   const filteredNavItems = navigationItems.filter(item => {
     if (isClientCategory) {

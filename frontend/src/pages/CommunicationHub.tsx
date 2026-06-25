@@ -85,7 +85,7 @@ export default function CommunicationHub() {
   }, [activeChat]);
 
   // Fetch Conversations List via React Query
-  const { data: conversations = [], isLoading: isLoadingConvs, refetch: refetchConversations } = useQuery({
+  const { data: conversations = [], isLoading: isLoadingConvs, refetch: refetchConversations } = useQuery<Conversation[]>({
     queryKey: ['conversations'],
     queryFn: async () => {
       const response = await api.get('/messages/conversations');
@@ -109,7 +109,7 @@ export default function CommunicationHub() {
   };
 
   // Fetch Contacts via React Query
-  const { data: contacts = [], isLoading: isLoadingContacts } = useQuery({
+  const { data: contacts = [], isLoading: isLoadingContacts } = useQuery<Contact[]>({
     queryKey: ['contacts'],
     queryFn: async () => {
       const response = await api.get('/messages/contacts');

@@ -79,7 +79,7 @@ export const RoleGuard = ({ children, allowedCategories }: RoleGuardProps) => {
     return <>{children}</>;
   }
 
-  const userCategorySlug = user.primaryRole?.categorySlug;
+  const userCategorySlug = user.primaryRole?.category;
   if (!userCategorySlug || !allowedCategories.includes(userCategorySlug)) {
     return <Navigate to="/home" replace />;
   }

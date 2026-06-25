@@ -29,7 +29,7 @@ export const BottomNav = () => {
   const user = useSelector(selectUser);
   const profileAvatar = user?.profilePicture || defaultProfile;
 
-  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.categorySlug || '');
+  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
   const filteredNavItems = NAV_ITEMS.filter(item => {
     if (isClientCategory) {
       return item.path !== '/upload-portal' && item.path !== '/reels';

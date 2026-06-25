@@ -37,7 +37,7 @@ export const Sidebar = () => {
   const { isDarkMode } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
-  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.categorySlug || '');
+  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
 
   const CHANNEL = {
     name:           user?.name || 'User',

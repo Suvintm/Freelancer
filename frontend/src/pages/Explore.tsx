@@ -8,6 +8,16 @@ import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import defaultProfile from '../assets/defaultprofile.png';
 import { api } from '../api/client';
+interface ExploreProfile {
+  id: string;
+  userId: string;
+  name: string;
+  username: string;
+  profilePicture: string | null;
+  location?: string;
+  bio?: string;
+  roles?: string[];
+}
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -57,7 +67,7 @@ export default function Explore() {
     }
   };
 
-  const { data: editors = [], isLoading: isLoadingEditors } = useQuery({
+  const { data: editors = [], isLoading: isLoadingEditors } = useQuery<ExploreProfile[]>({
     queryKey: ['explore', 'video_editor'],
     queryFn: async () => {
       const response = await api.get('/profile/category/video_editor');
@@ -66,7 +76,7 @@ export default function Explore() {
     enabled: activeTab === 'Editors',
   });
 
-  const { data: creators = [], isLoading: isLoadingCreators } = useQuery({
+  const { data: creators = [], isLoading: isLoadingCreators } = useQuery<ExploreProfile[]>({
     queryKey: ['explore', 'yt_influencer'],
     queryFn: async () => {
       const response = await api.get('/profile/category/yt_influencer');

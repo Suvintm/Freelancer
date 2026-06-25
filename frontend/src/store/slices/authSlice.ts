@@ -58,6 +58,7 @@ export interface AuthUser {
     comment_count?: string | number;
   }>;
   bio?: string;
+  website?: string;
   followers?: number;
   following?: number;
   followingIds?: string[];
