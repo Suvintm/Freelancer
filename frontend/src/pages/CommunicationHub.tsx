@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { selectUser, selectToken } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
@@ -71,7 +71,6 @@ export default function CommunicationHub() {
   // Loading states
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const queryClient = useQueryClient();
 
   // Refs
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -110,7 +109,7 @@ export default function CommunicationHub() {
   };
 
   // Fetch Contacts via React Query
-  const { data: contacts = [], isLoading: isLoadingContacts, refetch: refetchContacts } = useQuery({
+  const { data: contacts = [], isLoading: isLoadingContacts } = useQuery({
     queryKey: ['contacts'],
     queryFn: async () => {
       const response = await api.get('/messages/contacts');
@@ -177,7 +176,7 @@ export default function CommunicationHub() {
     return () => {
       socket.disconnect();
     };
-  }, [token, user]);
+  }, [token, user, refetchConversations]);
 
 
 

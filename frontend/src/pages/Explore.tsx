@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,17 +8,6 @@ import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import defaultProfile from '../assets/defaultprofile.png';
 import { api } from '../api/client';
-
-interface ExploreProfile {
-  id: string;
-  userId: string;
-  name: string;
-  username: string;
-  profilePicture: string | null;
-  location?: string;
-  bio?: string;
-  roles?: string[];
-}
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 

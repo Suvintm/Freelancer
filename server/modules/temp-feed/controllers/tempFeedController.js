@@ -134,7 +134,7 @@ export const createTempFeedItem = async (req, res) => {
       logger.info(`🛰️ [TEMP-FEED] Uploading ${imageFiles.length} image(s) to Cloudinary for ${type}...`);
       const uploadPromises = imageFiles.map((file) =>
         uploadToCloudinary(file.path, "image", "temp_feed/images").finally(() => {
-          try { fs.unlinkSync(file.path); } catch (e) {}
+          try { fs.unlinkSync(file.path); } catch (e) { logger.warn(`Failed to cleanup temp image file: ${e.message}`); }
         })
       );
 
