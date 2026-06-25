@@ -2,6 +2,7 @@ import prisma from "../../../config/prisma.js";
 import logger from "../../../utils/logger.js";
 import { resolveMediaForApi } from "../../../utils/mediaResolver.js";
 import { purgeMediaFiles } from "../../storage/purge.utils.js";
+import { withCache, hashQuery } from "../../../utils/cache.js";
 
 /**
  * 📝 POST CONTROLLER (SOCIAL MODULE)
@@ -63,56 +64,73 @@ export const createPost = async (req, res) => {
  */
 export const getFeed = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
+    const { cursor, limit = 10 } = req.query;
+    const take = parseInt(limit, 10);
+    
+    // Create unique cache key for this specific pagination cursor
+    const cacheKey = `cache:feed:public:${hashQuery({ cursor, limit })}`;
+    const TTL_SECONDS = 30; // Absorb massive traffic spikes for 30s without hitting DB
 
-    const posts = await prisma.post.findMany({
-      where: {
-        visibility: "PUBLIC",
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            profile: {
-              select: {
-                name: true,
-                profile_picture: true,
+    const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const cursorObj = cursor ? { id: cursor } : undefined;
+      const skip = cursor ? 1 : 0;
+
+      const posts = await prisma.post.findMany({
+        where: {
+          visibility: "PUBLIC",
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              profile: {
+                select: {
+                  name: true,
+                  profile_picture: true,
+                },
               },
             },
           },
-        },
-        media: {
-          where: {
-            status: "READY",
+          media: {
+            where: {
+              status: "READY",
+            },
+            select: {
+              id: true,
+              type: true,
+              variants: true,
+              blurhash: true,
+              width: true,
+              height: true,
+              duration: true,
+            },
           },
-          select: {
-            id: true,
-            type: true,
-            variants: true,
-            blurhash: true,
-            width: true,
-            height: true,
-            duration: true,
-          },
         },
-      },
-      orderBy: { created_at: "desc" },
-      skip: parseInt(skip),
-      take: parseInt(limit),
-    });
+        orderBy: { id: "desc" },
+        take: take,
+        skip: skip,
+        ...(cursorObj && { cursor: cursorObj }),
+      });
 
-    // 🚀 PRODUCTION REFINEMENT: Use Centralized Media Resolver
-    const transformedPosts = posts.map(post => ({
-      ...post,
-      media: post.media.map(m => resolveMediaForApi(m))
-    }));
+      // 🚀 PRODUCTION REFINEMENT: Use Centralized Media Resolver
+      const transformedPosts = posts.map(post => ({
+        ...post,
+        media: post.media.map(m => resolveMediaForApi(m))
+      }));
+      
+      const nextCursor = posts.length === take ? posts[posts.length - 1].id : null;
+      
+      return {
+        data: transformedPosts,
+        nextCursor
+      };
+    });
 
     res.json({
       success: true,
-      data: transformedPosts,
-      page: parseInt(page),
+      data: feedData.data,
+      nextCursor: feedData.nextCursor,
     });
   } catch (error) {
     logger.error(`❌ [POST_CONTROLLER] getFeed failure: ${error.message}`);

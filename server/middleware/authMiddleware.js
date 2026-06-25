@@ -93,14 +93,26 @@ export const authenticate = async (req, res, next) => {
 
     const userId = decoded.id;
 
-    // ── 2. Proof-of-Life DB check (lightweight — indexed by PK) ────────────
-    // This is extremely fast and allows instant ban/deletion enforcement.
+    // ── 2. Proof-of-Life DB check (Redis-backed for scale) ────────────
+    // This allows instant ban/deletion enforcement without hitting PostgreSQL on every request.
     let status;
     try {
-      status = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, is_banned: true, ban_reason: true, role: true },
-      });
+      const statusCacheKey = `user_status:${userId}`;
+      let cachedStatus = redisAvailable ? await redis.get(statusCacheKey) : null;
+      
+      if (cachedStatus) {
+        status = JSON.parse(cachedStatus);
+      } else {
+        status = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, is_banned: true, ban_reason: true, role: true },
+        });
+        
+        if (redisAvailable && status) {
+          // Cache status for 60 seconds. Ban/deletion actions should manually clear this key or accept up to 60s delay.
+          await redis.set(statusCacheKey, JSON.stringify(status), "EX", 60);
+        }
+      }
     } catch (e) {
       logger.error(`[AUTH-DB] Proof-of-life check failed: ${e.message}`);
     }

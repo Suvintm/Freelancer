@@ -1,11 +1,13 @@
 import { TempFeed } from "../models/TempFeed.js";
 import cloudinary from "../../../config/cloudinary.js";
 import logger from "../../../utils/logger.js";
+import fs from "fs";
+import { withCache } from "../../../utils/cache.js";
 
 /**
- * Upload a file buffer to Cloudinary
+ * Upload a file path to Cloudinary
  */
-const uploadToCloudinary = (fileBuffer, resourceType = "auto", folder = "temp_feed") => {
+const uploadToCloudinary = (filePath, resourceType = "auto", folder = "temp_feed") => {
   return new Promise((resolve, reject) => {
     const uploadOptions = {
       resource_type: resourceType,
@@ -21,17 +23,13 @@ const uploadToCloudinary = (fileBuffer, resourceType = "auto", folder = "temp_fe
       uploadOptions.eager_async = true;
     }
 
-    const uploadStream = cloudinary.uploader.upload_stream(
-      uploadOptions,
-      (error, result) => {
-        if (error) {
-          logger.error(`❌ [CLOUDINARY] Upload failed: ${error.message}`);
-          return reject(error);
-        }
-        resolve(result);
+    cloudinary.uploader.upload(filePath, uploadOptions, (error, result) => {
+      if (error) {
+        logger.error(`❌ [CLOUDINARY] Upload failed: ${error.message}`);
+        return reject(error);
       }
-    );
-    uploadStream.end(fileBuffer);
+      resolve(result);
+    });
   });
 };
 
@@ -97,7 +95,8 @@ export const createTempFeedItem = async (req, res) => {
 
       const videoFile = videoFiles[0];
       logger.info(`🛰️ [TEMP-FEED] Uploading video to Cloudinary for ${type}...`);
-      const uploadResult = await uploadToCloudinary(videoFile.buffer, "video", "temp_feed/videos");
+      const uploadResult = await uploadToCloudinary(videoFile.path, "video", "temp_feed/videos");
+      try { fs.unlinkSync(videoFile.path); } catch (e) { logger.warn(`Failed to cleanup temp file: ${e.message}`); }
       
       // Ensure universal playback across laptops by rewriting URL to specifically request H.264 MP4 format
       const rawUrl = uploadResult.secure_url;
@@ -134,7 +133,9 @@ export const createTempFeedItem = async (req, res) => {
 
       logger.info(`🛰️ [TEMP-FEED] Uploading ${imageFiles.length} image(s) to Cloudinary for ${type}...`);
       const uploadPromises = imageFiles.map((file) =>
-        uploadToCloudinary(file.buffer, "image", "temp_feed/images")
+        uploadToCloudinary(file.path, "image", "temp_feed/images").finally(() => {
+          try { fs.unlinkSync(file.path); } catch (e) {}
+        })
       );
 
       const uploadResults = await Promise.all(uploadPromises);
@@ -162,8 +163,25 @@ export const createTempFeedItem = async (req, res) => {
  */
 export const getTempFeed = async (req, res) => {
   try {
-    const items = await TempFeed.aggregate([{ $sample: { size: 10 } }]);
-    return res.status(200).json({ success: true, count: items.length, data: items });
+    const count = await TempFeed.countDocuments();
+    if (count === 0) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
+    }
+
+    // Cache random feed for 60 seconds to avoid DB pounding
+    const cacheKey = `cache:tempfeed:random`;
+    const TTL_SECONDS = 60;
+
+    const data = await withCache(cacheKey, TTL_SECONDS, async () => {
+      // Instead of $sample which causes full collection scan, use an offset
+      const randomOffset = Math.max(0, Math.floor(Math.random() * count) - 10);
+      const items = await TempFeed.find().skip(randomOffset).limit(10);
+      
+      // Shuffle the result array in memory for true randomness
+      return items.sort(() => 0.5 - Math.random());
+    });
+    
+    return res.status(200).json({ success: true, count: data.length, data: data });
   } catch (error) {
     logger.error(`❌ [TEMP-FEED] Fetch feed failed: ${error.message}`);
     return res.status(500).json({ success: false, message: "Server error fetching feed items." });

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { selectUser, selectToken } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
@@ -55,14 +56,11 @@ export default function CommunicationHub() {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetUserId = searchParams.get('userId');
 
-  // States
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isContactsOpen, setIsContactsOpen] = useState(false);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactSearch, setContactSearch] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   
@@ -71,10 +69,9 @@ export default function CommunicationHub() {
   const [isTyping, setIsTyping] = useState(false);
   
   // Loading states
-  const [isLoadingConvs, setIsLoadingConvs] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const queryClient = useQueryClient();
 
   // Refs
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -88,20 +85,14 @@ export default function CommunicationHub() {
     activeChatRef.current = activeChat;
   }, [activeChat]);
 
-  // Fetch Conversations List
-  const fetchConversations = async (silent = false) => {
-    if (!silent) setIsLoadingConvs(true);
-    try {
+  // Fetch Conversations List via React Query
+  const { data: conversations = [], isLoading: isLoadingConvs, refetch: refetchConversations } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: async () => {
       const response = await api.get('/messages/conversations');
-      if (response.data?.success) {
-        setConversations(response.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch conversations:', err);
-    } finally {
-      if (!silent) setIsLoadingConvs(false);
+      return response.data?.success ? response.data.data : [];
     }
-  };
+  });
 
   // Fetch Message History
   const fetchMessageHistory = async (otherUserId: string, silent = false) => {
@@ -118,20 +109,15 @@ export default function CommunicationHub() {
     }
   };
 
-  // Fetch Contacts
-  const fetchContacts = async () => {
-    setIsLoadingContacts(true);
-    try {
+  // Fetch Contacts via React Query
+  const { data: contacts = [], isLoading: isLoadingContacts, refetch: refetchContacts } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
       const response = await api.get('/messages/contacts');
-      if (response.data?.success) {
-        setContacts(response.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch contacts:', err);
-    } finally {
-      setIsLoadingContacts(false);
-    }
-  };
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: isContactsOpen // Only fetch when contacts modal is open
+  });
 
   // Establish WebSockets Connection
   useEffect(() => {
@@ -163,7 +149,7 @@ export default function CommunicationHub() {
 
     socket.on('message:new', (newMsg: Message) => {
       // 1. Refresh conversations sidebar silently
-      fetchConversations(true);
+      refetchConversations();
 
       // 2. If it's the active chat room, append to messages list
       const activeChatVal = activeChatRef.current;
@@ -193,14 +179,7 @@ export default function CommunicationHub() {
     };
   }, [token, user]);
 
-  // Initial Load conversations
-  useEffect(() => {
-    const init = async () => {
-      await Promise.resolve();
-      fetchConversations();
-    };
-    init();
-  }, []);
+
 
   // Load target chat from query parameter
   useEffect(() => {
@@ -391,7 +370,7 @@ export default function CommunicationHub() {
         setMessages(prev =>
           prev.map(m => (m.id === tempId ? response.data.data : m))
         );
-        fetchConversations(true);
+        refetchConversations();
       }
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -443,7 +422,6 @@ export default function CommunicationHub() {
           <button 
             onClick={() => {
               setIsContactsOpen(true);
-              fetchContacts();
             }}
             className={`p-2 rounded-xl transition-all cursor-pointer ${
               isDarkMode 

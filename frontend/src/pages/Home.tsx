@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
@@ -30,16 +31,16 @@ interface Story {
 const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '1_yt_creator',
-    username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1516280440502-a2ce893ce71d?auto=format&fit=crop&q=80&w=200',
+    username: 'ChaiAurCode',
+    avatar: 'https://i.ytimg.com/vi/TZDbe_8raSA/maxresdefault.jpg',
     isSeen: false,
     verifiedColor: '#EF4444', // Red for YT Creator
     hasActive: true,
   },
   {
     _id: '2_fitness_influencer',
-    username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=200',
+    username: 'Sam Sameer',
+    avatar: 'https://tse1.explicit.bing.net/th/id/OIP.PMTNrFgQOWBq5Yxr63Bv6QAAAA?rs=1&pid=ImgDetMain&o=7&rm=3',
     isSeen: false,
     verifiedColor: '#22C55E', // Green for Fitness
     hasActive: true,
@@ -47,7 +48,7 @@ const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '4_editor',
     username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&q=80&w=200',
+    avatar: 'https://media.istockphoto.com/id/1277971635/photo/portrait-of-a-smiling-man-of-indian-ethnicity.jpg?s=1024x1024&w=is&k=20&c=Ve_FZ5p_gO5Kd3gkW6nVicgiwAi5I0lXcW_L4MGKLEY=',
     isSeen: true,
     verifiedColor: '#3B82F6', // Blue for Editor
     hasActive: true,
@@ -55,7 +56,7 @@ const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '5_client',
     username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+    avatar: 'https://media.istockphoto.com/id/1541953395/photo/young-happy-indian-parents-holding-cute-baby-boy-while-standing-at-home-asian-mom-and-dad.jpg?s=1024x1024&w=is&k=20&c=vBycraqLaqkFZreZRVCoKUrwmZHMLsdiVuasZ7I7Fsc=',
     isSeen: true,
     verifiedColor: '#A855F7', // Purple for Client
     hasActive: true,
@@ -332,11 +333,37 @@ export default function Home() {
   const user = useSelector(selectUser);
   const userAvatar = user?.profilePicture || defaultProfile;
 
-  const [feedPosts, setFeedPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [globalMuted, setGlobalMuted] = useState(true);
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  const { data: feedPosts = POSTS, isLoading } = useQuery({
+    queryKey: ['temp-feed'],
+    queryFn: async () => {
+      const response = await api.get('/temp-feed');
+      if (response.data.success && response.data.data.length > 0) {
+        const dbPosts: Post[] = response.data.data.map((item: DbFeedItem) => ({
+          id: item._id,
+          user: item.user,
+          location: item.location || 'Unknown Location',
+          img: item.images?.[0] || '',
+          images: item.images || [],
+          likes: item.likes,
+          comment: item.comment,
+          commentsCount: item.commentsCount,
+          videoUrl: item.videoUrl || '',
+          isVideo: item.type === 'reel' || item.type === 'yt_video',
+          isYtVideo: item.type === 'yt_video',
+          type: item.type,
+          watchOnYtLink: item.watchOnYtLink || '',
+          votes: item.votes || [],
+        }));
+        
+        return [...dbPosts].sort(() => Math.random() - 0.5);
+      }
+      return POSTS;
+    }
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -381,46 +408,6 @@ export default function Home() {
       elements.forEach((el) => observer.unobserve(el));
     };
   }, [feedPosts, isMobile]); // Re-run when feedPosts or mobile layout status changes
-
-  useEffect(() => {
-    const fetchFeed = async () => {
-      setIsLoading(true);
-      try {
-        const response = await api.get('/temp-feed');
-        if (response.data.success && response.data.data.length > 0) {
-          const dbPosts: Post[] = response.data.data.map((item: DbFeedItem) => ({
-            id: item._id,
-            user: item.user,
-            location: item.location || 'Unknown Location',
-            img: item.images?.[0] || '',
-            images: item.images || [],
-            likes: item.likes,
-            comment: item.comment,
-            commentsCount: item.commentsCount,
-            videoUrl: item.videoUrl || '',
-            isVideo: item.type === 'reel' || item.type === 'yt_video',
-            isYtVideo: item.type === 'yt_video',
-            type: item.type,
-            watchOnYtLink: item.watchOnYtLink || '',
-            votes: item.votes || [],
-          }));
-          
-          // Shuffling dynamically on page refresh to show fresh content
-          const shuffled = [...dbPosts].sort(() => Math.random() - 0.5);
-          setFeedPosts(shuffled);
-        } else {
-          setFeedPosts(POSTS);
-        }
-      } catch (error) {
-        console.error('Error fetching temp feed:', error);
-        setFeedPosts(POSTS);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFeed();
-  }, []);
 
   const stories: Story[] = [
     { _id: 'me', username: 'Your Story', avatar: userAvatar, isUser: true, hasActive: false },

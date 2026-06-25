@@ -6,6 +6,7 @@
  */
 import profileService from "./profile.service.js";
 import logger from "../../utils/logger.js";
+import { withCache } from "../../utils/cache.js";
 
 /**
  * @desc Get User Posts Grid
@@ -58,7 +59,14 @@ export const getProfileReels = async (req, res) => {
 export const getProfilesByCategory = async (req, res) => {
   try {
     const { categorySlug } = req.params;
-    const data = await profileService.getProfilesByCategory(categorySlug);
+    
+    // Cache profiles by category for 5 minutes
+    const cacheKey = `cache:profiles:category:${categorySlug}`;
+    const TTL_SECONDS = 300;
+    
+    const data = await withCache(cacheKey, TTL_SECONDS, async () => {
+      return await profileService.getProfilesByCategory(categorySlug);
+    });
 
     res.json({
       success: true,
