@@ -26,14 +26,14 @@ export const hashToken = (token) => {
  * Generates a short-lived Access Token
  */
 export const generateAccessToken = (payload) => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES });
+  return jwt.sign(payload, process.env.JWT_SECRET || JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES });
 };
 
 /**
  * Generates a long-lived Refresh Token
  */
 export const generateRefreshToken = (payload) => {
-  return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES });
+  return jwt.sign(payload, process.env.REFRESH_SECRET || REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES });
 };
 
 /**
@@ -41,7 +41,7 @@ export const generateRefreshToken = (payload) => {
  */
 export const verifyAccessToken = (token) => {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, process.env.JWT_SECRET || JWT_SECRET);
   } catch (error) {
     return null;
   }
@@ -52,7 +52,7 @@ export const verifyAccessToken = (token) => {
  */
 export const verifyRefreshToken = (token) => {
   try {
-    return jwt.verify(token, REFRESH_SECRET);
+    return jwt.verify(token, process.env.REFRESH_SECRET || REFRESH_SECRET);
   } catch (error) {
     return null;
   }

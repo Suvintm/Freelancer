@@ -16,6 +16,8 @@ import { initReactionWorker } from "./domains/content/index.js";
 
 const PORT = process.env.PORT || 5000;
 
+const { app, server } = createApp();
+
 const startServer = async () => {
   // Validate required environment variables
   if (process.env.NODE_ENV !== "test") {
@@ -55,7 +57,6 @@ const startServer = async () => {
   }
 
   // 4. Start HTTP & WebSocket Server
-  const { app, server } = createApp();
   initSocket(server);
 
   server.listen(PORT, "0.0.0.0", () => {
@@ -88,4 +89,4 @@ process.on("uncaughtException", (error) => {
 
 if (process.env.NODE_ENV !== "test") startServer();
 
-export { startServer };
+export { startServer, app, server };

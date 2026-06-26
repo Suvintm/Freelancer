@@ -84,7 +84,7 @@ export const authenticate = async (req, res, next) => {
     // ── 1. Verify JWT ─────────────────────────────────────────────────────
     let decoded;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, process.env.JWT_SECRET || JWT_SECRET);
     } catch (jwtError) {
       if (jwtError.name === "TokenExpiredError")
         throw new ApiError(401, "Token expired");
@@ -119,7 +119,7 @@ export const authenticate = async (req, res, next) => {
 
     if (!status) {
       await deleteCache(CacheKey.userProfile(userId));
-      const { kickUser } = await import("../infrastructure/websocket/socket.js");
+      const { kickUser } = await import("../../infrastructure/websocket/socket.js");
       kickUser(userId, "Deleted");
       throw new ApiError(
         401,
@@ -128,7 +128,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (status.is_banned) {
-      const { kickUser } = await import("../infrastructure/websocket/socket.js");
+      const { kickUser } = await import("../../infrastructure/websocket/socket.js");
       kickUser(userId, "Banned");
       throw new ApiError(
         403,

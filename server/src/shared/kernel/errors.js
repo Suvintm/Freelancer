@@ -57,5 +57,10 @@ export class PaymentError extends AppError {
   }
 }
 
-// Backward compat alias — existing code imports ApiError
-export const ApiError = AppError;
+// Backward compat alias — existing code imports ApiError with (statusCode, message) signature
+export class ApiError extends AppError {
+  constructor(statusCode, message, isOperational = true, meta = {}) {
+    super(message, statusCode, isOperational, meta);
+  }
+}
+

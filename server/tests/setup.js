@@ -6,67 +6,110 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { beforeAll, afterAll, beforeEach, vi } from "vitest";
 
-// ─── Mock Redis ──────────────────────────────────────────────────────────────
-vi.mock("../config/redisClient.js", () => ({
-  default: {
-    get: vi.fn(() => Promise.resolve(null)),
-    set: vi.fn(() => Promise.resolve("OK")),
-    del: vi.fn(() => Promise.resolve(1)),
-    incr: vi.fn(() => Promise.resolve(1)),
-    expire: vi.fn(() => Promise.resolve(1)),
-    ping: vi.fn().mockResolvedValue("PONG"),
-    call: vi.fn(() => Promise.resolve(null)),
-  },
+// ─── Mock Redis (Legacy & Monolith Paths) ────────────────────────────────────
+const mockRedisClient = {
+  get: vi.fn(() => Promise.resolve(null)),
+  set: vi.fn(() => Promise.resolve("OK")),
+  del: vi.fn(() => Promise.resolve(1)),
+  incr: vi.fn(() => Promise.resolve(1)),
+  expire: vi.fn(() => Promise.resolve(1)),
+  ping: vi.fn().mockResolvedValue("PONG"),
+  call: vi.fn(() => Promise.resolve(null)),
+  pipeline: vi.fn(() => ({
+    get: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    del: vi.fn().mockReturnThis(),
+    srem: vi.fn().mockReturnThis(),
+    sadd: vi.fn().mockReturnThis(),
+    expire: vi.fn().mockReturnThis(),
+    exec: vi.fn(() => Promise.resolve([])),
+  })),
+};
+
+const mockRedisModule = {
+  default: mockRedisClient,
+  redis: mockRedisClient,
   getCache: vi.fn(() => Promise.resolve(null)),
   setCache: vi.fn(() => Promise.resolve()),
   delCache: vi.fn(() => Promise.resolve()),
   delPattern: vi.fn(() => Promise.resolve()),
   publish: vi.fn(() => Promise.resolve()),
   subscribe: vi.fn(() => Promise.resolve()),
-  redis: {
-    ping: vi.fn().mockResolvedValue("PONG"),
-    call: vi.fn(() => Promise.resolve(null)),
-  },
   redisAvailable: false,
-}));
+};
 
-// ─── Mock Prisma ──────────────────────────────────────────────────────────────
+vi.mock("../config/redisClient.js", () => mockRedisModule);
+vi.mock("../src/infrastructure/cache/redis.client.js", () => mockRedisModule);
+
+// ─── Mock Prisma (Legacy & Monolith Paths) ────────────────────────────────────
 import { testUsers } from "./fixtures/users.js";
 
-// ─── Mock Prisma ──────────────────────────────────────────────────────────────
-vi.mock("../config/prisma.js", () => ({
-  default: {
-    user: {
-      findUnique: vi.fn().mockImplementation(({ where }) => {
-        // Find user by email or ID from the fixture
-        const user = Object.values(testUsers).find(u => 
-          u.email === where.email || u.id === where.id
-        );
-        
-        if (user) {
-          return Promise.resolve({
-            ...user,
-            is_banned: user.is_banned || false,
-            ban_reason: user.ban_reason || null,
-          });
-        }
-        return Promise.resolve(null);
-      }),
-      update: vi.fn().mockResolvedValue({}),
-    },
-    order: { findUnique: vi.fn().mockResolvedValue(null) },
-    siteSettings: {
-      findUnique: vi.fn().mockResolvedValue({
-        id: "settings-id",
-        maintenance_mode: false,
-      }),
-    },
-    proposal: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+const mockPrismaClient = {
+  user: {
+    findUnique: vi.fn().mockImplementation(({ where }) => {
+      // Find user by email or ID from the fixture
+      const user = Object.values(testUsers).find(u => 
+        u.email === where.email || u.id === where.id
+      );
+      
+      if (user) {
+        return Promise.resolve({
+          ...user,
+          is_banned: user.is_banned || false,
+          ban_reason: user.ban_reason || null,
+        });
+      }
+      return Promise.resolve(null);
+    }),
+    update: vi.fn().mockResolvedValue({}),
+    findFirst: vi.fn().mockResolvedValue(null),
   },
+  userProfile: {
+    findUnique: vi.fn().mockResolvedValue(null),
+    findFirst: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({}),
+    update: vi.fn().mockResolvedValue({}),
+  },
+  userStats: {
+    create: vi.fn().mockResolvedValue({}),
+  },
+  userRoleMapping: {
+    createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+  },
+  roleCategory: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  roleSubCategory: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  subscription: {
+    findFirst: vi.fn().mockResolvedValue(null),
+  },
+  youtubeProfile: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  order: { findUnique: vi.fn().mockResolvedValue(null) },
+  siteSettings: {
+    findUnique: vi.fn().mockResolvedValue({
+      id: "settings-id",
+      maintenance_mode: false,
+    }),
+  },
+  proposal: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+};
+
+vi.mock("../config/prisma.js", () => ({
+  default: mockPrismaClient,
 }));
 
-// ─── Mock Cache Utilities ─────────────────────────────────────────────────────
-vi.mock("../utils/cache.js", () => ({
+vi.mock("../src/infrastructure/database/postgres.js", () => ({
+  default: mockPrismaClient,
+  connectPostgres: vi.fn().mockResolvedValue(true),
+}));
+
+// ─── Mock Cache Utilities (Legacy & Monolith Paths) ───────────────────────────
+const mockCacheModule = {
   getCache: vi.fn(() => Promise.resolve(null)),
   setCache: vi.fn(() => Promise.resolve()),
   deleteCache: vi.fn(() => Promise.resolve()),
@@ -75,16 +118,22 @@ vi.mock("../utils/cache.js", () => ({
     gig: (id) => `gig:${id}`,
   },
   TTL: { USER_PROFILE: 300 },
-}));
+};
 
-// ─── Mock Razorpay ────────────────────────────────────────────────────────────
-vi.mock("../config/razorpay.js", () => ({
+vi.mock("../utils/cache.js", () => mockCacheModule);
+vi.mock("../src/shared/utils/cache.js", () => mockCacheModule);
+
+// ─── Mock Razorpay (Legacy & Monolith Paths) ──────────────────────────────────
+const mockRazorpayModule = {
   default: null,
   isRazorpayConfigured: vi.fn(() => true), // Pretend it's configured
   getRazorpayKeyId: vi.fn(() => "rzp_test_mock_key"),
   verifyWebhookSignature: vi.fn((body, sig) => !!sig), // Only valid if signature exists
   verifyPaymentSignature: vi.fn(() => true),
-}));
+};
+
+vi.mock("../config/razorpay.js", () => mockRazorpayModule);
+vi.mock("../src/domains/payment/services/razorpay.config.js", () => mockRazorpayModule);
 
 vi.mock("../services/RazorpayProvider.js", () => ({
   RazorpayProvider: vi.fn().mockImplementation(() => ({
