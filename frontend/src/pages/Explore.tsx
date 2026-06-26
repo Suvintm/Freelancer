@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal, Loader2, Youtube, MessageSquare } from 'lucide-react';
@@ -7,7 +8,6 @@ import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import defaultProfile from '../assets/defaultprofile.png';
 import { api } from '../api/client';
-
 interface ExploreProfile {
   id: string;
   userId: string;
@@ -67,48 +67,23 @@ export default function Explore() {
     }
   };
 
-  const [editors, setEditors] = useState<ExploreProfile[]>([]);
-  const [isLoadingEditors, setIsLoadingEditors] = useState(false);
-  const [creators, setCreators] = useState<ExploreProfile[]>([]);
-  const [isLoadingCreators, setIsLoadingCreators] = useState(false);
+  const { data: editors = [], isLoading: isLoadingEditors } = useQuery<ExploreProfile[]>({
+    queryKey: ['explore', 'video_editor'],
+    queryFn: async () => {
+      const response = await api.get('/profile/category/video_editor');
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: activeTab === 'Editors',
+  });
 
-  useEffect(() => {
-    if (activeTab === 'Editors') {
-      const fetchEditors = async () => {
-        setIsLoadingEditors(true);
-        try {
-          const response = await api.get('/profile/category/video_editor');
-          if (response.data?.success) {
-            setEditors(response.data.data);
-          }
-        } catch (error) {
-          console.error("Error fetching editors:", error);
-        } finally {
-          setIsLoadingEditors(false);
-        }
-      };
-      fetchEditors();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'YT Creators') {
-      const fetchCreators = async () => {
-        setIsLoadingCreators(true);
-        try {
-          const response = await api.get('/profile/category/yt_influencer');
-          if (response.data?.success) {
-            setCreators(response.data.data);
-          }
-        } catch (error) {
-          console.error("Error fetching creators:", error);
-        } finally {
-          setIsLoadingCreators(false);
-        }
-      };
-      fetchCreators();
-    }
-  }, [activeTab]);
+  const { data: creators = [], isLoading: isLoadingCreators } = useQuery<ExploreProfile[]>({
+    queryKey: ['explore', 'yt_influencer'],
+    queryFn: async () => {
+      const response = await api.get('/profile/category/yt_influencer');
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: activeTab === 'YT Creators',
+  });
 
   const TABS = [
     { id: 'All', icon: LayoutGrid, color: '#6366f1' },

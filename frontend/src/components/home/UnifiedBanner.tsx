@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, type PanInfo } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import banner1 from '../../assets/banners/banner1.jpeg';
+
 
 const BANNERS = [
   {
@@ -8,7 +10,7 @@ const BANNERS = [
     tag:         'Featured',
     title:       'Unlock Your Creative Potential',
     description: 'Join the elite community of content creators and brands building the future.',
-    image:       'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1600',
+    image:       banner1,
   },
   {
     id: 2,

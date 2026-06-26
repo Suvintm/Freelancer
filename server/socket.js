@@ -71,11 +71,14 @@ const setupSocketHandlers = () => {
 
   io.on("connection", (socket) => {
     const userId = socket.userId;
-    if (userId) userSocketMap[userId] = socket.id;
+    if (userId) {
+      if (!userSocketMap[userId]) {
+        userSocketMap[userId] = new Set();
+      }
+      userSocketMap[userId].add(socket.id);
+    }
 
     console.log(`📡 [SOCKET] User connected: ${userId} (${socket.id})`);
-
-    io.emit("users:online", Object.keys(userSocketMap));
 
     socket.on("join_room", (roomName) => {
       console.log(`📡 [SOCKET] User ${userId} joining room: ${roomName}`);
@@ -137,17 +140,23 @@ const setupSocketHandlers = () => {
     });
 
     socket.on("disconnect", () => {
-      delete userSocketMap[userId];
-      io.emit("users:online", Object.keys(userSocketMap));
-      console.log(`🔌 [SOCKET] User disconnected: ${userId}`);
+      if (userId && userSocketMap[userId]) {
+        userSocketMap[userId].delete(socket.id);
+        if (userSocketMap[userId].size === 0) {
+          delete userSocketMap[userId];
+        }
+      }
+      console.log(`🔌 [SOCKET] User disconnected: ${userId} (${socket.id})`);
     });
   });
 
-  // 🌉 [FAIL-SAFE-LISTENER] Listen for internal signals from the local bridge
   localBridge.on("signal", (payload) => {
     const { type, userId, data } = payload;
-    if (userSocketMap[userId]) {
-      io.to(userSocketMap[userId]).emit(type, data);
+    const sockets = userSocketMap[userId];
+    if (sockets && sockets.size > 0) {
+      sockets.forEach(socketId => {
+        io.to(socketId).emit(type, data);
+      });
     }
   });
 
@@ -156,22 +165,32 @@ const setupSocketHandlers = () => {
     const { type, userId, data } = payload;
     if (type === "admin:maintenance") {
       io.emit("admin:maintenance", data);
-    } else if (userSocketMap[userId]) {
-      io.to(userSocketMap[userId]).emit(type, data);
+    } else {
+      const sockets = userSocketMap[userId];
+      if (sockets && sockets.size > 0) {
+        sockets.forEach(socketId => {
+          io.to(socketId).emit(type, data);
+        });
+      }
     }
   });
 };
 
-export const getReceiverSocketId = (receiverId) => userSocketMap[receiverId];
+export const getReceiverSocketId = (receiverId) => {
+  const sockets = userSocketMap[receiverId];
+  return sockets ? Array.from(sockets)[0] : undefined;
+};
 export const getIO = () => io;
 
 export const emitToUser = (userId, event, data) => {
   if (!io) return false;
 
   // 1. Try local emit first (for speed — only works if user is on this specific instance)
-  const socketId = userSocketMap[userId];
-  if (socketId) {
-    io.to(socketId).emit(event, data);
+  const sockets = userSocketMap[userId];
+  if (sockets && sockets.size > 0) {
+    sockets.forEach(socketId => {
+      io.to(socketId).emit(event, data);
+    });
   }
 
   // 2. 🌉 [BRIDGE] Trigger Internal Signal Hub (Fail-Safe for Dev/Solo Process)
@@ -193,15 +212,17 @@ export const emitToUser = (userId, event, data) => {
  */
 export const kickUser = (userId, reason = "Session invalidated") => {
     if (!io) return false;
-    const socketId = userSocketMap[userId];
-    if (socketId) {
+    const sockets = userSocketMap[userId];
+    if (sockets && sockets.size > 0) {
         console.log(`🔌 [SOCKET] Kicking user ${userId} for reason: ${reason}`);
-        io.to(socketId).emit("session:invalidated", { reason });
-        // Optional: Actually disconnect the socket after a tiny delay
-        setTimeout(() => {
-            const socket = io.sockets.sockets.get(socketId);
-            if (socket) socket.disconnect(true);
-        }, 500);
+        sockets.forEach(socketId => {
+            io.to(socketId).emit("session:invalidated", { reason });
+            // Optional: Actually disconnect the socket after a tiny delay
+            setTimeout(() => {
+                const socket = io.sockets.sockets.get(socketId);
+                if (socket) socket.disconnect(true);
+            }, 500);
+        });
         return true;
     }
     return false;

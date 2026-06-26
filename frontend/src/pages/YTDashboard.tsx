@@ -4,7 +4,7 @@ import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  Youtube, Eye, Video, ArrowLeft, ExternalLink, 
+  Youtube, Eye, ArrowLeft, ExternalLink, 
   ChevronDown, Search, Play, ArrowUpRight, MapPin, 
   TrendingUp, ShieldAlert, Sparkles, Clock, Plus
 } from 'lucide-react';
@@ -16,12 +16,21 @@ interface YouTubeVideo {
   channel_id?: string;
   title: string;
   thumbnail: string;
+  // Stats — all come as strings from backend (BigInt serialized as string)
   viewCount?: string | number;
   view_count?: string | number;
+  likeCount?: string | number;
+  like_count?: string | number;
+  commentCount?: string | number;
+  comment_count?: string | number;
+  duration_secs?: number | null;
   duration?: string;
   published_at?: string;
   publishedAt?: string;
   description?: string;
+  tags?: string | null;
+  category_id?: string | null;
+  made_for_kids?: boolean;
 }
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -134,6 +143,26 @@ export default function YTDashboard() {
     }
     return result;
   }, [archiveVideos, searchQuery, sortBy]);
+
+  // 9. Upload frequency calculation
+  const uploadFrequency = useMemo(() => {
+    if (channelVideos.length < 2) return 'N/A';
+    const sorted = [...channelVideos].sort((a, b) => new Date(b.published_at || b.publishedAt || 0).getTime() - new Date(a.published_at || a.publishedAt || 0).getTime());
+    const latest = new Date(sorted[0].published_at || sorted[0].publishedAt || 0);
+    const oldest = new Date(sorted[sorted.length - 1].published_at || sorted[sorted.length - 1].publishedAt || 0);
+    const diffDays = (latest.getTime() - oldest.getTime()) / (1000 * 3600 * 24);
+    if (diffDays <= 0) return 'N/A';
+    const freqPerMonth = (sorted.length / diffDays) * 30;
+    if (freqPerMonth > 15) return `${(freqPerMonth / 4).toFixed(1)} vids/week`;
+    return `${freqPerMonth.toFixed(1)} vids/month`;
+  }, [channelVideos]);
+
+  // 10. Top Videos calculation
+  const topVideos = useMemo(() => {
+    return [...channelVideos]
+      .sort((a, b) => Number(b.view_count || b.viewCount || 0) - Number(a.view_count || a.viewCount || 0))
+      .slice(0, 3);
+  }, [channelVideos]);
 
   // Watch video helper
   const handleWatch = (videoId: string | undefined) => {
@@ -617,7 +646,7 @@ export default function YTDashboard() {
       </div>
 
       {/* ─── KPI Stats Grid ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { 
             label: 'Total Subscribers', 
@@ -634,11 +663,18 @@ export default function YTDashboard() {
             color: 'text-blue-500 bg-blue-500/10' 
           },
           { 
-            label: 'Total Video Library', 
-            val: formatCount(activeChannel?.video_count), 
-            desc: 'Uploaded videos count', 
-            icon: Video, 
-            color: 'text-amber-500 bg-amber-500/10' 
+            label: 'Avg Views/Video', 
+            val: formatCount(activeChannel?.avg_views_per_video), 
+            desc: 'Per recent videos', 
+            icon: TrendingUp, 
+            color: 'text-emerald-500 bg-emerald-500/10' 
+          },
+          { 
+            label: 'Engagement Rate', 
+            val: activeChannel?.engagement_rate ? `${activeChannel.engagement_rate.toFixed(2)}%` : 'N/A', 
+            desc: 'Likes/Comments per view', 
+            icon: Sparkles, 
+            color: 'text-purple-500 bg-purple-500/10' 
           },
         ].map((stat, i) => (
           <div 
@@ -673,17 +709,127 @@ export default function YTDashboard() {
       </div>
 
       {/* ─── Description / Niche Box ─── */}
-      {activeChannel?.description && (
-        <div className={`p-4 rounded-xl border ${
-          isDarkMode ? 'bg-zinc-950/20 border-border-main/60 text-zinc-400' : 'bg-zinc-50 border-zinc-200 text-zinc-600'
-        }`}>
-          <div className="flex items-center gap-2 mb-2 text-text-main">
-            <Sparkles size={14} className="text-rose-500" />
-            <h3 className="text-xs font-semibold uppercase tracking-widest">Channel Description & Bio</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {activeChannel?.description && (
+          <div className={`col-span-1 md:col-span-2 p-4 rounded-xl border ${
+            isDarkMode ? 'bg-zinc-950/20 border-border-main/60 text-zinc-400' : 'bg-zinc-50 border-zinc-200 text-zinc-600'
+          }`}>
+            <div className="flex items-center gap-2 mb-2 text-text-main">
+              <Sparkles size={14} className="text-rose-500" />
+              <h3 className="text-xs font-semibold uppercase tracking-widest">Channel Description & Bio</h3>
+            </div>
+            <p className="text-xs leading-relaxed font-medium">
+              {activeChannel.description}
+            </p>
           </div>
-          <p className="text-xs leading-relaxed font-medium">
-            {activeChannel.description}
+        )}
+
+        <div className={`col-span-1 p-4 rounded-xl border flex flex-col justify-center ${
+          isDarkMode ? 'bg-zinc-950/20 border-border-main/60' : 'bg-zinc-50 border-zinc-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-3 text-text-main">
+            <Clock size={14} className="text-amber-500" />
+            <h3 className="text-xs font-semibold uppercase tracking-widest">Upload Frequency</h3>
+          </div>
+          <p className="text-2xl font-bold tracking-tight text-text-main leading-none mb-1">
+            {uploadFrequency}
           </p>
+          <p className="text-[10px] text-text-muted font-medium">Based on latest uploads</p>
+        </div>
+      </div>
+
+      {/* ─── Unlock More Deals (Analytics OAuth Placeholder) ─── */}
+      <div className={`relative overflow-hidden rounded-xl border p-5 sm:p-6 ${
+        isDarkMode ? 'bg-gradient-to-br from-indigo-950/40 via-purple-900/20 to-zinc-950 border-indigo-500/30' : 'bg-gradient-to-br from-indigo-50 via-purple-50/50 to-white border-indigo-200'
+      }`}>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-indigo-500">
+              <ShieldAlert size={16} />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Unlock 3x More Brand Deals</h3>
+            </div>
+            <p className={`text-xs max-w-xl font-medium leading-relaxed ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              Brands prefer creators who share true audience analytics. Connect your YouTube Analytics to unlock Audience Demographics, Avg Watch Time, and Geo-Targeting on your profile.
+            </p>
+            <p className="text-[10px] text-text-muted font-bold tracking-wider pt-1">
+              Your data is only shown to brands you approve.
+            </p>
+          </div>
+          <button className={`shrink-0 px-6 py-2.5 rounded-xl font-bold text-xs tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
+            isDarkMode 
+              ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20' 
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+          }`}>
+            Connect Analytics
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Top 3 Performing Videos ─── */}
+      {topVideos.length > 0 && (
+        <div className="space-y-4 pt-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-4 bg-emerald-500 rounded-full" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-main">
+              Top Performing Videos
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {topVideos.map((video, idx) => {
+              const videoId = video.video_id || video.id;
+              const views = video.viewCount || video.view_count;
+              const dateVal = video.published_at || video.publishedAt;
+              
+              return (
+                <div 
+                  key={videoId} 
+                  onClick={() => handleWatch(videoId)}
+                  className={`relative flex flex-col rounded-2xl border overflow-hidden cursor-pointer transition-all duration-300 group ${
+                    isDarkMode 
+                      ? 'bg-zinc-950 border-border-main hover:border-zinc-800' 
+                      : 'bg-white border-zinc-200 hover:shadow-md'
+                  }`}
+                >
+                  <div className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow-md">
+                    #{idx + 1}
+                  </div>
+                  <div className="relative aspect-video bg-black overflow-hidden shrink-0">
+                    <img 
+                      src={video.thumbnail} 
+                      alt={video.title} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {video.duration && (
+                      <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-semibold text-white">
+                        {video.duration}
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/90 text-white flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                        <Play size={20} fill="currentColor" className="ml-1" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                    <h4 className="text-xs font-semibold text-text-main line-clamp-2 leading-snug group-hover:text-emerald-500 transition-colors">
+                      {video.title}
+                    </h4>
+                    
+                    <div className="flex items-center justify-between text-[10px] text-text-muted font-bold uppercase tracking-wider pt-2 border-t border-border-main/30">
+                      <div className="flex items-center gap-1">
+                        <Clock size={11} />
+                        <span>{dateVal ? new Date(dateVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' }) : 'Unknown'}</span>
+                      </div>
+                      <span className="text-emerald-500 flex items-center gap-1"><TrendingUp size={10} /> {formatCount(views)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

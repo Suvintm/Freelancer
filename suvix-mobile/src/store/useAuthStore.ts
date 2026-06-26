@@ -45,6 +45,8 @@ interface TempSignupData {
   categoryId?: string;
   categorySlug?: string;
   roleSubCategoryIds?: string[];
+  roleGroup?: 'CLIENT' | 'PROVIDER';
+  website?: string;
   googleIdToken?: string;
   isSocialSignup?: boolean;
   socialProfile?: { email: string; name: string; picture?: string };

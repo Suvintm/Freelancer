@@ -50,7 +50,7 @@ export default function OAuthSuccess() {
         // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
         const emailToCheck = response.data.socialProfile?.email || response.data.user?.email;
         if (emailToCheck) {
-          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com'];
+          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com', 'uber@company.com'];
           if (!allowedEmails.includes(emailToCheck.toLowerCase().trim())) {
             navigate('/login?error=server_busy');
             return;

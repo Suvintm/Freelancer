@@ -62,6 +62,7 @@ model UserProfile {
   profile_picture   String?            @map("profile_picture")
   cover_banner      String?            @map("cover_banner")
   bio               String?
+  website           String?            @db.VarChar(255)
   mother_tongue     String?            @map("mother_tongue") @db.VarChar(50)
   auth_provider     AuthProvider?      @default(local) @map("auth_provider")
   location_city     String?            @map("location_city") @db.VarChar(100)
@@ -170,6 +171,12 @@ model YouTubeProfile {
   keywords            String?                  @db.Text
   search_vector       Unsupported("tsvector")?
   authority_score     Float                    @default(0.0)
+  // ── NEW: sponsor-critical fields ───────────────────────────────
+  hidden_subscriber_count Boolean               @default(false) @map("hidden_subscriber_count")
+  made_for_kids           Boolean               @default(false) @map("made_for_kids")
+  topic_categories        String[]              @default([])    @map("topic_categories")
+  engagement_rate         Float                 @default(0.0)   @map("engagement_rate")
+  avg_views_per_video     Float                 @default(0.0)   @map("avg_views_per_video")
 
   subCategory RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -198,6 +205,11 @@ model YouTubeVideo {
   youtubeProfileId String                   @map("youtube_profile_id") @db.Uuid
   search_vector    Unsupported("tsvector")?
   rank_score       Float                    @default(0.0)
+  // ── NEW: sponsor-critical video metrics ──────────────────────────
+  like_count       BigInt?                  @default(0)    @map("like_count")
+  comment_count    BigInt?                  @default(0)    @map("comment_count")
+  category_id      String?                  @db.VarChar(10) @map("category_id")
+  made_for_kids    Boolean                  @default(false) @map("made_for_kids")
   user             User?                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   youtubeProfile   YouTubeProfile           @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
 
@@ -252,7 +264,7 @@ model Notification {
   read_at    DateTime?            @map("read_at")
   is_deleted Boolean              @default(false)
   created_at DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  sender     User?                @relation("TriggeredNotifications", fields: [senderId], references: [id])
+  sender     User?                @relation("TriggeredNotifications", fields: [senderId], references: [id], onDelete: Cascade)
   user       User                 @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, created_at])
@@ -298,8 +310,8 @@ model Message {
   content     String
   is_read     Boolean  @default(false) @map("is_read")
   created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  receiver    User     @relation("MessageReceiver", fields: [receiver_id], references: [id])
-  sender      User     @relation("MessageSender", fields: [sender_id], references: [id])
+  receiver    User     @relation("MessageReceiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+  sender      User     @relation("MessageSender", fields: [sender_id], references: [id], onDelete: Cascade)
 
   @@index([sender_id])
   @@index([receiver_id])

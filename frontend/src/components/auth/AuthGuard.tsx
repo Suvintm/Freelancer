@@ -62,6 +62,31 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   return <>{children}</>;
 };
 
+interface RoleGuardProps {
+  children: ReactNode;
+  allowedCategories: string[];
+}
+
+export const RoleGuard = ({ children, allowedCategories }: RoleGuardProps) => {
+  const user = useSelector(selectUser);
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (user.role === 'admin') {
+    return <>{children}</>;
+  }
+
+  const userCategorySlug = user.primaryRole?.category;
+  if (!userCategorySlug || !allowedCategories.includes(userCategorySlug)) {
+    return <Navigate to="/home" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export const PublicRoute = ({ children }: AuthGuardProps) => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isInitialized = useSelector(selectIsInitialized);

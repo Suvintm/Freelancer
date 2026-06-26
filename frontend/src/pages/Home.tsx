@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
@@ -30,16 +31,16 @@ interface Story {
 const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '1_yt_creator',
-    username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1516280440502-a2ce893ce71d?auto=format&fit=crop&q=80&w=200',
+    username: 'ChaiAurCode',
+    avatar: 'https://i.ytimg.com/vi/TZDbe_8raSA/maxresdefault.jpg',
     isSeen: false,
     verifiedColor: '#EF4444', // Red for YT Creator
     hasActive: true,
   },
   {
     _id: '2_fitness_influencer',
-    username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=200',
+    username: 'Sam Sameer',
+    avatar: 'https://tse1.explicit.bing.net/th/id/OIP.PMTNrFgQOWBq5Yxr63Bv6QAAAA?rs=1&pid=ImgDetMain&o=7&rm=3',
     isSeen: false,
     verifiedColor: '#22C55E', // Green for Fitness
     hasActive: true,
@@ -47,7 +48,7 @@ const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '4_editor',
     username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&q=80&w=200',
+    avatar: 'https://media.istockphoto.com/id/1277971635/photo/portrait-of-a-smiling-man-of-indian-ethnicity.jpg?s=1024x1024&w=is&k=20&c=Ve_FZ5p_gO5Kd3gkW6nVicgiwAi5I0lXcW_L4MGKLEY=',
     isSeen: true,
     verifiedColor: '#3B82F6', // Blue for Editor
     hasActive: true,
@@ -55,7 +56,7 @@ const SUVIX_INDUSTRY_STORIES: Story[] = [
   {
     _id: '5_client',
     username: 'SuviX',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+    avatar: 'https://media.istockphoto.com/id/1541953395/photo/young-happy-indian-parents-holding-cute-baby-boy-while-standing-at-home-asian-mom-and-dad.jpg?s=1024x1024&w=is&k=20&c=vBycraqLaqkFZreZRVCoKUrwmZHMLsdiVuasZ7I7Fsc=',
     isSeen: true,
     verifiedColor: '#A855F7', // Purple for Client
     hasActive: true,
@@ -329,14 +330,41 @@ export default function Home() {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isDarkMode } = useTheme();
+  const navigate = useNavigate();
   const user = useSelector(selectUser);
   const userAvatar = user?.profilePicture || defaultProfile;
 
-  const [feedPosts, setFeedPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [globalMuted, setGlobalMuted] = useState(true);
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  const { data: feedPosts = POSTS, isLoading } = useQuery({
+    queryKey: ['temp-feed'],
+    queryFn: async () => {
+      const response = await api.get('/temp-feed');
+      if (response.data.success && response.data.data.length > 0) {
+        const dbPosts: Post[] = response.data.data.map((item: DbFeedItem) => ({
+          id: item._id,
+          user: item.user,
+          location: item.location || 'Unknown Location',
+          img: item.images?.[0] || '',
+          images: item.images || [],
+          likes: item.likes,
+          comment: item.comment,
+          commentsCount: item.commentsCount,
+          videoUrl: item.videoUrl || '',
+          isVideo: item.type === 'reel' || item.type === 'yt_video',
+          isYtVideo: item.type === 'yt_video',
+          type: item.type,
+          watchOnYtLink: item.watchOnYtLink || '',
+          votes: item.votes || [],
+        }));
+        
+        return [...dbPosts].sort(() => Math.random() - 0.5);
+      }
+      return POSTS;
+    }
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -382,46 +410,6 @@ export default function Home() {
     };
   }, [feedPosts, isMobile]); // Re-run when feedPosts or mobile layout status changes
 
-  useEffect(() => {
-    const fetchFeed = async () => {
-      setIsLoading(true);
-      try {
-        const response = await api.get('/temp-feed');
-        if (response.data.success && response.data.data.length > 0) {
-          const dbPosts: Post[] = response.data.data.map((item: DbFeedItem) => ({
-            id: item._id,
-            user: item.user,
-            location: item.location || 'Unknown Location',
-            img: item.images?.[0] || '',
-            images: item.images || [],
-            likes: item.likes,
-            comment: item.comment,
-            commentsCount: item.commentsCount,
-            videoUrl: item.videoUrl || '',
-            isVideo: item.type === 'reel' || item.type === 'yt_video',
-            isYtVideo: item.type === 'yt_video',
-            type: item.type,
-            watchOnYtLink: item.watchOnYtLink || '',
-            votes: item.votes || [],
-          }));
-          
-          // Shuffling dynamically on page refresh to show fresh content
-          const shuffled = [...dbPosts].sort(() => Math.random() - 0.5);
-          setFeedPosts(shuffled);
-        } else {
-          setFeedPosts(POSTS);
-        }
-      } catch (error) {
-        console.error('Error fetching temp feed:', error);
-        setFeedPosts(POSTS);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFeed();
-  }, []);
-
   const stories: Story[] = [
     { _id: 'me', username: 'Your Story', avatar: userAvatar, isUser: true, hasActive: false },
     ...SUVIX_INDUSTRY_STORIES,
@@ -448,6 +436,126 @@ export default function Home() {
 
 
 
+  const isSocialPromoter = user?.primaryRole?.category === 'social_promoter';
+
+  if (isSocialPromoter) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4 py-4 lg:py-6 flex flex-col font-sans">
+        {/* Logo Section */}
+        <div className="w-full px-2 mt-0 mb-8 flex items-center justify-between relative z-30">
+          <img 
+            src={isDarkMode ? darkLogo : lightLogo} 
+            alt="SuviX Official Logo" 
+            className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
+          />
+          <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="w-full text-center space-y-6 lg:space-y-8 flex-1 flex flex-col items-center justify-center"
+        >
+          {/* Logo or Accent */}
+          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase select-none ${
+            isDarkMode 
+              ? 'border-purple-500/30 bg-purple-500/10 text-purple-400' 
+              : 'border-purple-200 bg-purple-50 text-purple-600'
+          }`}>
+            Sponsorship Hub
+          </div>
+
+          {/* Heading */}
+          <h1 className={`text-4xl lg:text-6xl font-black tracking-tight leading-none bg-gradient-to-r bg-clip-text text-transparent ${
+            isDarkMode 
+              ? 'from-white via-zinc-200 to-zinc-500' 
+              : 'from-zinc-950 via-zinc-800 to-zinc-500'
+          }`}>
+            Powering Creator<br/>
+            <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Sponsorships.</span>
+          </h1>
+
+          {/* Subheading */}
+          <p className={`max-w-2xl mx-auto text-sm lg:text-base font-medium leading-relaxed ${
+            isDarkMode ? 'text-zinc-400' : 'text-zinc-650'
+          }`}>
+            Welcome to the SuviX Sponsor Portal. Discover top YouTube influencers, manage brand promotions, collaborate directly with content creators, and scale your brand reach.
+          </p>
+
+          {/* Call to Actions */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <button 
+              onClick={() => navigate('/explore')}
+              className={`w-full sm:w-auto h-12 px-8 rounded-xl font-bold text-sm transition-all active:scale-[0.98] cursor-pointer shadow-lg ${
+                isDarkMode 
+                  ? 'bg-white text-black hover:bg-zinc-200' 
+                  : 'bg-zinc-950 text-white hover:bg-zinc-900 hover:shadow-xl'
+              }`}
+            >
+              Explore Creators
+            </button>
+            <button 
+              onClick={() => navigate('/communication-hub')}
+              className={`w-full sm:w-auto h-12 px-8 rounded-xl border font-bold text-sm transition-all active:scale-[0.98] cursor-pointer ${
+                isDarkMode 
+                  ? 'border-zinc-800 bg-zinc-900/50 text-white hover:bg-zinc-800 hover:border-zinc-700' 
+                  : 'border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
+              }`}
+            >
+              Open Conversations
+            </button>
+          </div>
+
+          {/* 3-Column Info Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 text-left">
+            <div className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
+              isDarkMode 
+                ? 'border-zinc-900 bg-zinc-950/40' 
+                : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
+                01
+              </div>
+              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Targeted Discovery</h3>
+              <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
+                Filter verified YouTube creators by subscriber counts, target language, category niche, and audience locations.
+              </p>
+            </div>
+
+            <div className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
+              isDarkMode 
+                ? 'border-zinc-900 bg-zinc-950/40' 
+                : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
+                02
+              </div>
+              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Direct Partnerships</h3>
+              <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
+                Cut out agency middlemen. Message creators directly, negotiate sponsorship rates, and coordinate product placements.
+              </p>
+            </div>
+
+            <div className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
+              isDarkMode 
+                ? 'border-zinc-900 bg-zinc-950/40' 
+                : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
+            }`}>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
+                03
+              </div>
+              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Full Campaign Tracking</h3>
+              <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
+                Manage all current integrations in one place, sync video analytics, and track total campaign performance metrics.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6 lg:space-y-10 pb-20 pt-1 lg:pt-4">
       <style dangerouslySetInnerHTML={{ __html: `
@@ -469,7 +577,7 @@ export default function Home() {
           <div className="w-full px-2 mt-0 mb-1 flex items-center justify-between relative z-30">
             <img 
               src={isDarkMode ? darkLogo : lightLogo} 
-              alt="SuviX" 
+              alt="SuviX Official Logo" 
               className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
             />
             <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>

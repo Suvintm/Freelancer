@@ -38,6 +38,11 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     const bannerUrl = channelData.bannerUrl || channelData.banner_url || null;
     const uploadsPlaylistId = channelData.uploadsPlaylistId || channelData.uploads_playlist_id;
     const videos = channelData.videos || [];
+    // ── NEW fields from expanded API fetch ────────────────────────────────────
+    const language             = channelData.language || channelData.defaultLanguage || null;
+    const hiddenSubscriberCount = channelData.hiddenSubscriberCount || false;
+    const madeForKids          = channelData.madeForKids || false;
+    const topicCategories      = channelData.topicCategories || [];
 
     if (!channelId || channelId === "undefined") {
       logger.error(`❌ [YT-SYNC] Critical Mapping Failure: Received invalid channelId from data: ${JSON.stringify(channelData)}`);
@@ -86,20 +91,25 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     // 3. Resilient Upsert Pattern
     let youtubeProfile;
     const profileData = {
-      channel_name: channelName,
-      thumbnail_url: mirroredAvatar || thumbnailUrl,
-      subscriber_count: subscriberCount,
-      video_count: videoCount,
-      view_count: BigInt(viewCount || "0"),
-      description: description,
-      custom_url: customUrl,
-      banner_url: mirroredBanner || bannerUrl,
-      published_at: publishedAt ? new Date(publishedAt) : null,
-      country: country,
-      keywords: keywords,
-      uploads_playlist_id: uploadsPlaylistId,
-      last_synced_at: new Date(),
-      userId: userId,
+      channel_name:            channelName,
+      thumbnail_url:           mirroredAvatar || thumbnailUrl,
+      subscriber_count:        subscriberCount,
+      video_count:             videoCount,
+      view_count:              BigInt(viewCount || "0"),
+      description:             description,
+      custom_url:              customUrl,
+      banner_url:              mirroredBanner || bannerUrl,
+      published_at:            publishedAt ? new Date(publishedAt) : null,
+      country:                 country,
+      keywords:                keywords,
+      uploads_playlist_id:     uploadsPlaylistId,
+      last_synced_at:          new Date(),
+      userId:                  userId,
+      // ── NEW fields (were fetched but never stored before) ─────────────────
+      language:                language,
+      hidden_subscriber_count: hiddenSubscriberCount,
+      made_for_kids:           madeForKids,
+      topic_categories:        topicCategories,
     };
 
     if (existing) {
@@ -118,7 +128,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       logger.info(`📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos for ${youtubeProfile.id}`);
       
       try {
-        const videosToSync = videos.slice(0, 25);
+        const videosToSync = videos.slice(0, 50); // We now fetch up to 50 via playlistItems
 
         for (const v of videosToSync) {
           try {
@@ -130,15 +140,22 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
             }
 
             videoRecords.push({
-              video_id: v.id,
-              title: v.title,
-              description: v.description || null,
-              thumbnail: mirroredThumb || v.thumbnail,
-              published_at: v.publishedAt ? new Date(v.publishedAt) : new Date(),
+              video_id:         v.id,
+              title:            v.title,
+              description:      v.description    || null,
+              thumbnail:        mirroredThumb    || v.thumbnail,
+              published_at:     v.publishedAt    ? new Date(v.publishedAt) : new Date(),
               youtubeProfileId: youtubeProfile.id,
-              channel_id: channelId,
-              view_count: v.viewCount ? BigInt(v.viewCount) : 0n,
-              user_id: userId, // Link directly to user as well for faster querying
+              channel_id:       channelId,
+              user_id:          userId,
+              // ── Stats from videos.list (NEW — were always 0/null before) ─────
+              view_count:    v.viewCount    ? BigInt(v.viewCount)    : 0n,
+              like_count:    v.likeCount    ? BigInt(v.likeCount)    : 0n,
+              comment_count: v.commentCount ? BigInt(v.commentCount) : 0n,
+              duration_secs: v.durationSecs || null,
+              category_id:   v.categoryId   || null,
+              tags:          v.tags          ? v.tags.join(",") : null, // stored as CSV string
+              made_for_kids: v.madeForKids  || false,
             });
           } catch (vErr) {
             logger.warn(`⚠️ [YT-SYNC] Skipping video ${v.id} record creation: ${vErr.message}`);
@@ -156,6 +173,40 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
             skipDuplicates: true,
           });
           logger.info(`✅ [YT-SYNC] Successfully persisted ${videoRecords.length} videos.`);
+
+          // ── Compute and store engagement_rate + avg_views_per_video ─────────
+          // engagement_rate = avg((likes + comments) / views) across videos with views > 0
+          try {
+            const videosWithViews = videoRecords.filter(vr => vr.view_count > 0n);
+            let engagementRate    = 0;
+            let avgViewsPerVideo  = 0;
+
+            if (videosWithViews.length > 0) {
+              const totalEngagement = videosWithViews.reduce((sum, vr) => {
+                const v = Number(vr.view_count);
+                const l = Number(vr.like_count    || 0n);
+                const c = Number(vr.comment_count || 0n);
+                return sum + (v > 0 ? (l + c) / v : 0);
+              }, 0);
+              engagementRate = (totalEngagement / videosWithViews.length) * 100; // as percentage
+            }
+
+            if (videoRecords.length > 0) {
+              const totalViews = videoRecords.reduce((sum, vr) => sum + Number(vr.view_count || 0n), 0);
+              avgViewsPerVideo = totalViews / videoRecords.length;
+            }
+
+            await ytProfileModel.update({
+              where: { id: youtubeProfile.id },
+              data: {
+                engagement_rate:     parseFloat(engagementRate.toFixed(4)),
+                avg_views_per_video: parseFloat(avgViewsPerVideo.toFixed(2)),
+              },
+            });
+            logger.info(`📈 [YT-SYNC] Engagement rate: ${engagementRate.toFixed(2)}% | Avg views: ${avgViewsPerVideo.toFixed(0)}`);
+          } catch (engErr) {
+            logger.warn(`⚠️ [YT-SYNC] Engagement calc skipped: ${engErr.message}`);
+          }
 
           // 🧠 [SEARCH-OPTIMIZATION] Index titles into the Search Dictionary (Probabilistic Engine)
           try {
@@ -210,12 +261,22 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
         const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
         const resolvedUrl = smartResolveMediaUrl(rawThumb);
         return {
-          id: v.video_id,
+          id: v.id,            // DB row UUID
+          video_id: v.video_id, // YouTube video ID (for watch links)
           title: v.title,
+          description: v.description || null,
           thumbnail: resolvedUrl,
           published_at: v.published_at,
           channel_id: p.channel_id,
           youtubeProfileId: p.id,
+          // ── Stats (were missing from socket payload — caused view_count=0 on UI) ──
+          view_count:    v.view_count    != null ? String(v.view_count)    : "0",
+          like_count:    v.like_count    != null ? String(v.like_count)    : "0",
+          comment_count: v.comment_count != null ? String(v.comment_count) : "0",
+          duration_secs: v.duration_secs || null,
+          category_id:   v.category_id  || null,
+          tags:          v.tags          || null,
+          made_for_kids: v.made_for_kids || false,
           // 🛰️ NORMALIZE FOR UNIFIED ENGINE
           media: {
             type: 'IMAGE',

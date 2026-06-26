@@ -53,7 +53,7 @@ export default function Login() {
     setError(null);
 
     // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com'];
+    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com','uber@company.com'];
     if (!allowedEmails.includes(form.email.toLowerCase().trim()) && !form.email.toLowerCase().trim().endsWith('@suvix.in')) {
       setError('Server busy ! Please try again later or contact SuviX team.');
       return;

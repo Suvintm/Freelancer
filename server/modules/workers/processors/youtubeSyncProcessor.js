@@ -46,28 +46,65 @@ export default async function youtubeSyncProcessor(job) {
 
   const { default: youtubeApiService } = await import("../../youtube-creator/services/youtubeApiService.js");
   let processedCount = 0;
+  const totalChannels = channelsToSync.length;
 
-  for (const channelId of channelsToSync) {
+  for (let i = 0; i < totalChannels; i++) {
+    const channelId = channelsToSync[i];
+    let channelName = "YouTube Channel";
+
+    const emitProgress = (stepPercent, step, message) => {
+      const io = getIO();
+      if (io) {
+        const baseProgress = Math.round((i / totalChannels) * 100);
+        const stepContribution = Math.round((stepPercent / 100) * (100 / totalChannels));
+        const progress = Math.min(baseProgress + stepContribution, 99);
+        io.to(userId).emit("notification:new", {
+          type: "SYNC_PROGRESS",
+          metadata: {
+            userId,
+            progress,
+            channelId,
+            channelName,
+            step,
+            message
+          }
+        });
+      }
+    };
+
     try {
+      // Step 1: Connecting
+      emitProgress(10, 'connection', 'Connecting to YouTube API...');
+
       // 1. Fetch Fresh Public Metadata (1 Unit)
       const channelMetadata = await youtubeApiService.getChannelPublicData({
         identifier: channelId,
         type: 'id'
       });
+      channelName = channelMetadata.title || channelName;
 
-      // 2. Fetch Latest 25 Videos from Uploads Playlist (1 Unit)
+      // Step 2: Metadata fetched
+      emitProgress(45, 'metadata', 'Fetching channel profile & stats...');
+
+      // 2. Fetch Latest 50 Videos from Uploads Playlist (1 Unit)
       if (channelMetadata.uploadsPlaylistId) {
-        channelMetadata.videos = await youtubeApiService.getPlaylistVideos(channelMetadata.uploadsPlaylistId, 25);
+        channelMetadata.videos = await youtubeApiService.getPlaylistVideos(channelMetadata.uploadsPlaylistId, 50);
       }
+
+      // Step 3: Videos fetched
+      emitProgress(75, 'videos', 'Syncing video library (up to 50 videos)...');
 
       // 3. Persist and Mirror to S3
       await persistYouTubeContent(userId, channelMetadata, triggerReason);
       
+      // Step 4: Finalizing channel sync
+      emitProgress(95, 'finalize', 'Saving analytics & generating dashboard...');
+
       processedCount++;
-      const progress = Math.round((processedCount / channelsToSync.length) * 100);
+      const progress = Math.round((processedCount / totalChannels) * 100);
       await job.updateProgress(progress);
 
-      // 📡 Emit real-time progress via Socket.io
+      // 📡 Emit final channel progress via Socket.io
       const io = getIO();
       if (io) {
         io.to(userId).emit("notification:new", {
@@ -76,7 +113,9 @@ export default async function youtubeSyncProcessor(job) {
             userId,
             progress,
             channelId,
-            message: `Syncing ${channelMetadata.title}...`
+            channelName,
+            step: 'complete',
+            message: `Completed sync for ${channelName}!`
           }
         });
       }
@@ -86,6 +125,19 @@ export default async function youtubeSyncProcessor(job) {
         error,
         { jobId: job.id, userId, channelId: channelId || "unknown" }
       );
+      // 📡 Emit real-time failure via Socket.io
+      const io = getIO();
+      if (io) {
+        io.to(userId).emit("notification:new", {
+          type: "SYNC_FAILED",
+          metadata: {
+            userId,
+            channelId,
+            channelName,
+            message: `Failed to sync channel: ${error.message}`
+          }
+        });
+      }
       // Throw so BullMQ triggers retry for the whole job
       throw new Error(`Channel sync failed for ${channelId}: ${error.message}`);
     }

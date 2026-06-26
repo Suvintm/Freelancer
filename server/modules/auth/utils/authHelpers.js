@@ -163,17 +163,27 @@ export const formatAuthResponse = (user, subscription = null) => {
       (p.videos || []).map((v) => {
         const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
         const resolvedUrl = smartResolveMediaUrl(rawThumb);
-        
+
         return {
           ...v,
+          // ── Explicit fields so BigInt never gets dropped by JSON serialization ──
+          video_id:      v.video_id      || null,
+          view_count:    v.view_count    != null ? String(v.view_count)    : "0",
+          like_count:    v.like_count    != null ? String(v.like_count)    : "0",
+          comment_count: v.comment_count != null ? String(v.comment_count) : "0",
+          duration_secs: v.duration_secs || null,
+          category_id:   v.category_id   || null,
+          tags:          v.tags           || null,
+          made_for_kids: v.made_for_kids  || false,
+          // ── Resolved thumbnail ─────────────────────────────────────────────────
           thumbnail: resolvedUrl,
           media: {
             type: "IMAGE",
             status: "READY",
             urls: {
               thumb: resolvedUrl,
-              feed: resolvedUrl,
-              full: resolvedUrl,
+              feed:  resolvedUrl,
+              full:  resolvedUrl,
             },
           },
         };
@@ -219,6 +229,7 @@ export const formatAuthResponse = (user, subscription = null) => {
     location: user.profile?.location_country || null,
     bio: user.profile?.bio || null,
     phone: user.profile?.phone || null,
+    website: user.profile?.website || null,
 
     // ── Guaranteed strict boolean — the navigation guard uses === true ────────
     isOnboarded: !!user.is_onboarded,

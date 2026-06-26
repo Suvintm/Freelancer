@@ -6,7 +6,7 @@ import {
   Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3,
   Lock, PlaySquare, LayoutGrid, CheckCircle2, Globe,
   Trash2, ChevronRight, AlertCircle, Play, Image as ImageIcon, Check, Eye,
-  X, Heart, MessageCircle
+  X, Heart, MessageCircle, ThumbsUp, MessageSquare
 } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
@@ -756,6 +756,23 @@ export const MobileProfile = () => {
                     {/* Info bar below thumbnail */}
                     <div className="p-2.5">
                       <h4 className="text-[11px] font-bold text-white leading-snug line-clamp-2 mb-1.5">{video.title || 'Untitled Video'}</h4>
+                      
+                      {/* Live Statistics Row with Icons */}
+                      <div className="flex items-center gap-3.5 mb-2.5 text-[10px] font-semibold text-[#A1A1AA]">
+                        <span className="flex items-center gap-1">
+                          <Eye size={11} className="text-[#A1A1AA]/70" />
+                          {formatCount(video.view_count || video.viewCount)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ThumbsUp size={11} className="text-[#A1A1AA]/70" />
+                          {formatCount(video.like_count)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageSquare size={11} className="text-[#A1A1AA]/70" />
+                          {formatCount(video.comment_count)}
+                        </span>
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                           {primaryChannel.thumbnail_url ? (
@@ -820,13 +837,31 @@ export const MobileProfile = () => {
                       {/* Info */}
                       <div className="flex-1 p-2.5 min-w-0 flex flex-col justify-between">
                         <h4 className="text-[11px] font-bold text-white leading-snug line-clamp-2">{video.title || 'Untitled Video'}</h4>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-[9px] font-medium text-[#A1A1AA] line-clamp-1 flex-1 min-w-0">
-                            {primaryChannel.channel_name || 'Creator'}
-                          </span>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <span className="text-[9px] font-bold text-[#FF3040]">Watch</span>
-                            <ChevronRight size={10} className="text-[#FF3040]" />
+                        <div>
+                          {/* Live Statistics Row with Icons */}
+                          <div className="flex items-center gap-3.5 mt-1.5 mb-2 text-[10px] font-semibold text-[#A1A1AA]">
+                            <span className="flex items-center gap-1">
+                              <Eye size={11} className="text-[#A1A1AA]/70" />
+                              {formatCount(video.view_count || video.viewCount)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <ThumbsUp size={11} className="text-[#A1A1AA]/70" />
+                              {formatCount(video.like_count)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageSquare size={11} className="text-[#A1A1AA]/70" />
+                              {formatCount(video.comment_count)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-medium text-[#A1A1AA] line-clamp-1 flex-1 min-w-0">
+                              {primaryChannel.channel_name || 'Creator'}
+                            </span>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <span className="text-[9px] font-bold text-[#FF3040]">Watch</span>
+                              <ChevronRight size={10} className="text-[#FF3040]" />
+                            </div>
                           </div>
                         </div>
                       </div>

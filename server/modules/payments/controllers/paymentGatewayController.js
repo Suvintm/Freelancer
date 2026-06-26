@@ -17,6 +17,7 @@ import PaymentService, {
 } from "../../../services/PaymentService.js";
 import { RazorpayProvider } from "../../../services/RazorpayProvider.js";
 import { getRazorpayKeyId, verifyWebhookSignature, isRazorpayConfigured } from "../../../config/razorpay.js";
+import { redis, redisAvailable } from "../../../config/redisClient.js";
 
 /**
  * Placeholder for Order model since it is not yet integrated with Prisma.
@@ -479,6 +480,17 @@ export const handleWebhook = async (req, res) => {
 
 // Webhook handlers
 async function handlePaymentCaptured(payment) {
+  // Use Redis Distributed Lock to prevent webhook race conditions
+  if (redisAvailable) {
+    const lockKey = `webhook_lock:${payment.id}`;
+    const acquired = await redis.setnx(lockKey, "1");
+    if (!acquired) {
+      logger.info(`[WEBHOOK] Payment ${payment.id} is already being processed. Ignoring duplicate.`);
+      return;
+    }
+    await redis.expire(lockKey, 300); // 5 minute lock
+  }
+
   const order = await OrderShim.findOne({ razorpayOrderId: payment.order_id });
   /*
   const order = await Order.findOne({ razorpayOrderId: payment.order_id })

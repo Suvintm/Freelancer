@@ -145,10 +145,17 @@ export default function SubcategorySelection() {
               </motion.div>
               
               <h1 className="text-2xl lg:text-3xl font-semibold tracking-tight mb-3">
-                How do you <span className="text-zinc-500">specialize?</span>
+                {category.roleGroup === 'CLIENT' ? (
+                  <>What campaigns will you <span className="text-zinc-500">run?</span></>
+                ) : (
+                  <>How do you <span className="text-zinc-500">specialize?</span></>
+                )}
               </h1>
               <p className="text-zinc-400 text-sm max-w-xl mx-auto leading-relaxed">
-                Selecting accurate niches helps SuviX match you with the highest-paying brands in your industry.
+                {category.roleGroup === 'CLIENT' 
+                  ? 'Selecting campaign types helps SuviX match you with the best-fitting creators for your brand.'
+                  : 'Selecting accurate niches helps SuviX match you with the highest-paying brands in your industry.'
+                }
               </p>
             </div>
 
@@ -159,7 +166,7 @@ export default function SubcategorySelection() {
               </div>
               <input 
                 type="text" 
-                placeholder="Search specific niches..."
+                placeholder={category.roleGroup === 'CLIENT' ? "Search campaign types..." : "Search specific niches..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-11 bg-white/5 border border-white/5 rounded-xl pl-12 pr-6 text-sm font-medium placeholder:text-zinc-600 focus:border-white/20 focus:outline-none transition-all focus:bg-white/10"

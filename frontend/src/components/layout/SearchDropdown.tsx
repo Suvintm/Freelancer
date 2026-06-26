@@ -241,6 +241,27 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
     }
   ];
 
+  // Filter lists based on role/category
+  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+  const isYtInfluencer = user?.primaryRole?.category === 'yt_influencer';
+
+  const filteredNavItems = navigationItems.filter(item => {
+    if (isClientCategory) {
+      return item.url !== '/upload-portal' && item.url !== '/reels' && item.url !== '/youtube-dashboard';
+    }
+    if (!isYtInfluencer && item.url === '/youtube-dashboard') {
+      return false;
+    }
+    return true;
+  });
+
+  const filteredActionItems = actionItems.filter(item => {
+    if (isClientCategory) {
+      return item.url !== '/youtube-connect';
+    }
+    return true;
+  });
+
   // Map user's YouTube channels
   const youtubeChannels = user?.youtubeProfile || [];
   const channelItems: SearchItem[] = youtubeChannels.map((channel: { channel_id: string; channel_name: string; subscriber_count?: string | number }) => ({
@@ -280,7 +301,7 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
     }
   ];
 
-  const allItems = [...navigationItems, ...actionItems, ...channelItems, ...popularCreators];
+  const allItems = [...filteredNavItems, ...filteredActionItems, ...channelItems, ...popularCreators];
 
   // Filtering based on query (display all items when query is empty, scrollable)
   const filteredItems = query.trim() === '' 

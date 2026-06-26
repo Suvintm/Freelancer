@@ -96,6 +96,7 @@ export default function RoleSelection() {
     dispatch(setTempSignupData({
       categoryId: selected,
       categorySlug: selectedCategory.slug,
+      roleGroup: selectedCategory.roleGroup,
       roleName: selectedCategory.name,
       intent: 'register',
       authMethod: 'email',
@@ -128,6 +129,7 @@ export default function RoleSelection() {
     dispatch(setTempSignupData({
       categoryId: selected,
       categorySlug: selectedCategory.slug,
+      roleGroup: selectedCategory.roleGroup,
       roleName: selectedCategory.name,
       intent: 'register',
       authMethod: 'google',

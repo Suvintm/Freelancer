@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ReactLenis }       from 'lenis/react';
-import { Plus, ExternalLink, TrendingUp, Settings, Sparkles } from 'lucide-react';
+import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -37,6 +37,8 @@ export const Sidebar = () => {
   const { isDarkMode } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
+  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+
   const CHANNEL = {
     name:           user?.name || 'User',
     handle:         `@${user?.username || 'user'}`,
@@ -46,7 +48,9 @@ export const Sidebar = () => {
     videos:         0,
     category:       user?.primaryRole?.category || 'Member',
     role:           user?.primaryRole?.subCategory || 'Member',
-    bio:            user?.bio || 'Professional Creator · UI Designer · Lifestyle Blogger · Building in public 🚀',
+    bio:            user?.bio || (isClientCategory 
+                      ? 'Brand Sponsor looking to collaborate with top creators for video sponsorships and integrations.' 
+                      : 'Professional Creator · UI Designer · Lifestyle Blogger · Building in public 🚀'),
     followers:      user?.followers || 0,
     following:      user?.following || 0,
   };
@@ -118,14 +122,35 @@ export const Sidebar = () => {
             {CHANNEL.bio}
           </p>
 
-          {/* Social stats */}
-          <div className={`flex items-center justify-around py-2 border-y ${isDarkMode ? 'border-border-secondary' : 'border-zinc-200'}`}>
-            <StatBubble value={String(CHANNEL.videos)} label="Posts" />
-            <div className={`w-px h-6 ${isDarkMode ? 'bg-border-main' : 'bg-zinc-200'}`} />
-            <StatBubble value={String(CHANNEL.followers)} label="Followers" />
-            <div className={`w-px h-6 ${isDarkMode ? 'bg-border-main' : 'bg-zinc-200'}`} />
-            <StatBubble value={String(CHANNEL.following)} label="Following" />
-          </div>
+          {/* Social stats / Client info */}
+          {isClientCategory ? (
+            <div className={`flex flex-col gap-2.5 py-3 border-y text-left ${isDarkMode ? 'border-border-secondary' : 'border-zinc-200'}`}>
+              {user?.website && (
+                <a 
+                  href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs font-semibold text-[#7c42f8] hover:underline"
+                >
+                  <Globe size={13} className="shrink-0" />
+                  <span className="truncate flex-1">{user.website}</span>
+                  <ExternalLink size={10} className="opacity-60 shrink-0" />
+                </a>
+              )}
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <Briefcase size={13} className="shrink-0" />
+                <span className="font-semibold truncate flex-1">{CHANNEL.category} ({CHANNEL.role})</span>
+              </div>
+            </div>
+          ) : (
+            <div className={`flex items-center justify-around py-2 border-y ${isDarkMode ? 'border-border-secondary' : 'border-zinc-200'}`}>
+              <StatBubble value={String(CHANNEL.videos)} label="Posts" />
+              <div className={`w-px h-6 ${isDarkMode ? 'bg-border-main' : 'bg-zinc-200'}`} />
+              <StatBubble value={String(CHANNEL.followers)} label="Followers" />
+              <div className={`w-px h-6 ${isDarkMode ? 'bg-border-main' : 'bg-zinc-200'}`} />
+              <StatBubble value={String(CHANNEL.following)} label="Following" />
+            </div>
+          )}
 
           {/* View full profile */}
           <button

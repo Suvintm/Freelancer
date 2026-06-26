@@ -29,10 +29,18 @@ export const BottomNav = () => {
   const user = useSelector(selectUser);
   const profileAvatar = user?.profilePicture || defaultProfile;
 
+  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+  const filteredNavItems = NAV_ITEMS.filter(item => {
+    if (isClientCategory) {
+      return item.path !== '/upload-portal' && item.path !== '/reels';
+    }
+    return true;
+  });
+
   return (
     <div className="lg:hidden fixed bottom-6 left-4 right-4 z-[60] flex justify-center pb-safe">
       <nav className="h-[64px] w-full max-w-md bg-black rounded-[32px] shadow-2xl flex items-center justify-between px-2 sm:px-4">
-        {NAV_ITEMS.map((item) => {
+        {filteredNavItems.map((item) => {
           const isActive = location.pathname === item.path;
 
           return (

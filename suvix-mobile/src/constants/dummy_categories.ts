@@ -97,21 +97,21 @@ export const DUMMY_CATEGORIES: Record<string, CategoryConfig> = {
   },
   social_promoter: {
     id: 'social_promoter',
-    label: 'Ads & Promotions',
+    label: 'Brand Sponsor / Advertiser',
     icon: 'megaphone',
-    roleGroupId: 'PROVIDER',
-    defaultModule: 'promoters',
-    description: 'High-impact social media growth and advertising.',
+    roleGroupId: 'CLIENT',
+    defaultModule: 'clients',
+    description: 'Sponsor top-tier YouTube creators and run advertising campaigns.',
     color: '#2980B9',
     thumbnail: require('../../assets/images/categories/promotions.jpg'),
     overlayIcon: require('../../assets/images/categories/ads.png'),
     subCategories: [
-      'Instagram Ads', 'YouTube Ads', 'SEO', 'Influencer Marketing', 
-      'Rickshaw Branding', 'Wall Painting Ads', 'Bus Branding', 'Digital Billboards',
-      'Local Cable Ads', 'Radio Spots', 'Newspaper Classifieds', 'Pamphlet Distribution',
-      'Content Marketing', 'Brand Strategy', 'Affiliate', 'Other'
+      'YouTube Sponsorship', 'Product Placement', 'Video Integration', 
+      'Dedicated Video', 'Shoutouts', 'Affiliate Marketing',
+      'Unboxing & Review', 'Shorts & Reels Integration', 'Community Post Promotion',
+      'Brand Ambassador', 'Livestream Sponsorship', 'Giveaway Collaboration'
     ],
-    info: 'Scale your reach with multi-channel amplification. From digital influencer marketing to local rickshaw branding, help brands dominate their specific city or village markets.'
+    info: 'Join as a Brand Sponsor to discover elite YouTube creators, launch advertising campaigns, and secure high-impact sponsorships.'
   },
   video_editor: {
     id: 'video_editor',

@@ -29,6 +29,8 @@ export interface AuthUser {
     custom_url?: string;
     country?: string;
     description?: string;
+    avg_views_per_video?: number;
+    engagement_rate?: number;
     videos?: Array<{
       id: string;
       title: string;
@@ -36,6 +38,8 @@ export interface AuthUser {
       publishedAt: string;
       viewCount?: string;
       duration?: string;
+      like_count?: string | number;
+      comment_count?: string | number;
     }>;
   }>;
   youtubeVideos?: Array<{
@@ -50,8 +54,11 @@ export interface AuthUser {
     viewCount?: string | number;
     duration?: string;
     channel_id?: string;
+    like_count?: string | number;
+    comment_count?: string | number;
   }>;
   bio?: string;
+  website?: string;
   followers?: number;
   following?: number;
   followingIds?: string[];

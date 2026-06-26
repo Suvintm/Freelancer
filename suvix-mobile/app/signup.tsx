@@ -49,8 +49,12 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [motherTongue, setMotherTongue] = useState('English');
+  const [website, setWebsite] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
   
+  const tempSignupData = useAuthStore((state) => state.tempSignupData) || {};
+  const isClient = tempSignupData.roleGroup === 'CLIENT';
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
@@ -125,7 +129,7 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (loading) return;
-    if (!fullName || !username || !email || !password || !phone) {
+    if (!fullName || !username || !email || !password || !phone || (isClient && !website)) {
       handleImpact(Haptics.ImpactFeedbackStyle.Medium);
       Alert.alert('Incomplete Form', 'Please fill in all details.');
       return;
@@ -170,7 +174,8 @@ export default function SignupScreen() {
         email: email.trim().toLowerCase(),
         password: password,
         phone: phone.trim(),
-        motherTongue: motherTongue,
+        motherTongue: isClient ? '' : motherTongue,
+        website: isClient ? website.trim() : undefined,
         profileImage: profileImage
       });
 
@@ -185,7 +190,10 @@ export default function SignupScreen() {
       formData.append('email', email.trim().toLowerCase());
       formData.append('password', password);
       formData.append('phone', phone.trim());
-      formData.append('motherTongue', motherTongue);
+      formData.append('motherTongue', isClient ? '' : motherTongue);
+      if (isClient && website) {
+        formData.append('website', website.trim());
+      }
       formData.append('categoryId', categoryId);
       formData.append('roleSubCategoryIds', JSON.stringify(roleSubCategoryIds));
       
@@ -298,31 +306,33 @@ export default function SignupScreen() {
                     </TouchableOpacity>
                     
                     <Text style={[styles.title, { color: theme.text }]}>Join SuviX</Text>
-                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>The premium creator ecosystem</Text>
+                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                      {isClient ? "The premium advertiser ecosystem" : "The premium creator ecosystem"}
+                    </Text>
                   </View>
 
                   <View style={styles.form}>
                     <View style={styles.inputGrid}>
                       <SuvixInput 
                         small 
-                        label="Full Name" 
-                        placeholder="John Doe" 
+                        label={isClient ? "Company / Brand Name" : "Full Name"} 
+                        placeholder={isClient ? "e.g. Nike" : "John Doe"} 
                         value={fullName} 
                         onChangeText={setFullName} 
                         icon={<Feather name="user" size={13} color={theme.textSecondary} />} 
                       />
                       <SuvixInput 
                         small 
-                        label="Handle" 
-                        placeholder="unique_handle" 
+                        label={isClient ? "Brand Handle" : "Handle"} 
+                        placeholder={isClient ? "brandhandle" : "unique_handle"} 
                         value={username} 
                         onChangeText={handleUsernameChange} 
                         icon={<Feather name="at-sign" size={13} color={theme.textSecondary} />} 
                       />
                       <SuvixInput 
                         small 
-                        label="Email" 
-                        placeholder="name@example.com" 
+                        label={isClient ? "Work Email" : "Email"} 
+                        placeholder={isClient ? "partnerships@company.com" : "name@example.com"} 
                         value={email} 
                         onChangeText={setEmail} 
                         icon={<Feather name="mail" size={13} color={theme.textSecondary} />} 
@@ -335,6 +345,16 @@ export default function SignupScreen() {
                         onChangeText={setPhone} 
                         icon={<Feather name="phone" size={13} color={theme.textSecondary} />} 
                       />
+                      {isClient && (
+                        <SuvixInput 
+                          small 
+                          label="Website / URL" 
+                          placeholder="https://company.com" 
+                          value={website} 
+                          onChangeText={setWebsite} 
+                          icon={<Feather name="globe" size={13} color={theme.textSecondary} />} 
+                        />
+                      )}
                       <SuvixInput 
                         small 
                         label="Password" 
