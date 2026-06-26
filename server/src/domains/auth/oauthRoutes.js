@@ -9,7 +9,7 @@ import { authLimiter, redis } from "../../shared/middleware/rate-limiter.middlew
 import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken, hashToken } from "./services/token.service.js";
 import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
-import youtubeSyncService from '../../domains/creator/services/youtubeSyncService.js';
+import youtubeSyncService from '../creator/services/youtubeSyncService.js';
 import { 
     USER_INCLUDE, 
     formatAuthResponse, 
