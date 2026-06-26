@@ -445,7 +445,7 @@ export default function Home() {
         <div className="w-full px-2 mt-0 mb-8 flex items-center justify-between relative z-30">
           <img 
             src={isDarkMode ? darkLogo : lightLogo} 
-            alt="SuviX" 
+            alt="SuviX Official Logo" 
             className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
           />
           <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
@@ -577,7 +577,7 @@ export default function Home() {
           <div className="w-full px-2 mt-0 mb-1 flex items-center justify-between relative z-30">
             <img 
               src={isDarkMode ? darkLogo : lightLogo} 
-              alt="SuviX" 
+              alt="SuviX Official Logo" 
               className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
             />
             <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
