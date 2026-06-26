@@ -57,7 +57,7 @@ function App() {
         if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
           try {
             baseUrl = new URL(apiUrl).origin;
-          } catch (_e) {
+          } catch (e) {
             // fallback if URL parsing fails
           }
         } else {
