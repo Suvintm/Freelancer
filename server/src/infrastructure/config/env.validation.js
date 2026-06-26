@@ -5,6 +5,12 @@ import logger from "../monitoring/logger.js";
  * If any required variable is missing, it will log a clear error and terminate the process.
  */
 export const validateEnv = () => {
+  // ✅ Skip strict validation in test environments (CI/CD has no .env file)
+  if (process.env.NODE_ENV === "test") {
+    logger.info("[CONFIG] Test mode detected — skipping strict env validation.");
+    return;
+  }
+
   const requiredVariables = [
     "PORT",
     "DATABASE_URL",
