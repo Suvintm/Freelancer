@@ -1,7 +1,7 @@
 // server/modules/notification/services/notificationService.js
 import prisma from "../../../config/prisma.js";
 import { sendPushNotification } from "../../../utils/fcmService.js";
-import { emitToUser } from "../../../socket.js";
+import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import logger from "../../../utils/logger.js";
 
 /**

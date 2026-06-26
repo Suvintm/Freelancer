@@ -3,7 +3,7 @@ import storageService from "../../../utils/storageService.js";
 import logger from "../../../utils/logger.js";
 import { ApiError } from "../../../middleware/errorHandler.js";
 import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
-import { emitToUser } from "../../../socket.js";
+import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import { deleteCache, CacheKey } from "../../../utils/cache.js";
 
 /**

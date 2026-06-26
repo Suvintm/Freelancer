@@ -1,10 +1,14 @@
 import dotenv from "dotenv";
 dotenv.config(); // Triggering restart for Prisma Client update
 
+// 1. STRICT ENVIRONMENT VALIDATION (Runs first)
+import { validateEnv } from "./src/infrastructure/config/env.validation.js";
+validateEnv();
+
 import "./config/env.js";
 import express from "express";
 import http from "http";
-import mongoose from "mongoose";
+import mongoose from "mongoose"; // Kept only for health check status
 import cors from "cors";
 import helmet from "helmet";
 import mongoSanitize from "@exortek/express-mongo-sanitize";
@@ -19,7 +23,7 @@ BigInt.prototype.toJSON = function () {
 
 // Utils
 import logger from "./utils/logger.js";
-import { initSocket } from "./socket.js";
+import { initSocket } from "./src/infrastructure/websocket/socket.js";
 import { initSentry } from "./utils/sentry.js";
 
 // Initialize Sentry before anything else
@@ -72,22 +76,7 @@ if (process.env.NODE_ENV !== "production") {
     logger.warn("⚠️ [WORKER] Background workers disabled in production to preserve Redis quota.");
 }
 
-// Validate required environment variables
-if (process.env.NODE_ENV !== "test") {
-  const requiredEnvVars = [
-    "MONGO_URI", 
-    "JWT_SECRET", 
-    "CLOUDINARY_CLOUD_NAME", 
-    "AWS_ACCESS_KEY_ID", 
-    "AWS_SECRET_ACCESS_KEY",
-    "AWS_S3_BUCKET"
-  ];
-  const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
-  if (missingEnvVars.length > 0) {
-    logger.error(`❌ [STARTUP] Missing required environment variables: ${missingEnvVars.join(", ")}`);
-    process.exit(1);
-  }
-}
+// (Environment validation logic removed in favor of infrastructure/config/env.validation.js)
 
 const app = express();
 const server = http.createServer(app);
@@ -229,29 +218,10 @@ app.use(errorHandler);
 // ============ SERVER INIT ============
 const PORT = process.env.PORT || 5000;
 
-const connectDB = async (retries = 5) => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000, maxPoolSize: 10 });
-    logger.info("MongoDB connected successfully");
-    const db = mongoose.connection.db;
-    await Promise.all([
-      db.collection("users").createIndex({ bio: "text", name: "text" }),
-      db.collection("reels").createIndex({ isPublished: 1, createdAt: -1 }),
-    ]);
-    logger.info("Production database indexes verified ✅");
-    return true;
-  } catch (error) {
-    logger.error(`MongoDB connection failed: ${error.message}`);
-    if (retries > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      return connectDB(retries - 1);
-    }
-    return false;
-  }
-};
+import { connectMongo, disconnectMongo } from "./src/infrastructure/database/mongo.js";
 
 const startServer = async () => {
-  const dbConnected = await connectDB();
+  const dbConnected = await connectMongo();
   if (!dbConnected) process.exit(1);
   await connectPostgres();
   
@@ -272,7 +242,7 @@ if (process.env.NODE_ENV !== "test") startServer();
 const gracefulShutdown = async (signal) => {
   logger.info(`\n[${signal}] Received. Closing connections...`);
   server.close(() => logger.info("HTTP server closed."));
-  await mongoose.connection.close();
+  await disconnectMongo();
   if (prisma) await prisma.$disconnect();
   process.exit(0);
 };

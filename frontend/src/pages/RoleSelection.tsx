@@ -136,7 +136,7 @@ export default function RoleSelection() {
       onboardingStep: 'role',
     }));
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 
     if (selectedCategory.slug === 'yt_influencer') {
       // YouTube flow: request YouTube-scoped OAuth

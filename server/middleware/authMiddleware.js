@@ -119,7 +119,7 @@ export const authenticate = async (req, res, next) => {
 
     if (!status) {
       await deleteCache(CacheKey.userProfile(userId));
-      const { kickUser } = await import("../socket.js");
+      const { kickUser } = await import("../src/infrastructure/websocket/socket.js");
       kickUser(userId, "Deleted");
       throw new ApiError(
         401,
@@ -128,7 +128,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (status.is_banned) {
-      const { kickUser } = await import("../socket.js");
+      const { kickUser } = await import("../src/infrastructure/websocket/socket.js");
       kickUser(userId, "Banned");
       throw new ApiError(
         403,
