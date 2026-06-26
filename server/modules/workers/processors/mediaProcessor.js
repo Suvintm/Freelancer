@@ -5,7 +5,7 @@ import { processVideo } from "../../storage/processors/video.processor.js";
 import { hashFile, findDuplicate } from "../../storage/processors/dedup.processor.js";
 import { validateMediaPayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
-import { emitToUser } from "../../../socket.js";
+import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import notificationService from "../../notification/services/notificationService.js";
 import logger from "../../../utils/logger.js";
 

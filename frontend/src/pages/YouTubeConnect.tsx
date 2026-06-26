@@ -61,7 +61,7 @@ export default function YouTubeConnect() {
   const hasUnclaimedChannel = youtubeDiscovery.channels.some((c) => !c.isClaimed);
 
   const handleConnect = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
     window.location.href = `${apiUrl}/auth/google/youtube`;
   };
 

@@ -2,7 +2,7 @@ import prisma from "../../../config/prisma.js";
 import { ApiError, asyncHandler } from "../../../middleware/errorHandler.js";
 import storageService from "../../../utils/storageService.js";
 import { redis, redisAvailable } from "../../../config/redisClient.js";
-import { emitToUser } from "../../../socket.js";
+import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import logger from "../../../utils/logger.js";
 import { deleteCache, CacheKey } from "../../../utils/cache.js";
 import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
@@ -146,7 +146,7 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
   emitToUser(userId, "user:profile_updated", { profilePicture: profile.profile_picture });
   
   // Also broadcast to community rooms if possible
-  const { getIO } = await import("../../../socket.js");
+  const { getIO } = await import("../../../src/infrastructure/websocket/socket.js");
   const io = getIO();
   if (io) {
     // We don't want to fetch ALL communities here for performance, 

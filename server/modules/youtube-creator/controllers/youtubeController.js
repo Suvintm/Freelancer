@@ -4,7 +4,7 @@ import { ApiError } from "../../../middleware/errorHandler.js";
 import prisma from "../../../config/prisma.js";
 import quotaManager from "../services/youtubeQuotaManager.js";
 import { deleteCache, CacheKey } from "../../../utils/cache.js";
-import { emitToUser } from "../../../socket.js";
+import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
 
 /**

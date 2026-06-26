@@ -25,7 +25,7 @@ import prisma from "../../../config/prisma.js";
 import storage from "../../storage/storage.service.js";
 import { processImage } from "../../storage/processors/image.processor.js";
 import { processVideo } from "../../storage/processors/video.processor.js";
-import { emitToUser } from "../../../socket.js";
+import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import { STORAGE_FOLDERS } from "../../storage/providers/s3/s3.constants.js";
 import notificationService from "../../notification/services/notificationService.js";
 import logger from "../../../utils/logger.js";

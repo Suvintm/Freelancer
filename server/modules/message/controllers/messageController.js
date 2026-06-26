@@ -133,7 +133,7 @@ export const getMessageHistory = async (req, res) => {
 
     if (updateResult.count > 0) {
       try {
-        const { emitToUser } = await import("../../../socket.js");
+        const { emitToUser } = await import("../../../src/infrastructure/websocket/socket.js");
         emitToUser(otherUserId, "messages:read", {
           readerId: myId
         });
@@ -188,7 +188,7 @@ export const sendMessage = async (req, res) => {
 
     // Real-time socket delivery if online
     try {
-      const { emitToUser } = await import("../../../socket.js");
+      const { emitToUser } = await import("../../../src/infrastructure/websocket/socket.js");
       emitToUser(receiverId, "message:new", {
         ...newMessage,
         status: "delivered"

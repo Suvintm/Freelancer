@@ -1,7 +1,7 @@
 import { validateYouTubePayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { persistYouTubeContent } from "../../youtube-creator/services/youtubeSyncService.js";
-import { getIO } from "../../../socket.js";
+import { getIO } from "../../../src/infrastructure/websocket/socket.js";
 import quotaManager from "../../youtube-creator/services/youtubeQuotaManager.js";
 
 /**

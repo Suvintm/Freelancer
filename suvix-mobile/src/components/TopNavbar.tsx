@@ -190,25 +190,57 @@ export const TopNavbar = ({ onMenuPress, onProfilePress, scrollY }: TopNavbarPro
       containerStyle,
       { 
         paddingTop: insets.top,
+        backgroundColor: 'transparent',
       }
     ]}>
-      {/* 🌑 Layer 1: Waterfall Dark Background (Fades in on Scroll) */}
-      <Animated.View style={[StyleSheet.absoluteFill, solidScrollStyle]}>
+      {/* 🌑 Layer 1: Scroll-Adaptive — extra solid overlay when user scrolls down */}
+      <Animated.View style={[StyleSheet.absoluteFill, solidScrollStyle]} pointerEvents="none">
         <LinearGradient
-          colors={[isDarkMode ? '#0A0A0A' : '#FFFFFF', 'transparent']}
+          colors={[
+            isDarkMode ? 'rgba(10,10,10,0.9)' : 'rgba(255,255,255,0.9)',
+            isDarkMode ? 'rgba(10,10,10,0.5)' : 'rgba(255,255,255,0.5)',
+            'transparent',
+            'transparent',
+          ]}
+          locations={[0, 0.4, 0.65, 1]}
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
 
-      {/* 🧊 Layer 2: Global Waterfall Gradient & Blur */}
-      <View style={StyleSheet.absoluteFill}>
-        <BlurView intensity={25} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+      {/* 🧊 Layer 2: Always-visible — solid top fading to fully transparent before bottom edge */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* BlurView only on the status bar strip for legibility */}
+        <BlurView
+          intensity={20}
+          tint={isDarkMode ? 'dark' : 'light'}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top + 8,
+          }}
+        />
+        {/* Aggressive gradient: fully transparent by 65% of height */}
         <LinearGradient
           colors={
-            isDarkMode 
-              ? ['#0A0A0A', 'rgba(10,10,10,0.95)', 'rgba(10,10,10,0.4)', 'transparent']
-              : ['#FFFFFF', 'rgba(255,255,255,0.95)', 'rgba(255,255,255,0.4)', 'transparent']
+            isDarkMode
+              ? [
+                  'rgba(10,10,10,0.95)',  // 0%  — fully solid at very top
+                  'rgba(10,10,10,0.8)',   // 25% — still solid through status bar
+                  'rgba(10,10,10,0.4)',   // 45% — starting to fade mid-icon-row
+                  'transparent',          // 65% — fully transparent before bottom
+                  'transparent',          // 100% — stays transparent
+                ]
+              : [
+                  'rgba(255,255,255,0.95)',
+                  'rgba(255,255,255,0.8)',
+                  'rgba(255,255,255,0.4)',
+                  'transparent',
+                  'transparent',
+                ]
           }
+          locations={[0, 0.25, 0.45, 0.65, 1]}
           style={StyleSheet.absoluteFill}
         />
       </View>
@@ -323,7 +355,9 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     zIndex: 50,
-    overflow: 'hidden',
+    // NOTE: overflow:hidden removed — it forces opaque rendering on Android
+    // and prevents the bottom of the navbar from being transparent.
+    backgroundColor: 'transparent',
   },
   topRow: {
     height: 50,

@@ -1,0 +1,175 @@
+/**
+ * 👤 PROFILE SERVICE
+ * 
+ * Logic for fetching user-scoped media, posts, and reels. 
+ * Implements cursor-based pagination for high-performance scrolling.
+ */
+import prisma from "../../../infrastructure/database/postgres.js";
+import { paginate } from "../../../shared/utils/pagination.js";
+import { resolveMediaForApi, resolveImageUrls, resolveVideoUrls } from "../../../shared/utils/media-resolver.js";
+
+const PAGE_SIZE = 12; // Instagram sweet spot for grid loading
+
+/**
+ * Get paginated POSTS for a user's profile grid
+ * Only returns THUMBNAIL variants to save bandwidth
+ */
+export const getProfilePosts = async (targetUserId, cursor = null) => {
+  const posts = await prisma.post.findMany({
+    where: {
+      userId: targetUserId,
+      visibility: "PUBLIC",
+      // Removed isReel filter to show both Posts and Reels in the unified grid
+    },
+    include: {
+      media: {
+        take: 1, // Only first media for the grid thumbnail
+        orderBy: { created_at: "asc" },
+      },
+      user: {
+        include: {
+          profile: {
+            select: {
+              name: true,
+              username: true,
+              profile_picture: true,
+              category: {
+                select: {
+                  slug: true,
+                  roleGroup: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    take: PAGE_SIZE + 1, // Fetch extra one to detect hasNextPage
+    ...(cursor && { skip: 1, cursor: { id: cursor } }),
+    orderBy: { created_at: "desc" },
+  });
+
+  const paginated = paginate(posts, PAGE_SIZE);
+
+  // 🚀 PERFORMANCE HYDRATION: Map to Grid-Optimized objects
+  paginated.items = paginated.items.map(post => {
+    const firstMedia = post.media[0];
+    return {
+      id: post.id,
+      type: post.type,
+      caption: post.caption,
+      createdAt: post.created_at,
+      // 🛰️ Standardize author structure for Premium Overlay
+      author: post.user?.profile ? {
+        name: post.user.profile.name,
+        username: post.user.profile.username,
+        profilePicture: post.user.profile.profile_picture,
+        category: post.user.profile.category?.slug,
+        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+      } : null,
+      media: firstMedia ? resolveMediaForApi(firstMedia) : null,
+      thumbnail: firstMedia ? resolveMediaForApi(firstMedia).thumbnail : null
+    };
+  });
+
+  return paginated;
+};
+
+/**
+ * Get paginated REELS for a user's profile reels tab
+ */
+export const getProfileReels = async (targetUserId, cursor = null) => {
+  const reels = await prisma.post.findMany({
+    where: {
+      userId: targetUserId,
+      visibility: "PUBLIC",
+      isReel: true,
+    },
+    include: {
+      media: {
+        take: 1,
+        orderBy: { created_at: "asc" },
+      },
+      user: {
+        include: {
+          profile: {
+            select: {
+              name: true,
+              username: true,
+              profile_picture: true,
+              category: {
+                select: {
+                  slug: true,
+                  roleGroup: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    take: PAGE_SIZE + 1,
+    ...(cursor && { skip: 1, cursor: { id: cursor } }),
+    orderBy: { created_at: "desc" },
+  });
+
+  const paginated = paginate(reels, PAGE_SIZE);
+
+  paginated.items = paginated.items.map(reel => {
+    const firstMedia = reel.media[0];
+    return {
+      id: reel.id,
+      caption: reel.caption,
+      createdAt: reel.created_at,
+      // 🛰️ Standardize media structure for ProfileContentTabs
+      media: resolveMediaForApi(firstMedia),
+      author: reel.user?.profile ? {
+        name: reel.user.profile.name,
+        username: reel.user.profile.username,
+        profilePicture: reel.user.profile.profile_picture,
+        category: reel.user.profile.category?.slug,
+        roleGroup: reel.user.profile.category?.roleGroup || 'CLIENT'
+      } : null
+    };
+  });
+
+  return paginated;
+};
+
+/**
+ * Get profiles belonging to a specific category slug
+ */
+export const getProfilesByCategory = async (categorySlug) => {
+  const profiles = await prisma.userProfile.findMany({
+    where: {
+      category: {
+        slug: categorySlug
+      }
+    },
+    include: {
+      category: true,
+      roles: {
+        include: {
+          subCategory: true
+        }
+      }
+    },
+    orderBy: {
+      created_at: 'desc'
+    }
+  });
+
+  return profiles.map(profile => ({
+    id: profile.id,
+    userId: profile.userId,
+    name: profile.name,
+    username: profile.username,
+    profilePicture: profile.profile_picture,
+    bio: profile.bio,
+    location: `${profile.location_city || ''}, ${profile.location_country || ''}`.replace(/^,\s*/, ''),
+    category: profile.category?.name,
+    roles: profile.roles.map(r => r.subCategory.name)
+  }));
+};
+
+export default { getProfilePosts, getProfileReels, getProfilesByCategory };

@@ -82,7 +82,7 @@ export default function Login() {
     // Step 2: Set login intent so OAuthSuccess routes correctly
     dispatch(setTempSignupData({ intent: 'login' }));
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
     window.location.href = `${apiUrl}/auth/google`;
   };
 

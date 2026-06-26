@@ -3,7 +3,7 @@ import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axio
 import type { RootState } from '../store';
 import { selectToken, selectRefreshToken } from '../store/slices/authSlice';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
