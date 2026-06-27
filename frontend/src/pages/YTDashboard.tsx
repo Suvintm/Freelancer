@@ -178,12 +178,6 @@ export default function YTDashboard() {
     }
   };
 
-  const handleConnectAnalytics = () => {
-    sessionStorage.setItem('oauth_intent', 'connect_youtube');
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
-    window.location.href = `${apiUrl}/auth/google/youtube`;
-  };
-
   const handleBack = () => {
     if (channels.length > 1) {
       navigate('/youtube-dashboard');

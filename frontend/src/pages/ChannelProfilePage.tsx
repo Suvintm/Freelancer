@@ -70,7 +70,7 @@ export default function ChannelProfilePage() {
       if (!isClient && !isAdmin) {
         if (user.primaryRole?.category === 'yt_influencer') {
           const ownsChannel = user.youtubeProfile?.some(
-            (p: any) => p.channel_id === channelId || p.id === channelId
+            (p: { channel_id?: string; id?: string }) => p.channel_id === channelId || p.id === channelId
           );
           if (ownsChannel && channelId) {
             navigate(`/youtube-dashboard/${channelId}`, { replace: true });
