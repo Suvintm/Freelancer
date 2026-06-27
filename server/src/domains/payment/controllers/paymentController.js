@@ -16,7 +16,7 @@ export const getPaymentHistory = asyncHandler(async (req, res) => {
   let where = {};
   if (userRole === "client") {
     where.clientId = userId;
-  } else if (userRole === "editor") {
+  } else if (userRole === "provider") {
     where.editorId = userId;
   }
 
@@ -59,7 +59,7 @@ export const getPaymentStats = asyncHandler(async (req, res) => {
   let matchCondition = {};
   if (userRole === "client") {
     matchCondition.clientId = userId;
-  } else if (userRole === "editor") {
+  } else if (userRole === "provider") {
     matchCondition.editorId = userId;
   }
 
@@ -85,13 +85,13 @@ export const getPaymentStats = asyncHandler(async (req, res) => {
     SELECT 
       EXTRACT(YEAR FROM created_at) as year,
       EXTRACT(MONTH FROM created_at) as month,
-      SUM(CASE WHEN ${userRole === "editor"} THEN editor_earning ELSE amount END) as amount,
+      SUM(CASE WHEN ${userRole === "provider"} THEN editor_earning ELSE amount END) as amount,
       COUNT(*) as count
     FROM payments
     WHERE status = 'completed'
       AND created_at >= ${sixMonthsAgo}
       ${userRole === "client" ? prisma.$raw`AND client_id = ${userId}::uuid` : prisma.$raw``}
-      ${userRole === "editor" ? prisma.$raw`AND editor_id = ${userId}::uuid` : prisma.$raw``}
+      ${userRole === "provider" ? prisma.$raw`AND editor_id = ${userId}::uuid` : prisma.$raw``}
     GROUP BY year, month
     ORDER BY year ASC, month ASC
   `;

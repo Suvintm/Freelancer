@@ -2,7 +2,7 @@
  * 🛣️ PROFILE ROUTES
  */
 import { Router } from "express";
-import { getProfilePosts, getProfileReels, getProfilesByCategory } from "./profile.controller.js";
+import { getProfilePosts, getProfileReels, getProfilesByCategory, getProfileDetails, getChannelDetails } from "./profile.controller.js";
 import { publicApiLimiter } from "../../middleware/rateLimiter.js";
 
 const router = Router();
@@ -27,5 +27,17 @@ router.get("/:userId/reels", getProfileReels);
  * Publicly accessible list of profiles by category slug
  */
 router.get("/category/:categorySlug", getProfilesByCategory);
+
+/**
+ * @route GET /api/profile/channel/:channelId
+ * Publicly accessible specific YouTube channel details
+ */
+router.get("/channel/:channelId", getChannelDetails);
+
+/**
+ * @route GET /api/profile/:userId
+ * Publicly accessible profile details (Media Kit)
+ */
+router.get("/:userId", getProfileDetails);
 
 export default router;

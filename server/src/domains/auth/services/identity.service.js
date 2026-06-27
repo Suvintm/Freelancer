@@ -25,7 +25,7 @@ import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
 export const mapGroupToAppRole = (group, systemRole) => {
   if (systemRole === "admin") return "admin";
   if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "editor";
+  if (group === "PROVIDER") return "provider";
   return "client";
 };
 
@@ -213,7 +213,7 @@ export const formatAuthResponse = (user, subscription = null) => {
 
     primaryRole: {
       group: identity.group,
-      category: identity.category,
+      category: identity.categorySlug || identity.category,
       categorySlug: identity.categorySlug,
       subCategory: identity.subCategory,
       categoryId: identity.categoryId,

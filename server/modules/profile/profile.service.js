@@ -6,7 +6,7 @@
  */
 import prisma from "../../config/prisma.js";
 import { paginate } from "../../utils/pagination.js";
-import { resolveMediaForApi, resolveImageUrls, resolveVideoUrls } from "../../utils/mediaResolver.js";
+import { resolveMediaForApi, resolveImageUrls, resolveVideoUrls, smartResolveMediaUrl } from "../../utils/mediaResolver.js";
 
 const PAGE_SIZE = 12; // Instagram sweet spot for grid loading
 
@@ -152,6 +152,18 @@ export const getProfilesByCategory = async (categorySlug) => {
         include: {
           subCategory: true
         }
+      },
+      user: {
+        include: {
+          youtubeProfiles: {
+            include: {
+              videos: {
+                orderBy: { published_at: 'desc' },
+                take: 3
+              }
+            }
+          }
+        }
       }
     },
     orderBy: {
@@ -159,17 +171,120 @@ export const getProfilesByCategory = async (categorySlug) => {
     }
   });
 
-  return profiles.map(profile => ({
-    id: profile.id,
-    userId: profile.userId,
-    name: profile.name,
-    username: profile.username,
-    profilePicture: profile.profile_picture,
-    bio: profile.bio,
-    location: `${profile.location_city || ''}, ${profile.location_country || ''}`.replace(/^,\s*/, ''),
-    category: profile.category?.name,
-    roles: profile.roles.map(r => r.subCategory.name)
-  }));
+  return profiles.map(profile => {
+    return {
+      id: profile.id,
+      userId: profile.userId,
+      name: profile.name,
+      username: profile.username,
+      profilePicture: smartResolveMediaUrl(profile.profile_picture),
+      coverBanner: smartResolveMediaUrl(profile.cover_banner),
+      bio: profile.bio,
+      location: `${profile.location_city || ''}, ${profile.location_country || ''}`.replace(/^,\s*/, ''),
+      category: profile.category?.name,
+      roles: profile.roles.map(r => r.subCategory.name),
+      youtubeProfiles: (profile.user?.youtubeProfiles || []).map(ytProfile => ({
+        channelId: ytProfile.channel_id,
+        channelName: ytProfile.channel_name,
+        thumbnailUrl: smartResolveMediaUrl(ytProfile.thumbnail_url),
+        bannerUrl: smartResolveMediaUrl(ytProfile.banner_url),
+        subscriberCount: ytProfile.subscriber_count,
+        videoCount: ytProfile.video_count,
+        viewCount: ytProfile.view_count,
+        averageViews: ytProfile.average_views,
+        engagementRate: ytProfile.engagement_rate,
+        videos: (ytProfile.videos || []).map(v => {
+          const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+          return {
+            id: v.id,
+            title: v.title,
+            thumbnail: smartResolveMediaUrl(rawThumb),
+            viewCount: v.view_count
+          };
+        })
+      }))
+    };
+  });
 };
 
-export default { getProfilePosts, getProfileReels, getProfilesByCategory };
+export const getChannelDetails = async (channelId) => {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(channelId);
+
+  const channel = await prisma.youTubeProfile.findFirst({
+    where: isUuid 
+      ? { OR: [{ channel_id: channelId }, { id: channelId }] }
+      : { channel_id: channelId },
+    include: {
+      videos: {
+        orderBy: { published_at: 'desc' },
+      },
+      user: {
+        include: {
+          profile: {
+            include: {
+              roles: {
+                include: {
+                  subCategory: true
+                }
+              }
+            }
+          },
+          youtubeProfiles: {
+            include: {
+              videos: {
+                orderBy: { published_at: 'desc' },
+                take: 3
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!channel) return null;
+
+  return {
+    id: channel.id,
+    channelId: channel.channel_id,
+    channelName: channel.channel_name,
+    thumbnailUrl: smartResolveMediaUrl(channel.thumbnail_url),
+    bannerUrl: smartResolveMediaUrl(channel.banner_url),
+    subscriberCount: channel.subscriber_count || 0,
+    videoCount: channel.video_count || 0,
+    viewCount: channel.view_count != null ? String(channel.view_count) : "0",
+    averageViews: channel.average_views || 0,
+    engagementRate: channel.engagement_rate || 0,
+    videos: (channel.videos || []).map(v => {
+      const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+      return {
+        id: v.id,
+        title: v.title,
+        thumbnail: smartResolveMediaUrl(rawThumb),
+        viewCount: v.view_count != null ? String(v.view_count) : "0",
+        likeCount: v.like_count != null ? String(v.like_count) : "0",
+        commentCount: v.comment_count != null ? String(v.comment_count) : "0",
+      };
+    }),
+    creator: {
+      userId: channel.user.id,
+      name: channel.user.profile?.name || channel.user.displayName || "",
+      username: channel.user.profile?.username || channel.user.username || "",
+      profilePicture: smartResolveMediaUrl(channel.user.profile?.profile_picture),
+      coverBanner: smartResolveMediaUrl(channel.user.profile?.cover_banner),
+      bio: channel.user.profile?.bio || "",
+      location: `${channel.user.profile?.location_city || ''}, ${channel.user.profile?.location_country || ''}`.replace(/^,\s*/, '') || "India",
+      roles: (channel.user.profile?.roles || []).map(r => r.subCategory.name),
+      otherChannels: (channel.user.youtubeProfiles || [])
+        .filter(p => p.channel_id !== channel.channel_id)
+        .map(p => ({
+          channelId: p.channel_id,
+          channelName: p.channel_name,
+          thumbnailUrl: smartResolveMediaUrl(p.thumbnail_url),
+          subscriberCount: p.subscriber_count || 0,
+        }))
+    }
+  };
+};
+
+export default { getProfilePosts, getProfileReels, getProfilesByCategory, getChannelDetails };

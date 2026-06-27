@@ -33,7 +33,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const mapGroupToAppRole = (group, systemRole) => {
   if (systemRole === "admin") return "admin";
   if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "editor";
+  if (group === "PROVIDER") return "provider";
   return "client";
 };
 

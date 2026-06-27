@@ -96,7 +96,7 @@ export const submitKYC = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new ApiError(404, "User not found");
-  if (user.role !== "editor") throw new ApiError(403, "Only editors can submit KYC");
+  if (req.user.role !== "provider") throw new ApiError(403, "Only providers can submit KYC");
   if (user.kyc_status === "verified") throw new ApiError(400, "Already verified");
 
   try {

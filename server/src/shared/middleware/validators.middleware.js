@@ -34,7 +34,7 @@ export const registerValidator = [
 
     body("role")
         .notEmpty().withMessage("Role is required")
-        .isIn(["editor", "client"]).withMessage("Role must be either 'editor' or 'client'"),
+        .isIn(["provider", "client"]).withMessage("Role must be either 'provider' or 'client'"),
 
     validate,
 ];

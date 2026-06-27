@@ -10,6 +10,8 @@ import Home from './pages/Home';
 import Explore from './pages/Explore';
 import CommunicationHub from './pages/CommunicationHub';
 import Profile from './pages/Profile';
+import CreatorProfilePage from './pages/CreatorProfilePage';
+import ChannelProfilePage from './pages/ChannelProfilePage';
 import Settings from './pages/Settings';
 import Nearby from './pages/Nearby';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -263,6 +265,26 @@ function App() {
             <AuthGuard>
               <AppLayout>
                 <Profile />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/creator/:userId" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <CreatorProfilePage />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/channel/:channelId" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <ChannelProfilePage />
               </AppLayout>
             </AuthGuard>
           } 

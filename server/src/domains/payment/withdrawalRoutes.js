@@ -11,8 +11,8 @@ const router = express.Router();
 // All withdrawal routes are protected
 router.use(protect);
 
-router.post("/request", authorize("editor"), requestWithdrawal);
-router.get("/my", authorize("editor"), getMyWithdrawals);
+router.post("/request", authorize("provider"), requestWithdrawal);
+router.get("/my", authorize("provider"), getMyWithdrawals);
 router.get("/:id", getWithdrawalDetails);
 
 export default router;

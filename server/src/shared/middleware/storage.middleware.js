@@ -15,7 +15,7 @@ import logger from "../../infrastructure/monitoring/logger.js";
 export const checkStorage = async (req, res, next) => {
   try {
     // Only check for authenticated users who are editors
-    if (!req.user || req.user.role !== "editor") {
+    if (!req.user || req.user.role !== "provider") {
       return next();
     }
 
@@ -76,7 +76,7 @@ export const checkStorage = async (req, res, next) => {
 export const checkStorageWithSize = (estimatedSizeBytes) => {
   return async (req, res, next) => {
     try {
-      if (!req.user || req.user.role !== "editor") {
+      if (!req.user || req.user.role !== "provider") {
         return next();
       }
 

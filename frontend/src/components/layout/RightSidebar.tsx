@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMemo, useState, useEffect } from 'react';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, Plus
+  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, Plus, Heart
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -56,6 +56,7 @@ export const RightSidebar = () => {
 
   const [conversations, setConversations] = useState<SidebarConversation[]>([]);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [likedConvs, setLikedConvs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchConvs = async () => {
@@ -102,18 +103,19 @@ export const RightSidebar = () => {
             <p className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-1">
               Messages
             </p>
-            <div className="relative w-full h-[82px] select-none">
+            <div className="relative w-full h-[98px] select-none">
               <AnimatePresence mode="popLayout">
                 {visibleConvs.map((conv, idx) => {
                   const isTop = idx === 0;
+                  const isLiked = likedConvs[conv.user.id] || false;
                   return (
                     <motion.div
                       key={conv.user.id}
                       style={{
                         position: 'absolute',
                         width: '100%',
-                        height: '72px',
-                        top: 0,
+                        height: '76px',
+                        top: '16px',
                         left: 0,
                         pointerEvents: isTop ? 'auto' : 'none',
                       }}
@@ -134,55 +136,81 @@ export const RightSidebar = () => {
                       onClick={() => {
                         if (isTop) navigate(`/communication-hub?userId=${conv.user.id}`);
                       }}
-                      className={`flex items-center gap-2 p-1.5 rounded-xl border shadow-lg cursor-pointer ${
+                      className={`flex items-center gap-3 p-3 rounded-[20px] border shadow-lg cursor-pointer ${
                         isDarkMode
-                          ? 'bg-white border-zinc-200 text-zinc-950 shadow-md'
-                          : 'bg-black border-white/15 text-white shadow-[0_4px_20px_rgba(255,255,255,0.05)]'
+                          ? 'bg-[#0c0c0e] border-white/10 text-white shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                          : 'bg-white border-zinc-200/80 text-zinc-950 shadow-[0_8px_30px_rgba(0,0,0,0.06)]'
                       }`}
                     >
-                      <div className="relative shrink-0">
-                        <div className="w-8 h-8 rounded-full p-[1px] ring-2 ring-emerald-500/85">
-                          <img
-                            src={conv.user.profilePicture || defaultProfile}
-                            alt={conv.user.name}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        </div>
+                      {/* Left: highly rounded profile style avatar */}
+                      <img
+                        src={conv.user.profilePicture || defaultProfile}
+                        alt={conv.user.name}
+                        className="w-12 h-12 rounded-[16px] object-cover shadow-sm shrink-0 border dark:border-white/10 border-zinc-200/60"
+                      />
+
+                      {/* Middle: text layout */}
+                      <div className="min-w-0 flex-1 flex flex-col justify-center h-full">
+                        <h4 className={`text-xs font-bold truncate leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+                          {conv.user.name}
+                        </h4>
+                        <p className={`text-[10px] truncate mt-1 leading-tight flex items-center gap-1 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                          <span>{formatTimeAgo(conv.lastMessage.createdAt)} ago</span>
+                          <span>•</span>
+                          <span className="truncate">{conv.lastMessage.content}</span>
+                        </p>
                       </div>
 
-                      <div className="min-w-0 flex-1 flex flex-col justify-between h-full py-0.5">
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-[10px] font-bold truncate leading-none">{conv.user.name}</h4>
-                            <span className={`text-[7.5px] font-semibold shrink-0 leading-none ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                              {formatTimeAgo(conv.lastMessage.createdAt)}
-                            </span>
-                          </div>
-                          <p className={`text-[9.5px] truncate mt-0.5 leading-none ${isDarkMode ? 'text-zinc-600' : 'text-zinc-300'}`}>
-                            {conv.lastMessage.content}
-                          </p>
-                        </div>
-                        <div className="flex justify-end">
-                          <span className={`px-1.5 py-0.5 rounded text-[7.5px] font-extrabold uppercase tracking-wider ${
-                            isDarkMode
-                              ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-[0_1.5px_6px_rgba(244,63,94,0.3)]'
-                              : 'bg-white text-zinc-950 hover:bg-zinc-100'
-                          }`}>
-                            View Chat
-                          </span>
-                        </div>
-                      </div>
+                      {/* Top-Right: Hanging squircle buttons */}
+                      {isTop && (
+                        <div 
+                          className="absolute -top-3.5 right-4 flex items-center gap-1.5 z-40"
+                          onClick={(e) => e.stopPropagation()} // Prevent card click navigation
+                        >
+                          {/* Chat button */}
+                          <button
+                            onClick={() => navigate(`/communication-hub?userId=${conv.user.id}`)}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border ${
+                              isDarkMode
+                                ? 'bg-[#18181b] border-white/10 text-white hover:bg-zinc-800'
+                                : 'bg-white border-zinc-200 text-zinc-950 hover:bg-zinc-50'
+                            }`}
+                            title="Message"
+                          >
+                            <MessageSquare size={14} />
+                          </button>
 
+                          {/* Heart/Like button */}
+                          <button
+                            onClick={() => {
+                              setLikedConvs(prev => ({ ...prev, [conv.user.id]: !prev[conv.user.id] }));
+                            }}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border ${
+                              isDarkMode
+                                ? 'bg-[#18181b] border-white/10 text-white hover:bg-zinc-800'
+                                : 'bg-white border-zinc-200 text-zinc-950 hover:bg-zinc-50'
+                            }`}
+                            title="Favorite"
+                          >
+                            <Heart 
+                              size={14} 
+                              className={isLiked ? "text-rose-500 fill-rose-500 transition-colors" : "text-current transition-colors"} 
+                            />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Top-Left: Dismiss close button */}
                       {isTop && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveCardIndex(prev => prev + 1);
                           }}
-                          className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-500 text-white shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer z-50 flex items-center justify-center"
+                          className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-rose-500 text-white shadow-sm hover:scale-110 active:scale-95 transition-all cursor-pointer z-50 flex items-center justify-center"
                           title="Dismiss"
                         >
-                          <Plus size={8} className="rotate-45" />
+                          <Plus size={10} className="rotate-45" />
                         </button>
                       )}
                     </motion.div>
