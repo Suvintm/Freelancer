@@ -303,3 +303,76 @@ export const getExploreVideos = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Direct OAuth Channel Linker for existing logged-in users
+ */
+export const linkOAuthChannel = async (req, res, next) => {
+  try {
+    const { channel } = req.body;
+    const userId = req.user.id;
+
+    if (!channel || !channel.channelId) {
+      throw new ApiError(400, "Channel data with channelId is required.");
+    }
+
+    logger.info(`🎬 [CONTROLLER] User ${userId} linking OAuth channel: ${channel.channelName || channel.channelId}`);
+
+    const syncService = await import("../services/youtubeSyncService.js");
+    const result = await syncService.persistYouTubeContent(userId, channel, "oauth_link");
+
+    await deleteCache(CacheKey.userProfile(userId));
+
+    // Get the updated user with full professional relations
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: true,
+        youtubeProfiles: {
+          include: {
+            videos: { orderBy: { published_at: 'desc' }, take: 25 }
+          }
+        }
+      }
+    });
+
+    // Surgical WebSocket Broadcast to instantly update the frontend store
+    if (updatedUser) {
+      const remainingChannels = updatedUser.youtubeProfiles || [];
+      emitToUser(userId, "user:profile_updated", {
+        id: updatedUser.id,
+        name: updatedUser.profile?.name,
+        username: updatedUser.profile?.username,
+        isOnboarded: updatedUser.is_onboarded,
+        youtubeProfile: remainingChannels.map(p => ({
+          ...p,
+          thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
+          banner_url: smartResolveMediaUrl(p.banner_url)
+        })),
+        youtubeVideos: remainingChannels
+          .flatMap(p => (p.videos || []).map(v => {
+            const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+            return {
+              ...v,
+              thumbnail: resolvedUrl,
+              media: {
+                type: 'IMAGE',
+                status: 'READY',
+                urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl }
+              }
+            };
+          }))
+          .sort((a, b) => new Date(b.published_at || b.publishedAt).getTime() - new Date(a.published_at || a.publishedAt).getTime())
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Channel successfully linked and synced!",
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

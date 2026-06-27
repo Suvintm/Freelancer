@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/slices/authSlice';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -83,6 +85,8 @@ export default function CreatorProfilePage() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<'youtube' | 'posts'>('youtube');
+  const currentUser = useSelector(selectUser);
+  const isOwnProfile = currentUser?.id === userId;
 
   // 1. Fetch Creator Basic & YouTube Profile Info
   const { data: creatorResponse, isLoading: isLoadingProfile, error: profileError } = useQuery({
@@ -200,6 +204,32 @@ export default function CreatorProfilePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-page via-transparent to-transparent" />
       </div>
 
+      {/* ─── Connect YouTube Analytics Callout (Own Profile Only) ─── */}
+      {isOwnProfile && !activeYtProfile && (
+        <div className="w-full max-w-7xl mx-auto px-4 lg:px-8 mt-4 relative z-15">
+          <div className={`border p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+            isDarkMode 
+              ? 'bg-gradient-to-r from-amber-500/10 via-zinc-950/20 to-zinc-950 border-amber-500/20' 
+              : 'bg-gradient-to-r from-amber-50/50 via-white to-white border-amber-200'
+          }`}>
+            <div className="space-y-1">
+              <p className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                ⚠️ YouTube Analytics Disabled
+              </p>
+              <p className={`text-xs font-semibold leading-relaxed ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                Connect your YouTube Analytics to display audience demographics, avg watch time, and **get sponsors 10x faster**!
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/youtube-dashboard')}
+              className="shrink-0 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-amber-500/20"
+            >
+              Connect Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Main Content Layout ─── */}
       <div className="w-full px-4 lg:px-8 -mt-16 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
@@ -222,8 +252,13 @@ export default function CreatorProfilePage() {
                     {creator.profile?.name || 'Unknown User'}
                   </h1>
                   {activeYtProfile && (
-                    <div className="flex items-center justify-center md:justify-start gap-1 text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      <Youtube size={10} /> Verified Creator
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        <Youtube size={10} /> Verified Creator
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                        Verified Analytics
+                      </div>
                     </div>
                   )}
                 </div>

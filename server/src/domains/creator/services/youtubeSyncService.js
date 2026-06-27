@@ -91,6 +91,8 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
 
     // 3. Resilient Upsert Pattern
     let youtubeProfile;
+    const subCategoryId = channelData.subCategoryId || channelData.sub_category_id || undefined;
+
     const profileData = {
       channel_name:            channelName,
       thumbnail_url:           mirroredAvatar || thumbnailUrl,
@@ -106,6 +108,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       uploads_playlist_id:     uploadsPlaylistId,
       last_synced_at:          new Date(),
       userId:                  userId,
+      subCategoryId:           subCategoryId,
       // ── NEW fields (were fetched but never stored before) ─────────────────
       language:                language,
       hidden_subscriber_count: hiddenSubscriberCount,

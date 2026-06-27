@@ -221,6 +221,31 @@ export const RightSidebar = () => {
           </div>
         )}
 
+        {/* YouTube Analytics Callout Widget */}
+        {user?.primaryRole?.category === 'yt_influencer' && !hasYoutube && (
+          <div className={`p-4 rounded-[20px] border flex flex-col gap-2 ${
+            isDarkMode 
+              ? 'bg-gradient-to-br from-amber-500/10 via-zinc-950/20 to-zinc-950 border-amber-500/20' 
+              : 'bg-gradient-to-br from-amber-50/60 via-white to-white border-amber-200 shadow-sm'
+          }`}>
+            <div className="flex items-center gap-1.5 text-amber-500">
+              <Youtube size={14} className="fill-current stroke-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider">
+                Boost Sponsorships
+              </p>
+            </div>
+            <p className={`text-[11px] font-medium leading-normal ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              Connect your YouTube Analytics to display verified stats and **get sponsors 10x faster**!
+            </p>
+            <button 
+              onClick={() => navigate('/youtube-dashboard')}
+              className="w-full mt-1.5 py-2 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-black font-bold text-[11px] rounded-xl transition-all cursor-pointer shadow-sm shadow-amber-500/20 flex items-center justify-center gap-1"
+            >
+              Connect Now
+            </button>
+          </div>
+        )}
+
         {/* Navigation Card */}
         <div className={`rounded-[24px] border p-4 transition-all duration-300 ${isDarkMode ? 'bg-black border-border-main' : 'bg-zinc-50/50 border-zinc-950 border-[1.5px] shadow-sm hover:shadow-md'} flex flex-col flex-1`}>
           <p className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-2 mb-3">

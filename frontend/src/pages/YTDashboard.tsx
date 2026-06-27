@@ -178,6 +178,12 @@ export default function YTDashboard() {
     }
   };
 
+  const handleConnectAnalytics = () => {
+    sessionStorage.setItem('oauth_intent', 'connect_youtube');
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
+    window.location.href = `${apiUrl}/auth/google/youtube`;
+  };
+
   const handleBack = () => {
     if (channels.length > 1) {
       navigate('/youtube-dashboard');
@@ -756,11 +762,14 @@ export default function YTDashboard() {
               Your data is only shown to brands you approve.
             </p>
           </div>
-          <button className={`shrink-0 px-6 py-2.5 rounded-xl font-bold text-xs tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
-            isDarkMode 
-              ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20' 
-              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
-          }`}>
+          <button 
+            onClick={handleConnectAnalytics}
+            className={`shrink-0 px-6 py-2.5 rounded-xl font-bold text-xs tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
+              isDarkMode 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+            }`}
+          >
             Connect Analytics
           </button>
         </div>
