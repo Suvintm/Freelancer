@@ -44,6 +44,9 @@ interface YouTubeProfile {
   view_count?: string | number;
   average_views?: number;
   engagement_rate?: number;
+  videos?: YouTubeVideo[];
+  banner_url?: string | null;
+  bannerUrl?: string | null;
 }
 
 interface CreatorProfileData {
@@ -70,7 +73,10 @@ interface CreatorProfileData {
     }>;
   };
   youtubeProfiles?: YouTubeProfile[];
+  profilePicture?: string | null;
+  coverBanner?: string | null;
 }
+
 
 export default function CreatorProfilePage() {
   const { userId } = useParams<{ userId: string }>();
