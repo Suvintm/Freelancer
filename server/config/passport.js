@@ -28,7 +28,13 @@ passport.deserializeUser(async (id, done) => {
 // Google OAuth Strategy
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "http://localhost:5051/api/v1/auth/google/callback";
+
+// Auto-derive callback URL: prefer explicit env var, then derive from backend URL, then fallback to localhost
+const _backendBase = process.env.BACKEND_URL || process.env.API_BASE_URL || "";
+const _isProduction = process.env.NODE_ENV === "production";
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL
+  || (_isProduction && _backendBase ? `${_backendBase}/api/v1/auth/google/callback` : null)
+  || (_isProduction ? "https://api.suvix.in/api/v1/auth/google/callback" : "http://localhost:5051/api/v1/auth/google/callback");
 
 console.log("Google OAuth Config Check (Prisma):", {
     hasClientId: !!GOOGLE_CLIENT_ID,
@@ -43,7 +49,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                 clientID: GOOGLE_CLIENT_ID,
                 clientSecret: GOOGLE_CLIENT_SECRET,
                 callbackURL: GOOGLE_CALLBACK_URL,
-                state: false, 
+                state: false,
                 scope: ["profile", "email"],
             },
             async (accessToken, refreshToken, profile, done) => {

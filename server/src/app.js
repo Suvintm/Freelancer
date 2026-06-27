@@ -102,11 +102,14 @@ export function createApp() {
   // ============ PASSPORT ============
   app.use(passport.initialize());
 
-  // ============ API GATEWAY ============
-  app.use("/api/v1", v1Router);
-
   // Platform Routes
   app.use("/api", healthRouter);
+
+  // ============ API GATEWAY ============
+  app.use("/api/v1", v1Router);
+  app.use("/api", v1Router); // Backward compatibility fallback (also for tests)
+
+  app.get("/", (req, res) => res.json({ success: true, message: "SuviX Backend is running!" }));
 
   // ============ SECURITY: NOSQL SANITIZATION ============
   app.use(mongoSanitize({

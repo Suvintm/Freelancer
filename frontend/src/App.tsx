@@ -53,7 +53,20 @@ function App() {
 
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-        const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+        let baseUrl = apiUrl;
+        if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+          try {
+            baseUrl = new URL(apiUrl).origin;
+          } catch {
+            // fallback if URL parsing fails
+          }
+        } else {
+          if (baseUrl.endsWith('/api/v1')) {
+            baseUrl = baseUrl.slice(0, -7);
+          } else if (baseUrl.endsWith('/api')) {
+            baseUrl = baseUrl.slice(0, -4);
+          }
+        }
         
         console.log(`🌐 [HEALTH] Checking connectivity: ${baseUrl}/api/health`);
         
