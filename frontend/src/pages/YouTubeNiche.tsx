@@ -17,6 +17,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
+import { selectUser } from '../store/slices/authSlice';
+import { api } from '../api/client';
 import logo from '../assets/darklogo.png';
 
 const formatCount = (n: number | string): string => {
@@ -46,6 +48,7 @@ export default function YouTubeNiche() {
   const dispatch = useDispatch();
   const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const { categories } = useCategories();
+  const user = useSelector(selectUser);
 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,25 +63,42 @@ export default function YouTubeNiche() {
 
   const selectedNicheName = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche)?.name;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selectedNiche) return;
     setIsSubmitting(true);
-    const subCategory = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche);
-    const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
-      ...ch,
-      subCategoryId:   selectedNiche,
-      subCategorySlug: subCategory?.slug ?? null,
-    }));
-    dispatch(setTempSignupData({
-      youtubeChannels,
-      roleSubCategoryIds: [selectedNiche],
-      onboardingStep:     'youtube',
-    }));
-    setTimeout(() => {
+    try {
+      const subCategory = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche);
+      const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
+        ...ch,
+        subCategoryId:   selectedNiche,
+        subCategorySlug: subCategory?.slug ?? null,
+      }));
+      
+      dispatch(setTempSignupData({
+        youtubeChannels,
+        roleSubCategoryIds: [selectedNiche],
+        onboardingStep:     'youtube',
+      }));
+
+      // IF USER IS ALREADY LOGGED IN: Call backend link endpoint directly!
+      if (user) {
+        for (const ch of youtubeChannels) {
+          await api.post('/youtube-creator/channel/link', { channel: ch });
+        }
+        setIsSubmitting(false);
+        navigate('/youtube-dashboard');
+        return;
+      }
+
+      setTimeout(() => {
+        setIsSubmitting(false);
+        const isSocial = tempSignupData?.isSocialSignup;
+        navigate(isSocial ? '/complete-profile' : '/signup');
+      }, 900);
+    } catch (err) {
+      console.error("Failed to link YouTube channel:", err);
       setIsSubmitting(false);
-      const isSocial = tempSignupData?.isSocialSignup;
-      navigate(isSocial ? '/complete-profile' : '/signup');
-    }, 900);
+    }
   };
 
   return (

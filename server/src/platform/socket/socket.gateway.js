@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import prisma from "../../infrastructure/database/postgres.js";
 import { subscribe, publish } from "../../infrastructure/cache/redis.client.js";
+import logger from "../../infrastructure/monitoring/logger.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -33,9 +34,9 @@ export const initSocket = (server) => {
     allowEIO3: true,
   });
 
-  // 🧪 [DEBUG] Check every request
+  // Monitor engine-level connection errors
   io.engine.on("connection_error", (err) => {
-    console.error("❌ [SOCKET-ENGINE] Connection Error:", err);
+    logger.error("❌ [SOCKET-ENGINE] Connection Error:", { code: err.code, message: err.message });
   });
 
   setupSocketHandlers();
@@ -48,23 +49,23 @@ const setupSocketHandlers = () => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
       if (!token) {
-        console.warn("🔌 [SOCKET] Connection rejected: No token provided");
+        logger.warn("🔌 [SOCKET] Connection rejected: No token provided");
         return next(new Error("Authentication required"));
       }
 
-      console.log("🔌 [SOCKET] Verifying token...");
+      logger.debug("🔌 [SOCKET] Verifying token...");
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.userId = (decoded._id || decoded.id || decoded.userId)?.toString();
       
       if (!socket.userId) {
-        console.warn("🔌 [SOCKET] Connection rejected: Token valid but no user ID found", decoded);
+        logger.warn("🔌 [SOCKET] Connection rejected: Token valid but no user ID found", { decoded });
         return next(new Error("Invalid token"));
       }
 
-      console.log(`🔌 [SOCKET] Token verified for user: ${socket.userId}`);
+      logger.info(`🔌 [SOCKET] Token verified for user: ${socket.userId}`);
       next();
     } catch (error) {
-      console.error("🔌 [SOCKET] Connection rejected: JWT Verification failed", error.message);
+      logger.error("🔌 [SOCKET] Connection rejected: JWT Verification failed", { message: error.message });
       next(new Error("Invalid token"));
     }
   });
@@ -78,15 +79,15 @@ const setupSocketHandlers = () => {
       userSocketMap[userId].add(socket.id);
     }
 
-    console.log(`📡 [SOCKET] User connected: ${userId} (${socket.id})`);
+    logger.info(`📡 [SOCKET] User connected: ${userId} (socketId: ${socket.id})`);
 
     socket.on("join_room", (roomName) => {
-      console.log(`📡 [SOCKET] User ${userId} joining room: ${roomName}`);
+      logger.debug(`📡 [SOCKET] User ${userId} joining room: ${roomName}`);
       socket.join(roomName);
     });
 
     socket.on("leave_room", (roomName) => {
-      console.log(`📡 [SOCKET] User ${userId} leaving room: ${roomName}`);
+      logger.debug(`📡 [SOCKET] User ${userId} leaving room: ${roomName}`);
       socket.leave(roomName);
     });
 
@@ -123,7 +124,7 @@ const setupSocketHandlers = () => {
         });
         io.to(`order_${orderId}`).emit("message:read_receipt", { orderId, readBy });
       } catch (error) {
-        console.error("Mark read error:", error);
+        logger.error("[SOCKET] Mark read error:", { message: error.message });
       }
     });
 
@@ -146,7 +147,7 @@ const setupSocketHandlers = () => {
           delete userSocketMap[userId];
         }
       }
-      console.log(`🔌 [SOCKET] User disconnected: ${userId} (${socket.id})`);
+      logger.info(`🔌 [SOCKET] User disconnected: ${userId} (socketId: ${socket.id})`);
     });
   });
 
@@ -214,7 +215,7 @@ export const kickUser = (userId, reason = "Session invalidated") => {
     if (!io) return false;
     const sockets = userSocketMap[userId];
     if (sockets && sockets.size > 0) {
-        console.log(`🔌 [SOCKET] Kicking user ${userId} for reason: ${reason}`);
+        logger.info(`🔌 [SOCKET] Kicking user ${userId} for reason: ${reason}`);
         sockets.forEach(socketId => {
             io.to(socketId).emit("session:invalidated", { reason });
             // Optional: Actually disconnect the socket after a tiny delay

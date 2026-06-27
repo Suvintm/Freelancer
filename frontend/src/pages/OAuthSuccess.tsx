@@ -120,19 +120,24 @@ export default function OAuthSuccess() {
 
         const { user, token, refreshToken, googleAccessToken } = response.data;
 
+        // Set auth state first so the user is authenticated in Redux
+        dispatch(setAuth({ user, token, refreshToken }));
+        sessionStorage.removeItem('isAddingAccount');
+        queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
+
+        const oauthIntent = sessionStorage.getItem('oauth_intent');
+        if (oauthIntent === 'connect_youtube' && googleAccessToken) {
+          sessionStorage.removeItem('oauth_intent');
+          navigate('/youtube-connect', { state: { googleAccessToken } });
+          return;
+        }
+
         if (intent === 'register' && categorySlug === 'yt_influencer' && googleAccessToken) {
           // Edge case: existing user who is trying to re-link YouTube during onboarding
           // Pass token to YouTubeConnect to show their claimed channels
           navigate('/youtube-connect', { state: { googleAccessToken } });
           return;
         }
-
-        // Standard login: set auth and go home
-        dispatch(setAuth({ user, token, refreshToken }));
-        
-        sessionStorage.removeItem('isAddingAccount');
-
-        queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
 
         navigate('/home');
 

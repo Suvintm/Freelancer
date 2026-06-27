@@ -222,7 +222,7 @@ export const Sidebar = () => {
                         </div>
                         
                         <button
-                          onClick={() => navigate(`/channel/${channel.channel_id}`)}
+                          onClick={() => navigate(`/youtube-dashboard/${channel.channel_id}`)}
                           className={`
                             p-1.5 rounded-lg border transition-all cursor-pointer text-text-muted hover:text-text-main
                             ${isDarkMode ? 'border-border-main hover:bg-border-secondary' : 'border-zinc-200 hover:border-zinc-950 hover:bg-zinc-50'}
@@ -274,7 +274,7 @@ export const Sidebar = () => {
                               ? 'bg-white text-black hover:bg-zinc-100' 
                               : 'bg-zinc-950 text-white hover:bg-zinc-900 hover:shadow-sm'}
                           `}
-                          onClick={() => navigate(`/channel/${channel.channel_id}`)}
+                          onClick={() => navigate(`/youtube-dashboard/${channel.channel_id}`)}
                         >
                           <TrendingUp size={13} />
                           Dashboard

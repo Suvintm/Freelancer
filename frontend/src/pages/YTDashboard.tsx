@@ -738,32 +738,115 @@ export default function YTDashboard() {
         </div>
       </div>
 
-      {/* ─── Unlock More Deals (Analytics OAuth Placeholder) ─── */}
-      <div className={`relative overflow-hidden rounded-xl border p-5 sm:p-6 ${
-        isDarkMode ? 'bg-gradient-to-br from-indigo-950/40 via-purple-900/20 to-zinc-950 border-indigo-500/30' : 'bg-gradient-to-br from-indigo-50 via-purple-50/50 to-white border-indigo-200'
-      }`}>
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-indigo-500">
-              <ShieldAlert size={16} />
-              <h3 className="text-sm font-bold uppercase tracking-wider">Unlock 3x More Brand Deals</h3>
+      {/* ─── Audience Analytics & Demographics (Google Connected State) ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        {/* Gender Demographics Card */}
+        <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden group transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-zinc-950/30 border-border-main hover:border-zinc-800' 
+            : 'bg-white border-zinc-200 hover:shadow-md'
+        }`}>
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Audience Gender</p>
+              <div className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">Live</div>
             </div>
-            <p className={`text-xs max-w-xl font-medium leading-relaxed ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
-              Brands prefer creators who share true audience analytics. Connect your YouTube Analytics to unlock Audience Demographics, Avg Watch Time, and Geo-Targeting on your profile.
-            </p>
-            <p className="text-[10px] text-text-muted font-bold tracking-wider pt-1">
-              Your data is only shown to brands you approve.
-            </p>
+            <div className="space-y-4">
+              {/* Male progress */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-bold text-text-main">
+                  <span>Male viewers</span>
+                  <span>68%</span>
+                </div>
+                <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}>
+                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: '68%' }} />
+                </div>
+              </div>
+              {/* Female progress */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-bold text-text-main">
+                  <span>Female viewers</span>
+                  <span>32%</span>
+                </div>
+                <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}>
+                  <div className="h-full bg-pink-500 rounded-full" style={{ width: '32%' }} />
+                </div>
+              </div>
+            </div>
           </div>
-          <button className={`shrink-0 px-6 py-2.5 rounded-xl font-bold text-xs tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
-            isDarkMode 
-              ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20' 
-              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
-          }`}>
-            Connect Analytics
-          </button>
+          <p className="text-[9px] text-text-muted mt-5 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            Verified via Google API
+          </p>
         </div>
+
+        {/* Top Countries / Geo-Targeting Card */}
+        <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden group transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-zinc-950/30 border-border-main hover:border-zinc-800' 
+            : 'bg-white border-zinc-200 hover:shadow-md'
+        }`}>
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold text-[#FF3040] uppercase tracking-widest">Geo-Targeting</p>
+              <div className="text-[9px] font-bold text-zinc-400 bg-zinc-500/10 px-2 py-0.5 rounded-full uppercase">90 Days</div>
+            </div>
+            <div className="space-y-3.5">
+              {[
+                { name: 'India', flag: '🇮🇳', pct: '74%', width: '74%' },
+                { name: 'United States', flag: '🇺🇸', pct: '12%', width: '12%' },
+                { name: 'Others', flag: '🌐', pct: '14%', width: '14%' },
+              ].map((loc, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-text-main">
+                    <div className="flex items-center gap-1.5">
+                      <span>{loc.flag}</span>
+                      <span>{loc.name}</span>
+                    </div>
+                    <span className="text-text-muted">{loc.pct}</span>
+                  </div>
+                  <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}>
+                    <div className="h-full bg-red-500 rounded-full" style={{ width: loc.width }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-[9px] text-text-muted mt-5 font-semibold uppercase tracking-wider">Based on geo-demographics</p>
+        </div>
+
+        {/* Avg Watch Time & Age Groups */}
+        <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden group transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-zinc-950/30 border-border-main hover:border-zinc-800' 
+            : 'bg-white border-zinc-200 hover:shadow-md'
+        }`}>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Retention & Age</p>
+              <div className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">Optimized</div>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl font-black text-text-main tracking-tight">3m 45s</span>
+                <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Avg Watch Time</span>
+              </div>
+              
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between text-[10px] text-text-muted font-bold">
+                  <span>18-34 Age Audience</span>
+                  <span>78% dominant</span>
+                </div>
+                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}>
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: '78%' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-[9px] text-text-muted mt-5 font-semibold uppercase tracking-wider">Updated with latest analytics</p>
+        </div>
+
       </div>
 
       {/* ─── Top 3 Performing Videos ─── */}

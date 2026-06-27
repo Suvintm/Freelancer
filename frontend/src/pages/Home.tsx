@@ -12,6 +12,8 @@ import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
 import darkLogo from '../assets/darklogo.png';
 import lightLogo from '../assets/lightlogo.png';
+import ytDarkTheme from '../assets/banners/yt dark theme.png';
+import ytLightTheme from '../assets/banners/yt light theme.png';
 import { api } from '../api/client';
 import { FeedPost } from '../components/temp-feed/FeedPost';
 import { FeedReel } from '../components/temp-feed/FeedReel';
@@ -439,119 +441,143 @@ export default function Home() {
   const isSocialPromoter = user?.primaryRole?.category === 'social_promoter';
 
   if (isSocialPromoter) {
+    const bgImage = isDarkMode ? ytDarkTheme : ytLightTheme;
     return (
-      <div className="w-full max-w-4xl mx-auto px-4 py-4 lg:py-6 flex flex-col font-sans">
-        {/* Logo Section */}
-        <div className="w-full px-2 mt-0 mb-8 flex items-center justify-between relative z-30">
-          <img 
-            src={isDarkMode ? darkLogo : lightLogo} 
-            alt="SuviX Official Logo" 
-            className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
+      <div className="w-full max-w-4xl mx-auto px-4 py-4 lg:py-6 flex flex-col gap-6 lg:gap-8 font-sans bg-transparent">
+        
+        {/* Top Hero Banner (Mockup Background Banner for Header elements only) */}
+        <div className="relative w-full rounded-[24px] lg:rounded-[32px] overflow-hidden border border-border-main/50 shadow-md">
+          {/* Background Image Layer */}
+          <div 
+            className="absolute inset-0 bg-cover bg-right bg-no-repeat z-0 transition-all duration-500"
+            style={{ 
+              backgroundImage: `url("${bgImage}")`,
+            }}
           />
-          <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
+          
+          {/* Readability Gradient Overlay */}
+          <div className={`absolute inset-0 z-10 transition-all duration-500 ${
+            isDarkMode 
+              ? 'bg-gradient-to-r from-[#000000] via-[#000000]/95 to-transparent md:from-[#000000] md:via-[#000000]/80 md:to-transparent/30' 
+              : 'bg-gradient-to-r from-white via-white/95 to-transparent md:from-white md:via-white/85 md:to-transparent/30'
+          }`} />
+          
+          {/* Banner Content Wrapper */}
+          <div className="w-full px-6 py-8 lg:px-10 lg:py-14 flex flex-col relative z-20">
+            {/* Logo Section */}
+            <div className="w-full flex items-center justify-between mb-8 lg:mb-12">
+              <img 
+                src={isDarkMode ? darkLogo : lightLogo} 
+                alt="SuviX Official Logo" 
+                className="h-8 w-auto opacity-95 hover:opacity-100 transition-opacity" 
+              />
+              <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
+            </div>
+
+            {/* Hero Content */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="w-full text-center md:text-left space-y-6 md:max-w-xl flex flex-col items-center md:items-start"
+            >
+              {/* Badge */}
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase select-none ${
+                isDarkMode 
+                  ? 'border-purple-500/30 bg-purple-500/10 text-purple-400' 
+                  : 'border-purple-200 bg-purple-50 text-purple-600'
+              }`}>
+                Sponsorship Hub
+              </div>
+
+              {/* Heading */}
+              <h1 className={`text-4xl lg:text-5xl font-black tracking-tight leading-tight ${
+                isDarkMode 
+                  ? 'text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]' 
+                  : 'text-zinc-950'
+              }`}>
+                Powering Creator<br/>
+                <span className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 bg-clip-text text-transparent">Sponsorships.</span>
+              </h1>
+
+              {/* Subheading */}
+              <p className={`text-sm lg:text-base font-medium leading-relaxed max-w-lg ${
+                isDarkMode ? 'text-zinc-300 drop-shadow-[0_1px_5px_rgba(0,0,0,0.5)]' : 'text-zinc-700'
+              }`}>
+                Welcome to the SuviX Sponsor Portal. Discover top YouTube influencers, manage brand promotions, collaborate directly with content creators, and scale your brand reach.
+              </p>
+
+              {/* Call to Actions */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 w-full sm:w-auto">
+                <button 
+                  onClick={() => navigate('/explore')}
+                  className={`w-full sm:w-auto h-12 px-8 rounded-xl font-bold text-sm transition-all active:scale-[0.98] cursor-pointer shadow-lg hover:shadow-xl ${
+                    isDarkMode 
+                      ? 'bg-white text-black hover:bg-zinc-200' 
+                      : 'bg-zinc-950 text-white hover:bg-zinc-900'
+                  }`}
+                >
+                  Explore Creators
+                </button>
+                <button 
+                  onClick={() => navigate('/communication-hub')}
+                  className={`w-full sm:w-auto h-12 px-8 rounded-xl border font-bold text-sm transition-all active:scale-[0.98] cursor-pointer backdrop-blur-md ${
+                    isDarkMode 
+                      ? 'border-zinc-800 bg-zinc-900/40 text-white hover:bg-zinc-800/60' 
+                      : 'border-zinc-200 bg-zinc-50/40 text-zinc-700 hover:bg-zinc-100/60'
+                  }`}
+                >
+                  Open Conversations
+                </button>
+              </div>
+            </motion.div>
+          </div>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="w-full text-center space-y-6 lg:space-y-8 flex-1 flex flex-col items-center justify-center"
-        >
-          {/* Logo or Accent */}
-          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase select-none ${
+        {/* 3-Column Info Cards (Rendered outside the background banner) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 pb-4 text-left">
+          <div className={`p-6 rounded-2xl border space-y-3 transition-all hover:scale-[1.02] duration-300 ${
             isDarkMode 
-              ? 'border-purple-500/30 bg-purple-500/10 text-purple-400' 
-              : 'border-purple-200 bg-purple-50 text-purple-600'
+              ? 'border-zinc-900 bg-zinc-950/40 hover:bg-zinc-950/60' 
+              : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
           }`}>
-            Sponsorship Hub
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
+              01
+            </div>
+            <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Targeted Discovery</h3>
+            <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
+              Filter verified YouTube creators by subscriber counts, target language, category niche, and audience locations.
+            </p>
           </div>
 
-          {/* Heading */}
-          <h1 className={`text-4xl lg:text-6xl font-black tracking-tight leading-none bg-gradient-to-r bg-clip-text text-transparent ${
+          <div className={`p-6 rounded-2xl border space-y-3 transition-all hover:scale-[1.02] duration-300 ${
             isDarkMode 
-              ? 'from-white via-zinc-200 to-zinc-500' 
-              : 'from-zinc-950 via-zinc-800 to-zinc-500'
+              ? 'border-zinc-900 bg-zinc-950/40 hover:bg-zinc-950/60' 
+              : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
           }`}>
-            Powering Creator<br/>
-            <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Sponsorships.</span>
-          </h1>
-
-          {/* Subheading */}
-          <p className={`max-w-2xl mx-auto text-sm lg:text-base font-medium leading-relaxed ${
-            isDarkMode ? 'text-zinc-400' : 'text-zinc-650'
-          }`}>
-            Welcome to the SuviX Sponsor Portal. Discover top YouTube influencers, manage brand promotions, collaborate directly with content creators, and scale your brand reach.
-          </p>
-
-          {/* Call to Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <button 
-              onClick={() => navigate('/explore')}
-              className={`w-full sm:w-auto h-12 px-8 rounded-xl font-bold text-sm transition-all active:scale-[0.98] cursor-pointer shadow-lg ${
-                isDarkMode 
-                  ? 'bg-white text-black hover:bg-zinc-200' 
-                  : 'bg-zinc-950 text-white hover:bg-zinc-900 hover:shadow-xl'
-              }`}
-            >
-              Explore Creators
-            </button>
-            <button 
-              onClick={() => navigate('/communication-hub')}
-              className={`w-full sm:w-auto h-12 px-8 rounded-xl border font-bold text-sm transition-all active:scale-[0.98] cursor-pointer ${
-                isDarkMode 
-                  ? 'border-zinc-800 bg-zinc-900/50 text-white hover:bg-zinc-800 hover:border-zinc-700' 
-                  : 'border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
-              }`}
-            >
-              Open Conversations
-            </button>
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
+              02
+            </div>
+            <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Direct Partnerships</h3>
+            <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
+              Cut out agency middlemen. Message creators directly, negotiate sponsorship rates, and coordinate product placements.
+            </p>
           </div>
 
-          {/* 3-Column Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 text-left">
-            <div className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
-              isDarkMode 
-                ? 'border-zinc-900 bg-zinc-950/40' 
-                : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
-            }`}>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
-                01
-              </div>
-              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Targeted Discovery</h3>
-              <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
-                Filter verified YouTube creators by subscriber counts, target language, category niche, and audience locations.
-              </p>
+          <div className={`p-6 rounded-2xl border space-y-3 transition-all hover:scale-[1.02] duration-300 ${
+            isDarkMode 
+              ? 'border-zinc-900 bg-zinc-950/40 hover:bg-zinc-950/60' 
+              : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
+          }`}>
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
+              03
             </div>
-
-            <div className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
-              isDarkMode 
-                ? 'border-zinc-900 bg-zinc-950/40' 
-                : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
-            }`}>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
-                02
-              </div>
-              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Direct Partnerships</h3>
-              <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
-                Cut out agency middlemen. Message creators directly, negotiate sponsorship rates, and coordinate product placements.
-              </p>
-            </div>
-
-            <div className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
-              isDarkMode 
-                ? 'border-zinc-900 bg-zinc-950/40' 
-                : 'border-zinc-200 bg-zinc-50/50 hover:bg-white shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-md'
-            }`}>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold">
-                03
-              </div>
-              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Full Campaign Tracking</h3>
-              <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
-                Manage all current integrations in one place, sync video analytics, and track total campaign performance metrics.
-              </p>
-            </div>
+            <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>Full Campaign Tracking</h3>
+            <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-550'}`}>
+              Manage all current integrations in one place, sync video analytics, and track total campaign performance metrics.
+            </p>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -841,7 +867,7 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isEditor = user?.role === 'editor';
+  const isEditor = user?.primaryRole?.category === 'video_editor';
 
   const handleFollowToggle = async (targetUserId: string) => {
     if (!user) return;

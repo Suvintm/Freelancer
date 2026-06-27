@@ -7,6 +7,8 @@
 import profileService from "./profile.service.js";
 import logger from "../../utils/logger.js";
 import { withCache } from "../../utils/cache.js";
+import prisma from "../../config/prisma.js";
+import { formatAuthResponse, USER_INCLUDE } from "../auth/utils/authHelpers.js";
 
 /**
  * @desc Get User Posts Grid
@@ -78,4 +80,55 @@ export const getProfilesByCategory = async (req, res) => {
   }
 };
 
-export default { getProfilePosts, getProfileReels, getProfilesByCategory };
+/**
+ * @desc Get User Profile Details (Media Kit)
+ * @route GET /api/profile/:userId
+ */
+export const getProfileDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: USER_INCLUDE,
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      data: formatAuthResponse(user)
+    });
+  } catch (error) {
+    logger.error(`❌ [PROFILE_CTRL] getProfileDetails Error: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch profile details" });
+  }
+};
+
+/**
+ * @desc Get YouTube Channel Details (Specific Media Kit)
+ * @route GET /api/profile/channel/:channelId
+ */
+export const getChannelDetails = async (req, res) => {
+  try {
+    const { channelId } = req.params;
+
+    const data = await profileService.getChannelDetails(channelId);
+
+    if (!data) {
+      return res.status(404).json({ success: false, message: "YouTube channel not found" });
+    }
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    logger.error(`❌ [PROFILE_CTRL] getChannelDetails Error: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch channel details" });
+  }
+};
+
+export default { getProfilePosts, getProfileReels, getProfilesByCategory, getProfileDetails, getChannelDetails };

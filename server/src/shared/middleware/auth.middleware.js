@@ -33,7 +33,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const mapGroupToAppRole = (group, systemRole) => {
   if (systemRole === "admin") return "admin";
   if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "editor";
+  if (group === "PROVIDER") return "provider";
   return "client";
 };
 
@@ -119,7 +119,7 @@ export const authenticate = async (req, res, next) => {
 
     if (!status) {
       await deleteCache(CacheKey.userProfile(userId));
-      const { kickUser } = await import("../../infrastructure/websocket/socket.js");
+      const { kickUser } = await import("../../platform/socket/socket.gateway.js");
       kickUser(userId, "Deleted");
       throw new ApiError(
         401,
@@ -128,7 +128,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (status.is_banned) {
-      const { kickUser } = await import("../../infrastructure/websocket/socket.js");
+      const { kickUser } = await import("../../platform/socket/socket.gateway.js");
       kickUser(userId, "Banned");
       throw new ApiError(
         403,

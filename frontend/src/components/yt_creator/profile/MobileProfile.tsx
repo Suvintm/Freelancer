@@ -226,6 +226,27 @@ export const MobileProfile = () => {
 
   return (
     <div className="flex lg:hidden w-full flex-col min-h-screen bg-[#000000] pb-24 font-sans text-white">
+      {/* ⚠️ Connect YouTube Analytics Alert Banner (Mobile - Own Profile Only) */}
+      {youtubeProfiles.length === 0 && (
+        <div className="w-full px-4 pt-4 pb-2">
+          <div className="border border-amber-500/20 bg-amber-500/10 p-4 rounded-2xl flex flex-col gap-3 shadow-sm">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                ⚠️ YouTube Analytics Disabled
+              </p>
+              <p className="text-[11px] font-semibold leading-relaxed text-zinc-300">
+                Connect your YouTube Analytics to display demographics, avg watch time, and **get sponsors 10x faster**!
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/youtube-dashboard')}
+              className="w-full py-2 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-amber-500/20"
+            >
+              Connect Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════
           SECTION 1 — YT BANNER + STATS ON BANNER
@@ -418,6 +439,11 @@ export const MobileProfile = () => {
                 SELECT CHANNEL ROLE
               </span>
             )}
+            {youtubeProfiles.length > 0 && (
+              <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase tracking-widest shadow-sm">
+                Verified Analytics
+              </span>
+            )}
           </div>
 
           {/* Location + Language */}
@@ -576,7 +602,7 @@ export const MobileProfile = () => {
           {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel, i) => (
             <div 
               key={channel.id || i} 
-              onClick={() => navigate(`/channel/${channel.channel_id}`)}
+              onClick={() => navigate(`/youtube-dashboard/${channel.channel_id}`)}
               className="bg-[#0B0B0B] hover:bg-[#111112] transition-colors rounded-xl p-3 border border-[#1A1A1B] cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -642,7 +668,7 @@ export const MobileProfile = () => {
                   </button>
                 </div>
                 <button 
-                  onClick={() => navigate(`/channel/${channel.channel_id}`)}
+                  onClick={() => navigate(`/youtube-dashboard/${channel.channel_id}`)}
                   className="flex items-center gap-0.5 active:opacity-70 cursor-pointer"
                 >
                   <span className="text-[10px] font-bold text-[#FF3040]">Analytics</span>

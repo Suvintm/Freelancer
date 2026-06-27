@@ -123,7 +123,7 @@ export default function CommunicationHub() {
     if (!token) return;
 
     const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-    const socketUrl = apiBase.replace('/api', '');
+    const socketUrl = apiBase.replace(/\/api$/, '');
 
     const socket = io(socketUrl, {
       auth: { token }

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check, Trash2, X, Heart, MessageCircle, Play, Eye, ThumbsUp, MessageSquare } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
@@ -35,6 +36,7 @@ interface FeedItem {
 export const DesktopProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('yt_posts');
   const [reels, setReels] = useState<FeedItem[]>([]);
@@ -203,11 +205,36 @@ export const DesktopProfile = () => {
     { label: 'Diamond', count: 10000000, img: DIAMOND_BTN },
   ];
 
-  // Use top-level youtubeVideos from auth response which has resolved thumbnails
   const allVideos = user.youtubeVideos || [];
 
   return (
     <div className="hidden lg:flex w-full flex-col min-h-full pb-20">
+      {/* ⚠️ Connect YouTube Analytics Alert Banner (Own Profile Only) */}
+      {youtubeProfiles.length === 0 && (
+        <div className="w-full px-8 pt-4 pb-2">
+          <div className={`border p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+            isDarkMode 
+              ? 'bg-gradient-to-r from-amber-500/10 via-zinc-950/20 to-zinc-950 border-amber-500/20' 
+              : 'bg-gradient-to-r from-amber-50/50 via-white to-white border-amber-200'
+          }`}>
+            <div className="space-y-1">
+              <p className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                ⚠️ YouTube Analytics Disabled
+              </p>
+              <p className="text-xs font-semibold leading-relaxed text-text-muted">
+                Connect your YouTube Analytics to display demographics, avg watch time, and **get sponsors 10x faster**!
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/youtube-dashboard')}
+              className="shrink-0 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-amber-500/20"
+            >
+              Connect Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. Top Banner Wrapper - allows absolute popover to float above and not get clipped */}
       <div 
         className="relative w-full"
@@ -372,8 +399,13 @@ export const DesktopProfile = () => {
                         />
                       </svg>
                    </div>
-                   <p className="text-xs font-medium text-gray-700 truncate" title={username}>{username}</p>
-                </div>
+                    <p className="text-xs font-medium text-gray-700 truncate" title={username}>{username}</p>
+                    {youtubeProfiles.length > 0 && (
+                      <div className="inline-flex mt-1 items-center gap-1 text-[9px] font-bold text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm w-max">
+                        Verified Analytics
+                      </div>
+                    )}
+                 </div>
               </div>
 
               {/* Bio - Directly below Avatar & Identity with some gaps, half profile width */}

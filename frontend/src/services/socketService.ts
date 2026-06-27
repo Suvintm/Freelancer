@@ -16,7 +16,7 @@ export const connectSocket = (token: string): Socket => {
   }
 
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-  const socketUrl = apiBase.replace('/api', '');
+  const socketUrl = apiBase.replace(/\/api$/, '');
 
   socket = io(socketUrl, {
     auth: { token },
