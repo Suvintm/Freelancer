@@ -345,18 +345,7 @@ function App() {
             </AuthGuard>
           } 
         />
-        <Route 
-          path="/channel/:channelId" 
-          element={
-            <AuthGuard>
-              <RoleGuard allowedCategories={['yt_influencer']}>
-                <AppLayout>
-                  <YTDashboard />
-                </AppLayout>
-              </RoleGuard>
-            </AuthGuard>
-          } 
-        />
+
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

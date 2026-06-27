@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/slices/authSlice';
 import { 
   Youtube, Eye, ThumbsUp, MessageSquare, MapPin, 
   MessageCircle, Send, ShieldAlert, ArrowLeft, Loader2, Play
@@ -57,6 +59,31 @@ export default function ChannelProfilePage() {
   const { channelId } = useParams<{ channelId: string }>();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const user = useSelector(selectUser);
+
+  // 🛡️ Redirect Guard: Prevent creators/influencers from accessing client-facing media kit
+  useEffect(() => {
+    if (user) {
+      const isClient = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+      const isAdmin = user?.role === 'admin';
+
+      if (!isClient && !isAdmin) {
+        if (user.primaryRole?.category === 'yt_influencer') {
+          const ownsChannel = user.youtubeProfile?.some(
+            (p: any) => p.channel_id === channelId || p.id === channelId
+          );
+          if (ownsChannel && channelId) {
+            navigate(`/youtube-dashboard/${channelId}`, { replace: true });
+          } else {
+            navigate('/youtube-dashboard', { replace: true });
+          }
+        } else {
+          // Other creator categories (editors, singers, etc.) go to home page
+          navigate('/home', { replace: true });
+        }
+      }
+    }
+  }, [user, channelId, navigate]);
 
   // 1. Fetch Specific YouTube Channel Details
   const { data: channelData, isLoading, error } = useQuery<ChannelProfileData | null>({

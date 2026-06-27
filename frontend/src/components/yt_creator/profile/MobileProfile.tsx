@@ -602,7 +602,7 @@ export const MobileProfile = () => {
           {youtubeProfiles.length > 0 ? youtubeProfiles.map((channel, i) => (
             <div 
               key={channel.id || i} 
-              onClick={() => navigate(`/channel/${channel.channel_id}`)}
+              onClick={() => navigate(`/youtube-dashboard/${channel.channel_id}`)}
               className="bg-[#0B0B0B] hover:bg-[#111112] transition-colors rounded-xl p-3 border border-[#1A1A1B] cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -668,7 +668,7 @@ export const MobileProfile = () => {
                   </button>
                 </div>
                 <button 
-                  onClick={() => navigate(`/channel/${channel.channel_id}`)}
+                  onClick={() => navigate(`/youtube-dashboard/${channel.channel_id}`)}
                   className="flex items-center gap-0.5 active:opacity-70 cursor-pointer"
                 >
                   <span className="text-[10px] font-bold text-[#FF3040]">Analytics</span>
