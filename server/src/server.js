@@ -9,6 +9,7 @@ import { connectPostgres } from "./infrastructure/database/postgres.js";
 import prisma from "./infrastructure/database/postgres.js";
 import { initSocket } from "./platform/socket/socket.gateway.js";
 import { initFirebaseAdmin } from "./infrastructure/push/fcm.admin.js";
+import { startScheduledJobs } from "./platform/scheduler/scheduled.jobs.js";
 
 // Domain entrypoints
 import { youtubeQuotaManager } from "./domains/creator/index.js";
@@ -43,20 +44,43 @@ const startServer = async () => {
   // 3. Initialize Domain Background Services
   try {
     await youtubeQuotaManager.initializeQuota();
-    // scheduleQuotaMaintenance(); // Move this to cron.scheduler.js later
   } catch (err) {
     logger.error(`❌ [QUOTA] Failed to initialize: ${err.message}`);
   }
 
-  initReactionWorker(10000); // Flush every 10 seconds
+  // 4. In-Memory Workers (always active — zero Redis cost)
+  initReactionWorker(10000); // Batch-flush reactions to DB every 10 seconds
 
-  if (process.env.NODE_ENV !== "production") {
-    // import("./infrastructure/queue/workers/index.js"); // To be wired up
+  // 5. Scheduled Jobs (cron-based, zero-cost — only fires at specific times)
+  //    Includes: YouTube quota reset at midnight Pacific (YouTube's actual reset time)
+  startScheduledJobs();
+
+  // 6. BullMQ Background Workers
+  //    Controlled by ENABLE_WORKERS env var so you decide when they run.
+  //    Set ENABLE_WORKERS=true in .env to activate.
+  //
+  //    What stops if ENABLE_WORKERS=false:
+  //      - YouTube channel auto-sync (manual sync still works via API)
+  //      - Async media processing pipeline (upload still works, just synchronous)
+  //      - Story expiry cleanup (stories stay visible until next restart)
+  //      - Search ranking recalibration (search still works, ranking stays as-is)
+  //    What KEEPS working (core app is NOT affected):
+  //      - Auth, login, registration
+  //      - Posts, stories, feed
+  //      - Payments & subscriptions
+  //      - Notifications & messaging
+  //      - Real-time socket events
+  if (process.env.ENABLE_WORKERS === "true") {
+    logger.info("🚀 [WORKERS] ENABLE_WORKERS=true — Starting BullMQ Background Workers...");
+    import("./infrastructure/queue/workers/index.js").catch((err) => {
+      logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
+    });
   } else {
-    logger.warn("⚠️ [WORKER] Background workers disabled in production to preserve Redis quota.");
+    logger.warn("⚠️ [WORKERS] ENABLE_WORKERS is not set to 'true' — Background workers are OFF.");
+    logger.warn("   Set ENABLE_WORKERS=true in .env to enable: YT Sync, Media Processing, Story Cleanup, Search Analytics.");
   }
 
-  // 4. Start HTTP & WebSocket Server
+  // 7. Start HTTP & WebSocket Server
   initSocket(server);
 
   server.listen(PORT, "0.0.0.0", () => {
