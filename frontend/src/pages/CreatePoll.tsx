@@ -3,10 +3,50 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../hooks/useTheme';
 import { 
   BarChart3, MessageSquare, Image as ImageIcon, 
-  Plus, X, Check, ArrowRight, Settings2, Globe, EyeOff, Info
+  Plus, X, Check, ArrowRight, Settings2, Globe, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+
+interface OptionCount {
+  id: string;
+  text: string;
+  _count?: {
+    responses: number;
+  };
+}
+
+interface UserProfile {
+  name?: string;
+  profile_picture?: string;
+}
+
+interface User {
+  username?: string;
+  profile?: UserProfile;
+}
+
+interface PollResponse {
+  id: string;
+  text_response: string;
+  user?: User;
+}
+
+interface Poll {
+  id: string;
+  question: string;
+  type?: 'MULTIPLE_CHOICE' | 'OPEN_ENDED';
+  options: OptionCount[];
+  responses: PollResponse[];
+  _count?: {
+    responses: number;
+  };
+}
+
+interface PollPost {
+  id: string;
+  poll: Poll;
+}
 
 const TEMPLATES = [
   {
@@ -47,10 +87,9 @@ function MyPollsView({ isDarkMode }: { isDarkMode: boolean }) {
     return `${apiBase}${cleanUrl}`;
   };
 
-  const [polls, setPolls] = useState<any[]>([]);
+  const [polls, setPolls] = useState<PollPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPoll, setSelectedPoll] = useState<any>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
 
   useEffect(() => {
     api.get('/polls/my-polls').then(res => {
@@ -59,14 +98,11 @@ function MyPollsView({ isDarkMode }: { isDarkMode: boolean }) {
   }, []);
 
   const loadDetails = async (id: string) => {
-    setLoadingDetails(true);
     try {
       const res = await api.get(`/polls/${id}/details`);
       setSelectedPoll(res.data.data);
     } catch (err) {
       console.error("Failed to load details", err);
-    } finally {
-      setLoadingDetails(false);
     }
   };
 
@@ -78,7 +114,7 @@ function MyPollsView({ isDarkMode }: { isDarkMode: boolean }) {
         <div className="text-center p-10 font-bold text-zinc-500">You haven't created any polls yet.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {polls.map((p: any) => {
+          {polls.map((p: PollPost) => {
             const poll = p.poll;
             const totalVotes = poll._count?.responses || 0;
             return (
@@ -124,7 +160,7 @@ function MyPollsView({ isDarkMode }: { isDarkMode: boolean }) {
 
               {selectedPoll.type === 'MULTIPLE_CHOICE' || !selectedPoll.type ? (
                 <div className="space-y-4">
-                  {selectedPoll.options.map((opt: any) => {
+                  {selectedPoll.options.map((opt: OptionCount) => {
                     const count = opt._count?.responses || 0;
                     const total = selectedPoll._count?.responses || 0;
                     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -148,7 +184,7 @@ function MyPollsView({ isDarkMode }: { isDarkMode: boolean }) {
                   {selectedPoll.responses.length === 0 ? (
                     <p className="text-sm font-bold text-zinc-500">No responses yet.</p>
                   ) : (
-                    selectedPoll.responses.map((resp: any) => (
+                    selectedPoll.responses.map((resp: PollResponse) => (
                       <div key={resp.id} className={`p-4 rounded-2xl ${isDarkMode ? 'bg-zinc-900' : 'bg-zinc-50'}`}>
                         <div className="flex items-center gap-2 mb-3">
                           <img src={resolveImg(resp.user?.profile?.profile_picture) || 'https://via.placeholder.com/150'} className="w-6 h-6 rounded-full object-cover" />
@@ -239,9 +275,10 @@ export default function CreatePoll() {
       if (response.data.success) {
         navigate('/home');
       }
-    } catch (error: any) {
-      console.error("Failed to create poll:", error);
-      setErrorMsg(error.response?.data?.message || 'Failed to create poll. Please try again.');
+    } catch (error) {
+      const err = error as any;
+      console.error("Failed to create poll:", err);
+      setErrorMsg(err.response?.data?.message || 'Failed to create poll. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

@@ -1,6 +1,7 @@
 import prisma from "../../../infrastructure/database/postgres.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 import { redis, redisAvailable } from "../../../infrastructure/cache/redis.client.js";
+import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
 
 // Local cache fallback when Redis is offline
 const memoryLikes = new Map(); // postId -> Set of userIds
@@ -178,6 +179,13 @@ export const getPollPosts = async (req, res) => {
 
       return {
         ...post,
+        user: {
+          ...post.user,
+          profile: post.user.profile ? {
+            ...post.user.profile,
+            profile_picture: smartResolveMediaUrl(post.user.profile.profile_picture)
+          } : null
+        },
         like_count: likesCount,
         isLiked
       };
@@ -230,6 +238,13 @@ export const getMyPolls = async (req, res) => {
 
       return {
         ...post,
+        user: {
+          ...post.user,
+          profile: post.user.profile ? {
+            ...post.user.profile,
+            profile_picture: smartResolveMediaUrl(post.user.profile.profile_picture)
+          } : null
+        },
         like_count: likesCount,
         isLiked
       };
@@ -273,6 +288,16 @@ export const getPollDetails = async (req, res) => {
     // Ensure the user owns this poll (or maybe allow public if they want? The spec says "view full details" for creators)
     if (poll.post.userId !== userId) {
       return res.status(403).json({ success: false, message: "Not authorized to view details" });
+    }
+
+    // Resolve participant avatars
+    if (poll.responses) {
+      poll.responses = poll.responses.map(resp => {
+        if (resp.user?.profile) {
+          resp.user.profile.profile_picture = smartResolveMediaUrl(resp.user.profile.profile_picture);
+        }
+        return resp;
+      });
     }
 
     res.status(200).json({ success: true, data: poll });

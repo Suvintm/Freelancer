@@ -350,6 +350,7 @@ export default function Home() {
           api.get('/polls').catch(() => ({ data: { success: false, data: [] } }))
         ]);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let dbPosts: any[] = [];
 
         if (tempFeedRes.data?.success && tempFeedRes.data.data?.length > 0) {
@@ -372,6 +373,7 @@ export default function Home() {
         }
 
         if (pollsRes.data?.success && pollsRes.data.data?.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const pollPosts = pollsRes.data.data.map((p: any) => ({
             id: p.id,
             user: {

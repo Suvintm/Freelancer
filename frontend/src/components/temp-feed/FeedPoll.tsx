@@ -1,10 +1,56 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MoreHorizontal, Heart, MessageCircle, Share2, Send, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, Heart, Send, CheckCircle2 } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { api } from '../../api/client';
 
-export function FeedPoll({ post, isDarkMode }: { post: any, isDarkMode: boolean }) {
+interface PollOption {
+  id: string;
+  text: string;
+  order_index: number;
+  _count?: {
+    responses: number;
+  };
+}
+
+interface PollResponse {
+  id: string;
+  pollId: string;
+  userId: string;
+  optionId?: string;
+  text_response?: string;
+}
+
+interface Poll {
+  id: string;
+  question: string;
+  type?: 'MULTIPLE_CHOICE' | 'OPEN_ENDED';
+  show_response_count?: boolean;
+  totalVotes?: number;
+  hasVoted?: boolean;
+  userResponse?: PollResponse;
+  options?: PollOption[];
+}
+
+interface Profile {
+  name?: string;
+  profile_picture?: string;
+}
+
+interface User {
+  username?: string;
+  profile?: Profile;
+}
+
+interface Post {
+  id: string;
+  user?: User;
+  like_count?: number;
+  isLiked?: boolean;
+  poll?: Poll;
+}
+
+export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean }) {
   const resolveImg = (url: string | null | undefined) => {
     if (!url) return null;
     if (url.startsWith('http')) return url;
@@ -14,13 +60,13 @@ export function FeedPoll({ post, isDarkMode }: { post: any, isDarkMode: boolean 
   };
 
   // Extract poll data
-  const poll = post.poll || {};
+  const poll = post.poll || ({} as Poll);
   const isMultipleChoice = poll.type === 'MULTIPLE_CHOICE' || !poll.type;
   
   // State for interaction
   const [selectedOption, setSelectedOption] = useState<number | null>(() => {
     if (poll.userResponse?.optionId) {
-      return poll.options?.findIndex((o: any) => o.id === poll.userResponse.optionId) ?? null;
+      return poll.options?.findIndex((o: PollOption) => o.id === poll.userResponse?.optionId) ?? null;
     }
     return null;
   });
@@ -142,7 +188,7 @@ export function FeedPoll({ post, isDarkMode }: { post: any, isDarkMode: boolean 
 
         {isMultipleChoice ? (
           <div className="space-y-3">
-            {(poll.options || []).map((opt: any, index: number) => {
+            {(poll.options || []).map((opt: PollOption, index: number) => {
               const baseCount = opt._count?.responses || 0;
               const addedCount = localCounts[opt.id] || 0;
               const optCount = baseCount + addedCount;
