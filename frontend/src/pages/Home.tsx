@@ -19,6 +19,7 @@ import { FeedPost } from '../components/temp-feed/FeedPost';
 import { FeedReel } from '../components/temp-feed/FeedReel';
 import { FeedYoutube } from '../components/temp-feed/FeedYoutube';
 import { FeedThumbnailVote } from '../components/temp-feed/FeedThumbnailVote';
+import { FeedPoll } from '../components/temp-feed/FeedPoll';
 
 interface Story {
   _id: string;
@@ -343,28 +344,65 @@ export default function Home() {
   const { data: feedPosts = POSTS, isLoading } = useQuery({
     queryKey: ['temp-feed'],
     queryFn: async () => {
-      const response = await api.get('/temp-feed');
-      if (response.data.success && response.data.data.length > 0) {
-        const dbPosts: Post[] = response.data.data.map((item: DbFeedItem) => ({
-          id: item._id,
-          user: item.user,
-          location: item.location || 'Unknown Location',
-          img: item.images?.[0] || '',
-          images: item.images || [],
-          likes: item.likes,
-          comment: item.comment,
-          commentsCount: item.commentsCount,
-          videoUrl: item.videoUrl || '',
-          isVideo: item.type === 'reel' || item.type === 'yt_video',
-          isYtVideo: item.type === 'yt_video',
-          type: item.type,
-          watchOnYtLink: item.watchOnYtLink || '',
-          votes: item.votes || [],
-        }));
-        
-        return [...dbPosts].sort(() => Math.random() - 0.5);
+      try {
+        const [tempFeedRes, pollsRes] = await Promise.all([
+          api.get('/temp-feed').catch(() => ({ data: { success: false, data: [] } })),
+          api.get('/polls').catch(() => ({ data: { success: false, data: [] } }))
+        ]);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let dbPosts: any[] = [];
+
+        if (tempFeedRes.data?.success && tempFeedRes.data.data?.length > 0) {
+          dbPosts = tempFeedRes.data.data.map((item: DbFeedItem) => ({
+            id: item._id,
+            user: item.user,
+            location: item.location || 'Unknown Location',
+            img: item.images?.[0] || '',
+            images: item.images || [],
+            likes: item.likes,
+            comment: item.comment,
+            commentsCount: item.commentsCount,
+            videoUrl: item.videoUrl || '',
+            isVideo: item.type === 'reel' || item.type === 'yt_video',
+            isYtVideo: item.type === 'yt_video',
+            type: item.type,
+            watchOnYtLink: item.watchOnYtLink || '',
+            votes: item.votes || [],
+          }));
+        }
+
+        if (pollsRes.data?.success && pollsRes.data.data?.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pollPosts = pollsRes.data.data.map((p: any) => ({
+            id: p.id,
+            user: {
+              username: p.user?.username || 'Creator',
+              profile: {
+                name: p.user?.profile?.name || '',
+                profile_picture: p.user?.profile?.profile_picture || ''
+              }
+            },
+            type: p.type, // Should be "POLL"
+            poll: {
+              ...p.poll,
+              totalVotes: p.poll?._count?.responses || 0,
+              hasVoted: Array.isArray(p.poll?.responses) && p.poll.responses.length > 0,
+              userResponse: p.poll?.responses?.[0] || null
+            }
+          }));
+          dbPosts = [...dbPosts, ...pollPosts];
+        }
+
+        if (dbPosts.length > 0) {
+          return dbPosts.sort(() => Math.random() - 0.5);
+        }
+
+        return POSTS;
+      } catch (err) {
+        console.error("Failed to fetch feeds:", err);
+        return POSTS;
       }
-      return POSTS;
     }
   });
 
@@ -735,6 +773,8 @@ export default function Home() {
                 postEl = <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
               } else if (post.type === 'thumbnail_vote') {
                 postEl = <FeedThumbnailVote key={post.id} post={post} isDarkMode={isDarkMode} />;
+              } else if (post.type === 'POLL' || post.type === 'poll') {
+                postEl = <FeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
               } else {
                 postEl = <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
               }

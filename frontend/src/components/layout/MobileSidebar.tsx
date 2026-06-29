@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
-  LogOut, Plus, Moon, X, Youtube, MessageSquare
+  LogOut, Plus, Moon, X, Youtube, MessageSquare, BarChart3
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -100,9 +100,9 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
             </div>
 
             {/* Add New Button */}
-            <div className="px-6 py-2">
+            <div className="px-6 py-2 flex flex-col gap-2.5">
               <button
-                onClick={() => handleNavigate('/upload-portal')} // Navigate to Upload Portal
+                onClick={() => handleNavigate('/upload-portal')}
                 className={`w-full flex items-center justify-center gap-2 h-[48px] rounded-xl font-bold text-sm tracking-wide shadow-sm active:scale-[0.98] transition-all duration-200 ${
                   isDarkMode 
                     ? 'bg-white text-zinc-950 hover:bg-zinc-100' 
@@ -112,6 +112,20 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                 <Plus size={16} strokeWidth={3} />
                 <span>Add New</span>
               </button>
+
+              {hasYoutube && (
+                <button
+                  onClick={() => handleNavigate('/polls/create')}
+                  className={`w-full flex items-center justify-center gap-2 h-[48px] rounded-xl font-black text-sm tracking-tight shadow-sm active:scale-[0.98] transition-all duration-200 border-2 border-dashed ${
+                    isDarkMode 
+                      ? 'border-rose-500/30 bg-rose-500/10 text-white hover:bg-rose-500/20 hover:border-rose-500' 
+                      : 'border-rose-400/40 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-500'
+                  }`}
+                >
+                  <BarChart3 size={18} strokeWidth={2.5} />
+                  <span>Create poll for the growth</span>
+                </button>
+              )}
             </div>
 
             {/* Scrollable Nav */}

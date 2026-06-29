@@ -174,8 +174,8 @@ export const getTempFeed = async (req, res) => {
 
     const data = await withCache(cacheKey, TTL_SECONDS, async () => {
       // Instead of $sample which causes full collection scan, use an offset
-      const randomOffset = Math.max(0, Math.floor(Math.random() * count) - 10);
-      const items = await TempFeed.find().skip(randomOffset).limit(10);
+      const randomOffset = Math.max(0, Math.floor(Math.random() * count) - 25);
+      const items = await TempFeed.find().skip(randomOffset).limit(25);
       
       // Shuffle the result array in memory for true randomness
       return items.sort(() => 0.5 - Math.random());

@@ -12,6 +12,7 @@ import { postRouter, storyRouter } from "../../domains/content/index.js";
 import { communityRouter } from "../../domains/community/index.js";
 import { tempFeedRouter } from "../../domains/discover/index.js";
 import { messagingRouter } from "../../domains/messaging/index.js";
+import { pollRouter } from "../../domains/polls/index.js";
 
 /**
  * 🚀 API GATEWAY - V1
@@ -36,6 +37,7 @@ v1Router.use("/profile", profileRouter);
 v1Router.use("/youtube-creator", creatorRouter);
 v1Router.use("/communities", communityRouter);
 v1Router.use("/messages", messagingRouter);
+v1Router.use("/polls", pollRouter);
 v1Router.use("/payment-gateway", paymentGatewayRouter);
 v1Router.use("/payments", subscriptionRouter);
 

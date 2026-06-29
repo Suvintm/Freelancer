@@ -6,6 +6,7 @@ import logger from "../../infrastructure/monitoring/logger.js";
 import axios from "axios";
 import crypto from "crypto";
 import { authLimiter, redis } from "../../shared/middleware/rate-limiter.middleware.js";
+import { redisAvailable } from "../../infrastructure/cache/redis.client.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken, hashToken } from "./services/token.service.js";
 import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
@@ -25,6 +26,9 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+// In-memory fallback store for local development when Redis is offline
+const otcMemoryStore = new Map();
+
 /**
  * HELPER: Generate a One-Time Code (OTC)
  * Used to securely hand off tokens to the frontend/mobile via a POST exchange.
@@ -32,8 +36,19 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
  */
 const generateOTC = async (data) => {
     const code = crypto.randomBytes(32).toString("hex");
-    // Store in Redis for 120 seconds
-    await redis.set(`otc:${code}`, JSON.stringify(data), "EX", 120);
+    const key = `otc:${code}`;
+    const stringifiedData = JSON.stringify(data);
+    
+    if (redisAvailable) {
+        // Store in Redis for 120 seconds
+        await redis.set(key, stringifiedData, "EX", 120);
+    } else {
+        // Fallback to in-memory Map
+        otcMemoryStore.set(key, { data: stringifiedData, expires: Date.now() + 120000 });
+        // Auto-cleanup after 120 seconds
+        setTimeout(() => otcMemoryStore.delete(key), 120000);
+    }
+    
     return code;
 };
 
@@ -137,15 +152,26 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
         const redisKey = `otc:${code}`;
         logger.debug(`[OAuth] Exchange attempt for code: ${code.substring(0, 8)}...`);
 
-        const storedData = await redis.get(redisKey);
+        let storedData = null;
+
+        if (redisAvailable) {
+            storedData = await redis.get(redisKey);
+            if (storedData) {
+                // Atomically consume the code (prevent replay attacks)
+                await redis.del(redisKey);
+            }
+        } else {
+            const memItem = otcMemoryStore.get(redisKey);
+            if (memItem && memItem.expires > Date.now()) {
+                storedData = memItem.data;
+                otcMemoryStore.delete(redisKey);
+            }
+        }
 
         if (!storedData) {
             logger.warn(`[OAuth] Exchange failed: Code not found or expired: ${code.substring(0, 8)}...`);
             return res.status(401).json({ success: false, message: "Invalid or expired exchange code" });
         }
-
-        // Atomically consume the code (prevent replay attacks)
-        await redis.del(redisKey);
 
         const data = JSON.parse(storedData);
 
