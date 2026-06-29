@@ -41,7 +41,7 @@ export const BottomNav = () => {
     let ticking = false;
 
     const handleScroll = (e: Event) => {
-      const target = e.target as HTMLElement | Document;
+      const target = e.target as HTMLElement | Document | Window;
       
       // Ignore scroll events from elements that are not block-scroll containers or are horizontal scroll areas
       if (target instanceof HTMLElement) {
