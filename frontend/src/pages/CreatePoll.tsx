@@ -276,7 +276,7 @@ export default function CreatePoll() {
         navigate('/home');
       }
     } catch (error) {
-      const err = error as any;
+      const err = error as { response?: { data?: { message?: string } } };
       console.error("Failed to create poll:", err);
       setErrorMsg(err.response?.data?.message || 'Failed to create poll. Please try again.');
     } finally {
