@@ -12,9 +12,17 @@
 
 import logger from '../../infrastructure/monitoring/logger.js';
 import { scheduleQuotaMaintenance } from '../../infrastructure/queue/workers/queues.js';
+import { syncLikesToPostgres } from '../../domains/polls/controllers/pollController.js';
 
 export const startScheduledJobs = async () => {
   logger.info("📅 [SCHEDULER] Starting scheduled jobs...");
+
+  // ─── Deferred Likes Cache Sync ────────────────────────────────────────────────
+  // Periodically flushes high-frequency likes count from Redis/memory cache to PostgreSQL
+  setInterval(() => {
+    syncLikesToPostgres();
+  }, 60000);
+  logger.info("✅ [SCHEDULER] Deferred likes sync background task initialized (60s loop).");
 
   // ─── YouTube API Quota Reset ──────────────────────────────────────────────────
   // Fires once daily at midnight Pacific Time — which is when YouTube

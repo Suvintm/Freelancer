@@ -106,6 +106,15 @@ export const getFeed = async (req, res) => {
               duration: true,
             },
           },
+          poll: {
+            include: {
+              options: {
+                orderBy: {
+                  order_index: 'asc'
+                }
+              }
+            }
+          },
         },
         orderBy: { id: "desc" },
         take: take,

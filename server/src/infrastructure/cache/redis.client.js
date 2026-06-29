@@ -255,6 +255,15 @@ const redisProxy = {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.hincrby(key, field, increment);
   },
+  hincrby: (key, field, increment) => redisProxy.hIncrBy(key, field, increment),
+  hget: (key, field) => {
+    if (!redisAvailable || !client) return Promise.resolve(null);
+    return client.hget(key, field);
+  },
+  sismember: (key, member) => {
+    if (!redisAvailable || !client) return Promise.resolve(0);
+    return client.sismember(key, member);
+  },
   hGetAll: (key) => {
     if (!redisAvailable || !client) return Promise.resolve({});
     return client.hgetall(key);

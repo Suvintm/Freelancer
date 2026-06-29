@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ReactLenis }       from 'lenis/react';
-import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase } from 'lucide-react';
+import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase, BarChart3 } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -166,6 +166,27 @@ export const Sidebar = () => {
             View full profile
           </button>
         </div>
+
+        {/* ── 1.5 Growth Tools ────────────────────────────────────────────── */}
+        {user?.primaryRole?.category === 'yt_influencer' && (
+          <button
+            onClick={() => navigate('/polls/create')}
+            className={`
+              w-full py-4 px-4 rounded-[24px] border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all duration-300 group
+              ${isDarkMode 
+                ? 'border-rose-500/30 bg-rose-500/5 hover:border-rose-500 hover:bg-rose-500/10' 
+                : 'border-rose-400/40 bg-rose-50/50 hover:border-rose-500 hover:bg-rose-50 hover:shadow-md'}
+            `}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-rose-500 text-white' : 'bg-rose-600 text-white'} group-hover:scale-110 transition-transform shadow-lg shadow-rose-500/20`}>
+              <BarChart3 size={20} />
+            </div>
+            <div className="text-center">
+              <span className={`block text-[14px] font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Create poll for the growth</span>
+              <span className={`block text-[11px] font-semibold mt-1 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>Engage & Grow Your Channel</span>
+            </div>
+          </button>
+        )}
 
         {/* ── 2. YouTube Channel Overview (YouTube Creators only) ──────────── */}
         {user?.primaryRole?.category === 'yt_influencer' && (

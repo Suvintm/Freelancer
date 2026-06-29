@@ -25,6 +25,7 @@ import Subscription from './pages/Subscription';
 import About from './pages/About';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
+import CreatePoll from './pages/CreatePoll';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -179,6 +180,16 @@ function App() {
         <Route path="/terms" element={<AppLayout><TermsAndConditions /></AppLayout>} />
         
         {/* Authenticated Protected Routes */}
+        <Route 
+          path="/polls/create" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <CreatePoll />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
         <Route 
           path="/home" 
           element={
