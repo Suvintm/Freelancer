@@ -5,7 +5,6 @@ import {
   Info,
   Check,
   ArrowRight,
-  Loader2,
   X
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -15,7 +14,10 @@ import { clearTempSignupData, setTempSignupData } from '../store/slices/onboardi
 import { useCategories } from '../queries/useCategories';
 import type { RoleCategory } from '../api/services/category.service';
 import logo from '../assets/darklogo.png';
-
+import LottieComponent from "lottie-react";
+// Handle ESM/CJS interop for lottie-react
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
+import loaderAnimation from "../assets/lottie/loader.json";
 // Import assets for high-fidelity thumbnails
 import youtubeThumb from '../assets/categories/youtube.jpg';
 import youtubeIcon from '../assets/categories/youtubeicon.png';
@@ -151,6 +153,9 @@ export default function RoleSelection() {
   const remainingCategories = categories.filter(c => !CATEGORY_ORDER.includes(c.slug));
   const finalDisplayCategories = [...sortedCategories, ...remainingCategories];
 
+  console.log("Lottie:", Lottie);
+console.log("Loader:", loaderAnimation);
+
   return (
     <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative text-white">
       {/* Visual Side (Left) */}
@@ -206,7 +211,11 @@ export default function RoleSelection() {
           <div className="max-w-6xl mx-auto py-8">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 text-white animate-spin mb-4 opacity-80" />
+               <Lottie
+    animationData={loaderAnimation}
+    loop
+    className="w-44 h-44"
+/>
                 <p className="text-zinc-500 font-bold tracking-widest uppercase text-[10px]">Loading Roles...</p>
               </div>
             ) : error || finalDisplayCategories.length === 0 ? (

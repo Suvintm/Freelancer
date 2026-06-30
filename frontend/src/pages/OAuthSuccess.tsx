@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import LottieComponent from 'lottie-react';
+import securityLoaderAnimation from '../assets/lottie/security_loader.json';
+
+// Handle ESM/CJS interop for lottie-react
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 import { useDispatch } from 'react-redux';
 import { useQueryClient } from '@tanstack/react-query';
 import { setAuth } from '../store/slices/authSlice';
@@ -151,9 +156,15 @@ export default function OAuthSuccess() {
   }, [searchParams, navigate, dispatch, queryClient]);
 
   return (
-    <div className="h-screen w-full bg-black flex flex-col items-center justify-center gap-6">
-      <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-      <div className="text-center space-y-2">
+    <div className="h-screen w-full bg-black flex flex-col items-center justify-center gap-4">
+      <div className="w-48 h-48 flex items-center justify-center">
+        <Lottie 
+          animationData={securityLoaderAnimation} 
+          loop={true} 
+          style={{ width: '100%', height: '100%' }} 
+        />
+      </div>
+      <div className="text-center space-y-2 -mt-4">
         <h2 className="text-2xl font-bold text-white uppercase tracking-widest font-display">Securing Session</h2>
         <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">Finalizing your secure login...</p>
       </div>

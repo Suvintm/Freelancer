@@ -654,9 +654,9 @@ export default function Home() {
                         <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
                       </div>
                     </div>
-                    {story.isUser && !story.hasActive && (
-                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
-                        <Plus size={8} className="text-white" strokeWidth={4} />
+                    {story.isUser && (
+                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[6px] border-2 border-container w-[18px] h-[18px] flex items-center justify-center shadow-lg">
+                        <Plus size={10} className="text-white" strokeWidth={4} />
                       </div>
                     )}
                   </div>
@@ -717,9 +717,9 @@ export default function Home() {
                       <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
                     </div>
                   </div>
-                  {story.isUser && !story.hasActive && (
-                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full border-2 border-container p-0.5 shadow-lg">
-                      <Plus size={8} className="text-white" strokeWidth={4} />
+                  {story.isUser && (
+                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[5px] border-2 border-container w-[16px] h-[16px] flex items-center justify-center shadow-lg">
+                      <Plus size={9} className="text-white" strokeWidth={4} />
                     </div>
                   )}
                 </div>
