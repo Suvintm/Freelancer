@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Volume2, VolumeX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import type { Story } from '../../data/storyData';
 
@@ -27,7 +27,9 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Default muted for safety & autoplay
-  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(
+    stories[initialUserIndex !== -1 ? initialUserIndex : 0]?.slides?.[0]?.type === 'video'
+  );
 
   const activeUser = stories[currentUserIndex];
   const activeSlide = activeUser?.slides[currentSlideIndex];
@@ -45,50 +47,52 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   }, [currentUserIndex, activeUser, activeStoryId, navigate]);
 
   // Navigate between users
-  const handleNextUser = () => {
+  const handleNextUser = useCallback(() => {
     if (currentUserIndex < stories.length - 1) {
-      setCurrentUserIndex((prev) => prev + 1);
+      const nextIndex = currentUserIndex + 1;
+      setCurrentUserIndex(nextIndex);
       setCurrentSlideIndex(0);
       setProgress(0);
+      setIsVideoLoading(stories[nextIndex]?.slides?.[0]?.type === 'video');
     } else {
       onClose();
     }
-  };
+  }, [currentUserIndex, stories, onClose]);
 
-  const handlePrevUser = () => {
+  const handlePrevUser = useCallback(() => {
     if (currentUserIndex > 0) {
-      setCurrentUserIndex((prev) => prev - 1);
+      const prevIndex = currentUserIndex - 1;
+      setCurrentUserIndex(prevIndex);
       setCurrentSlideIndex(0);
       setProgress(0);
+      setIsVideoLoading(stories[prevIndex]?.slides?.[0]?.type === 'video');
     } else {
       setProgress(0);
     }
-  };
+  }, [currentUserIndex, stories]);
 
   // Navigate between slides
-  const handleNextSlide = () => {
+  const handleNextSlide = useCallback(() => {
     if (currentSlideIndex < activeUser.slides.length - 1) {
-      setCurrentSlideIndex((prev) => prev + 1);
+      const nextSlideIndex = currentSlideIndex + 1;
+      setCurrentSlideIndex(nextSlideIndex);
       setProgress(0);
+      setIsVideoLoading(activeUser.slides[nextSlideIndex]?.type === 'video');
     } else {
       handleNextUser();
     }
-  };
+  }, [currentSlideIndex, activeUser, handleNextUser]);
 
-  const handlePrevSlide = () => {
+  const handlePrevSlide = useCallback(() => {
     if (currentSlideIndex > 0) {
-      setCurrentSlideIndex((prev) => prev - 1);
+      const prevSlideIndex = currentSlideIndex - 1;
+      setCurrentSlideIndex(prevSlideIndex);
       setProgress(0);
+      setIsVideoLoading(activeUser.slides[prevSlideIndex]?.type === 'video');
     } else {
       handlePrevUser();
     }
-  };
-
-  // Reset states on slide or user change
-  useEffect(() => {
-    setProgress(0);
-    setIsVideoLoading(activeSlide?.type === 'video');
-  }, [currentUserIndex, currentSlideIndex, activeSlide]);
+  }, [currentSlideIndex, activeUser, handlePrevUser]);
 
   // Image progress timer
   useEffect(() => {
@@ -122,7 +126,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         progressIntervalRef.current = null;
       }
     };
-  }, [activeSlide, isPaused, currentUserIndex, currentSlideIndex]);
+  }, [activeSlide, isPaused, handleNextSlide]);
 
   // Video progress and play state sync
   useEffect(() => {
@@ -136,7 +140,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         console.warn('Autoplay blocked or playback interrupted:', err);
       });
     }
-  }, [isPaused, activeSlide, currentUserIndex, currentSlideIndex]);
+  }, [isPaused, activeSlide]);
 
   // Handle Video Time Updates
   const handleVideoTimeUpdate = () => {
@@ -164,10 +168,10 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentUserIndex]);
+  }, [currentUserIndex, handleNextUser, handlePrevUser, onClose]);
 
   // Pointer press actions (tap vs hold)
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = () => {
     pointerDownTimeRef.current = Date.now();
     holdTimeoutRef.current = setTimeout(() => {
       setIsPaused(true);
