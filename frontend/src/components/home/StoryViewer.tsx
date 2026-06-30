@@ -37,7 +37,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const pointerDownTimeRef = useRef<number>(0);
-  const holdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync URL with active user index
   useEffect(() => {
@@ -232,7 +232,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.4}
-        onDragEnd={(e, info) => {
+        onDragEnd={(_, info) => {
           const swipeThreshold = 60;
           if (info.offset.x < -swipeThreshold) {
             handleNextUser(); // Swipe left -> Next user
