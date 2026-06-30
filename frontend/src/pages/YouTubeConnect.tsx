@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import LottieComponent from 'lottie-react';
+import youtubeLoaderAnimation from '../assets/lottie/youtube_loader.json';
+
+// Handle ESM/CJS interop for lottie-react
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 import { 
   ChevronLeft, 
-  Loader2,
   ArrowRight,
   Plus,
   Check,
@@ -133,8 +137,14 @@ export default function YouTubeConnect() {
     return (
       <div className="h-screen w-full bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-zinc-900 animate-spin" />
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Initializing Sync...</p>
+          <div className="w-40 h-40 flex items-center justify-center">
+            <Lottie 
+              animationData={youtubeLoaderAnimation} 
+              loop={true} 
+              style={{ width: '100%', height: '100%' }} 
+            />
+          </div>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-2">Initializing Sync...</p>
         </div>
       </div>
     );
