@@ -201,6 +201,16 @@ function App() {
           } 
         />
         <Route 
+          path="/stories/:storyId" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <Home />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
           path="/explore" 
           element={
             <AuthGuard>

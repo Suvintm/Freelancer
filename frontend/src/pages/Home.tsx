@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
@@ -20,51 +20,9 @@ import { FeedReel } from '../components/temp-feed/FeedReel';
 import { FeedYoutube } from '../components/temp-feed/FeedYoutube';
 import { FeedThumbnailVote } from '../components/temp-feed/FeedThumbnailVote';
 import { FeedPoll } from '../components/temp-feed/FeedPoll';
-
-interface Story {
-  _id: string;
-  username: string;
-  avatar: string;
-  hasActive: boolean;
-  isUser?: boolean;
-  verifiedColor?: string;
-  isSeen?: boolean;
-}
-
-const SUVIX_INDUSTRY_STORIES: Story[] = [
-  {
-    _id: '1_yt_creator',
-    username: 'ChaiAurCode',
-    avatar: 'https://i.ytimg.com/vi/TZDbe_8raSA/maxresdefault.jpg',
-    isSeen: false,
-    verifiedColor: '#EF4444', // Red for YT Creator
-    hasActive: true,
-  },
-  {
-    _id: '2_fitness_influencer',
-    username: 'Sam Sameer',
-    avatar: 'https://tse1.explicit.bing.net/th/id/OIP.PMTNrFgQOWBq5Yxr63Bv6QAAAA?rs=1&pid=ImgDetMain&o=7&rm=3',
-    isSeen: false,
-    verifiedColor: '#22C55E', // Green for Fitness
-    hasActive: true,
-  },
-  {
-    _id: '4_editor',
-    username: 'SuviX',
-    avatar: 'https://media.istockphoto.com/id/1277971635/photo/portrait-of-a-smiling-man-of-indian-ethnicity.jpg?s=1024x1024&w=is&k=20&c=Ve_FZ5p_gO5Kd3gkW6nVicgiwAi5I0lXcW_L4MGKLEY=',
-    isSeen: true,
-    verifiedColor: '#3B82F6', // Blue for Editor
-    hasActive: true,
-  },
-  {
-    _id: '5_client',
-    username: 'SuviX',
-    avatar: 'https://media.istockphoto.com/id/1541953395/photo/young-happy-indian-parents-holding-cute-baby-boy-while-standing-at-home-asian-mom-and-dad.jpg?s=1024x1024&w=is&k=20&c=vBycraqLaqkFZreZRVCoKUrwmZHMLsdiVuasZ7I7Fsc=',
-    isSeen: true,
-    verifiedColor: '#A855F7', // Purple for Client
-    hasActive: true,
-  }
-];
+import { MOCK_STORIES } from '../data/storyData';
+import type { Story } from '../data/storyData';
+import { StoryViewer } from '../components/home/StoryViewer';
 
 // STORIES array moved inside Home component to support dynamic user state.
  
@@ -330,6 +288,7 @@ interface DbFeedItem {
 
 
 export default function Home() {
+  const { storyId } = useParams<{ storyId?: string }>();
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isDarkMode } = useTheme();
@@ -451,8 +410,29 @@ export default function Home() {
   }, [feedPosts, isMobile]); // Re-run when feedPosts or mobile layout status changes
 
   const stories: Story[] = [
-    { _id: 'me', username: 'Your Story', avatar: userAvatar, isUser: true, hasActive: false },
-    ...SUVIX_INDUSTRY_STORIES,
+    {
+      _id: 'me',
+      username: 'Your Story',
+      avatar: userAvatar,
+      isUser: true,
+      hasActive: true,
+      slides: [
+        {
+          id: 'me_1',
+          type: 'image',
+          url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=1080',
+          caption: 'Enjoying a peaceful sunset... 🌇',
+          durationMs: 5000,
+        },
+        {
+          id: 'me_2',
+          type: 'video',
+          url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+          caption: 'Epic CGI short film! 🐘',
+        },
+      ],
+    },
+    ...MOCK_STORIES,
   ];
 
   useEffect(() => {
@@ -621,7 +601,8 @@ export default function Home() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6 lg:space-y-10 pb-20 pt-1 lg:pt-4">
+    <div className="relative w-full max-w-3xl mx-auto pb-20 pt-1 lg:pt-4">
+      <div className={`transition-all duration-300 ${storyId ? 'blur-md pointer-events-none select-none' : ''}`}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes soundwave-bar {
           0%, 100% { transform: scaleY(0.2); }
@@ -659,7 +640,11 @@ export default function Home() {
           <section className="w-full lg:w-[60%]">
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
               {stories.map((story) => (
-                <div key={story._id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative">
+                <div 
+                  key={story._id} 
+                  onClick={() => navigate(`/stories/${story._id}`)}
+                  className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative"
+                >
                   <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                     <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                       <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
@@ -718,6 +703,7 @@ export default function Home() {
             {stories.map((story) => (
               <motion.div 
                 key={story._id} 
+                onClick={() => navigate(`/stories/${story._id}`)}
                 whileTap={{ scale: 0.92, rotate: story.isUser ? 0 : [0, -3, 3, 0] }}
                 transition={{ duration: 0.2 }}
                 className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group relative"
@@ -789,6 +775,16 @@ export default function Home() {
           </div>
         )}
       </section>
+      </div>
+      <AnimatePresence>
+        {storyId && (
+          <StoryViewer
+            stories={stories}
+            activeStoryId={storyId}
+            onClose={() => navigate('/home')}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
