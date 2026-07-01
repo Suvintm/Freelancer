@@ -7,6 +7,9 @@ import { useDiscoveryStore, FeedItem } from '../../../store/useDiscoveryStore';
 import { PostItem } from './items/PostItem';
 import { ReelItem } from './items/ReelItem';
 import { SuggestionCarousel } from './items/SuggestionCarousel';
+import { ThumbnailVoteItem } from './items/ThumbnailVoteItem';
+import { PollItem } from './items/PollItem';
+import { YoutubeItem } from './items/YoutubeItem';
 import { useTheme } from '../../../context/ThemeContext';
 import { RefreshControl } from 'react-native';
 import { useRefreshManager } from '../../../hooks/useRefreshManager';
@@ -124,6 +127,12 @@ export const UnifiedFeed = ({
         return <PostItem data={item.data} isVisible={isVisible} />;
       case 'REEL':
         return <ReelItem data={item.data} isVisible={isVisible} />;
+      case 'THUMBNAIL_VOTE':
+        return <ThumbnailVoteItem data={item.data} />;
+      case 'POLL':
+        return <PollItem data={item.data} />;
+      case 'YT_VIDEO':
+        return <YoutubeItem data={item.data} isVisible={isVisible} />;
       case 'SUGGESTION_EDITORS':
         return <SuggestionCarousel type="EDITORS" data={item.data} />;
       case 'SUGGESTION_RENTALS':

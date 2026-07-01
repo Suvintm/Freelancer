@@ -48,15 +48,15 @@ export default function DashboardIndex({ scrollY }: { scrollY?: SharedValue<numb
   const { width: screenWidth } = useWindowDimensions();
   
   const sidebarWidth = Math.round(screenWidth * 0.215);
-  const leftColumnWidth = screenWidth - sidebarWidth - 10 - 16; // width - sidebar - gap - paddingLeft
+  const leftColumnWidth = screenWidth - sidebarWidth - 6; // flush to left edge, minimal 6px gap before sidebar
 
-  const bannerHeight = leftColumnWidth / (16 / 9);
+  const bannerHeight = leftColumnWidth / 1.35;
   const cardWidth = leftColumnWidth * 0.78;
-  const cardHeight = cardWidth / 2.42;
+  const cardHeight = cardWidth / 3.2;
   const featureGalleryHeight = cardHeight + 28; // Header text + margins + card height
 
   const navbarHeight = insets.top + 50; // top safe area + navbar height
-  const topSpacing = navbarHeight + 24; // Added extra gap below top nav bar for a clear split layout
+  const topSpacing = navbarHeight + 6; // Reduced gap below top navigation bar
 
   // STAGGERED INITIALIZATION: Delay heavy Reanimated components to avoid Main Thread choke
   React.useEffect(() => {
@@ -126,28 +126,26 @@ export default function DashboardIndex({ scrollY }: { scrollY?: SharedValue<numb
           <View style={[styles.splitLayoutContainer, { paddingTop: topSpacing }]}>
             {/* Left Column: Banner & Feature Gallery */}
             <View 
-              style={{ width: leftColumnWidth }}
+              style={{ width: screenWidth }}
               onLayout={(e) => setLeftColumnHeight(Math.round(e.nativeEvent.layout.height))}
             >
               {/* Banner Section */}
-              <View style={styles.bannerWrapper}>
+              <View style={[styles.bannerWrapper, { width: leftColumnWidth }]}>
                 {isReady ? (
                   <UnifiedBanner paused={isHomeScrolling} width={leftColumnWidth} />
                 ) : (
-                  <View style={{ height: leftColumnWidth / (16 / 9) }} />
+                  <View style={{ height: leftColumnWidth / 1.35 }} />
                 )}
               </View>
  
-              <View style={{ height: 24 }} />
- 
               {/* Feature Gallery */}
               {isReady && (
-                <FeatureGallery paused={isHomeScrolling} isLoading={isDiscoveryLoading} width={leftColumnWidth} />
+                <FeatureGallery paused={isHomeScrolling} isLoading={isDiscoveryLoading} width={screenWidth} />
               )}
             </View>
  
             {/* Right Column: Vertical Stories Sidebar */}
-            <View style={[styles.rightColumn, { width: sidebarWidth, height: leftColumnHeight }]}>
+            <View style={[styles.rightColumn, { width: sidebarWidth, height: leftColumnHeight, top: topSpacing }]}>
               <StoryBar 
                 isLoading={isDiscoveryLoading} 
                 layout="vertical" 
@@ -183,14 +181,17 @@ const styles = StyleSheet.create({
   splitLayoutContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingLeft: 16,
+    paddingLeft: 0,
     justifyContent: 'space-between',
     marginBottom: 16,
+    position: 'relative',
   },
   bannerWrapper: {
     width: '100%',
   },
   rightColumn: {
+    position: 'absolute',
+    right: 0,
     alignItems: 'flex-end',
     zIndex: 100,
     elevation: 100,

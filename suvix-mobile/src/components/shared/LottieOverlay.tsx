@@ -8,7 +8,9 @@ import {
   useColorScheme,
   Easing
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { Colors } from '../../constants/Colors';
+import securityLoaderAnimation from '../../../assets/lottie/security_loader.json';
 
 const { width } = Dimensions.get('window');
 
@@ -18,13 +20,13 @@ const YOUTUBE_COLORS = ['#FF0000', '#FF0000', '#FF0000', '#FF0000'];
 interface LottieOverlayProps {
   isVisible: boolean;
   message?: string;
-  theme?: 'google' | 'youtube';
+  theme?: 'google' | 'youtube' | 'security';
 }
 
 export const LottieOverlay: React.FC<LottieOverlayProps> = ({ 
   isVisible, 
   message = "Authenticating...",
-  theme: colorTheme = 'google'
+  theme: colorTheme = 'security'
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -88,37 +90,46 @@ export const LottieOverlay: React.FC<LottieOverlayProps> = ({
       ]}
     >
       <View style={styles.content}>
-        <View style={styles.dotContainer}>
-          {dotAnims.map((anim, i) => (
-            <Animated.View
-              key={i}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: currentColors[i],
-                  transform: [
-                    {
-                      scale: anim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.8, 1.5],
-                      }),
-                    },
-                    {
-                      translateY: anim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -10],
-                      }),
-                    }
-                  ],
-                  opacity: anim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0.4, 1, 0.4],
-                  }),
-                },
-              ]}
-            />
-          ))}
-        </View>
+        {colorTheme === 'security' ? (
+          <LottieView
+            source={securityLoaderAnimation}
+            autoPlay
+            loop
+            style={styles.lottieView}
+          />
+        ) : (
+          <View style={styles.dotContainer}>
+            {dotAnims.map((anim, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: currentColors[i],
+                    transform: [
+                      {
+                        scale: anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.5],
+                        }),
+                      },
+                      {
+                        translateY: anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -10],
+                        }),
+                      }
+                    ],
+                    opacity: anim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [0.4, 1, 0.4],
+                    }),
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        )}
         <Text style={[styles.message, { color: theme.text }]}>{message}</Text>
         <Text style={[styles.subText, { color: theme.textSecondary }]}>
           Please wait while we secure your session.
@@ -152,6 +163,11 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     marginHorizontal: 8,
+  },
+  lottieView: {
+    width: 180,
+    height: 180,
+    marginBottom: 20,
   },
   message: {
     marginTop: 10,

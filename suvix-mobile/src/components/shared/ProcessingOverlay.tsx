@@ -3,12 +3,13 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  ActivityIndicator, 
   Dimensions, 
   Animated,
   useColorScheme 
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { Colors } from '../../constants/Colors';
+import securityLoaderAnimation from '../../../assets/lottie/security_loader.json';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,7 +58,12 @@ export const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({
       ]}
     >
       <View style={styles.content}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <LottieView
+          source={securityLoaderAnimation}
+          autoPlay
+          loop
+          style={styles.lottieView}
+        />
         <Text style={[styles.message, { color: theme.text }]}>{message}</Text>
         <Text style={[styles.subText, { color: theme.textSecondary }]}>This only takes a moment.</Text>
       </View>
@@ -77,6 +83,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     width: width * 0.8,
+  },
+  lottieView: {
+    width: 180,
+    height: 180,
+    marginBottom: 10,
   },
   message: {
     marginTop: 20,

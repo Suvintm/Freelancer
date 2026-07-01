@@ -77,7 +77,7 @@ export const FeatureGallery = ({ paused = false, isLoading = false, width }: Fea
 
   const containerWidth = width || screenWidth;
   const cardWidth = width ? containerWidth * 0.78 : containerWidth * 0.65;
-  const GALLERY_ASPECT_RATIO = 2.42;
+  const GALLERY_ASPECT_RATIO = 3.2;
   const cardHeight = cardWidth / GALLERY_ASPECT_RATIO;
   const fullCardWidth = cardWidth + CARD_MARGIN;
   const singleSetWidth = fullCardWidth * ORIGINAL_FEATURES.length;

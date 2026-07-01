@@ -5,21 +5,19 @@ import {
   StyleSheet, 
   useWindowDimensions, 
   Image, 
-  FlatList, 
   TouchableOpacity, 
   Animated,
-  Platform
+  PanResponder
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useBannerData } from '../../hooks/useBannerData';
 import * as Haptics from 'expo-haptics';
 
-const HORIZONTAL_PADDING = 20;
-const BANNER_ASPECT_RATIO = 16 / 9;
+const BANNER_ASPECT_RATIO = 1.3;
 const AUTO_SCROLL_MS = 5000;
+const SWIPE_THRESHOLD = 40;
 
 type UnifiedBannerProps = {
   data?: any[];
@@ -34,18 +32,14 @@ export const UnifiedBanner = ({ data, paused = false, width }: UnifiedBannerProp
   const { data: fetchedData = [] } = useBannerData();
   const { width: screenWidth } = useWindowDimensions();
 
-  const listRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isUserDraggingRef = useRef(false);
+  const anims = useRef<Array<{ x: Animated.Value; scale: Animated.Value; opacity: Animated.Value }>>([]);
+  const dragX = useRef(new Animated.Value(0)).current;
+  const autoScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cardWidth = width || screenWidth;
-  const imagePadding = width !== undefined ? 0 : HORIZONTAL_PADDING;
-  const imageWidth = cardWidth - imagePadding * 2;
-  const bannerHeight = imageWidth / BANNER_ASPECT_RATIO;
+  const centerCardWidth = cardWidth * 0.86;
+  const bannerHeight = centerCardWidth / BANNER_ASPECT_RATIO;
 
   const sourceData = Array.isArray(data) && data.length ? data : fetchedData;
   const banners = useMemo(() => {
@@ -57,159 +51,276 @@ export const UnifiedBanner = ({ data, paused = false, width }: UnifiedBannerProp
       .filter((item: any) => !!item.image);
   }, [sourceData]);
 
-  // ── Auto-Scroll & Progress Animation ─────────────────────────────────────
-  const lastIndexRef = useRef(0);
-  const currentProgressRef = useRef(0);
+  // Navigate functions
+  const next = useCallback(() => {
+    if (banners.length <= 1) return;
+    setActiveIndex((idx) => (idx + 1) % banners.length);
+    Haptics.selectionAsync();
+  }, [banners.length]);
 
-  // ── Auto-Scroll & Progress Animation ─────────────────────────────────────
-  useEffect(() => {
-    if (paused || banners.length <= 1 || isUserDraggingRef.current) {
-        progressAnim.stopAnimation((val) => {
-          currentProgressRef.current = val;
-        });
-        return;
-    }
+  const prev = useCallback(() => {
+    if (banners.length <= 1) return;
+    setActiveIndex((idx) => (idx - 1 + banners.length) % banners.length);
+    Haptics.selectionAsync();
+  }, [banners.length]);
 
-    // Determine if we should resume or start fresh
-    const isNewSlide = activeIndex !== lastIndexRef.current;
-    if (isNewSlide) {
-      currentProgressRef.current = 0;
-      lastIndexRef.current = activeIndex;
-    }
+  // Helper for computing positions relative to active index
+  const getPosition = useCallback((idx: number) => {
+    const diff = idx - activeIndex;
+    if (diff === 0) return 'center';
+    if (diff === 1 || diff === -(banners.length - 1)) return 'right';
+    if (diff === -1 || diff === banners.length - 1) return 'left';
+    return 'hidden';
+  }, [activeIndex, banners.length]);
 
-    const startValue = currentProgressRef.current;
-    const remainingDuration = AUTO_SCROLL_MS * (1 - startValue);
+  // Initialize animated values
+  if (anims.current.length !== banners.length) {
+    anims.current = banners.map((_, i) => {
+      const position = getPosition(i);
+      let xTarget = 0;
+      let scaleTarget = 0.6;
+      let opacityTarget = 0;
 
-    progressAnim.setValue(startValue);
-    
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: remainingDuration,
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished && !isUserDraggingRef.current) {
-        const next = (activeIndex + 1) % banners.length;
-        listRef.current?.scrollToOffset({
-          offset: next * cardWidth,
-          animated: true,
-        });
-        setActiveIndex(next);
-        currentProgressRef.current = 0;
+      if (position === 'center') {
+        xTarget = 0;
+        scaleTarget = 1.0;
+        opacityTarget = 1.0;
+      } else if (position === 'left') {
+        xTarget = -cardWidth * 0.22;
+        scaleTarget = 0.8;
+        opacityTarget = 0.35;
+      } else if (position === 'right') {
+        xTarget = cardWidth * 0.22;
+        scaleTarget = 0.8;
+        opacityTarget = 0.35;
       }
-    });
 
-    return () => progressAnim.stopAnimation((val) => {
-      currentProgressRef.current = val;
+      return {
+        x: new Animated.Value(xTarget),
+        scale: new Animated.Value(scaleTarget),
+        opacity: new Animated.Value(opacityTarget),
+      };
     });
-  }, [activeIndex, paused, banners.length, cardWidth]);
+  }
 
+  // Trigger smooth parallel spring animations when activeIndex changes
   useEffect(() => {
-    setActiveIndex(0);
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [banners.length, cardWidth]);
+    banners.forEach((_, i) => {
+      const position = getPosition(i);
+      const cardAnim = anims.current[i];
+      if (!cardAnim) return;
+
+      let xTarget = 0;
+      let scaleTarget = 0.6;
+      let opacityTarget = 0;
+
+      if (position === 'center') {
+        xTarget = 0;
+        scaleTarget = 1.0;
+        opacityTarget = 1.0;
+      } else if (position === 'left') {
+        xTarget = -cardWidth * 0.22;
+        scaleTarget = 0.8;
+        opacityTarget = 0.35;
+      } else if (position === 'right') {
+        xTarget = cardWidth * 0.22;
+        scaleTarget = 0.8;
+        opacityTarget = 0.35;
+      }
+
+      Animated.parallel([
+        Animated.spring(cardAnim.x, {
+          toValue: xTarget,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 9,
+        }),
+        Animated.spring(cardAnim.scale, {
+          toValue: scaleTarget,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 9,
+        }),
+        Animated.timing(cardAnim.opacity, {
+          toValue: opacityTarget,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, [activeIndex, banners.length, cardWidth, getPosition]);
+
+  // Auto-scroll loop
+  useEffect(() => {
+    if (paused || banners.length <= 1) return;
+    autoScrollTimer.current = setInterval(next, AUTO_SCROLL_MS);
+
+    return () => {
+      if (autoScrollTimer.current) {
+        clearInterval(autoScrollTimer.current);
+        autoScrollTimer.current = null;
+      }
+    };
+  }, [next, paused, banners.length]);
 
   const handleImpact = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const renderItem = useCallback(({ item, index }: any) => {
-    const imageSource = typeof item.image === 'string' ? { uri: item.image } : item.image;
-
-    // Parallax Interpolation
-    const translateX = scrollX.interpolate({
-        inputRange: [(index - 1) * cardWidth, index * cardWidth, (index + 1) * cardWidth],
-        outputRange: [-cardWidth * 0.15, 0, cardWidth * 0.15],
-        extrapolate: 'clamp',
-    });
-
-    return (
-      <View style={[styles.card, { width: cardWidth, height: bannerHeight, paddingHorizontal: imagePadding }]}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => {
-            handleImpact();
-            item.link && router.push(item.link);
-          }}
-          style={[styles.touchable, { backgroundColor: theme.secondary }]}
-        >
-          {/* 🏙️ PARALLAX IMAGE */}
-          <Animated.Image
-            source={imageSource}
-            style={[
-              styles.image,
-              { transform: [{ translateX }, { scale: 1.1 }] }
-            ]}
-            resizeMode="cover"
-          />
-
-          <LinearGradient
-            colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.2)', 'transparent']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 1 }}
-            end={{ x: 0, y: 0 }}
-          />
-
-          <View style={styles.content}>
-            <View style={[styles.tag, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                <Text style={styles.tagText}>{item.category || 'FEATURED'}</Text>
-            </View>
-            <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
-          </View>
-
-          {/* ⚡ KINETIC PROGRESS LINE */}
-          {activeIndex === index && !paused && (
-            <View style={styles.progressBarBg}>
-                <Animated.View 
-                    style={[
-                        styles.progressBarFill, 
-                        { 
-                            width: progressAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: ['0%', '100%']
-                            })
-                        }
-                    ]} 
-                />
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-    );
-  }, [bannerHeight, cardWidth, router, theme.secondary, scrollX, activeIndex, paused, progressAnim, imagePadding]);
+  // Pan responder to handle swipes on the active center card
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        // Intercept touch events from children when horizontal drag exceeds 10px
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderGrant: () => {
+        if (autoScrollTimer.current) {
+          clearInterval(autoScrollTimer.current);
+          autoScrollTimer.current = null;
+        }
+      },
+      onPanResponderMove: (_, gestureState) => {
+        dragX.setValue(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const { dx, vx } = gestureState;
+        if (dx < -SWIPE_THRESHOLD || vx < -0.4) {
+          Animated.spring(dragX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 65,
+            friction: 9,
+          }).start();
+          next();
+        } else if (dx > SWIPE_THRESHOLD || vx > 0.4) {
+          Animated.spring(dragX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 65,
+            friction: 9,
+          }).start();
+          prev();
+        } else {
+          // Bounce back to original position
+          Animated.spring(dragX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 65,
+            friction: 9,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   if (!banners.length) return null;
 
   return (
     <View style={styles.container}>
-      <Animated.FlatList
-        ref={listRef}
-        data={banners}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item, i) => item._id || i.toString()}
-        renderItem={renderItem}
-        onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-            { useNativeDriver: true }
+      <View 
+        {...panResponder.panHandlers}
+        style={[
+          styles.carouselWrapper, 
+          { 
+            width: cardWidth, 
+            height: bannerHeight + 16,
+          }
+        ]}
+      >
+        {banners.map((banner, i) => {
+          const position = getPosition(i);
+          const cardAnim = anims.current[i];
+          if (!cardAnim) return null;
+
+          const imageSource = typeof banner.image === 'string' ? { uri: banner.image } : banner.image;
+
+          return (
+            <Animated.View
+              key={banner._id || i.toString()}
+              pointerEvents={position === 'center' ? 'auto' : 'none'}
+              style={[
+                styles.absoluteCard,
+                {
+                  width: centerCardWidth,
+                  height: bannerHeight,
+                  zIndex: position === 'center' ? 30 : position === 'hidden' ? 10 : 20,
+                  transform: [
+                    { translateX: Animated.add(cardAnim.x, dragX) },
+                    { scale: cardAnim.scale }
+                  ],
+                  opacity: cardAnim.opacity
+                }
+              ]}
+            >
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  if (position === 'center') {
+                    handleImpact();
+                    banner.link && router.push(banner.link);
+                  }
+                }}
+                style={[styles.touchable, { backgroundColor: theme.secondary }]}
+              >
+                <Image
+                  source={imageSource}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.2)', 'transparent']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 1 }}
+                  end={{ x: 0, y: 0 }}
+                />
+
+                <View style={styles.content}>
+                  <View style={[styles.tag, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Text style={styles.tagText}>{banner.category || 'FEATURED'}</Text>
+                  </View>
+                  <Text style={styles.title} numberOfLines={1}>{banner.title}</Text>
+                  <Text style={styles.desc} numberOfLines={2}>{banner.description}</Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
+
+        {/* Floating tap overlay selectors for left/right peek cards */}
+        {banners.length > 1 && (
+          <>
+            <TouchableOpacity 
+              activeOpacity={1}
+              onPress={prev}
+              style={[
+                styles.peekTapOverlay, 
+                { 
+                  left: 0, 
+                  width: (cardWidth - centerCardWidth) / 2 + 10 
+                }
+              ]}
+            />
+            <TouchableOpacity 
+              activeOpacity={1}
+              onPress={next}
+              style={[
+                styles.peekTapOverlay, 
+                { 
+                  right: 0, 
+                  width: (cardWidth - centerCardWidth) / 2 + 10 
+                }
+              ]}
+            />
+          </>
         )}
-        onScrollBeginDrag={() => {
-          isUserDraggingRef.current = true;
-          progressAnim.stopAnimation();
-        }}
-        onMomentumScrollEnd={(e) => {
-          const i = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
-          isUserDraggingRef.current = false;
-          setActiveIndex(i);
-          Haptics.selectionAsync();
-        }}
-        decelerationRate="fast"
-        snapToInterval={cardWidth}
-        disableIntervalMomentum
-        removeClippedSubviews={false}
-        windowSize={3}
-      />
+      </View>
 
       {/* 🔮 MINIMAL SEGMENTED INDICATOR */}
       <View style={styles.indicatorWrapper}>
@@ -219,7 +330,9 @@ export const UnifiedBanner = ({ data, paused = false, width }: UnifiedBannerProp
             style={[
               styles.indicatorSegment,
               { 
-                backgroundColor: i === activeIndex ? '#FFF' : 'rgba(255,255,255,0.3)',
+                backgroundColor: i === activeIndex 
+                  ? (theme.isDarkMode ? '#FFF' : '#1E1E1E') 
+                  : (theme.isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)'),
                 width: i === activeIndex ? 20 : 6 
               },
             ]}
@@ -232,20 +345,29 @@ export const UnifiedBanner = ({ data, paused = false, width }: UnifiedBannerProp
 
 const styles = StyleSheet.create({
   container: {
-    // margins handled by parent
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 10,
+    paddingBottom: 0,
   },
-  card: {
-    paddingHorizontal: HORIZONTAL_PADDING,
+  carouselWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  absoluteCard: {
+    position: 'absolute',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 8,
   },
   touchable: {
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 8,
   },
   image: {
     width: '100%',
@@ -253,9 +375,9 @@ const styles = StyleSheet.create({
   },
   content: {
     position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
   tag: {
     alignSelf: 'flex-start',
@@ -272,34 +394,28 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   desc: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
     marginTop: 4,
   },
-  progressBarBg: {
+  peekTapOverlay: {
     position: 'absolute',
+    top: 0,
     bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#71717a',
+    zIndex: 40,
   },
   indicatorWrapper: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 8,
     gap: 6,
   },
   indicatorSegment: {
