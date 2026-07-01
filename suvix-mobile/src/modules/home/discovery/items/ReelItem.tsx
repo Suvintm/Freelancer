@@ -62,14 +62,11 @@ export const ReelItem = React.memo(({ data, isVisible }: ReelItemProps) => {
       if (vidWidth && vidHeight) {
         const naturalRatio = vidWidth / vidHeight;
         
-        // 📐 PRECISION RATIO SYNC
-        // Directly set the ratio to match the media exactly
-        // Max vertical is 9:16 (0.5625)
-        const MAX_RATIO = 9 / 16;
-        const adaptiveRatio = Math.max(naturalRatio, MAX_RATIO);
+        // 📐 INSTAGRAM CLAMPED RATIO (Min 4:5, Max 1.91:1)
+        const clampedRatio = Math.max(0.8, Math.min(1.91, naturalRatio));
         
-        console.log(`🚀 [RATIO-SYNC] W:${vidWidth} H:${vidHeight} Applying Ratio: ${adaptiveRatio}`);
-        setAspectRatio(adaptiveRatio);
+        console.log(`🚀 [RATIO-SYNC] W:${vidWidth} H:${vidHeight} Applying Ratio: ${clampedRatio}`);
+        setAspectRatio(clampedRatio);
       }
     }
   };
@@ -102,7 +99,7 @@ export const ReelItem = React.memo(({ data, isVisible }: ReelItemProps) => {
       {/* 🎬 MAIN MEDIA CARD - SHAPE SHIFTS TO FIT MEDIA */}
       <TouchableOpacity 
         activeOpacity={0.95} 
-        style={[styles.card, { aspectRatio }]} 
+        style={[styles.card, { aspectRatio, backgroundColor: '#000' }]} 
         onPress={handlePress}
       >
         {isVisible && (
@@ -112,7 +109,7 @@ export const ReelItem = React.memo(({ data, isVisible }: ReelItemProps) => {
               headers: { 'User-Agent': 'Mozilla/5.0' }
             }}
             style={StyleSheet.absoluteFill}
-            resizeMode="cover" // 📐 EDGE-TO-EDGE FIT
+            resizeMode="contain" // 📐 INSTAGRAM FIT CONTAIN
             repeat={true}
             muted={isMuted}
             paused={!isVisible}

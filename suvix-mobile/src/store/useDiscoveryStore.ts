@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
+import { api } from '../api/client';
 
-export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS' | 'YOUTUBE_DISCOVERY';
+export type FeedItemType = 'POST' | 'REEL' | 'SUGGESTION_EDITORS' | 'SUGGESTION_RENTALS' | 'YOUTUBE_DISCOVERY' | 'THUMBNAIL_VOTE' | 'POLL' | 'YT_VIDEO';
 
 export interface FeedItem {
   id: string;
@@ -86,6 +87,69 @@ const MOCK_RENTALS = [
   { id: 'r3', name: 'Red Komodo 6K', image: 'https://images.unsplash.com/photo-1589134719002-5883506fb95e?q=80&w=400', price: '₹8000/day' },
 ];
 
+const MOCK_THUMB_VOTE = {
+  id: 'mock_thumb_vote',
+  user: 'SuviX Official',
+  location: 'Global',
+  img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800',
+  images: [
+    'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?auto=format&fit=crop&q=80&w=800'
+  ],
+  likes: 12400,
+  comment: 'Help me choose the thumbnail for my next UI/UX redesign tutorial! Which one grabs your attention?',
+  commentsCount: 342,
+  tags: ['UIUX', 'Design', 'YouTubeGrowth'],
+  votes: [120, 85, 43, 98]
+};
+
+const MOCK_POLL = {
+  id: 'mock_poll_post',
+  user: {
+    username: 'TechVibe',
+    profile: { name: 'TechVibe Reviews', profile_picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150' }
+  },
+  like_count: 542,
+  isLiked: false,
+  poll: {
+    id: 'poll-1',
+    question: 'Which editing software do you use the most for your video projects?',
+    type: 'MULTIPLE_CHOICE',
+    totalVotes: 3520,
+    options: [
+      { id: 'opt-1', text: 'Adobe Premiere Pro', order_index: 0, _count: { responses: 1620 } },
+      { id: 'opt-2', text: 'DaVinci Resolve', order_index: 1, _count: { responses: 1240 } },
+      { id: 'opt-3', text: 'Final Cut Pro', order_index: 2, _count: { responses: 480 } },
+      { id: 'opt-4', text: 'Other (CapCut, etc.)', order_index: 3, _count: { responses: 180 } }
+    ]
+  }
+};
+
+const MOCK_YT_VIDEO = {
+  id: 'mock_yt_video',
+  user: 'MKBHD',
+  location: 'New York, USA',
+  img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800',
+  likes: 42100,
+  comment: 'Check out my full review of the new spatial computing headset! Video linked below.',
+  commentsCount: 1840,
+  videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  ytChannelName: 'Marques Brownlee',
+  ytSubscribeLink: 'https://youtube.com',
+  watchOnYtLink: 'https://youtube.com'
+};
+
+const resolveMediaUrl = (path: string | undefined | null) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const baseUrl = api.defaults.baseURL || 'http://192.168.0.175:5051/api';
+  const cleanBase = baseUrl.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${cleanBase}/${cleanPath}`;
+};
+
 export const useDiscoveryStore = create<DiscoveryState>((set) => ({
   feed: [],
   isLoading: false,
@@ -94,11 +158,14 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
     set({ isLoading: true });
     setIsRefreshing(true);
     
-    const newFeed: FeedItem[] = [
+    const fallbackFeed: FeedItem[] = [
       { id: 'y1', type: 'YOUTUBE_DISCOVERY', data: {} },
       { id: 'p1', type: 'POST', data: MOCK_POSTS[0] },
+      { id: 'thumb1', type: 'THUMBNAIL_VOTE', data: MOCK_THUMB_VOTE },
       { id: 'r1_reel', type: 'REEL', data: MOCK_REELS[0] },
+      { id: 'poll1', type: 'POLL', data: MOCK_POLL },
       { id: 's1', type: 'SUGGESTION_EDITORS', data: MOCK_EDITORS },
+      { id: 'yt_vid1', type: 'YT_VIDEO', data: MOCK_YT_VIDEO },
       { id: 'r2_reel', type: 'REEL', data: MOCK_REELS[1] },
       { id: 'p2', type: 'POST', data: MOCK_POSTS[1] },
       { id: 'r3_reel', type: 'REEL', data: MOCK_REELS[2] },
@@ -106,10 +173,152 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
       { id: 'r4_reel', type: 'REEL', data: MOCK_REELS[3] },
     ];
 
-    // Artificial delay for skeletal animation impact
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    set({ feed: newFeed, isLoading: false });
-    setIsRefreshing(false);
+    try {
+      // 📡 Concurrent Axios calls to backend temp-feed and polls
+      const [tempFeedRes, pollsRes] = await Promise.all([
+        api.get('/temp-feed').catch(() => ({ data: { success: false, data: [] } })),
+        api.get('/polls').catch(() => ({ data: { success: false, data: [] } }))
+      ]);
+
+      const dbItems: FeedItem[] = [];
+
+      // 1. Process Temp-Feed Items
+      if (tempFeedRes.data?.success && Array.isArray(tempFeedRes.data.data)) {
+        tempFeedRes.data.data.forEach((item: any) => {
+          const avatarUrl = resolveMediaUrl(item.author?.avatar) || MOCK_AVATARS[0];
+          const authorName = item.user || item.author?.name || 'Creator';
+          const captionText = item.comment || item.caption || '';
+          const locationName = item.location || 'Global';
+          const likesCount = typeof item.likes === 'number' ? item.likes : parseInt(item.likes, 10) || 0;
+          const commentsCount = item.commentsCount || 0;
+
+          if (item.type === 'reel') {
+            dbItems.push({
+              id: item._id,
+              type: 'REEL',
+              data: {
+                id: item._id,
+                author: { name: authorName, avatar: avatarUrl },
+                thumbnail: resolveMediaUrl(item.images?.[0] || item.img || ''),
+                videoUrl: resolveMediaUrl(item.videoUrl || ''),
+                title: captionText,
+                views: '150K'
+              }
+            });
+          } else if (item.type === 'yt_video') {
+            dbItems.push({
+              id: item._id,
+              type: 'YT_VIDEO',
+              data: {
+                id: item._id,
+                user: authorName,
+                location: locationName,
+                img: resolveMediaUrl(item.images?.[0] || item.img || ''),
+                likes: likesCount,
+                comment: captionText,
+                commentsCount: commentsCount,
+                videoUrl: resolveMediaUrl(item.videoUrl || ''),
+                ytChannelName: item.ytChannelName || '',
+                ytSubscribeLink: item.ytSubscribeLink || '',
+                watchOnYtLink: item.watchOnYtLink || ''
+              }
+            });
+          } else if (item.type === 'thumbnail_vote') {
+            dbItems.push({
+              id: item._id,
+              type: 'THUMBNAIL_VOTE',
+              data: {
+                id: item._id,
+                user: authorName,
+                location: locationName,
+                img: resolveMediaUrl(item.images?.[0] || item.img || ''),
+                images: Array.isArray(item.images) ? item.images.map((img: string) => resolveMediaUrl(img)) : [],
+                likes: likesCount,
+                comment: captionText,
+                commentsCount: commentsCount,
+                tags: item.tags || [],
+                votes: item.votes || []
+              }
+            });
+          } else {
+            // Default to POST
+            dbItems.push({
+              id: item._id,
+              type: 'POST',
+              data: {
+                author: { name: authorName, avatar: avatarUrl, location: locationName },
+                image: resolveMediaUrl(item.images?.[0] || item.img || ''),
+                caption: captionText,
+                likes: likesCount,
+                comments: commentsCount
+              }
+            });
+          }
+        });
+      }
+
+      // 2. Process Poll Items
+      if (pollsRes.data?.success && Array.isArray(pollsRes.data.data)) {
+        pollsRes.data.data.forEach((p: any) => {
+          dbItems.push({
+            id: p.id,
+            type: 'POLL',
+            data: {
+              id: p.id,
+              user: {
+                username: p.user?.username || 'Creator',
+                profile: {
+                  name: p.user?.profile?.name || '',
+                  profile_picture: resolveMediaUrl(p.user?.profile?.profile_picture) || ''
+                }
+              },
+              like_count: p.like_count || 0,
+              isLiked: p.isLiked || false,
+              poll: {
+                ...p.poll,
+                totalVotes: p.poll?._count?.responses || 0,
+                options: p.poll?.options || []
+              }
+            }
+          });
+        });
+      }
+
+      // If we got items from the database, assemble the full feed
+      if (dbItems.length > 0) {
+        const assembledFeed: FeedItem[] = [
+          { id: 'y1', type: 'YOUTUBE_DISCOVERY', data: {} }
+        ];
+
+        dbItems.forEach((item, index) => {
+          assembledFeed.push(item);
+          // Interleave suggestion carousels at specific intervals
+          if (index === 2) {
+            assembledFeed.push({ id: 's1', type: 'SUGGESTION_EDITORS', data: MOCK_EDITORS });
+          } else if (index === 5) {
+            assembledFeed.push({ id: 's2', type: 'SUGGESTION_RENTALS', data: MOCK_RENTALS });
+          }
+        });
+
+        // Ensure suggestion carousels are included even if feed is short
+        if (dbItems.length <= 2) {
+          assembledFeed.push({ id: 's1', type: 'SUGGESTION_EDITORS', data: MOCK_EDITORS });
+        }
+        if (dbItems.length <= 5) {
+          assembledFeed.push({ id: 's2', type: 'SUGGESTION_RENTALS', data: MOCK_RENTALS });
+        }
+
+        set({ feed: assembledFeed, isLoading: false });
+      } else {
+        // Fallback to local mock items if DB is empty
+        set({ feed: fallbackFeed, isLoading: false });
+      }
+    } catch (err) {
+      console.error('Error loading backend temp feed in store:', err);
+      // Fallback to local mock items if network request fails
+      set({ feed: fallbackFeed, isLoading: false });
+    } finally {
+      setIsRefreshing(false);
+    }
   }
 }));

@@ -97,7 +97,7 @@ export default function CommunityWorkspace() {
   const getFullImageUrl = (path: string | undefined | null) => {
     if (!path || path === 'null' || path === 'undefined') return null;
     if (path.startsWith('http')) return path;
-    const baseUrl = api.defaults.baseURL || 'http://192.168.0.176:5051/api';
+    const baseUrl = api.defaults.baseURL || 'http://192.168.0.175:5051/api';
     const cleanBase = baseUrl.replace(/\/api$/, '');
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     return `${cleanBase}/${cleanPath}`;

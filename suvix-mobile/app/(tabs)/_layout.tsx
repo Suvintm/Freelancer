@@ -79,10 +79,8 @@ export default function TabsLayout() {
   const ALL_TABS = useMemo(() => [
     { name: 'index',   title: 'Home'    },
     { name: 'explore', title: 'Explore' },
+    { name: 'upload',  title: 'Upload'  },
     { name: 'nearby',  title: 'Nearby'  },
-    { name: 'reels',   title: 'Reels'   },
-    { name: 'jobs',    title: 'Jobs', providerOnly: true }, // Only for Providers
-    { name: 'chats',   title: 'Chats'   },
     { name: 'profile', title: 'Profile' },
   ], []);
 
@@ -148,6 +146,7 @@ export default function TabsLayout() {
     switch (name) {
       case 'index':   return <HomeScreen scrollY={globalScrollY} />;
       case 'explore': return <ExploreScreen scrollY={globalScrollY} />;
+      case 'upload':  return <View />;
       case 'nearby':  return <NearbyScreen scrollY={globalScrollY} />;
       case 'reels':   return <ReelsScreen />;
       case 'jobs':    return <JobsScreen scrollY={globalScrollY} />;

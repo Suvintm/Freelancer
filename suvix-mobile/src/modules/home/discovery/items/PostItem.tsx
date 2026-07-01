@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,6 +18,8 @@ interface PostItemProps {
 
 export const PostItem: React.FC<PostItemProps> = ({ data }) => {
   const { theme } = useTheme();
+  const [aspectRatio, setAspectRatio] = useState(1);
+  const clampedRatio = Math.max(0.8, Math.min(1.91, aspectRatio));
 
   return (
     <View style={[styles.container, { borderBottomColor: theme.border }]}>
@@ -35,13 +37,20 @@ export const PostItem: React.FC<PostItemProps> = ({ data }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Main Image */}
-      <Image 
-        source={{ uri: data.image }} 
-        style={styles.mainImage} 
-        contentFit="cover"
-        transition={300}
-      />
+      {/* Main Image Container with Instagram Aspect Ratio Clamping */}
+      <View style={[styles.imageContainer, { height: width / clampedRatio }]}>
+        <Image 
+          source={{ uri: data.image }} 
+          style={styles.mainImage} 
+          contentFit="contain"
+          onLoad={(e) => {
+            if (e.source?.width && e.source?.height) {
+              setAspectRatio(e.source.width / e.source.height);
+            }
+          }}
+          transition={300}
+        />
+      </View>
 
       {/* Actions */}
       <View style={styles.actionsRow}>
@@ -110,10 +119,15 @@ const styles = StyleSheet.create({
   moreBtn: {
     padding: 4,
   },
-  mainImage: {
+  imageContainer: {
     width: width,
-    aspectRatio: 4 / 5, // Instagram Portrait Ratio
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mainImage: {
+    width: '100%',
+    height: '100%',
   },
   actionsRow: {
     flexDirection: 'row',
