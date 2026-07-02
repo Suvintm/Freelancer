@@ -31,31 +31,6 @@ export interface AuthUser {
     description?: string;
     avg_views_per_video?: number;
     engagement_rate?: number;
-    videos?: Array<{
-      id: string;
-      title: string;
-      thumbnail: string;
-      publishedAt: string;
-      viewCount?: string;
-      duration?: string;
-      like_count?: string | number;
-      comment_count?: string | number;
-    }>;
-  }>;
-  youtubeVideos?: Array<{
-    id: string;
-    video_id?: string;
-    title: string;
-    thumbnail: string;
-    description?: string;
-    published_at?: string;
-    publishedAt?: string;
-    view_count?: string | number;
-    viewCount?: string | number;
-    duration?: string;
-    channel_id?: string;
-    like_count?: string | number;
-    comment_count?: string | number;
   }>;
   bio?: string;
   website?: string;
@@ -111,16 +86,20 @@ export interface AuthSession {
   refreshToken: string;
 }
 
+}
+
 export interface AuthState {
   sessions: AuthSession[];
   activeUserId: string | null;
   isInitialized: boolean;
+  isAddingAccount: boolean;
 }
 
 const initialState: AuthState = {
   sessions: [],
   activeUserId: null,
   isInitialized: false,
+  isAddingAccount: false,
 };
 
 export const authSlice = createSlice({
@@ -191,6 +170,9 @@ export const authSlice = createSlice({
     setInitialized: (state, action: PayloadAction<boolean>) => {
       state.isInitialized = action.payload;
     },
+    setIsAddingAccount: (state, action: PayloadAction<boolean>) => {
+      state.isAddingAccount = action.payload;
+    },
     setAuthenticated: (state, action: PayloadAction<boolean>) => {
       // For backward compatibility: if false, log out active session
       if (!action.payload && state.activeUserId) {
@@ -209,7 +191,8 @@ export const {
   clearAllAuth,
   switchSession,
   removeSession,
-  setInitialized, 
+  setInitialized,
+  setIsAddingAccount,
   setAuthenticated 
 } = authSlice.actions;
 
@@ -241,3 +224,5 @@ export const selectIsAuthenticated = (state: { auth: AuthState }) => {
 };
 
 export const selectIsInitialized = (state: { auth: AuthState }) => state.auth.isInitialized;
+
+export const selectIsAddingAccount = (state: { auth: AuthState }) => state.auth.isAddingAccount;

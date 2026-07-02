@@ -7,7 +7,7 @@ import securityLoaderAnimation from '../assets/lottie/security_loader.json';
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 import { useDispatch } from 'react-redux';
 import { useQueryClient } from '@tanstack/react-query';
-import { setAuth } from '../store/slices/authSlice';
+import { setAuth, setIsAddingAccount } from '../store/slices/authSlice';
 import { setTempSignupData } from '../store/slices/onboardingSlice';
 import { store } from '../store';
 import type { RootState } from '../store';
@@ -127,7 +127,7 @@ export default function OAuthSuccess() {
 
         // Set auth state first so the user is authenticated in Redux
         dispatch(setAuth({ user, token, refreshToken }));
-        sessionStorage.removeItem('isAddingAccount');
+        dispatch(setIsAddingAccount(false));
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
 
         const oauthIntent = sessionStorage.getItem('oauth_intent');

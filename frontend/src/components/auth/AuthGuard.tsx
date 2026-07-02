@@ -1,6 +1,6 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { selectIsAuthenticated, selectIsInitialized, selectUser } from '../../store/slices/authSlice';
+import { selectIsAuthenticated, selectIsInitialized, selectUser, selectIsAddingAccount } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import { queryClient } from '../../queries/queryClient';
 import { CURRENT_USER_QUERY_KEY } from '../../queries/useCurrentUser';
@@ -101,8 +101,7 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
     );
   }
 
-  // Check if user is trying to add another account
-  const isAddingAccount = sessionStorage.getItem('isAddingAccount') === 'true';
+  const isAddingAccount = useSelector(selectIsAddingAccount);
 
   // If already logged in and fully onboarded, don't show login/signup pages
   // UNLESS they explicitly want to add an account

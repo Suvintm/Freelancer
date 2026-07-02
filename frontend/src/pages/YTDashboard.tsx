@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api/client';
 import { 
   Youtube, Eye, ArrowLeft, ExternalLink, 
   ChevronDown, Search, Play, ArrowUpRight, MapPin, 
@@ -75,13 +77,22 @@ export default function YTDashboard() {
     return channels.find(c => c.id === channelId || c.channel_id === channelId) || channels[0];
   }, [channels, channelId]);
 
-  // 2. Filter videos for active channel
+  // 2. Fetch videos dynamically for active channel
+  const { data: videosData } = useQuery({
+    queryKey: ['youtube-videos', user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/youtube/videos/${user?.id}`);
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: !!user?.id,
+  });
+
   const channelVideos = useMemo(() => {
     if (!activeChannel) return [];
-    return (user?.youtubeVideos || []).filter(
+    return (videosData || []).filter(
       (v: YouTubeVideo) => v.youtubeProfileId === activeChannel.id || v.channel_id === activeChannel.channel_id
     );
-  }, [user?.youtubeVideos, activeChannel]);
+  }, [videosData, activeChannel]);
 
   // 3. Combined stats for Creator Hub main entrance page
   const totalNetworkStats = useMemo(() => {

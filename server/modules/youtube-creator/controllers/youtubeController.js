@@ -302,3 +302,73 @@ export const getExploreVideos = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Fetch a user's YouTube videos dynamically instead of bloating the cached profile.
+ */
+export const getUserVideos = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        youtubeProfiles: {
+          include: {
+            videos: {
+              orderBy: { published_at: 'desc' },
+              take: 50,
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    const youtubeVideos = (user.youtubeProfiles || [])
+      .flatMap((p) =>
+        (p.videos || []).map((v) => {
+          const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+          const resolvedUrl = smartResolveMediaUrl(rawThumb);
+
+          return {
+            ...v,
+            video_id:      v.video_id      || null,
+            view_count:    v.view_count    != null ? String(v.view_count)    : "0",
+            like_count:    v.like_count    != null ? String(v.like_count)    : "0",
+            comment_count: v.comment_count != null ? String(v.comment_count) : "0",
+            duration_secs: v.duration_secs || null,
+            category_id:   v.category_id   || null,
+            tags:          v.tags           || null,
+            made_for_kids: v.made_for_kids  || false,
+            thumbnail: resolvedUrl,
+            media: {
+              type: "IMAGE",
+              status: "READY",
+              urls: {
+                thumb: resolvedUrl,
+                feed:  resolvedUrl,
+                full:  resolvedUrl,
+              },
+            },
+          };
+        })
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.published_at || b.publishedAt || 0) -
+          new Date(a.published_at || a.publishedAt || 0)
+      );
+
+    res.status(200).json({
+      success: true,
+      data: youtubeVideos,
+    });
+  } catch (error) {
+    logger.error(`❌ [YT-VIDEOS] Failed to fetch videos for user: ${error.message}`);
+    next(error);
+  }
+};

@@ -23,6 +23,7 @@ import { FeedPoll } from '../components/temp-feed/FeedPoll';
 import { MOCK_STORIES } from '../data/storyData';
 import type { Story } from '../data/storyData';
 import { StoryViewer } from '../components/home/StoryViewer';
+import { FeedPostSkeleton } from '../components/temp-feed/FeedPostSkeleton';
 
 // STORIES array moved inside Home component to support dynamic user state.
  
@@ -745,8 +746,10 @@ export default function Home() {
       {/* 4. Unified Feed */}
       <section className="w-full lg:mx-auto -mt-2 lg:mt-0 lg:max-w-[470px]">
         {isLoading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 size={32} className="animate-spin text-accent-primary" />
+          <div className="w-full pb-20">
+            {[1, 2, 3].map((i) => (
+              <FeedPostSkeleton key={i} />
+            ))}
           </div>
         ) : (
           <div className="flex flex-col gap-6 lg:gap-8 w-full">
