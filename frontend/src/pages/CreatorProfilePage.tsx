@@ -113,7 +113,7 @@ export default function CreatorProfilePage() {
   const posts = postsResponse || [];
 
   // 3. Fetch Creator Videos dynamically
-  const { data: videosResponse, isLoading: isLoadingVideos } = useQuery({
+  const { data: videosResponse } = useQuery({
     queryKey: ['creator-videos', userId],
     queryFn: async () => {
       const response = await api.get(`/youtube/videos/${userId}`);

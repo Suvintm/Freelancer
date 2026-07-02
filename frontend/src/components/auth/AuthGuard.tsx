@@ -92,6 +92,7 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   const isInitialized = useSelector(selectIsInitialized);
   const user = useSelector(selectUser);
   const location = useLocation();
+  const isAddingAccount = useSelector(selectIsAddingAccount);
 
   if (!isInitialized) {
     return (
@@ -100,8 +101,6 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
       </div>
     );
   }
-
-  const isAddingAccount = useSelector(selectIsAddingAccount);
 
   // If already logged in and fully onboarded, don't show login/signup pages
   // UNLESS they explicitly want to add an account

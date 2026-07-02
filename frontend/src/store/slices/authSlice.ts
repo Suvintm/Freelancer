@@ -86,8 +86,6 @@ export interface AuthSession {
   refreshToken: string;
 }
 
-}
-
 export interface AuthState {
   sessions: AuthSession[];
   activeUserId: string | null;
