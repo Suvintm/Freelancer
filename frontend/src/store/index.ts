@@ -13,7 +13,7 @@ import { uiReducer } from './slices/uiSlice';
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['sessions', 'activeUserId'],
+  whitelist: ['sessions', 'activeUserId', 'isAddingAccount'],
 };
 
 const onboardingPersistConfig = {

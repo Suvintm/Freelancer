@@ -130,7 +130,6 @@ export const SyncProgressBar = () => {
 
     interface ProfileUpdatedPayload {
       youtubeProfile?: AuthUser['youtubeProfile'];
-      youtubeVideos?: AuthUser['youtubeVideos'];
     }
 
     const handleProgress = (data: SyncProgressData) => {
@@ -186,10 +185,9 @@ export const SyncProgressBar = () => {
 
     const handleProfileUpdated = (payload: ProfileUpdatedPayload) => {
       console.log('🛰️ [SyncProgressBar] Received user:profile_updated, refreshing Redux store...');
-      if (payload && (payload.youtubeProfile || payload.youtubeVideos)) {
+      if (payload && payload.youtubeProfile) {
         dispatch(updateUser({
-          youtubeProfile: payload.youtubeProfile,
-          youtubeVideos: payload.youtubeVideos
+          youtubeProfile: payload.youtubeProfile
         }));
       }
     };

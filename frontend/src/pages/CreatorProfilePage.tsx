@@ -112,6 +112,18 @@ export default function CreatorProfilePage() {
 
   const posts = postsResponse || [];
 
+  // 3. Fetch Creator Videos dynamically
+  const { data: videosResponse } = useQuery({
+    queryKey: ['creator-videos', userId],
+    queryFn: async () => {
+      const response = await api.get(`/youtube/videos/${userId}`);
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: !!userId,
+  });
+
+  const youtubeVideos = videosResponse || [];
+
   // Helper formatting values
   const formatCount = (num: number | string | undefined) => {
     if (num === undefined || num === null) return '0';
@@ -126,10 +138,7 @@ export default function CreatorProfilePage() {
     return creator?.youtubeProfiles?.[0] || null;
   }, [creator]);
 
-  // YouTube Videos list
-  const youtubeVideos = useMemo(() => {
-    return activeYtProfile?.videos || [];
-  }, [activeYtProfile]);
+  // YouTube Videos list is now fetched dynamically via React Query above.
 
   // Badge eligibility based on subs
   const achievementBadge = useMemo(() => {

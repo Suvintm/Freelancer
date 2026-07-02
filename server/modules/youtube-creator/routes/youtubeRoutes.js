@@ -42,6 +42,7 @@ router.post("/manual-verify/initiate",   authenticateUser, youtubeController.ini
 router.post("/manual-verify/regenerate", authenticateUser, youtubeController.regenerateManualVerification);
 router.post("/manual-verify/check",      authenticateUser, youtubeController.checkManualVerification);
 router.delete("/channel/:profileId",     authenticateUser, youtubeController.deleteChannel);
+router.get("/videos/:userId",            authenticateUser, youtubeController.getUserVideos);
 
 // ─── Public Explore Routes ────────────────────────────────────────────────────
 

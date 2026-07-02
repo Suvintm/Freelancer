@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAllSessions, selectActiveSession, switchSession } from '../../store/slices/authSlice';
+import { selectAllSessions, selectActiveSession, switchSession, setIsAddingAccount } from '../../store/slices/authSlice';
 import { useTheme } from '../../hooks/useTheme';
 import { persistor } from '../../store';
 import { X, Check, Plus } from 'lucide-react';
@@ -57,8 +57,8 @@ export const AccountSwitcher = ({ isOpen, onClose }: AccountSwitcherProps) => {
 
   const handleAddAccount = () => {
     onClose();
-    // Set a session storage flag to persist intent across auth pages
-    sessionStorage.setItem('isAddingAccount', 'true');
+    // Dispatch Redux action to persist intent across auth pages
+    dispatch(setIsAddingAccount(true));
     // Navigate to login
     navigate('/login');
   };

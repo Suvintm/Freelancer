@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal, Loader2, Youtube, MessageSquare, ChevronRight, MessageCircle, Search } from 'lucide-react';
+import { LayoutGrid, Users, Play, Camera, CheckCircle2, UserPlus, MoreHorizontal, Youtube, MessageSquare, ChevronRight, MessageCircle, Search } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
@@ -602,8 +602,10 @@ export default function Explore() {
                 </div>
 
                 {isLoadingEditors ? (
-                  <div className="flex justify-center items-center py-20">
-                    <Loader2 size={32} className="animate-spin text-rose-500" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <CreatorCardSkeleton key={i} />
+                    ))}
                   </div>
                 ) : editors.length === 0 ? (
                   <div className="text-center py-20 opacity-55">
