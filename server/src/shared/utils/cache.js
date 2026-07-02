@@ -15,6 +15,7 @@ import logger from '../../infrastructure/monitoring/logger.js';
 export const TTL = {
   SUBSCRIPTION_PLANS: 60 * 60,    // 1 hour   — plans rarely change
   USER_PROFILE:       60 * 5,     // 5 minutes — auth middleware
+  USER_VIDEOS:        60 * 5,     // 5 minutes — cache user videos separate from profile
   EXPLORE_EDITORS:    60 * 2,     // 2 minutes — explore page
   EXPLORE_FILTERS:    60 * 10,    // 10 minutes — filter options (skills/countries)
   NOTIFICATION_COUNT: 30,         // 30 seconds — unread badge
@@ -24,6 +25,7 @@ export const TTL = {
 export const CacheKey = {
   subscriptionPlans: (feature = "all") => `cache:subscription:plans:${feature}`,
   userProfile:       (userId)          => `cache:user:${userId}`,
+  userVideos:        (userId)          => `cache:user:videos:${userId}`,
   exploreEditors:    (queryHash)       => `cache:explore:editors:${queryHash}`,
   exploreFilters:    ()                => `cache:explore:filters`,
   notificationCount: (userId)          => `cache:notifications:unread:${userId}`,

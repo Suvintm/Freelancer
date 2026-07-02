@@ -317,8 +317,8 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       }
     }).catch(err => logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`));
 
-    // 🧹 [CACHE] Invalidate user profile to ensure "Ghost Channels" or "Missing Videos" are resolved
-    await deleteCache(CacheKey.userProfile(userId));
+    // 🧹 [CACHE] Invalidate user profile and user videos to ensure "Ghost Channels" or "Missing Videos" are resolved
+    await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);
 
     // 🛰️ [SOCKET] Surgical Broadcast for real-time UI refresh
     emitToUser(userId, "user:profile_updated", { 

@@ -204,7 +204,7 @@ export const DesktopProfile = () => {
   const { data: videosData } = useQuery<YouTubeVideo[]>({
     queryKey: ['youtube-videos', user?.id],
     queryFn: async () => {
-      const response = await api.get(`/youtube/videos/${user?.id}`);
+      const response = await api.get(`/youtube-creator/videos/${user?.id}`);
       return response.data?.success ? response.data.data : [];
     },
     enabled: !!user?.id,

@@ -178,7 +178,7 @@ export const verifyChannel = async (userId, channelInput, reqData) => {
 
   // 7. Cleanup Redis & Invalidate Profile Cache
   await redis.del(verifyKey);
-  await deleteCache(CacheKey.userProfile(userId));
+  await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);
 
   logger.info(`✅ [VERIFY-SVC] Channel ${channelData.channelId} verified and linked to User ${userId}`);
 

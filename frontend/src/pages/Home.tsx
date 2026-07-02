@@ -678,15 +678,10 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="relative lg:hidden -mt-3 lg:mt-0 min-h-[310px]">
+      <div className="relative lg:hidden mt-2 lg:mt-0 min-h-[310px]">
         
         {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
         <div className="w-full flex flex-col gap-1">
-          <div className="w-full px-4 pr-[88px] mb-1.5 flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Featured</span>
-            <span className="text-[9px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2 py-0.5 rounded uppercase tracking-wider select-none">Beta</span>
-          </div>
-
           <div className="w-full h-[226px] pr-[84px]">
             <UnifiedBanner className="h-full" />
           </div>
@@ -696,7 +691,7 @@ export default function Home() {
         </div>
 
         {/* Floating Right Column: Vertical Stories Sidebar (Instagram style) */}
-        <div className="absolute right-0 top-0 z-20 flex-shrink-0">
+        <div className="absolute right-0 top-2 z-20 flex-shrink-0">
           <div className={`
             w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-l-[40px] rounded-r-none overflow-y-auto scrollbar-hide gap-4.5 overscroll-y-contain touch-pan-y will-change-scroll shadow-lg
             ${isDarkMode ? 'bg-[#242526]/90 backdrop-blur-md' : 'bg-[#C8CBD0]/90 backdrop-blur-md'}
@@ -744,7 +739,7 @@ export default function Home() {
       </div>
 
       {/* 4. Unified Feed */}
-      <section className="w-full lg:mx-auto -mt-2 lg:mt-0 lg:max-w-[470px]">
+      <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
         {isLoading ? (
           <div className="w-full pb-20">
             {[1, 2, 3].map((i) => (

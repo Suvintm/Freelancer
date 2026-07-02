@@ -81,7 +81,7 @@ export default function YTDashboard() {
   const { data: videosData } = useQuery<YouTubeVideo[]>({
     queryKey: ['youtube-videos', user?.id],
     queryFn: async () => {
-      const response = await api.get(`/youtube/videos/${user?.id}`);
+      const response = await api.get(`/youtube-creator/videos/${user?.id}`);
       return response.data?.success ? response.data.data : [];
     },
     enabled: !!user?.id,
@@ -154,6 +154,10 @@ export default function YTDashboard() {
     }
     return result;
   }, [archiveVideos, searchQuery, sortBy]);
+
+  const [archiveLimit, setArchiveLimit] = useState(6);
+  const displayedVideos = useMemo(() => filteredVideos.slice(0, archiveLimit), [filteredVideos, archiveLimit]);
+  const hasMoreArchive = filteredVideos.length > archiveLimit;
 
   // 9. Upload frequency calculation
   const uploadFrequency = useMemo(() => {
@@ -1047,55 +1051,72 @@ export default function YTDashboard() {
 
         {/* Video Grid */}
         {filteredVideos.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredVideos.map((video) => {
-              const videoId = video.video_id || video.id;
-              const views = video.viewCount || video.view_count;
-              const dateVal = video.published_at || video.publishedAt;
-              
-              return (
-                <div
-                  key={videoId}
-                  onClick={() => handleWatch(videoId)}
-                  className={`flex flex-col rounded-2xl border overflow-hidden cursor-pointer group transition-all duration-300 ${
-                    isDarkMode 
-                      ? 'bg-zinc-950/20 border-border-main hover:border-zinc-800' 
-                      : 'bg-white border-zinc-200 hover:shadow-md'
-                  }`}
-                >
-                  <div className="relative aspect-video bg-black overflow-hidden shrink-0">
-                    <img 
-                      src={video.thumbnail} 
-                      alt={video.title} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
-                    />
-                    
-                    {video.duration && (
-                      <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-semibold text-white">
-                        {video.duration}
-                      </span>
-                    )}
-
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform">
-                        <Play size={16} fill="currentColor" className="ml-0.5" />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedVideos.map((video) => {
+                const videoId = video.video_id || video.id;
+                const views = video.viewCount || video.view_count;
+                const dateVal = video.published_at || video.publishedAt;
+                
+                return (
+                  <div
+                    key={videoId}
+                    onClick={() => handleWatch(videoId)}
+                    className={`flex flex-col rounded-2xl border overflow-hidden cursor-pointer group transition-all duration-300 ${
+                      isDarkMode 
+                        ? 'bg-zinc-950/20 border-border-main hover:border-zinc-800' 
+                        : 'bg-white border-zinc-200 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="relative aspect-video bg-black overflow-hidden shrink-0">
+                      <img 
+                        src={video.thumbnail} 
+                        alt={video.title} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
+                      />
+                      
+                      {video.duration && (
+                        <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-semibold text-white">
+                          {video.duration}
+                        </span>
+                      )}
+  
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform">
+                          <Play size={16} fill="currentColor" className="ml-0.5" />
+                        </div>
+                      </div>
+                    </div>
+  
+                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                      <h4 className="text-xs font-bold text-text-main line-clamp-2 leading-relaxed leading-snug group-hover:text-rose-500 transition-colors">
+                        {video.title}
+                      </h4>
+                      
+                      <div className="flex items-center justify-between text-[9px] text-text-muted font-bold uppercase tracking-wider pt-2 border-t border-border-main/30">
+                        <span>{dateVal ? new Date(dateVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date'}</span>
+                        <span>{formatCount(views)} views</span>
                       </div>
                     </div>
                   </div>
-
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <h4 className="text-xs font-bold text-text-main line-clamp-2 leading-relaxed leading-snug group-hover:text-rose-500 transition-colors">
-                      {video.title}
-                    </h4>
-                    
-                    <div className="flex items-center justify-between text-[9px] text-text-muted font-bold uppercase tracking-wider pt-2 border-t border-border-main/30">
-                      <span>{dateVal ? new Date(dateVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date'}</span>
-                      <span>{formatCount(views)} views</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            
+            {hasMoreArchive && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => setArchiveLimit(prev => prev + 6)}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-md ${
+                    isDarkMode 
+                      ? 'bg-zinc-900 hover:bg-zinc-800 text-white' 
+                      : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
+                  }`}
+                >
+                  Load More Videos
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="py-20 flex flex-col items-center justify-center border border-dashed border-border-main rounded-xl">
