@@ -3,9 +3,10 @@ import * as youtubeVerificationService from "../services/youtubeVerificationServ
 import { ApiError } from "../../../middleware/errorHandler.js";
 import prisma from "../../../config/prisma.js";
 import quotaManager from "../services/youtubeQuotaManager.js";
-import { deleteCache, CacheKey } from "../../../utils/cache.js";
+import { deleteCache, CacheKey, withCache, TTL } from "../../../utils/cache.js";
 import { emitToUser } from "../../../src/infrastructure/websocket/socket.js";
 import { smartResolveMediaUrl } from "../../../utils/mediaResolver.js";
+import { paginate } from "../../../utils/pagination.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE CREATOR CONTROLLER
@@ -191,7 +192,7 @@ export const deleteChannel = async (req, res, next) => {
     }
 
     // 5. Invalidate User Cache to prevent "Ghost Channels"
-    await deleteCache(CacheKey.userProfile(userId));
+    await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);
 
     // 🛰️ [SOCKET] Surgical Broadcast to remove channel from UI
     // We fetch the full identity to ensure the mobile app's guard remains satisfied
@@ -310,58 +311,82 @@ export const getUserVideos = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        youtubeProfiles: {
-          include: {
-            videos: {
-              orderBy: { published_at: 'desc' },
-              take: 50,
+    const cacheKey = CacheKey.userVideos(userId);
+    const youtubeVideos = await withCache(cacheKey, TTL.USER_VIDEOS, async () => {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          youtubeProfiles: {
+            include: {
+              videos: {
+                orderBy: { published_at: 'desc' },
+                take: 50,
+              },
             },
           },
         },
-      },
+      });
+
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      return (user.youtubeProfiles || [])
+        .flatMap((p) =>
+          (p.videos || []).map((v) => {
+            const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+            const resolvedUrl = smartResolveMediaUrl(rawThumb);
+
+            return {
+              ...v,
+              video_id:      v.video_id      || null,
+              view_count:    v.view_count    != null ? String(v.view_count)    : "0",
+              like_count:    v.like_count    != null ? String(v.like_count)    : "0",
+              comment_count: v.comment_count != null ? String(v.comment_count) : "0",
+              duration_secs: v.duration_secs || null,
+              category_id:   v.category_id   || null,
+              tags:          v.tags           || null,
+              made_for_kids: v.made_for_kids  || false,
+              thumbnail: resolvedUrl,
+              media: {
+                type: "IMAGE",
+                status: "READY",
+                urls: {
+                  thumb: resolvedUrl,
+                  feed:  resolvedUrl,
+                  full:  resolvedUrl,
+                },
+              },
+            };
+          })
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.published_at || b.publishedAt || 0) -
+            new Date(a.published_at || a.publishedAt || 0)
+        );
     });
 
-    if (!user) {
-      throw new ApiError(404, "User not found");
+    const { paginate: shouldPaginate, cursor, limit } = req.query;
+    const pageSize = parseInt(limit, 10) || 12;
+
+    if (shouldPaginate === 'true' || cursor) {
+      let startIndex = 0;
+      if (cursor) {
+        startIndex = youtubeVideos.findIndex(v => v.id === cursor) + 1;
+        if (startIndex <= 0) {
+          startIndex = 0; // fallback if cursor not found
+        }
+      }
+      
+      const sliced = youtubeVideos.slice(startIndex, startIndex + pageSize + 1);
+      const paginatedResult = paginate(sliced, pageSize, 'id');
+
+      return res.status(200).json({
+        success: true,
+        ...paginatedResult
+      });
     }
-
-    const youtubeVideos = (user.youtubeProfiles || [])
-      .flatMap((p) =>
-        (p.videos || []).map((v) => {
-          const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
-          const resolvedUrl = smartResolveMediaUrl(rawThumb);
-
-          return {
-            ...v,
-            video_id:      v.video_id      || null,
-            view_count:    v.view_count    != null ? String(v.view_count)    : "0",
-            like_count:    v.like_count    != null ? String(v.like_count)    : "0",
-            comment_count: v.comment_count != null ? String(v.comment_count) : "0",
-            duration_secs: v.duration_secs || null,
-            category_id:   v.category_id   || null,
-            tags:          v.tags           || null,
-            made_for_kids: v.made_for_kids  || false,
-            thumbnail: resolvedUrl,
-            media: {
-              type: "IMAGE",
-              status: "READY",
-              urls: {
-                thumb: resolvedUrl,
-                feed:  resolvedUrl,
-                full:  resolvedUrl,
-              },
-            },
-          };
-        })
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.published_at || b.publishedAt || 0) -
-          new Date(a.published_at || a.publishedAt || 0)
-      );
 
     res.status(200).json({
       success: true,

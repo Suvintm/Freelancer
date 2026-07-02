@@ -4,9 +4,10 @@ import { ApiError } from "../../../shared/kernel/errors.js";
 ;
 import prisma from "../../../infrastructure/database/postgres.js";
 import quotaManager from "../services/youtubeQuotaManager.js";
-import { deleteCache, CacheKey } from "../../../shared/utils/cache.js";
+import { deleteCache, CacheKey, withCache, TTL } from "../../../shared/utils/cache.js";
 import { emitToUser } from '../../../platform/socket/socket.gateway.js';
 import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
+import { paginate } from "../../../shared/utils/pagination.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE CREATOR CONTROLLER
@@ -192,7 +193,7 @@ export const deleteChannel = async (req, res, next) => {
     }
 
     // 5. Invalidate User Cache to prevent "Ghost Channels"
-    await deleteCache(CacheKey.userProfile(userId));
+    await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);
 
     // 🛰️ [SOCKET] Surgical Broadcast to remove channel from UI
     // We fetch the full identity to ensure the mobile app's guard remains satisfied
@@ -372,6 +373,100 @@ export const linkOAuthChannel = async (req, res, next) => {
       data: result
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Fetch a user's YouTube videos dynamically instead of bloating the cached profile.
+ */
+export const getUserVideos = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const cacheKey = CacheKey.userVideos(userId);
+    const youtubeVideos = await withCache(cacheKey, TTL.USER_VIDEOS, async () => {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          youtubeProfiles: {
+            include: {
+              videos: {
+                orderBy: { published_at: 'desc' },
+                take: 50,
+              },
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      return (user.youtubeProfiles || [])
+        .flatMap((p) =>
+          (p.videos || []).map((v) => {
+            const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+            const resolvedUrl = smartResolveMediaUrl(rawThumb);
+
+            return {
+              ...v,
+              video_id:      v.video_id      || null,
+              view_count:    v.view_count    != null ? String(v.view_count)    : "0",
+              like_count:    v.like_count    != null ? String(v.like_count)    : "0",
+              comment_count: v.comment_count != null ? String(v.comment_count) : "0",
+              duration_secs: v.duration_secs || null,
+              category_id:   v.category_id   || null,
+              tags:          v.tags           || null,
+              made_for_kids: v.made_for_kids  || false,
+              thumbnail: resolvedUrl,
+              media: {
+                type: "IMAGE",
+                status: "READY",
+                urls: {
+                  thumb: resolvedUrl,
+                  feed:  resolvedUrl,
+                  full:  resolvedUrl,
+                },
+              },
+            };
+          })
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.published_at || b.publishedAt || 0) -
+            new Date(a.published_at || a.publishedAt || 0)
+        );
+    });
+
+    const { paginate: shouldPaginate, cursor, limit } = req.query;
+    const pageSize = parseInt(limit, 10) || 12;
+
+    if (shouldPaginate === 'true' || cursor) {
+      let startIndex = 0;
+      if (cursor) {
+        startIndex = youtubeVideos.findIndex(v => v.id === cursor) + 1;
+        if (startIndex <= 0) {
+          startIndex = 0;
+        }
+      }
+      
+      const sliced = youtubeVideos.slice(startIndex, startIndex + pageSize + 1);
+      const paginatedResult = paginate(sliced, pageSize, 'id');
+
+      return res.status(200).json({
+        success: true,
+        ...paginatedResult
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: youtubeVideos,
+    });
+  } catch (error) {
+    logger.error(`❌ [YT-VIDEOS] Failed to fetch videos for user: ${error.message}`);
     next(error);
   }
 };

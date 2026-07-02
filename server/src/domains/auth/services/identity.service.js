@@ -158,43 +158,6 @@ export const formatAuthResponse = (user, subscription = null) => {
     banner_url: smartResolveMediaUrl(p.banner_url),
   }));
 
-  const youtubeVideos = (user.youtubeProfiles || [])
-    .flatMap((p) =>
-      (p.videos || []).map((v) => {
-        const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
-        const resolvedUrl = smartResolveMediaUrl(rawThumb);
-
-        return {
-          ...v,
-          // ── Explicit fields so BigInt never gets dropped by JSON serialization ──
-          video_id:      v.video_id      || null,
-          view_count:    v.view_count    != null ? String(v.view_count)    : "0",
-          like_count:    v.like_count    != null ? String(v.like_count)    : "0",
-          comment_count: v.comment_count != null ? String(v.comment_count) : "0",
-          duration_secs: v.duration_secs || null,
-          category_id:   v.category_id   || null,
-          tags:          v.tags           || null,
-          made_for_kids: v.made_for_kids  || false,
-          // ── Resolved thumbnail ─────────────────────────────────────────────────
-          thumbnail: resolvedUrl,
-          media: {
-            type: "IMAGE",
-            status: "READY",
-            urls: {
-              thumb: resolvedUrl,
-              feed:  resolvedUrl,
-              full:  resolvedUrl,
-            },
-          },
-        };
-      })
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.published_at || b.publishedAt || 0) -
-        new Date(a.published_at || a.publishedAt || 0)
-    );
-
   return {
     id: user.id,
     _id: user.id,
@@ -239,7 +202,6 @@ export const formatAuthResponse = (user, subscription = null) => {
     createdAt: user.created_at,
 
     youtubeProfile: youtubeProfiles,
-    youtubeVideos,
 
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0,

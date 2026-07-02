@@ -112,17 +112,24 @@ export default function CreatorProfilePage() {
 
   const posts = postsResponse || [];
 
+  const [videoLimit, setVideoLimit] = useState(8);
+
   // 3. Fetch Creator Videos dynamically
-  const { data: videosResponse } = useQuery({
-    queryKey: ['creator-videos', userId],
+  const { data: videosResponse, isLoading: isLoadingVideos } = useQuery({
+    queryKey: ['creator-videos', userId, videoLimit],
     queryFn: async () => {
-      const response = await api.get(`/youtube/videos/${userId}`);
-      return response.data?.success ? response.data.data : [];
+      const response = await api.get(`/youtube-creator/videos/${userId}`, {
+        params: { paginate: true, limit: videoLimit }
+      });
+      return response.data?.success 
+        ? { items: response.data.items, hasNextPage: response.data.pagination?.hasNextPage }
+        : { items: [], hasNextPage: false };
     },
     enabled: !!userId,
   });
 
-  const youtubeVideos = videosResponse || [];
+  const youtubeVideos = videosResponse?.items || [];
+  const hasMoreVideos = videosResponse?.hasNextPage || false;
 
   // Helper formatting values
   const formatCount = (num: number | string | undefined) => {
@@ -382,38 +389,56 @@ export default function CreatorProfilePage() {
 
                         {/* YouTube Videos Grid */}
                         {youtubeVideos.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {youtubeVideos.slice(0, 8).map((video: YouTubeVideo) => (
-                              <div 
-                                key={video.id}
-                                className={`flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:scale-[1.02] ${
-                                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900 hover:bg-zinc-950/60' : 'bg-white border-zinc-200 shadow-sm hover:shadow-md'
-                                }`}
-                              >
-                                <div className="aspect-video relative overflow-hidden bg-zinc-800">
-                                  <img src={resolveImg(video.thumbnail) || ''} alt={video.title} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="p-4 space-y-2.5 flex-1 flex flex-col justify-between">
-                                  <h4 className={`text-xs font-bold leading-snug line-clamp-2 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
-                                    {video.title}
-                                  </h4>
-                                  <div className="flex items-center gap-4 text-[10px] font-bold text-text-muted mt-auto pt-2">
-                                    <div className="flex items-center gap-1">
-                                      <Eye size={12} />
-                                      <span>{formatCount(video.view_count)} views</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <ThumbsUp size={12} />
-                                      <span>{formatCount(video.like_count)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <MessageSquare size={12} />
-                                      <span>{formatCount(video.comment_count)}</span>
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {youtubeVideos.map((video: YouTubeVideo) => (
+                                <div 
+                                  key={video.id}
+                                  className={`flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:scale-[1.02] ${
+                                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900 hover:bg-zinc-950/60' : 'bg-white border-zinc-200 shadow-sm hover:shadow-md'
+                                  }`}
+                                >
+                                  <div className="aspect-video relative overflow-hidden bg-zinc-800">
+                                    <img src={resolveImg(video.thumbnail) || ''} alt={video.title} className="w-full h-full object-cover" />
+                                  </div>
+                                  <div className="p-4 space-y-2.5 flex-1 flex flex-col justify-between">
+                                    <h4 className={`text-xs font-bold leading-snug line-clamp-2 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+                                      {video.title}
+                                    </h4>
+                                    <div className="flex items-center gap-4 text-[10px] font-bold text-text-muted mt-auto pt-2">
+                                      <div className="flex items-center gap-1">
+                                        <Eye size={12} />
+                                        <span>{formatCount(video.view_count)} views</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <ThumbsUp size={12} />
+                                        <span>{formatCount(video.like_count)}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <MessageSquare size={12} />
+                                        <span>{formatCount(video.comment_count)}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
+                              ))}
+                            </div>
+                            
+                            {hasMoreVideos && (
+                              <div className="flex justify-center pt-2">
+                                <button
+                                  onClick={() => setVideoLimit(prev => prev + 8)}
+                                  disabled={isLoadingVideos}
+                                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-md disabled:opacity-50 ${
+                                    isDarkMode 
+                                      ? 'bg-zinc-900 hover:bg-zinc-800 text-white' 
+                                      : 'bg-zinc-100 hover:bg-zinc-250 text-zinc-800'
+                                  }`}
+                                >
+                                  {isLoadingVideos ? 'Loading...' : 'Load More Videos'}
+                                </button>
                               </div>
-                            ))}
+                            )}
                           </div>
                         ) : (
                           <div className="text-center py-10 text-text-muted text-xs font-medium">
