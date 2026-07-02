@@ -938,7 +938,7 @@ export default function YTDashboard() {
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0">
-            {featuredVideos.map((video) => {
+            {featuredVideos.map((video: any) => {
               const videoId = video.video_id || video.id;
               const views = video.viewCount || video.view_count;
               const dateVal = video.published_at || video.publishedAt;

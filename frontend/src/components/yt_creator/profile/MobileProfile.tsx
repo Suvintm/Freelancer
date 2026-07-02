@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
+import { useQuery } from '@tanstack/react-query';
 import SILVER_BTN from '../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../assets/playbuttons/goldenbtn.png';
 import DIAMOND_BTN from '../../../assets/playbuttons/diamondbtn.png';
@@ -208,7 +209,16 @@ export const MobileProfile = () => {
     { label: 'Diamond', count: 10000, img: DIAMOND_BTN },
   ];
 
-  const allVideos = user.youtubeVideos || [];
+  const { data: videosData } = useQuery<any[]>({
+    queryKey: ['youtube-videos', user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/youtube/videos/${user?.id}`);
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const allVideos = videosData || [];
 
   const timeAgo = (d?: string): string => {
     if (!d) return '';
@@ -737,7 +747,7 @@ export const MobileProfile = () => {
 
               {/* Featured horizontal scroll */}
               <div className="flex gap-3.5 overflow-x-auto pb-4 scrollbar-hide -ml-0 px-4">
-                {allVideos.length > 0 ? allVideos.slice(0, 6).map((video, idx) => (
+                {allVideos.length > 0 ? allVideos.slice(0, 6).map((video: any, idx: number) => (
                   <div
                     key={video.id || idx}
                     className="flex-shrink-0 w-[72vw] max-w-[280px] bg-[#0B0B0B] rounded-xl overflow-hidden border border-[#1A1A1B]"
@@ -843,7 +853,7 @@ export const MobileProfile = () => {
                 </div>
 
                 <div className="flex flex-col gap-2.5">
-                  {allVideos.slice(6).map((video, idx) => (
+                  {allVideos.slice(6).map((video: any, idx: number) => (
                     <div key={video.id || idx} className="flex bg-[#0B0B0B] rounded-xl overflow-hidden border border-[#1A1A1B]">
                       {/* Thumbnail */}
                       <div className="relative w-[140px] shrink-0">

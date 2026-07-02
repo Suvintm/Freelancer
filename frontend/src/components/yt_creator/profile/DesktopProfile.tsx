@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Youtube, Camera, Settings, Plus, BarChart3, Briefcase, Users2, Edit3, Lock, PlaySquare, LayoutGrid, Image as ImageIcon, Check, Trash2, X, Heart, MessageCircle, Play, Eye, ThumbsUp, MessageSquare } from 'lucide-react';
 import { selectUser, updateUser } from '../../../store/slices/authSlice';
 import { api } from '../../../api/client';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../../../hooks/useTheme';
 import SILVER_BTN from '../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../assets/playbuttons/goldenbtn.png';
@@ -205,7 +206,16 @@ export const DesktopProfile = () => {
     { label: 'Diamond', count: 10000000, img: DIAMOND_BTN },
   ];
 
-  const allVideos = user.youtubeVideos || [];
+  const { data: videosData } = useQuery<any[]>({
+    queryKey: ['youtube-videos', user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/youtube/videos/${user?.id}`);
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const allVideos = videosData || [];
 
   return (
     <div className="hidden lg:flex w-full flex-col min-h-full pb-20">
@@ -570,7 +580,7 @@ export const DesktopProfile = () => {
             </div>
             
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
-              {allVideos.length > 0 ? allVideos.slice(0, 10).map((video) => (
+              {allVideos.length > 0 ? allVideos.slice(0, 10).map((video: any) => (
                 <div key={video.id} className="flex-shrink-0 w-52 group cursor-pointer">
                   <div className="relative aspect-video rounded-xl overflow-hidden mb-2 bg-border-secondary border border-border-secondary">
                     <img 
@@ -800,7 +810,7 @@ export const DesktopProfile = () => {
             {/* YT Posts Feed */}
             {activeTab === 'yt_posts' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {allVideos.length > 0 ? allVideos.map((post) => (
+                {allVideos.length > 0 ? allVideos.map((post: any) => (
                   <div key={post.id} className="group cursor-pointer">
                     {/* Video Thumbnail Container */}
                     <div className="relative aspect-video rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary mb-3">
