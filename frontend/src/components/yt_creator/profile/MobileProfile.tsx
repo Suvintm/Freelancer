@@ -34,6 +34,29 @@ interface FeedItem {
   tags?: string[];
 }
 
+interface YouTubeVideo {
+  id: string;
+  video_id?: string;
+  youtubeProfileId?: string;
+  channel_id?: string;
+  title: string;
+  thumbnail: string;
+  viewCount?: string | number;
+  view_count?: string | number;
+  likeCount?: string | number;
+  like_count?: string | number;
+  commentCount?: string | number;
+  comment_count?: string | number;
+  duration_secs?: number | null;
+  duration?: string;
+  published_at?: string;
+  publishedAt?: string;
+  description?: string;
+  tags?: string | null;
+  category_id?: string | null;
+  made_for_kids?: boolean;
+}
+
 export const MobileProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
@@ -170,6 +193,15 @@ export const MobileProfile = () => {
     { id: 'thumbnail_vote', label: 'Thumbnails', icon: ImageIcon },
   ];
 
+  const { data: videosData } = useQuery<YouTubeVideo[]>({
+    queryKey: ['youtube-videos', user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/youtube/videos/${user?.id}`);
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: !!user?.id,
+  });
+
   if (!user) return null;
 
   const youtubeProfiles = user.youtubeProfile || [];
@@ -208,15 +240,6 @@ export const MobileProfile = () => {
     { label: 'Gold', count: 1000, img: GOLD_BTN },
     { label: 'Diamond', count: 10000, img: DIAMOND_BTN },
   ];
-
-  const { data: videosData } = useQuery<any[]>({
-    queryKey: ['youtube-videos', user?.id],
-    queryFn: async () => {
-      const response = await api.get(`/youtube/videos/${user?.id}`);
-      return response.data?.success ? response.data.data : [];
-    },
-    enabled: !!user?.id,
-  });
 
   const allVideos = videosData || [];
 
@@ -747,7 +770,7 @@ export const MobileProfile = () => {
 
               {/* Featured horizontal scroll */}
               <div className="flex gap-3.5 overflow-x-auto pb-4 scrollbar-hide -ml-0 px-4">
-                {allVideos.length > 0 ? allVideos.slice(0, 6).map((video: any, idx: number) => (
+                {allVideos.length > 0 ? allVideos.slice(0, 6).map((video: YouTubeVideo, idx: number) => (
                   <div
                     key={video.id || idx}
                     className="flex-shrink-0 w-[72vw] max-w-[280px] bg-[#0B0B0B] rounded-xl overflow-hidden border border-[#1A1A1B]"
@@ -853,7 +876,7 @@ export const MobileProfile = () => {
                 </div>
 
                 <div className="flex flex-col gap-2.5">
-                  {allVideos.slice(6).map((video: any, idx: number) => (
+                  {allVideos.slice(6).map((video: YouTubeVideo, idx: number) => (
                     <div key={video.id || idx} className="flex bg-[#0B0B0B] rounded-xl overflow-hidden border border-[#1A1A1B]">
                       {/* Thumbnail */}
                       <div className="relative w-[140px] shrink-0">

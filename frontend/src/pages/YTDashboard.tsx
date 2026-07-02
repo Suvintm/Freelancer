@@ -78,7 +78,7 @@ export default function YTDashboard() {
   }, [channels, channelId]);
 
   // 2. Fetch videos dynamically for active channel
-  const { data: videosData } = useQuery({
+  const { data: videosData } = useQuery<YouTubeVideo[]>({
     queryKey: ['youtube-videos', user?.id],
     queryFn: async () => {
       const response = await api.get(`/youtube/videos/${user?.id}`);
@@ -938,7 +938,7 @@ export default function YTDashboard() {
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0">
-            {featuredVideos.map((video: any) => {
+            {featuredVideos.map((video: YouTubeVideo) => {
               const videoId = video.video_id || video.id;
               const views = video.viewCount || video.view_count;
               const dateVal = video.published_at || video.publishedAt;

@@ -34,6 +34,29 @@ interface FeedItem {
   tags?: string[];
 }
 
+interface YouTubeVideo {
+  id: string;
+  video_id?: string;
+  youtubeProfileId?: string;
+  channel_id?: string;
+  title: string;
+  thumbnail: string;
+  viewCount?: string | number;
+  view_count?: string | number;
+  likeCount?: string | number;
+  like_count?: string | number;
+  commentCount?: string | number;
+  comment_count?: string | number;
+  duration_secs?: number | null;
+  duration?: string;
+  published_at?: string;
+  publishedAt?: string;
+  description?: string;
+  tags?: string | null;
+  category_id?: string | null;
+  made_for_kids?: boolean;
+}
+
 export const DesktopProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
@@ -178,6 +201,15 @@ export const DesktopProfile = () => {
     { id: 'thumbnail_vote', label: 'Thumbnails', icon: ImageIcon },
   ];
 
+  const { data: videosData } = useQuery<YouTubeVideo[]>({
+    queryKey: ['youtube-videos', user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/youtube/videos/${user?.id}`);
+      return response.data?.success ? response.data.data : [];
+    },
+    enabled: !!user?.id,
+  });
+
   if (!user) return null;
 
   const youtubeProfiles = user.youtubeProfile || [];
@@ -205,15 +237,6 @@ export const DesktopProfile = () => {
     { label: 'Gold', count: 1000000, img: GOLD_BTN },
     { label: 'Diamond', count: 10000000, img: DIAMOND_BTN },
   ];
-
-  const { data: videosData } = useQuery<any[]>({
-    queryKey: ['youtube-videos', user?.id],
-    queryFn: async () => {
-      const response = await api.get(`/youtube/videos/${user?.id}`);
-      return response.data?.success ? response.data.data : [];
-    },
-    enabled: !!user?.id,
-  });
 
   const allVideos = videosData || [];
 
@@ -580,7 +603,7 @@ export const DesktopProfile = () => {
             </div>
             
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
-              {allVideos.length > 0 ? allVideos.slice(0, 10).map((video: any) => (
+              {allVideos.length > 0 ? allVideos.slice(0, 10).map((video: YouTubeVideo) => (
                 <div key={video.id} className="flex-shrink-0 w-52 group cursor-pointer">
                   <div className="relative aspect-video rounded-xl overflow-hidden mb-2 bg-border-secondary border border-border-secondary">
                     <img 
@@ -810,7 +833,7 @@ export const DesktopProfile = () => {
             {/* YT Posts Feed */}
             {activeTab === 'yt_posts' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {allVideos.length > 0 ? allVideos.map((post: any) => (
+                {allVideos.length > 0 ? allVideos.map((post: YouTubeVideo) => (
                   <div key={post.id} className="group cursor-pointer">
                     {/* Video Thumbnail Container */}
                     <div className="relative aspect-video rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary mb-3">
