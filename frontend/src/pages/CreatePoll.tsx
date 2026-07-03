@@ -281,7 +281,7 @@ export default function CreatePoll() {
       setIsSubmitting(true);
       
       
-      let finalOptions = [];
+      let finalOptions: { text: string; image_url: string | null }[] = [];
       if (type === 'MULTIPLE_CHOICE' || activeTab === 'CREATE_THUMBNAIL') {
         finalOptions = await Promise.all(validOptions.map(async (opt, idx) => {
           let image_url = null;
