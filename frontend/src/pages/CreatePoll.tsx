@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../hooks/useTheme';
 import { 
-  BarChart3, MessageSquare, Image as ImageIcon, 
-  Plus, X, Check, ArrowRight, Settings2, Globe, EyeOff
+  BarChart3, Plus, X, Check, ArrowRight, Settings2, Globe, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { uploadMediaToS3 } from '../utils/s3Uploader';
+import { PieChart, LayoutGrid, Image as ImageIcon2 } from 'lucide-react';
 
 interface OptionCount {
   id: string;
@@ -55,26 +56,29 @@ const TEMPLATES = [
     desc: 'Engage audience on content direction',
     icon: BarChart3,
     type: 'MULTIPLE_CHOICE',
+    layout: 'BAR_CHART',
     options: ['Day in my life vlog', 'Tutorial / How-to', 'Reacting to subscriber setups', 'Q&A Session'],
     color: 'from-zinc-200 to-zinc-400 dark:from-zinc-800 dark:to-zinc-600'
   },
   {
-    id: 'thumbnail_ab',
-    title: 'Thumbnail A or B?',
-    desc: 'Let your community choose the best thumbnail',
-    icon: ImageIcon,
+    id: 'donut_poll',
+    title: 'Which tech is better?',
+    desc: 'Fun comparison using a donut chart',
+    icon: PieChart,
     type: 'MULTIPLE_CHOICE',
-    options: ['Option A (Blue Background)', 'Option B (Red Background)'],
-    color: 'from-zinc-300 to-zinc-500 dark:from-zinc-700 dark:to-zinc-500'
+    layout: 'DONUT_CHART',
+    options: ['React', 'Vue', 'Svelte', 'Angular'],
+    color: 'from-blue-200 to-indigo-400 dark:from-blue-900 dark:to-indigo-700'
   },
   {
-    id: 'open_suggestion',
-    title: 'Open Suggestion Box',
-    desc: 'Gather free-form ideas and feedback',
-    icon: MessageSquare,
-    type: 'OPEN_ENDED',
-    options: [],
-    color: 'from-zinc-100 to-zinc-300 dark:from-zinc-900 dark:to-zinc-700'
+    id: 'thumbnail_ab',
+    title: 'Thumbnail A or B?',
+    desc: 'Grid layout for text options',
+    icon: LayoutGrid,
+    type: 'MULTIPLE_CHOICE',
+    layout: 'GRID_CARDS',
+    options: ['Option A (Blue Background)', 'Option B (Red Background)', 'Option C (Yellow)'],
+    color: 'from-zinc-300 to-zinc-500 dark:from-zinc-700 dark:to-zinc-500'
   }
 ];
 
@@ -208,11 +212,13 @@ export default function CreatePoll() {
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState<'CREATE' | 'MY_POLLS'>('CREATE');
+  const [activeTab, setActiveTab] = useState<'CREATE_OPEN' | 'CREATE_MULTIPLE' | 'CREATE_THUMBNAIL' | 'MY_POLLS'>('CREATE_MULTIPLE');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [type, setType] = useState('MULTIPLE_CHOICE');
+  const [layout, setLayout] = useState('STANDARD');
   const [options, setOptions] = useState(['', '']);
+  const [optionImages, setOptionImages] = useState<(File | null)[]>([null, null]);
   const [showResponseCount, setShowResponseCount] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -221,6 +227,8 @@ export default function CreatePoll() {
     setSelectedTemplate(tpl.id);
     setQuestion(tpl.title);
     setType(tpl.type);
+    setLayout(tpl.layout || 'STANDARD');
+    setOptionImages(new Array(tpl.options?.length || 2).fill(null));
     if (tpl.type === 'MULTIPLE_CHOICE') {
       setOptions([...tpl.options]);
     } else {
@@ -231,6 +239,7 @@ export default function CreatePoll() {
   const handleAddOption = () => {
     if (options.length < 5) {
       setOptions([...options, '']);
+      setOptionImages([...optionImages, null]);
     }
   };
 
@@ -239,7 +248,16 @@ export default function CreatePoll() {
       const newOpts = [...options];
       newOpts.splice(index, 1);
       setOptions(newOpts);
+      const newImgs = [...optionImages];
+      newImgs.splice(index, 1);
+      setOptionImages(newImgs);
     }
+  };
+
+  const handleImageChange = (index: number, file: File | null) => {
+    const newImgs = [...optionImages];
+    newImgs[index] = file;
+    setOptionImages(newImgs);
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -252,9 +270,9 @@ export default function CreatePoll() {
     setErrorMsg('');
     if (!question.trim()) return;
     
-    const validOptions = options.filter(opt => opt.trim());
+    const validOptions = options.map((text, i) => ({ text: text.trim(), file: optionImages[i] })).filter(opt => opt.text || opt.file);
     
-    if (type === 'MULTIPLE_CHOICE' && validOptions.length < 2) {
+    if ((type === 'MULTIPLE_CHOICE' || activeTab === 'CREATE_THUMBNAIL') && validOptions.length < 2) {
       setErrorMsg('Please fill in at least 2 options for your poll.');
       return;
     }
@@ -262,13 +280,27 @@ export default function CreatePoll() {
     try {
       setIsSubmitting(true);
       
+      
+      let finalOptions: { text: string; image_url: string | null }[] = [];
+      if (type === 'MULTIPLE_CHOICE' || activeTab === 'CREATE_THUMBNAIL') {
+        finalOptions = await Promise.all(validOptions.map(async (opt, idx) => {
+          let image_url = null;
+          if (opt.file) {
+            image_url = await uploadMediaToS3(opt.file);
+          }
+          return { text: opt.text || `Option ${String.fromCharCode(65 + idx)}`, image_url };
+        }));
+      }
+
       const payload = {
         question: question.trim(),
-        type: type,
+        type: activeTab === 'CREATE_THUMBNAIL' ? 'MULTIPLE_CHOICE' : type,
+        layout: layout,
         visibility: 'PUBLIC',
         show_response_count: showResponseCount,
-        options: type === 'MULTIPLE_CHOICE' ? validOptions.map(opt => ({ text: opt.trim() })) : []
+        options: finalOptions
       };
+
 
       const response = await api.post('/polls', payload);
       
@@ -306,17 +338,29 @@ export default function CreatePoll() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex justify-center mt-6">
-        <div className={`inline-flex p-1 rounded-2xl ${isDarkMode ? 'bg-zinc-900' : 'bg-zinc-100'}`}>
+      <div className="flex justify-center mt-6 px-4">
+        <div className={`inline-flex p-1 rounded-2xl ${isDarkMode ? 'bg-zinc-900' : 'bg-zinc-100'} overflow-x-auto hide-scrollbar max-w-full`}>
           <button
-            onClick={() => setActiveTab('CREATE')}
-            className={`px-8 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${activeTab === 'CREATE' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
+            onClick={() => { setActiveTab('CREATE_OPEN'); setType('OPEN_ENDED'); setLayout('STANDARD'); }}
+            className={`px-6 py-2.5 text-[13px] font-bold rounded-xl whitespace-nowrap transition-all duration-300 ${activeTab === 'CREATE_OPEN' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
           >
-            Create New
+            Open Question
+          </button>
+          <button
+            onClick={() => { setActiveTab('CREATE_MULTIPLE'); setType('MULTIPLE_CHOICE'); setLayout('STANDARD'); if(options.length < 2) setOptions(['','']); }}
+            className={`px-6 py-2.5 text-[13px] font-bold rounded-xl whitespace-nowrap transition-all duration-300 ${activeTab === 'CREATE_MULTIPLE' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
+          >
+            Multiple Options
+          </button>
+          <button
+            onClick={() => { setActiveTab('CREATE_THUMBNAIL'); setType('THUMBNAIL_POLL'); setLayout('IMAGE_CAROUSEL'); if(options.length < 2) setOptions(['','']); }}
+            className={`px-6 py-2.5 text-[13px] font-bold rounded-xl whitespace-nowrap transition-all duration-300 ${activeTab === 'CREATE_THUMBNAIL' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
+          >
+            Thumbnail Vote
           </button>
           <button
             onClick={() => setActiveTab('MY_POLLS')}
-            className={`px-8 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${activeTab === 'MY_POLLS' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
+            className={`px-6 py-2.5 text-[13px] font-bold rounded-xl whitespace-nowrap transition-all duration-300 ${activeTab === 'MY_POLLS' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
           >
             My Polls
           </button>
@@ -329,6 +373,7 @@ export default function CreatePoll() {
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">
         
         {/* Templates Gallery */}
+        {activeTab === 'CREATE_MULTIPLE' && (
         <section>
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Production Templates</h2>
@@ -367,6 +412,7 @@ export default function CreatePoll() {
             })}
           </div>
         </section>
+        )}
 
         {/* Builder Area */}
         <section className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200 shadow-xl shadow-zinc-200/40'}`}>
@@ -387,25 +433,10 @@ export default function CreatePoll() {
               />
             </div>
 
-            {/* Type Switcher */}
-            <div className={`flex p-1 rounded-xl ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-100'}`}>
-              <button
-                onClick={() => { setType('MULTIPLE_CHOICE'); if(options.length < 2) setOptions(['','']); }}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${type === 'MULTIPLE_CHOICE' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
-              >
-                Multiple Choice
-              </button>
-              <button
-                onClick={() => setType('OPEN_ENDED')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${type === 'OPEN_ENDED' ? (isDarkMode ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm') : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
-              >
-                Open Ended Q&A
-              </button>
-            </div>
-
-            {/* Options Builder (If Multiple Choice) */}
+            
+            {/* Options Builder */}
             <AnimatePresence mode="popLayout">
-              {type === 'MULTIPLE_CHOICE' && (
+              {(activeTab === 'CREATE_MULTIPLE' || activeTab === 'CREATE_THUMBNAIL') && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -426,13 +457,25 @@ export default function CreatePoll() {
                         type="text"
                         value={opt}
                         onChange={(e) => handleOptionChange(index, e.target.value)}
-                        placeholder={`Option ${index + 1}`}
+                        placeholder={activeTab === 'CREATE_THUMBNAIL' ? `Option ${String.fromCharCode(65 + index)}` : `Option ${index + 1}`}
                         className={`flex-1 h-12 px-4 rounded-xl text-sm font-semibold outline-none transition-colors border-2 ${
                           isDarkMode 
                             ? 'bg-black border-zinc-800 text-white placeholder-zinc-700 focus:border-white' 
                             : 'bg-zinc-50 border-zinc-200 text-zinc-900 placeholder-zinc-400 focus:border-zinc-900'
                         }`}
                       />
+                      {activeTab === 'CREATE_THUMBNAIL' && (
+                        <div className="relative shrink-0">
+                          <input type="file" accept="image/*" className="hidden" id={`thumb-opt-${index}`} onChange={(e) => handleImageChange(index, e.target.files?.[0] || null)} />
+                          <label htmlFor={`thumb-opt-${index}`} className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 cursor-pointer transition-colors overflow-hidden ${optionImages[index] ? 'border-green-500 bg-green-500/10' : (isDarkMode ? 'border-zinc-800 bg-zinc-900 hover:border-zinc-600' : 'border-zinc-200 bg-zinc-100 hover:border-zinc-300')}`}>
+                            {optionImages[index] ? (
+                              <img src={URL.createObjectURL(optionImages[index])} className="w-full h-full object-cover" alt="thumb" />
+                            ) : (
+                              <ImageIcon2 size={16} className={isDarkMode ? 'text-zinc-500' : 'text-zinc-400'} />
+                            )}
+                          </label>
+                        </div>
+                      )}
                       {options.length > 2 && (
                         <button 
                           onClick={() => handleRemoveOption(index)}

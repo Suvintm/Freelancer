@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { MoreHorizontal, Volume2, VolumeX, Youtube, Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { motion, useInView } from 'framer-motion';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
+import { useLottie } from 'lottie-react';
+import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
+import watchFullVideoLottieData from '../../assets/lottie/WatchFullVideoCTA.json';
 
 interface Post {
   id: string | number;
@@ -42,6 +45,38 @@ export function FeedYoutube({
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
   }, []);
+
+  const lottieContainerRef = useRef(null);
+  const isInView = useInView(lottieContainerRef, { margin: "50px" });
+  const { View: LottieView, play, pause } = useLottie({
+    animationData: youtubeLottieData,
+    loop: true,
+    autoplay: true,
+  });
+
+  useEffect(() => {
+    if (isInView) {
+      play();
+    } else {
+      pause();
+    }
+  }, [isInView, play, pause]);
+
+  const ctaContainerRef = useRef(null);
+  const isCtaInView = useInView(ctaContainerRef, { margin: "50px" });
+  const { View: CtaLottieView, play: playCta, pause: pauseCta } = useLottie({
+    animationData: watchFullVideoLottieData,
+    loop: true,
+    autoplay: true,
+  });
+
+  useEffect(() => {
+    if (isCtaInView) {
+      playCta();
+    } else {
+      pauseCta();
+    }
+  }, [isCtaInView, playCta, pauseCta]);
 
   const pauseMedia = useCallback(() => {
     if (videoRef.current) {
@@ -116,9 +151,9 @@ export function FeedYoutube({
           <div className="flex flex-col justify-center">
             <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
               {post.user}
-              <span className="bg-red-600 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm leading-none shrink-0 tracking-wider">
-                <Youtube size={8} fill="white" /> YT
-              </span>
+              <div ref={lottieContainerRef} className="w-12 h-6 flex items-center justify-center -ml-1 scale-150 transform origin-left">
+                {LottieView}
+              </div>
             </h4>
             {post.location && (
               <div className="flex items-center gap-1.5 mt-0.5 leading-none">
@@ -176,13 +211,13 @@ export function FeedYoutube({
 
         {/* Watch on YT Button */}
         {post.watchOnYtLink && (
-          <button 
+          <div 
+            ref={ctaContainerRef}
             onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
-            className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer"
+            className="absolute bottom-3 right-3 z-20 cursor-pointer hover:scale-105 active:scale-95 transition-transform w-[140px] flex items-center justify-center drop-shadow-lg"
           >
-            <Youtube size={14} className="text-red-500" />
-            Watch full video on YT
-          </button>
+            {CtaLottieView}
+          </div>
         )}
       </div>
       <div className="p-4 lg:p-6 space-y-4">
@@ -230,28 +265,6 @@ export function FeedYoutube({
           <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
         </div>
 
-        {/* YT Subscribe Banner */}
-        {post.ytChannelName && (
-          <div className={`mt-4 p-3 rounded-2xl flex items-center justify-between border ${isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white shrink-0 shadow-inner">
-                <Youtube size={20} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">YouTube Channel</p>
-                <p className="text-[13px] font-semibold text-text-main truncate">{post.ytChannelName}</p>
-              </div>
-            </div>
-            <a 
-              href={post.ytSubscribeLink || '#'} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[12px] font-medium transition-colors shadow-md active:scale-95"
-            >
-              Subscribe
-            </a>
-          </div>
-        )}
       </div>
     </motion.article>
   );
