@@ -953,13 +953,22 @@ enum PollType {
   OPEN_ENDED
 }
 
+enum PollLayout {
+  STANDARD
+  BAR_CHART
+  DONUT_CHART
+  GRID_CARDS
+  IMAGE_CAROUSEL
+}
+
 model Poll {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   postId              String   @unique @map("post_id") @db.Uuid
-  question            String   @db.Text
-  type                PollType @default(MULTIPLE_CHOICE)
-  show_response_count Boolean  @default(true)
-  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  question            String     @db.Text
+  type                PollType   @default(MULTIPLE_CHOICE)
+  layout              PollLayout @default(STANDARD)
+  show_response_count Boolean    @default(true)
+  created_at          DateTime   @default(now()) @db.Timestamptz(6)
 
   post      Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
   options   PollOption[]
@@ -970,8 +979,9 @@ model Poll {
 
 model PollOption {
   id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pollId      String @map("poll_id") @db.Uuid
+  pollId      String  @map("poll_id") @db.Uuid
   text        String
+  image_url   String?
   order_index Int
 
   poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)

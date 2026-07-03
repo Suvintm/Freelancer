@@ -14,7 +14,7 @@ const memoryDirty = new Set(); // Set of dirty postIds
 
 export const createPoll = async (req, res) => {
   try {
-    const { question, type = "MULTIPLE_CHOICE", options = [], show_response_count = true, visibility = "PUBLIC" } = req.body;
+    const { question, type = "MULTIPLE_CHOICE", layout = "STANDARD", options = [], show_response_count = true, visibility = "PUBLIC" } = req.body;
     const userId = req.user.id;
 
     if (!question) {
@@ -42,6 +42,7 @@ export const createPoll = async (req, res) => {
           postId: post.id,
           question,
           type,
+          layout,
           show_response_count,
         },
       });
@@ -51,6 +52,7 @@ export const createPoll = async (req, res) => {
         const optionsData = options.map((opt, index) => ({
           pollId: newPoll.id,
           text: opt.text,
+          image_url: opt.image_url || null,
           order_index: index,
         }));
         await tx.pollOption.createMany({
@@ -187,7 +189,14 @@ export const getPollPosts = async (req, res) => {
           } : null
         },
         like_count: likesCount,
-        isLiked
+        isLiked,
+        poll: post.poll ? {
+          ...post.poll,
+          options: post.poll.options?.map(opt => ({
+            ...opt,
+            image_url: smartResolveMediaUrl(opt.image_url)
+          }))
+        } : null
       };
     }));
 
@@ -246,7 +255,14 @@ export const getMyPolls = async (req, res) => {
           } : null
         },
         like_count: likesCount,
-        isLiked
+        isLiked,
+        poll: post.poll ? {
+          ...post.poll,
+          options: post.poll.options?.map(opt => ({
+            ...opt,
+            image_url: smartResolveMediaUrl(opt.image_url)
+          }))
+        } : null
       };
     }));
 
@@ -290,7 +306,7 @@ export const getPollDetails = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized to view details" });
     }
 
-    // Resolve participant avatars
+    // Resolve participant avatars and poll option images
     if (poll.responses) {
       poll.responses = poll.responses.map(resp => {
         if (resp.user?.profile) {
@@ -298,6 +314,13 @@ export const getPollDetails = async (req, res) => {
         }
         return resp;
       });
+    }
+    
+    if (poll.options) {
+      poll.options = poll.options.map(opt => ({
+        ...opt,
+        image_url: smartResolveMediaUrl(opt.image_url)
+      }));
     }
 
     res.status(200).json({ success: true, data: poll });
