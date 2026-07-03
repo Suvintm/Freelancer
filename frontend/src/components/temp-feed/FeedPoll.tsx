@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { MoreHorizontal, Heart, Send, CheckCircle2, MessageSquare, Image as ImageIcon, Smile, PlaySquare, Lightbulb, Bookmark, Share2 } from 'lucide-react';
+import { MoreHorizontal, Heart, Send, CheckCircle2, MessageSquare, Image as ImageIcon, Smile, Lightbulb, Bookmark, Share2 } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import ytBadge from '../../assets/verifiedbadges/yt_badge.png';
 import { useLottie } from 'lottie-react';

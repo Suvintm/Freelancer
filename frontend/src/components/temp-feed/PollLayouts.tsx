@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ChevronLeft, ChevronRight, Video, GraduationCap, Star, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Video, GraduationCap, Star, MessageSquare } from 'lucide-react';
 
 interface PollOption {
   id: string;
   text: string;
   image_url?: string;
   order_index: number;
+  _count?: {
+    responses: number;
+  };
 }
 
 interface PollLayoutProps {
@@ -40,7 +43,7 @@ export const BarChartLayout: React.FC<PollLayoutProps> = ({ options, localCounts
   return (
     <div className="flex items-end gap-3 h-56 mt-4 px-2">
       {options.map((opt, idx) => {
-        const count = ((opt as any)._count?.responses || 0) + (localCounts[opt.id] || 0);
+        const count = (opt._count?.responses || 0) + (localCounts[opt.id] || 0);
         const heightPct = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
         const Icon = ICON_MAP[idx % ICON_MAP.length];
         const GradientClass = GRADIENT_MAP[idx % GRADIENT_MAP.length];
@@ -83,7 +86,7 @@ export const BarChartLayout: React.FC<PollLayoutProps> = ({ options, localCounts
 // 2. DONUT_CHART (Image 3 style)
 // ---------------------------------------------------------
 export const DonutChartLayout: React.FC<PollLayoutProps> = ({ options, localCounts, totalVotes, hasVoted, selectedOption, onVote, isDarkMode, showResults }) => {
-  let currentOffset = 0;
+
   
   return (
     <div className="flex flex-col items-center gap-6 mt-4">
@@ -97,14 +100,17 @@ export const DonutChartLayout: React.FC<PollLayoutProps> = ({ options, localCoun
         {/* Foreground Animated Track */}
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 z-10">
           {options.map((opt, idx) => {
-            const count = ((opt as any)._count?.responses || 0) + (localCounts[opt.id] || 0);
+            const count = (opt._count?.responses || 0) + (localCounts[opt.id] || 0);
             const pct = totalVotes > 0 ? (count / totalVotes) : (1 / options.length); // Equal segments if no votes
             const circumference = 2 * Math.PI * 40; // ~251.2
             
             // We subtract a small gap from the stroke to create segment spacing
             const strokeDasharray = `${Math.max((pct * circumference) - 2, 0)} ${circumference}`; 
-            const offset = currentOffset;
-            currentOffset -= (pct * circumference);
+            
+            // Calculate offset based on sum of previous percentages
+            const prevCounts = options.slice(0, idx).reduce((sum, o) => sum + ((o._count?.responses || 0) + (localCounts[o.id] || 0)), 0);
+            const prevPct = totalVotes > 0 ? (prevCounts / totalVotes) : (idx / options.length);
+            const offset = -(prevPct * circumference);
             
             return (
               <motion.circle
@@ -129,7 +135,7 @@ export const DonutChartLayout: React.FC<PollLayoutProps> = ({ options, localCoun
             {(() => {
               let iconOffset = 0;
               return options.map((opt, idx) => {
-                const count = ((opt as any)._count?.responses || 0) + (localCounts[opt.id] || 0);
+                const count = (opt._count?.responses || 0) + (localCounts[opt.id] || 0);
                 const pct = totalVotes > 0 ? (count / totalVotes) : (1 / options.length);
                 
                 // Angle in the middle of the segment
@@ -180,7 +186,7 @@ export const DonutChartLayout: React.FC<PollLayoutProps> = ({ options, localCoun
       <div className="w-full flex flex-wrap justify-center gap-2">
         {options.map((opt, idx) => {
           const isSelected = selectedOption === idx;
-          const count = ((opt as any)._count?.responses || 0) + (localCounts[opt.id] || 0);
+          const count = (opt._count?.responses || 0) + (localCounts[opt.id] || 0);
           const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
           return (
             <button
@@ -209,7 +215,7 @@ export const GridCardsLayout: React.FC<PollLayoutProps> = ({ options, localCount
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
       {options.map((opt, idx) => {
-        const count = ((opt as any)._count?.responses || 0) + (localCounts[opt.id] || 0);
+        const count = (opt._count?.responses || 0) + (localCounts[opt.id] || 0);
         const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
         const isSelected = selectedOption === idx;
         const Icon = ICON_MAP[idx % ICON_MAP.length];
@@ -315,7 +321,7 @@ export const ImageCarouselLayout: React.FC<PollLayoutProps> = ({ options, localC
       {/* Voting Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {options.map((opt, idx) => {
-          const count = ((opt as any)._count?.responses || 0) + (localCounts[opt.id] || 0);
+          const count = (opt._count?.responses || 0) + (localCounts[opt.id] || 0);
           const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
           const isSelected = selectedOption === idx;
           const isActiveImg = currentIndex === idx;

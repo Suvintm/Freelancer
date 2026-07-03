@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../hooks/useTheme';
 import { 
-  BarChart3, MessageSquare, Image as ImageIcon, 
-  Plus, X, Check, ArrowRight, Settings2, Globe, EyeOff
+  BarChart3, Plus, X, Check, ArrowRight, Settings2, Globe, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { uploadMediaToS3 } from '../utils/s3Uploader';
-import { PieChart, List, LayoutGrid, Image as ImageIcon2 } from 'lucide-react';
+import { PieChart, LayoutGrid, Image as ImageIcon2 } from 'lucide-react';
 
 interface OptionCount {
   id: string;
