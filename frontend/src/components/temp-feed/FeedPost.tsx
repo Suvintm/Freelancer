@@ -16,6 +16,17 @@ interface Post {
   tags?: string[];
   likedByAvatars?: string[];
   watchOnYtLink?: string;
+  mediaWidth?: number;
+  mediaHeight?: number;
+}
+
+const MIN_RATIO = 4 / 5;
+const MAX_RATIO = 1.91;
+
+function getClampedRatio(width?: number, height?: number): number {
+  if (!width || !height) return 1;
+  const raw = width / height;
+  return Math.min(MAX_RATIO, Math.max(MIN_RATIO, raw));
 }
 
 export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean }) {
@@ -71,24 +82,28 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       </div>
 
       <div 
-        className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`}
+        className="w-full relative overflow-hidden flex items-center justify-center bg-black"
+        style={{ 
+          aspectRatio: getClampedRatio(post.mediaWidth, post.mediaHeight),
+          maxHeight: 'min(75vh, 580px)'
+        }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
         {post.images && post.images.length > 0 ? (
-          <div className="w-full relative group flex items-center">
+          <div className="w-full h-full relative group flex items-center">
             {/* Images wrapper */}
             <div 
-              className="flex w-full transition-transform duration-500 ease-out items-center"
+              className="flex w-full h-full transition-transform duration-500 ease-out items-center"
               style={{ transform: `translateX(-${currentImgIndex * 100}%)` }}
             >
               {post.images.map((img, idx) => (
-                <div key={idx} className="w-full flex-shrink-0 flex items-center justify-center">
+                <div key={idx} className="w-full h-full flex-shrink-0 flex items-center justify-center relative">
                   <img 
                     src={img} 
                     alt={`Slide ${idx + 1}`} 
-                    className="w-full h-auto max-h-[min(75vh,580px)] object-contain" 
+                    className="absolute inset-0 w-full h-full object-contain" 
                   />
                 </div>
               ))}
@@ -135,7 +150,7 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
             </div>
           </div>
         ) : (
-          <img src={post.img} alt="Post content" className="w-full h-auto max-h-[min(75vh,580px)] object-contain" />
+          <img src={post.img} alt="Post content" className="absolute inset-0 w-full h-full object-contain" />
         )}
 
         {/* Watch on YT Button */}

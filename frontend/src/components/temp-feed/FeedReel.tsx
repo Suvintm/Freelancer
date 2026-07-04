@@ -16,6 +16,17 @@ interface Post {
   tags?: string[];
   likedByAvatars?: string[];
   watchOnYtLink?: string;
+  mediaWidth?: number;
+  mediaHeight?: number;
+}
+
+const MIN_RATIO = 4 / 5;
+const MAX_RATIO = 1.91;
+
+function getClampedRatio(width?: number, height?: number): number {
+  if (!width || !height) return 1;
+  const raw = width / height;
+  return Math.min(MAX_RATIO, Math.max(MIN_RATIO, raw));
 }
 
 export function FeedReel({ 
@@ -101,7 +112,11 @@ export function FeedReel({
       }`}
     >
       <div 
-        className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`} 
+        className="w-full relative overflow-hidden flex items-center justify-center cursor-pointer bg-black" 
+        style={{ 
+          aspectRatio: getClampedRatio(post.mediaWidth, post.mediaHeight),
+          maxHeight: 'min(75vh, 580px)'
+        }}
         onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}
       >
         {/* Instagram-style overlaid header (top-left) */}
@@ -159,7 +174,7 @@ export function FeedReel({
             // Force muted=true at load time because JSX muted prop doesn't work reliably
             if (videoRef.current) videoRef.current.muted = true;
           }}
-          className="w-full h-auto max-h-[min(75vh,580px)] object-contain"
+          className="absolute inset-0 w-full h-full object-contain"
         />
 
         {isPlaying && (

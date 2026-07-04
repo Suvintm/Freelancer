@@ -120,6 +120,8 @@ export const createTempFeedItem = async (req, res) => {
 
       feedData.videoUrl = safeVideoUrl;
       feedData.videoPublicId = uploadResult.public_id;
+      if (uploadResult.width) feedData.mediaWidth = uploadResult.width;
+      if (uploadResult.height) feedData.mediaHeight = uploadResult.height;
     } else if (type === "post" || type === "thumbnail_vote") {
       // Expect one or more image files
       const imageFiles = req.files?.images;
@@ -141,6 +143,11 @@ export const createTempFeedItem = async (req, res) => {
       const uploadResults = await Promise.all(uploadPromises);
       feedData.images = uploadResults.map((res) => res.secure_url);
       feedData.imagesPublicIds = uploadResults.map((res) => res.public_id);
+
+      if (uploadResults.length > 0) {
+        if (uploadResults[0].width) feedData.mediaWidth = uploadResults[0].width;
+        if (uploadResults[0].height) feedData.mediaHeight = uploadResults[0].height;
+      }
 
       if (type === "thumbnail_vote") {
         feedData.votes = new Array(uploadResults.length).fill(0);
