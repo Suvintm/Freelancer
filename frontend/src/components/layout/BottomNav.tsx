@@ -35,10 +35,27 @@ export const BottomNav = () => {
   const [isUploadSheetOpen, setIsUploadSheetOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Scroll to hide/show logic
+  // Scroll to hide/show logic & Inactivity Timer
   useEffect(() => {
     let ticking = false;
+
+    const startInactivityTimer = () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      inactivityTimerRef.current = setTimeout(() => {
+        // Auto-hide after 3 seconds if not at top and upload sheet isn't open
+        if (lastScrollY.current > 15 && !isUploadSheetOpen) {
+          setIsVisible(false);
+        }
+      }, 3000);
+    };
+
+    const handleInteraction = () => {
+      startInactivityTimer();
+    };
 
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document | Window;
@@ -74,16 +91,28 @@ export const BottomNav = () => {
           }
           lastScrollY.current = currentScrollY;
           ticking = false;
+          
+          startInactivityTimer();
         });
         ticking = true;
       }
     };
 
     window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
+    window.addEventListener('click', handleInteraction, { passive: true });
+    
+    startInactivityTimer();
+
     return () => {
       window.removeEventListener('scroll', handleScroll, { capture: true });
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('click', handleInteraction);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
     };
-  }, []);
+  }, [isUploadSheetOpen]);
 
   const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
   const filteredNavItems = NAV_ITEMS.filter(item => {

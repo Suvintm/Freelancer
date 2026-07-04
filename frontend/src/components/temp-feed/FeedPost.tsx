@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
+import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube, MapPin } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 
 interface Post {
@@ -20,7 +20,7 @@ interface Post {
   mediaHeight?: number;
 }
 
-const MIN_RATIO = 4 / 5;
+const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;
 
 function getClampedRatio(width?: number, height?: number): number {
@@ -33,6 +33,7 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [mediaDims, setMediaDims] = useState({ width: post.mediaWidth, height: post.mediaHeight });
   const minSwipeDistance = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -60,6 +61,9 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
   const isDynamicPost = typeof post.id === 'string';
   const avatarSrc = isDynamicPost ? defaultProfile : post.img;
 
+  const isTallMedia = (mediaDims.width && mediaDims.height && (mediaDims.width / mediaDims.height) <= 1.0);
+  const objectFitClass = !isTallMedia ? 'object-contain' : 'object-cover';
+
   return (
     <motion.article 
       className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl mb-6 lg:mb-0 pb-4 lg:pb-0 relative ${
@@ -73,7 +77,12 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
           </div>
           <div>
             <h4 className="text-[13px] font-semibold text-text-main leading-none mb-1">{post.user}</h4>
-            <p className="text-[10px] text-text-muted font-medium">{post.location}</p>
+            {post.location && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <MapPin size={10} className="text-text-muted animate-pulse shrink-0" />
+                <p className="text-[10px] text-text-muted font-medium animate-pulse">{post.location}</p>
+              </div>
+            )}
           </div>
         </div>
         <button className={`p-2 transition-colors ${isDarkMode ? 'text-white hover:text-zinc-300' : 'text-zinc-950 hover:text-zinc-600'}`}>
@@ -84,8 +93,8 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       <div 
         className="w-full relative overflow-hidden flex items-center justify-center bg-black"
         style={{ 
-          aspectRatio: getClampedRatio(post.mediaWidth, post.mediaHeight),
-          maxHeight: 'min(75vh, 580px)'
+          aspectRatio: getClampedRatio(mediaDims.width, mediaDims.height),
+          maxHeight: 'min(80vh, 650px)'
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -103,7 +112,12 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
                   <img 
                     src={img} 
                     alt={`Slide ${idx + 1}`} 
-                    className="absolute inset-0 w-full h-full object-contain" 
+                    onLoad={(e) => {
+                      if (!mediaDims.width || !mediaDims.height) {
+                        setMediaDims({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight });
+                      }
+                    }}
+                    className={`absolute inset-0 w-full h-full ${objectFitClass}`} 
                   />
                 </div>
               ))}
@@ -150,14 +164,45 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
             </div>
           </div>
         ) : (
-          <img src={post.img} alt="Post content" className="absolute inset-0 w-full h-full object-contain" />
+          <img 
+            src={post.img} 
+            alt="Post content" 
+            onLoad={(e) => {
+              if (!mediaDims.width || !mediaDims.height) {
+                setMediaDims({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight });
+              }
+            }}
+            className={`absolute inset-0 w-full h-full ${objectFitClass}`} 
+          />
+        )}
+
+        {/* Action Buttons Overlay for Tall Media */}
+        {isTallMedia && (
+          <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
+            <div 
+              className="flex items-center gap-6 pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
+              <button className="text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500"><Heart size={26} fill="rgba(0,0,0,0.2)" /></button>
+              <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
+              <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
+            </div>
+            <button 
+              className="text-white drop-shadow-md transition-colors transform active:scale-90 pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
+              <Bookmark size={26} fill="rgba(0,0,0,0.2)" />
+            </button>
+          </div>
         )}
 
         {/* Watch on YT Button */}
         {post.watchOnYtLink && (
           <button 
             onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
-            className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer"
+            className={`absolute right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer ${isTallMedia ? 'bottom-16' : 'bottom-3'}`}
           >
             <Youtube size={14} className="text-red-500" />
             Watch full video on YT
@@ -166,14 +211,16 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       </div>
 
       <div className="p-4 lg:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} /></button>
-            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
-            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
+        {!isTallMedia && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <button className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} /></button>
+              <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
+              <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
+            </div>
+            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Bookmark size={24} /></button>
           </div>
-          <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Bookmark size={24} /></button>
-        </div>
+        )}
 
         <div className="space-y-2">
           {/* Liked By Section */}
