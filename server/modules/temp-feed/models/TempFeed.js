@@ -45,6 +45,13 @@ const tempFeedSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Dimensions
+    mediaWidth: {
+      type: Number,
+    },
+    mediaHeight: {
+      type: Number,
+    },
     // Vote counts for each thumbnail option (index-aligned with images)
     votes: {
       type: [Number],
