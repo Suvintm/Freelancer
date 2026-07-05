@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useLottie } from 'lottie-react';
 import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
@@ -38,11 +38,17 @@ export function FeedYoutube({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   const playMedia = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  }, []);
+
+  const pauseMedia = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
     }
   }, []);
 
@@ -55,11 +61,7 @@ export function FeedYoutube({
   });
 
   useEffect(() => {
-    if (isInView) {
-      play();
-    } else {
-      pause();
-    }
+    if (isInView) play(); else pause();
   }, [isInView, play, pause]);
 
   const ctaContainerRef = useRef(null);
@@ -71,38 +73,20 @@ export function FeedYoutube({
   });
 
   useEffect(() => {
-    if (isCtaInView) {
-      playCta();
-    } else {
-      pauseCta();
-    }
+    if (isCtaInView) playCta(); else pauseCta();
   }, [isCtaInView, playCta, pauseCta]);
 
-  const pauseMedia = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (isActive) {
-      playMedia();
-    } else {
-      pauseMedia();
-    }
+    if (isActive) playMedia(); else pauseMedia();
   }, [isActive, playMedia, pauseMedia]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     video.muted = isMuted;
-    if (!isMuted) {
-      video.volume = 1;
-    }
+    if (!isMuted) video.volume = 1;
   }, [isMuted]);
 
-  // Direct DOM manipulation on click (real user gesture = browser allows audio)
   const handleMuteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const video = videoRef.current;
@@ -118,153 +102,159 @@ export function FeedYoutube({
     onToggleMute?.(e);
   };
 
-  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLMediaElement>) => {
-    const target = e.currentTarget;
-    if (target.duration) {
-      setProgress((target.currentTime / target.duration) * 100);
-    }
-  };
-
-
   const isDynamicPost = typeof post.id === 'string';
   const avatarSrc = isDynamicPost ? defaultProfile : post.img;
 
   return (
     <motion.article 
       data-post-id={post.id}
-      className={`lg:border lg:border-border-main lg:rounded-[40px] overflow-hidden group lg:shadow-xl mb-6 lg:mb-0 pb-4 lg:pb-0 relative ${
-        isDarkMode ? 'bg-black lg:bg-[#0a0a0a]' : 'bg-white shadow-sm lg:shadow-2xl'
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      onClick={() => { if (post.watchOnYtLink) window.open(post.watchOnYtLink, '_blank'); }}
+      className={`relative w-full rounded-[28px] overflow-hidden group transition-all duration-500 mb-8 border cursor-pointer ${
+        isDarkMode 
+          ? 'bg-zinc-950/80 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
+          : 'bg-white border-zinc-200 shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
       }`}
     >
+      {/* Video Container (16:9 Aspect Ratio) */}
       <div 
-        className={`w-full max-h-[min(75vh,580px)] relative overflow-hidden flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-black' : 'bg-zinc-50'}`}
-        onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}
+        className="relative w-full aspect-video bg-black cursor-pointer overflow-hidden rounded-t-[28px]"
+        onClick={(e) => { e.stopPropagation(); if (isPlaying) pauseMedia(); else playMedia(); }}
       >
-        {/* Instagram-style overlaid header (top-left) */}
-        <div 
-          className="absolute top-4 left-4 flex items-center gap-2.5 z-20 select-none pointer-events-auto" 
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-8 h-8 rounded-full border border-white/60 p-[1.5px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] bg-black/20 shrink-0">
-            <img src={avatarSrc} alt={post.user} className="w-full h-full rounded-full object-cover" />
-          </div>
-          <div className="flex flex-col justify-center">
-            <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
-              {post.user}
-              <div ref={lottieContainerRef} className="w-12 h-6 flex items-center justify-center -ml-1 scale-150 transform origin-left">
-                {LottieView}
-              </div>
-            </h4>
-            {post.location && (
-              <div className="flex items-center gap-1.5 mt-0.5 leading-none">
-                <p className="text-[10px] text-white/85 font-medium tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{post.location}</p>
-                {isPlaying && !isMuted && (
-                  <div className="flex items-end gap-[1px] h-[7px] w-[8px]">
-                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.1s' }} />
-                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.4s' }} />
-                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.2s' }} />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Controls overlaid (top-right) */}
-        <div 
-          className="absolute top-4 right-4 flex items-center gap-2.5 z-20 pointer-events-auto" 
-          onClick={(e) => e.stopPropagation()}
-        >
-          {isPlaying && (
-            <button 
-              onClick={handleMuteClick}
-              className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-md cursor-pointer"
-            >
-              {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} className="animate-pulse text-red-400" />}
-            </button>
-          )}
-          <button className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-md cursor-pointer">
-            <MoreHorizontal size={16} />
-          </button>
-        </div>
-
         <video 
           ref={videoRef}
           src={post.videoUrl}
           loop
           playsInline
-          onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={() => {
             if (videoRef.current) videoRef.current.muted = true;
           }}
-          className="w-full h-auto max-h-[min(75vh,580px)] object-contain"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90 group-hover:opacity-100"
         />
 
-        {isPlaying && (
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20 z-10">
-            <div 
-              className="h-full bg-white transition-all duration-75 origin-left"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
+        {/* Top Gradient Overlay */}
+        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
 
-        {/* Watch on YT Button */}
-        {post.watchOnYtLink && (
-          <div 
-            ref={ctaContainerRef}
-            onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
-            className="absolute bottom-3 right-3 z-20 cursor-pointer hover:scale-105 active:scale-95 transition-transform w-[140px] flex items-center justify-center drop-shadow-lg"
-          >
-            {CtaLottieView}
+        {/* Video Header: User Info & YT Lottie */}
+        <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-20 pointer-events-none">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-white/30 p-[1.5px] bg-black/40 backdrop-blur-md overflow-hidden shadow-lg pointer-events-auto">
+              <img src={avatarSrc} alt={post.user} className="w-full h-full rounded-full object-cover" />
+            </div>
+            <div className="flex flex-col drop-shadow-md">
+              <h4 className="text-[14px] font-bold text-white tracking-wide leading-tight flex items-center gap-2">
+                {post.user}
+                <div ref={lottieContainerRef} className="w-12 h-6 flex items-center justify-center -ml-1 scale-[1.75] transform origin-left">
+                  {LottieView}
+                </div>
+              </h4>
+              {post.location && (
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[11px] text-white/90 font-medium tracking-wide">{post.location}</p>
+                  {isPlaying && !isMuted && (
+                    <div className="flex items-end gap-[1.5px] h-2">
+                      <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.1s' }} />
+                      <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.3s' }} />
+                      <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-      <div className="p-4 lg:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} /></button>
-            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
-            <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
+          
+          {/* Top Right Controls */}
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button 
+              onClick={handleMuteClick}
+              className="p-2 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/20 hover:scale-105 active:scale-95 shadow-lg"
+            >
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} className="text-red-400 animate-pulse" />}
+            </button>
+            <button className="p-2 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/20 hover:scale-105 active:scale-95 shadow-lg">
+              <MoreHorizontal size={16} />
+            </button>
           </div>
-          <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Bookmark size={24} /></button>
         </div>
 
-        <div className="space-y-2">
-          {/* Liked By Section */}
-          <div className="flex items-center gap-2">
-            {post.likedByAvatars && post.likedByAvatars.length > 0 && (
-              <div className="flex -space-x-1.5">
-                {post.likedByAvatars.map((avatar, idx) => (
-                  <img key={idx} src={avatar} alt="Liked by" className={`w-[22px] h-[22px] rounded-full border-[1.5px] object-cover ${isDarkMode ? 'border-black' : 'border-white'}`} style={{ zIndex: 3 - idx }} />
+        {/* Play/Pause Center Indicator (Fades out) */}
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300 z-10 ${isPlaying ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
+          <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl pl-1">
+            <Play size={28} className="fill-white" />
+          </div>
+        </div>
+
+        {/* Bottom Gradient Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
+      </div>
+
+      {/* Content Section Below Video */}
+      <div className="p-5 lg:p-6 flex flex-col gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            {/* Title / Comment */}
+            <h3 className={`text-base font-semibold leading-snug line-clamp-2 ${isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
+              {post.comment}
+            </h3>
+            
+            {/* Tags */}
+            {post.tags && post.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {post.tags.map((tag, idx) => (
+                  <span key={idx} className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
+                    #{tag}
+                  </span>
                 ))}
               </div>
             )}
-            <p className="text-[13px] text-text-main font-medium">
-              Liked by <span className="font-semibold">Jane</span>, <span className="font-semibold">Alex</span> and <span className="font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes} others</span>
-            </p>
           </div>
 
-          {/* Caption */}
-          <p className="text-[13px] text-text-main leading-relaxed">
-            <span className="font-semibold mr-2 uppercase tracking-tight text-[11px]">{post.user.split(' ')[0]}</span>
-            <span className="text-text-muted dark:text-zinc-400 font-medium">{post.comment}</span>
-          </p>
-
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {post.tags.map((tag, idx) => (
-                <span key={idx} className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
-                  #{tag}
-                </span>
-              ))}
+          {/* YT CTA Lottie (Watch Full Video) */}
+          {post.watchOnYtLink && (
+            <div 
+              ref={ctaContainerRef}
+              onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+              className="cursor-pointer hover:scale-105 active:scale-95 transition-transform w-[120px] flex-shrink-0 flex items-center justify-center drop-shadow-md bg-white/5 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-xl overflow-hidden p-1"
+            >
+              {CtaLottieView}
             </div>
           )}
-
-          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
         </div>
 
+        {/* Bottom Interaction Bar */}
+        <div 
+          className={`flex items-center justify-between pt-4 border-t ${isDarkMode ? 'border-white/10' : 'border-zinc-100'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-4">
+            <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
+              <Heart size={20} className="hover:text-red-500 transition-colors" />
+              <span className="text-[13px] font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes}</span>
+            </button>
+            <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
+              <MessageCircle size={20} />
+              <span className="text-[13px] font-semibold">{post.commentsCount}</span>
+            </button>
+            <button className={`p-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
+              <Share2 size={20} />
+            </button>
+          </div>
+
+          {/* Liked By Avatars (optional, aligned right if few, or Bookmark) */}
+          <div className="flex items-center gap-3">
+            {post.likedByAvatars && post.likedByAvatars.length > 0 && (
+              <div className="flex -space-x-2 mr-2">
+                {post.likedByAvatars.slice(0, 3).map((avatar, idx) => (
+                  <img key={idx} src={avatar} alt="Liked by" className={`w-6 h-6 rounded-full border-2 object-cover ${isDarkMode ? 'border-zinc-950' : 'border-white'}`} style={{ zIndex: 3 - idx }} />
+                ))}
+              </div>
+            )}
+            <button className={`p-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
+              <Bookmark size={20} />
+            </button>
+          </div>
+        </div>
       </div>
     </motion.article>
   );
