@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play, Pause } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useLottie } from 'lottie-react';
 import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
