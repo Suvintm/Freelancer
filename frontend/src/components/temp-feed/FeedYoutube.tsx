@@ -8,7 +8,7 @@ import watchFullVideoLottieData from '../../assets/lottie/WatchFullVideoCTA.json
 
 interface Post {
   id: string | number;
-  user: string;
+  user: string | { username?: string; profile?: { name?: string } };
   location: string;
   img: string;
   likes: string | number;

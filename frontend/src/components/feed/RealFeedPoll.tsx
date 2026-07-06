@@ -16,6 +16,18 @@ interface PollOption {
   _count?: { responses: number };
 }
 
+interface Poll {
+  id?: string;
+  type?: string;
+  question?: string;
+  layout?: string;
+  show_response_count?: boolean;
+  totalVotes?: number;
+  hasVoted?: boolean;
+  options?: PollOption[];
+  userResponse?: { optionId?: string; text_response?: string };
+}
+
 export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode: boolean }) {
   const resolveImg = (url: string | null | undefined) => {
     if (!url) return null;

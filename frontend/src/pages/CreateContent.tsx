@@ -5,7 +5,7 @@ import { selectUser } from '../store/slices/authSlice';
 import { api } from '../api/client';
 import { uploadMediaDetailed } from '../utils/s3Uploader';
 import { motion, AnimatePresence } from 'framer-motion';
-import CreateImagePostWizard, { CreatePostData } from '../components/create-post/CreateImagePostWizard';
+import CreateImagePostWizard, { type CreatePostData } from '../components/create-post/CreateImagePostWizard';
 import { 
   Image as ImageIcon, 
   Video, 

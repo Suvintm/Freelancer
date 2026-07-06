@@ -6,8 +6,8 @@ import LottieComponent from 'lottie-react';
 import imageErrorAnimation from '../../assets/lottie/image-error.json';
 import type { RealPost } from './types';
 
-// Handle ESM/CJS interop for lottie-react
-const Lottie = (LottieComponent as Record<string, unknown>).default || LottieComponent;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Lottie = ((LottieComponent as any).default || LottieComponent) as any;
 
 const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;

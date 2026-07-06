@@ -6,7 +6,7 @@ import { api } from '../../api/client';
 
 interface Post {
   id: string | number;
-  user: string;
+  user: string | { username?: string; profile?: { name?: string } };
   location: string;
   img: string; // The first thumbnail is used as fallback or main
   images?: string[]; // Array of 2-4 thumbnails
