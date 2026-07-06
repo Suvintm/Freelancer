@@ -15,15 +15,15 @@ import lightLogo from '../assets/lightlogo.png';
 import ytDarkTheme from '../assets/banners/yt dark theme.png';
 import ytLightTheme from '../assets/banners/yt light theme.png';
 import { api } from '../api/client';
-import { FeedPost } from '../components/temp-feed/FeedPost';
-import { FeedReel } from '../components/temp-feed/FeedReel';
-import { FeedYoutube } from '../components/temp-feed/FeedYoutube';
-import { FeedThumbnailVote } from '../components/temp-feed/FeedThumbnailVote';
-import { FeedPoll } from '../components/temp-feed/FeedPoll';
+import { RealFeedPost } from '../components/feed/RealFeedPost';
+import { RealFeedReel } from '../components/feed/RealFeedReel';
+import { RealFeedYoutube } from '../components/feed/RealFeedYoutube';
+import { RealFeedPoll } from '../components/feed/RealFeedPoll';
 import { MOCK_STORIES } from '../data/storyData';
 import type { Story } from '../data/storyData';
 import { StoryViewer } from '../components/home/StoryViewer';
 import { FeedPostSkeleton } from '../components/temp-feed/FeedPostSkeleton';
+import type { RealPost } from '../components/feed/types';
 
 // STORIES array moved inside Home component to support dynamic user state.
  
@@ -44,6 +44,7 @@ interface Post {
   tags?: string[];
   watchOnYtLink?: string;
   votes?: number[];
+  userAvatar?: string;
 }
 
 const POSTS: Post[] = [
@@ -300,68 +301,42 @@ export default function Home() {
   const [globalMuted, setGlobalMuted] = useState(true);
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [visibleCount, setVisibleCount] = useState(5);
 
-  const { data: feedPosts = POSTS, isLoading } = useQuery({
-    queryKey: ['temp-feed'],
+  const { data: feedPosts = [], isLoading } = useQuery<RealPost[]>({
+    queryKey: ['real-feed'],
     queryFn: async () => {
       try {
-        const [tempFeedRes, pollsRes] = await Promise.all([
-          api.get('/temp-feed').catch(() => ({ data: { success: false, data: [] } })),
-          api.get('/polls').catch(() => ({ data: { success: false, data: [] } }))
-        ]);
+        const socialFeedRes = await api.get('/social/feed?limit=50').catch(() => ({ data: { success: false, data: [] } }));
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let dbPosts: any[] = [];
+        let dbPosts: RealPost[] = [];
 
-        if (tempFeedRes.data?.success && tempFeedRes.data.data?.length > 0) {
-          dbPosts = tempFeedRes.data.data.map((item: DbFeedItem) => ({
-            id: item._id,
-            user: item.user,
-            location: item.location || 'Unknown Location',
-            img: item.images?.[0] || '',
-            images: item.images || [],
-            likes: item.likes,
-            comment: item.comment,
-            commentsCount: item.commentsCount,
-            videoUrl: item.videoUrl || '',
-            isVideo: item.type === 'reel' || item.type === 'yt_video',
-            isYtVideo: item.type === 'yt_video',
-            type: item.type,
-            watchOnYtLink: item.watchOnYtLink || '',
-            votes: item.votes || [],
-          }));
-        }
-
-        if (pollsRes.data?.success && pollsRes.data.data?.length > 0) {
+        if (socialFeedRes.data?.success && Array.isArray(socialFeedRes.data.data)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pollPosts = pollsRes.data.data.map((p: any) => ({
-            id: p.id,
-            user: {
-              username: p.user?.username || 'Creator',
-              profile: {
-                name: p.user?.profile?.name || '',
-                profile_picture: p.user?.profile?.profile_picture || ''
-              }
-            },
-            type: p.type, // Should be "POLL"
-            poll: {
-              ...p.poll,
-              totalVotes: p.poll?._count?.responses || 0,
-              hasVoted: Array.isArray(p.poll?.responses) && p.poll.responses.length > 0,
-              userResponse: p.poll?.responses?.[0] || null
+          dbPosts = socialFeedRes.data.data.map((item: any) => {
+            if (item.contentType === 'POLL') {
+              return {
+                ...item,
+                poll: {
+                  ...item,
+                  totalVotes: item._count?.responses || 0,
+                  hasVoted: Array.isArray(item.responses) && item.responses.length > 0,
+                  userResponse: item.responses?.[0] || null
+                }
+              };
             }
-          }));
-          dbPosts = [...dbPosts, ...pollPosts];
+            return item;
+          });
         }
 
         if (dbPosts.length > 0) {
           return dbPosts.sort(() => Math.random() - 0.5);
         }
 
-        return POSTS;
+        return [];
       } catch (err) {
         console.error("Failed to fetch feeds:", err);
-        return POSTS;
+        return [];
       }
     }
   });
@@ -748,19 +723,17 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex flex-col gap-6 lg:gap-8 w-full">
-            {feedPosts.map((post, idx) => {
+            {feedPosts.slice(0, visibleCount).map((post, idx) => {
               const isActive = activePostId === post.id;
               let postEl = null;
-              if (post.type === 'reel') {
-                postEl = <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.type === 'yt_video') {
-                postEl = <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.type === 'thumbnail_vote') {
-                postEl = <FeedThumbnailVote key={post.id} post={post} isDarkMode={isDarkMode} />;
-              } else if (post.type === 'POLL' || post.type === 'poll') {
-                postEl = <FeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
+              if (post.contentType === 'REEL') {
+                postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              } else if (post.contentType === 'YOUTUBE_POST') {
+                postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              } else if (post.contentType === 'POLL') {
+                postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
               } else {
-                postEl = <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+                postEl = <RealFeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
               }
 
               return (
@@ -770,6 +743,21 @@ export default function Home() {
                 </Fragment>
               );
             })}
+
+            {visibleCount < feedPosts.length && (
+              <div className="w-full flex justify-center py-6">
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 5)}
+                  className={`px-8 py-3 rounded-full font-semibold text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm ${
+                    isDarkMode 
+                      ? 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700' 
+                      : 'bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200'
+                  }`}
+                >
+                  Load More
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

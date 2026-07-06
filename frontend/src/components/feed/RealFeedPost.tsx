@@ -1,25 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube, MapPin } from 'lucide-react';
+import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
+import LottieComponent from 'lottie-react';
+import imageErrorAnimation from '../../assets/lottie/image-error.json';
+import type { RealPost } from './types';
 
-interface Post {
-  id: string | number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: string | any;
-  location: string;
-  img: string;
-  likes: string | number;
-  comment: string;
-  commentsCount: number;
-  images?: string[];
-  type?: string;
-  tags?: string[];
-  likedByAvatars?: string[];
-  watchOnYtLink?: string;
-  mediaWidth?: number;
-  mediaHeight?: number;
-}
+// Handle ESM/CJS interop for lottie-react
+const Lottie = (LottieComponent as any).default || LottieComponent;
 
 const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;
@@ -30,11 +18,17 @@ function getClampedRatio(width?: number, height?: number): number {
   return Math.min(MAX_RATIO, Math.max(MIN_RATIO, raw));
 }
 
-export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean }) {
+export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode: boolean }) {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [mediaDims, setMediaDims] = useState({ width: post.mediaWidth, height: post.mediaHeight });
+  
+  // Extract images and dimensions from media
+  const images = post.media?.filter(m => m.urls.post || m.urls.full).map(m => resolveMediaUrl(m.urls.post || m.urls.full)) || [];
+  const mediaDims = post.media?.[0]?.metadata || { width: 0, height: 0 };
+  const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  
   const minSwipeDistance = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -52,17 +46,17 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
 
-    if (isLeftSwipe && post.images && currentImgIndex < post.images.length - 1) {
+    if (isLeftSwipe && currentImgIndex < images.length - 1) {
       setCurrentImgIndex((prev) => prev + 1);
     } else if (isRightSwipe && currentImgIndex > 0) {
       setCurrentImgIndex((prev) => prev - 1);
     }
   };
 
-  const isDynamicPost = typeof post.id === 'string';
-  const avatarSrc = isDynamicPost ? defaultProfile : post.img;
+  const userName = post.youtube_channel?.channel_name || post.user?.profile?.name || post.user?.username || 'User';
+  const avatarSrc = resolveMediaUrl(post.youtube_channel?.thumbnail_url) || resolveMediaUrl(post.user?.profile?.profile_picture) || defaultProfile;
 
-  const isTallMedia = (mediaDims.width && mediaDims.height && (mediaDims.width / mediaDims.height) <= 1.0);
+  const isTallMedia = (dimensions.width && dimensions.height && (dimensions.width / dimensions.height) <= 1.0);
   const objectFitClass = !isTallMedia ? 'object-contain' : 'object-cover';
 
   return (
@@ -74,18 +68,12 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full border-2 border-border-main p-0.5">
-            <img src={avatarSrc} alt={typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')} className="w-full h-full rounded-full object-cover" />
+            <img src={avatarSrc} alt={userName} className="w-full h-full rounded-full object-cover" />
           </div>
           <div>
             <h4 className="text-[13px] font-semibold text-text-main leading-none mb-1">
-              {typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')}
+              {userName}
             </h4>
-            {post.location && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <MapPin size={10} className="text-text-muted animate-pulse shrink-0" />
-                <p className="text-[10px] text-text-muted font-medium animate-pulse">{post.location}</p>
-              </div>
-            )}
           </div>
         </div>
         <button className={`p-2 transition-colors ${isDarkMode ? 'text-white hover:text-zinc-300' : 'text-zinc-950 hover:text-zinc-600'}`}>
@@ -96,32 +84,45 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
       <div 
         className="w-full relative overflow-hidden flex items-center justify-center bg-black"
         style={{ 
-          aspectRatio: getClampedRatio(mediaDims.width, mediaDims.height),
+          aspectRatio: getClampedRatio(dimensions.width, dimensions.height),
           maxHeight: 'min(80vh, 650px)'
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {post.images && post.images.length > 0 ? (
+        {images && images.length > 0 ? (
           <div className="w-full h-full relative group flex items-center">
             {/* Images wrapper */}
             <div 
               className="flex w-full h-full transition-transform duration-500 ease-out items-center"
               style={{ transform: `translateX(-${currentImgIndex * 100}%)` }}
             >
-              {post.images.map((img, idx) => (
+              {images.map((img, idx) => (
                 <div key={idx} className="w-full h-full flex-shrink-0 flex items-center justify-center relative">
-                  <img 
-                    src={img} 
-                    alt={`Slide ${idx + 1}`} 
-                    onLoad={(e) => {
-                      if (!mediaDims.width || !mediaDims.height) {
-                        setMediaDims({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight });
-                      }
-                    }}
-                    className={`absolute inset-0 w-full h-full ${objectFitClass}`} 
-                  />
+                  {failedImages.has(idx) ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/10">
+                      <Lottie animationData={imageErrorAnimation} loop={true} className="w-1/2 h-1/2 max-w-[200px]" />
+                    </div>
+                  ) : (
+                    <img 
+                      src={img as string} 
+                      alt={`Slide ${idx + 1}`} 
+                      onLoad={(e) => {
+                        if (!dimensions.width || !dimensions.height) {
+                          setDimensions({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight });
+                        }
+                      }}
+                      onError={() => {
+                        setFailedImages(prev => {
+                          const next = new Set(prev);
+                          next.add(idx);
+                          return next;
+                        });
+                      }}
+                      className={`absolute inset-0 w-full h-full ${objectFitClass}`} 
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -141,7 +142,7 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
             )}
 
             {/* Right arrow */}
-            {currentImgIndex < post.images.length - 1 && (
+            {currentImgIndex < images.length - 1 && (
               <button 
                 type="button"
                 onClick={(e) => {
@@ -156,7 +157,7 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
 
             {/* Pagination dots */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
-              {post.images.map((_, idx) => (
+              {images.map((_, idx) => (
                 <span 
                   key={idx} 
                   className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -166,18 +167,7 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
               ))}
             </div>
           </div>
-        ) : (
-          <img 
-            src={post.img} 
-            alt="Post content" 
-            onLoad={(e) => {
-              if (!mediaDims.width || !mediaDims.height) {
-                setMediaDims({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight });
-              }
-            }}
-            className={`absolute inset-0 w-full h-full ${objectFitClass}`} 
-          />
-        )}
+        ) : null}
 
         {/* Action Buttons Overlay for Tall Media */}
         {isTallMedia && (
@@ -202,9 +192,9 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
         )}
 
         {/* Watch on YT Button */}
-        {post.watchOnYtLink && (
+        {post.youtube_link && (
           <button 
-            onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+            onClick={(e) => { e.stopPropagation(); window.open(post.youtube_link, '_blank'); }}
             className={`absolute right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer ${isTallMedia ? 'bottom-16' : 'bottom-3'}`}
           >
             <Youtube size={14} className="text-red-500" />
@@ -228,42 +218,30 @@ export function FeedPost({ post, isDarkMode }: { post: Post; isDarkMode: boolean
         <div className="space-y-2">
           {/* Liked By Section */}
           <div className="flex items-center gap-2">
-            {post.likedByAvatars && post.likedByAvatars.length > 0 && (
-              <div className="flex -space-x-1.5">
-                {post.likedByAvatars.map((avatar, idx) => (
-                  <img key={idx} src={avatar} alt="Liked by" className={`w-[22px] h-[22px] rounded-full border-[1.5px] object-cover ${isDarkMode ? 'border-black' : 'border-white'}`} style={{ zIndex: 3 - idx }} />
-                ))}
-              </div>
-            )}
             <p className="text-[13px] text-text-main font-medium">
-              Liked by <span className="font-semibold">Jane</span>, <span className="font-semibold">Alex</span> and <span className="font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes} others</span>
+              Liked by <span className="font-semibold">{post.like_count?.toLocaleString() || '0'}</span> others
             </p>
           </div>
 
           {/* Caption */}
           <p className="text-[13px] text-text-main leading-relaxed">
             <span className="font-semibold mr-2 uppercase tracking-tight text-[11px]">
-              {typeof post.user === 'string' 
-                ? post.user.split(' ')[0] 
-                : (post.user?.profile?.name?.split(' ')[0] || post.user?.username?.split(' ')[0] || 'USER')}
+              {userName.split(' ')[0]}
             </span>
-            <span className="text-text-muted dark:text-zinc-400 font-medium">{post.comment}</span>
+            <span className="text-text-muted dark:text-zinc-400 font-medium">{post.caption}</span>
           </p>
 
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {post.tags.map((tag, idx) => (
-                <span key={idx} className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
+          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.comment_count || 0} comments</button>
         </div>
       </div>
     </motion.article>
   );
+}
+
+function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const apiBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5051';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${apiBase}${cleanUrl}`;
 }

@@ -5,33 +5,16 @@ import defaultProfile from '../../assets/defaultprofile.png';
 import { useLottie } from 'lottie-react';
 import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
 import watchFullVideoLottieData from '../../assets/lottie/WatchFullVideoCTA.json';
+import type { RealPost } from './types';
 
-interface Post {
-  id: string | number;
-  user: string;
-  location: string;
-  img: string;
-  likes: string | number;
-  comment: string;
-  commentsCount: number;
-  videoUrl?: string;
-  type?: string;
-  tags?: string[];
-  likedByAvatars?: string[];
-  ytChannelName?: string;
-  ytSubscribeLink?: string;
-  watchOnYtLink?: string;
-  userAvatar?: string;
-}
-
-export function FeedYoutube({ 
+export function RealFeedYoutube({ 
   post, 
   isDarkMode, 
   isActive, 
   isMuted = true, 
   onToggleMute 
 }: { 
-  post: Post; 
+  post: RealPost; 
   isDarkMode: boolean;
   isActive?: boolean;
   isMuted?: boolean;
@@ -39,6 +22,11 @@ export function FeedYoutube({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const videoUrl = resolveMediaUrl(post.media?.[0]?.urls?.video || post.media?.[0]?.urls?.fallback || '');
+  const userName = post.youtube_channel?.channel_name || post.user?.profile?.name || post.user?.username || 'User';
+  const avatarSrc = resolveMediaUrl(post.youtube_channel?.thumbnail_url) || resolveMediaUrl(post.user?.profile?.profile_picture) || defaultProfile;
+  const location = 'YouTube';
 
   const playMedia = useCallback(() => {
     if (videoRef.current) {
@@ -103,14 +91,12 @@ export function FeedYoutube({
     onToggleMute?.(e);
   };
 
-  const avatarSrc = post.userAvatar || (typeof post.id === 'string' ? defaultProfile : post.img);
-
   return (
     <motion.article 
       data-post-id={post.id}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      onClick={() => { if (post.watchOnYtLink) window.open(post.watchOnYtLink, '_blank'); }}
+      onClick={() => { if (post.youtube_link) window.open(post.youtube_link, '_blank'); }}
       className={`relative w-full rounded-[28px] overflow-hidden group transition-all duration-500 mb-8 border cursor-pointer ${
         isDarkMode 
           ? 'bg-zinc-950/80 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
@@ -124,7 +110,7 @@ export function FeedYoutube({
       >
         <video 
           ref={videoRef}
-          src={post.videoUrl}
+          src={videoUrl}
           loop
           playsInline
           onLoadedMetadata={() => {
@@ -140,27 +126,25 @@ export function FeedYoutube({
         <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-20 pointer-events-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full border-2 border-white/30 p-[1.5px] bg-black/40 backdrop-blur-md overflow-hidden shadow-lg pointer-events-auto">
-              <img src={avatarSrc} alt={typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')} className="w-full h-full rounded-full object-cover" />
+              <img src={avatarSrc} alt={userName} className="w-full h-full rounded-full object-cover" />
             </div>
             <div className="flex flex-col drop-shadow-md">
               <h4 className="text-[14px] font-bold text-white tracking-wide leading-tight flex items-center gap-2">
-                {typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')}
+                {userName}
                 <div ref={lottieContainerRef} className="w-12 h-6 flex items-center justify-center -ml-1 scale-[1.75] transform origin-left">
                   {LottieView}
                 </div>
               </h4>
-              {post.location && (
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-[11px] text-white/90 font-medium tracking-wide">{post.location}</p>
-                  {isPlaying && !isMuted && (
-                    <div className="flex items-end gap-[1.5px] h-2">
-                      <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.1s' }} />
-                      <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.3s' }} />
-                      <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.2s' }} />
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-[11px] text-white/90 font-medium tracking-wide">{location}</p>
+                {isPlaying && !isMuted && (
+                  <div className="flex items-end gap-[1.5px] h-2">
+                    <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.1s' }} />
+                    <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.3s' }} />
+                    <span className="w-[1.5px] bg-red-500 rounded-full visualizer-bar animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -195,26 +179,17 @@ export function FeedYoutube({
           <div className="flex-1 space-y-2">
             {/* Title / Comment */}
             <h3 className={`text-base font-semibold leading-snug line-clamp-2 ${isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
-              {post.comment}
+              {post.caption}
             </h3>
             
-            {/* Tags */}
-            {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {post.tags.map((tag, idx) => (
-                  <span key={idx} className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Tags could be extracted from caption if needed */}
           </div>
 
           {/* YT CTA Lottie (Watch Full Video) */}
-          {post.watchOnYtLink && (
+          {post.youtube_link && (
             <div 
               ref={ctaContainerRef}
-              onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+              onClick={(e) => { e.stopPropagation(); window.open(post.youtube_link, '_blank'); }}
               className="cursor-pointer hover:scale-105 active:scale-95 transition-transform w-[120px] flex-shrink-0 flex items-center justify-center drop-shadow-md bg-white/5 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-xl overflow-hidden p-1"
             >
               {CtaLottieView}
@@ -230,26 +205,18 @@ export function FeedYoutube({
           <div className="flex items-center gap-4">
             <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
               <Heart size={20} className="hover:text-red-500 transition-colors" />
-              <span className="text-[13px] font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes}</span>
+              <span className="text-[13px] font-semibold">{post.like_count?.toLocaleString() || 0}</span>
             </button>
             <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
               <MessageCircle size={20} />
-              <span className="text-[13px] font-semibold">{post.commentsCount}</span>
+              <span className="text-[13px] font-semibold">{post.comment_count || 0}</span>
             </button>
             <button className={`p-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
               <Share2 size={20} />
             </button>
           </div>
 
-          {/* Liked By Avatars (optional, aligned right if few, or Bookmark) */}
           <div className="flex items-center gap-3">
-            {post.likedByAvatars && post.likedByAvatars.length > 0 && (
-              <div className="flex -space-x-2 mr-2">
-                {post.likedByAvatars.slice(0, 3).map((avatar, idx) => (
-                  <img key={idx} src={avatar} alt="Liked by" className={`w-6 h-6 rounded-full border-2 object-cover ${isDarkMode ? 'border-zinc-950' : 'border-white'}`} style={{ zIndex: 3 - idx }} />
-                ))}
-              </div>
-            )}
             <button className={`p-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
               <Bookmark size={20} />
             </button>
@@ -258,4 +225,12 @@ export function FeedYoutube({
       </div>
     </motion.article>
   );
+}
+
+function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const apiBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5051';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${apiBase}${cleanUrl}`;
 }

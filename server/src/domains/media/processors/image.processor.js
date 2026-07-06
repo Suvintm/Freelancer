@@ -11,7 +11,7 @@ import logger from "../../../infrastructure/monitoring/logger.js";
 
 const VARIANT_SIZES = {
   THUMB: 480,
-  FEED: 1024,
+  POST: 1024,
   FULL: 1080
 };
 

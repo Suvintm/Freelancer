@@ -249,17 +249,26 @@ export default function YTDashboard() {
             </p>
           </div>
           
-          <button
-            onClick={() => navigate('/youtube-connect')}
-            className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-md hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer ${
-              isDarkMode 
-                ? 'bg-rose-600 text-white hover:bg-rose-500 shadow-rose-950/20' 
-                : 'bg-zinc-950 text-white hover:bg-zinc-900 shadow-zinc-200'
-            }`}
-          >
-            <Plus size={14} />
-            <span>Connect Channel</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/upload-youtube-post')}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-md hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer bg-rose-600 text-white border-rose-500 hover:bg-rose-500`}
+            >
+              <Plus size={14} />
+              <span>Create YouTube Post</span>
+            </button>
+            <button
+              onClick={() => navigate('/youtube-connect')}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-md hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer ${
+                isDarkMode 
+                  ? 'bg-zinc-800 text-white hover:bg-zinc-700 shadow-zinc-950/20' 
+                  : 'bg-zinc-950 text-white hover:bg-zinc-900 shadow-zinc-200'
+              }`}
+            >
+              <Plus size={14} />
+              <span>Connect Channel</span>
+            </button>
+          </div>
         </div>
 
         {/* Combined Network Reach Card */}
@@ -555,6 +564,13 @@ export default function YTDashboard() {
 
         <div className="flex flex-wrap items-center gap-3">
           <YouTubeVerificationBadge />
+          <button
+            onClick={() => navigate('/upload-youtube-post')}
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all active:scale-[0.98] cursor-pointer bg-rose-600 text-white border-rose-500 hover:bg-rose-500 shadow-md`}
+          >
+            <Plus size={14} />
+            <span>Create YouTube Post</span>
+          </button>
           <button
             onClick={() => navigate('/youtube-connect')}
             className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all active:scale-[0.98] cursor-pointer ${

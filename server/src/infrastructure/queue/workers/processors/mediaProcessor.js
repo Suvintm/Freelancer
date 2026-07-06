@@ -108,8 +108,8 @@ const mediaProcessor = async (job) => {
     await notificationService.notify({
       userId,
       type: "MEDIA_READY",
-      title: "Post Live! 🎉",
-      body: `Your ${type.toLowerCase()} has been processed and is now visible on your profile.`,
+      title: "Media Ready! 🖼️",
+      body: `Your ${type.toLowerCase()} has been successfully processed and is ready to be published.`,
       entityId: mediaId,
       entityType: "MEDIA"
     }).catch(e => logger.error(`[NOTIFICATION] Failed to send push: ${e.message}`));

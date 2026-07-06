@@ -20,6 +20,7 @@ import OAuthSuccess from './pages/OAuthSuccess';
 import CompleteProfile from './pages/CompleteProfile';
 import Notifications from './pages/Notifications';
 import TempUploadPortal from './pages/TempUploadPortal';
+import CreateContent from './pages/CreateContent';
 import YTDashboard from './pages/YTDashboard';
 import Subscription from './pages/Subscription';
 import About from './pages/About';
@@ -326,6 +327,16 @@ function App() {
             <AuthGuard>
               <AppLayout>
                 <Settings />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/create" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <CreateContent />
               </AppLayout>
             </AuthGuard>
           } 

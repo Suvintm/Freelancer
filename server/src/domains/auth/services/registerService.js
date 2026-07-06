@@ -92,7 +92,7 @@ export const registerFullUser = async (userData) => {
     const thumb = mainChannel.thumbnailUrl || mainChannel.thumbnail_url || mainChannel.thumbnail;
     if (thumb) {
        logger.info(`💾 [REG-SYNC] Pre-mirroring YouTube avatar to avoid transaction timeout...`);
-       preMirroredYoutubeAvatar = await storageService.uploadFromUrl(thumb, "uploads/avatars/youtube");
+       preMirroredYoutubeAvatar = await storageService.uploadFromUrl(thumb, "media/avatars/youtube");
     }
   }
 
