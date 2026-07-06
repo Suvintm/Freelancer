@@ -1,13 +1,18 @@
 import { api } from '../api/client';
 
 export const uploadMediaToS3 = async (file: File): Promise<string> => {
+  const result = await uploadMediaDetailed(file, 'IMAGE');
+  return result.key;
+};
+
+export const uploadMediaDetailed = async (file: File, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): Promise<{ key: string, mediaId: string }> => {
   try {
     // 1. Get pre-signed URL from our backend
     const signRes = await api.get('/media/signed-url', {
       params: {
         filename: file.name,
         contentType: file.type,
-        type: 'IMAGE'
+        type
       }
     });
 
@@ -17,7 +22,7 @@ export const uploadMediaToS3 = async (file: File): Promise<string> => {
 
     const { uploadUrl, mediaId, key } = signRes.data;
 
-    // 2. Upload directly to S3 (no backend proxying, faster)
+    // 2. Upload directly to S3
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
@@ -30,12 +35,10 @@ export const uploadMediaToS3 = async (file: File): Promise<string> => {
       throw new Error('S3 upload failed');
     }
 
-    // 3. Confirm upload so background processing can start if needed
-    // And to mark the DB record as PROCESSING/COMPLETED
+    // 3. Confirm upload
     await api.post('/media/confirm', { mediaId });
 
-    // Return the storageKey so it can be resolved by smartResolveMediaUrl on the backend later
-    return key;
+    return { key, mediaId };
   } catch (error) {
     console.error('S3 Upload Error:', error);
     throw error;

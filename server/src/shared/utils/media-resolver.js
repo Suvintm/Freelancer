@@ -18,11 +18,11 @@ const BASE_URL = CDN_BASE_URL || S3_BASE_URL;
  * 🖼️ IMAGE RESOLVER
  */
 export const resolveImageUrls = (userId, mediaId) => {
-  const base = `${BASE_URL}/uploads/processed/images/${userId}/${mediaId}`;
+  const base = `${BASE_URL}/media/posts/images/${userId}/${mediaId}`;
   
   return {
     thumb: `${base}/thumb.webp`,
-    feed: `${base}/feed.webp`,
+    post: `${base}/post.webp`,
     full: `${base}/full.webp`,
     cdnUsed: !!CDN_BASE_URL
   };
@@ -32,7 +32,7 @@ export const resolveImageUrls = (userId, mediaId) => {
  * 🎬 VIDEO RESOLVER
  */
 export const resolveVideoUrls = (userId, mediaId) => {
-  const base = `${BASE_URL}/uploads/processed/videos/${userId}/${mediaId}`;
+  const base = `${BASE_URL}/media/posts/videos/${userId}/${mediaId}`;
   
   return {
     hls: `${base}/hls/master.m3u8`,
@@ -87,7 +87,7 @@ export const resolveAvatarUrl = (userId, filename) => {
   // Use smart resolver to handle mirrored YouTube profiles
   return smartResolveMediaUrl(filename.startsWith('http') || filename.includes('/') 
     ? filename 
-    : `uploads/avatars/${userId}/${filename}`, "S3"); // Avatars currently in S3
+    : `media/avatars/${userId}/${filename}`, "S3"); // Avatars currently in S3
 };
 
 /**
@@ -116,7 +116,7 @@ export const resolveMediaForApi = (media) => {
       hls: variants.hls ? smartResolveMediaUrl(variants.hls, storage_provider) : null,
       video: variants.video ? smartResolveMediaUrl(variants.video, storage_provider) : null,
       thumb: smartResolveMediaUrl(variants.thumb || variants.thumbnail, storage_provider),
-      feed: smartResolveMediaUrl(variants.feed || variants.thumbnail, storage_provider),
+      post: smartResolveMediaUrl(variants.post || variants.thumbnail, storage_provider),
       full: smartResolveMediaUrl(variants.full || variants.thumbnail, storage_provider),
     };
   } else {
@@ -133,7 +133,7 @@ export const resolveMediaForApi = (media) => {
     } else {
       urls = {
         thumb: path,
-        feed: path,
+        post: path,
         full: path
       };
     }

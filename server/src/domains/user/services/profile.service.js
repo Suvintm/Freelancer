@@ -56,7 +56,7 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
     const firstMedia = post.media[0];
     return {
       id: post.id,
-      type: post.type,
+      type: "POST",
       caption: post.caption,
       createdAt: post.created_at,
       // 🛰️ Standardize author structure for Premium Overlay
@@ -79,11 +79,10 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
  * Get paginated REELS for a user's profile reels tab
  */
 export const getProfileReels = async (targetUserId, cursor = null) => {
-  const reels = await prisma.post.findMany({
+  const reels = await prisma.reel.findMany({
     where: {
       userId: targetUserId,
       visibility: "PUBLIC",
-      isReel: true,
     },
     include: {
       media: {

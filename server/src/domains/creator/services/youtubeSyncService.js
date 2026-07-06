@@ -56,7 +56,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     let mirroredAvatar = channelData.mirroredAvatarUrl || channelData.mirrored_avatar_url;
     if (!mirroredAvatar && thumbnailUrl) {
       logger.info(`💾 [YT-SYNC] Optimizing Avatar for ${channelId}`);
-      mirroredAvatar = await storageService.optimizeAndMirrorUrl(thumbnailUrl, "uploads/avatars/youtube", { format: 'webp' });
+      mirroredAvatar = await storageService.optimizeAndMirrorUrl(thumbnailUrl, "media/avatars/youtube", { format: 'webp' });
     }
 
     // 2. Mirror Channel Banner (Processed & Optimized)
@@ -64,7 +64,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     if (!mirroredBanner && bannerUrl) {
       logger.info(`💾 [YT-SYNC] Processing & Optimizing banner for ${channelId}`);
       try {
-        mirroredBanner = await storageService.optimizeAndMirrorUrl(bannerUrl, "uploads/avatars/youtube/banners", { format: 'jpeg', quality: 90 });
+        mirroredBanner = await storageService.optimizeAndMirrorUrl(bannerUrl, "media/avatars/youtube/banners", { format: 'jpeg', quality: 90 });
       } catch (bErr) {
         logger.warn(`⚠️ [YT-SYNC] Banner processing failed: ${bErr.message}`);
       }

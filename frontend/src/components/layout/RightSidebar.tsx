@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
   { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
   { icon: MessageSquare, label: 'Chats',   path: '/communication-hub' },
-  { icon: PlusSquare, label: 'Upload Portal', path: '/upload-portal' },
+  { icon: PlusSquare, label: 'Create', path: '/create' },
   { icon: Settings,   label: 'Settings',  path: '/settings'},
   { icon: User,       label: 'Profile',   path: '/profile' }
 ];

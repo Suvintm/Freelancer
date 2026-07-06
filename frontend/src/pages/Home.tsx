@@ -15,277 +15,19 @@ import lightLogo from '../assets/lightlogo.png';
 import ytDarkTheme from '../assets/banners/yt dark theme.png';
 import ytLightTheme from '../assets/banners/yt light theme.png';
 import { api } from '../api/client';
-import { FeedPost } from '../components/temp-feed/FeedPost';
-import { FeedReel } from '../components/temp-feed/FeedReel';
-import { FeedYoutube } from '../components/temp-feed/FeedYoutube';
-import { FeedThumbnailVote } from '../components/temp-feed/FeedThumbnailVote';
-import { FeedPoll } from '../components/temp-feed/FeedPoll';
+import { RealFeedPost } from '../components/feed/RealFeedPost';
+import { RealFeedReel } from '../components/feed/RealFeedReel';
+import { RealFeedYoutube } from '../components/feed/RealFeedYoutube';
+import { RealFeedPoll } from '../components/feed/RealFeedPoll';
 import { MOCK_STORIES } from '../data/storyData';
 import type { Story } from '../data/storyData';
 import { StoryViewer } from '../components/home/StoryViewer';
 import { FeedPostSkeleton } from '../components/temp-feed/FeedPostSkeleton';
+import type { RealPost } from '../components/feed/types';
 
 // STORIES array moved inside Home component to support dynamic user state.
  
-interface Post {
-  id: string | number;
-  user: string;
-  location: string;
-  img: string;
-  likes: string | number;
-  comment: string;
-  commentsCount: number;
-  musicUrl?: string;
-  videoUrl?: string;
-  isVideo?: boolean;
-  isYtVideo?: boolean;
-  images?: string[];
-  type?: string;
-  tags?: string[];
-  watchOnYtLink?: string;
-  votes?: number[];
-}
 
-const POSTS: Post[] = [
-  {
-    id: 'mock_thumb_vote',
-    type: 'thumbnail_vote',
-    user: 'SuviX Official',
-    location: 'Global',
-    img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800',
-    images: [
-      'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?auto=format&fit=crop&q=80&w=800'
-    ],
-    likes: '12,400',
-    comment: 'Help me choose the thumbnail for my next UI/UX redesign tutorial! Which one grabs your attention?',
-    commentsCount: 342,
-    tags: ['UIUX', 'Design', 'YouTubeGrowth']
-  },
-  { 
-    id: 1, 
-    user: 'Sonya Leena', 
-    location: 'Dubai, UAE', 
-    img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800', 
-    likes: '360', 
-    comment: 'You can never dull my sparkle ✨', 
-    commentsCount: 12,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
-  },
-  { 
-    id: 2, 
-    user: 'Adam Addisin', 
-    location: 'Oklahoma, US', 
-    img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800', 
-    likes: '1,240', 
-    comment: 'In photography, there is a reality so subtle that it becomes more real than reality.', 
-    commentsCount: 45,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
-  },
-  {
-    id: 3,
-    user: 'Chloe Bennett',
-    location: 'Tokyo, Japan',
-    img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800',
-    likes: '942',
-    comment: 'Neon lights and late night walks 🌃',
-    commentsCount: 22,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    isVideo: true
-  },
-  { 
-    id: 4, 
-    user: 'Liam Vance', 
-    location: 'London, UK', 
-    img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=800', 
-    likes: '820', 
-    comment: 'Exploring the classic streets of London.', 
-    commentsCount: 18,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
-  },
-  {
-    id: 5,
-    user: 'Emily Watson',
-    location: 'Paris, France',
-    img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800',
-    likes: '2,110',
-    comment: 'Bonjour Paris! 🥖✨',
-    commentsCount: 56,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    isVideo: true
-  },
-  { 
-    id: 6, 
-    user: 'Sarah Jenkins', 
-    location: 'New York, US', 
-    img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800', 
-    likes: '1,560', 
-    comment: 'Concrete jungle where dreams are made of.', 
-    commentsCount: 38,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
-  },
-  { 
-    id: 7, 
-    user: 'David Miller', 
-    location: 'Rio de Janeiro, Brazil', 
-    img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800', 
-    likes: '710', 
-    comment: 'Samba, sun, and beautiful beaches 🏖️', 
-    commentsCount: 15,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
-  },
-  {
-    id: 8,
-    user: 'Maya Lin',
-    location: 'Sydney, Australia',
-    img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800',
-    likes: '1,890',
-    comment: 'Golden hour at the harbor 🌅',
-    commentsCount: 30,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-    isVideo: true
-  },
-  { 
-    id: 9, 
-    user: 'Lucas Silva', 
-    location: 'Berlin, Germany', 
-    img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800', 
-    likes: '640', 
-    comment: 'Berlin Wall history and urban vibes.', 
-    commentsCount: 11,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
-  },
-  { 
-    id: 10, 
-    user: 'Elena Petrova', 
-    location: 'Rome, Italy', 
-    img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=800', 
-    likes: '3,050', 
-    comment: 'La dolce vita 🍝🇮🇹', 
-    commentsCount: 89,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3'
-  },
-  {
-    id: 11,
-    user: 'Sophia Loren',
-    location: 'San Francisco, US',
-    img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&q=80&w=800',
-    likes: '1,420',
-    comment: 'Foggy mornings and bridge views.',
-    commentsCount: 42,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-    isVideo: true
-  },
-  { 
-    id: 12, 
-    user: 'Kenji Sato', 
-    location: 'Toronto, Canada', 
-    img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800', 
-    likes: '990', 
-    comment: 'CN Tower view from my balcony!', 
-    commentsCount: 20,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'
-  },
-  { 
-    id: 13, 
-    user: 'Clara Oswald', 
-    location: 'Cape Town, South Africa', 
-    img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800', 
-    likes: '2,500', 
-    comment: 'Standing on top of Table Mountain ⛰️', 
-    commentsCount: 71,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3'
-  },
-  {
-    id: 14,
-    user: 'Arthur Dent',
-    location: 'Singapore',
-    img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
-    likes: '1,120',
-    comment: 'Gardens by the bay is futuristic!',
-    commentsCount: 29,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-    isVideo: true
-  },
-  { 
-    id: 15, 
-    user: 'Bruce Wayne', 
-    location: 'Mumbai, India', 
-    img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800', 
-    likes: '4,200', 
-    comment: 'Monsoon in Mumbai is magical.', 
-    commentsCount: 110,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3'
-  },
-  { 
-    id: 16, 
-    user: 'Selina Kyle', 
-    location: 'Seoul, South Korea', 
-    img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800', 
-    likes: '1,980', 
-    comment: 'Street food and cherry blossoms 🌸', 
-    commentsCount: 54,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3'
-  },
-  {
-    id: 17,
-    user: 'Clark Kent',
-    location: 'Amsterdam, Netherlands',
-    img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&q=80&w=800',
-    likes: '2,670',
-    comment: 'Biking along the canals.',
-    commentsCount: 63,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
-    isVideo: true
-  },
-  { 
-    id: 18, 
-    user: 'Diana Prince', 
-    location: 'Reykjavik, Iceland', 
-    img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=800', 
-    likes: '3,890', 
-    comment: 'Chasing the Northern Lights 🌌', 
-    commentsCount: 95,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3'
-  },
-  { 
-    id: 19, 
-    user: 'Tony Stark', 
-    location: 'Cairo, Egypt', 
-    img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800', 
-    likes: '5,300', 
-    comment: 'Standing in front of the Pyramids ⏳', 
-    commentsCount: 142,
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3'
-  },
-  {
-    id: 20,
-    user: 'Bruce Banner',
-    location: 'Kyoto, Japan',
-    img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800',
-    likes: '1,450',
-    comment: 'Peaceful zen gardens 🎋',
-    commentsCount: 37,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    isVideo: true
-  }
-];
-
-interface DbFeedItem {
-  _id: string;
-  user: string;
-  location?: string;
-  images?: string[];
-  likes: string | number;
-  comment: string;
-  commentsCount: number;
-  videoUrl?: string;
-  type: string;
-  watchOnYtLink?: string;
-  votes?: number[];
-}
 
 
 export default function Home() {
@@ -300,68 +42,42 @@ export default function Home() {
   const [globalMuted, setGlobalMuted] = useState(true);
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [visibleCount, setVisibleCount] = useState(5);
 
-  const { data: feedPosts = POSTS, isLoading } = useQuery({
-    queryKey: ['temp-feed'],
+  const { data: feedPosts = [], isLoading } = useQuery<RealPost[]>({
+    queryKey: ['real-feed'],
     queryFn: async () => {
       try {
-        const [tempFeedRes, pollsRes] = await Promise.all([
-          api.get('/temp-feed').catch(() => ({ data: { success: false, data: [] } })),
-          api.get('/polls').catch(() => ({ data: { success: false, data: [] } }))
-        ]);
+        const socialFeedRes = await api.get('/social/feed?limit=50').catch(() => ({ data: { success: false, data: [] } }));
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let dbPosts: any[] = [];
+        let dbPosts: RealPost[] = [];
 
-        if (tempFeedRes.data?.success && tempFeedRes.data.data?.length > 0) {
-          dbPosts = tempFeedRes.data.data.map((item: DbFeedItem) => ({
-            id: item._id,
-            user: item.user,
-            location: item.location || 'Unknown Location',
-            img: item.images?.[0] || '',
-            images: item.images || [],
-            likes: item.likes,
-            comment: item.comment,
-            commentsCount: item.commentsCount,
-            videoUrl: item.videoUrl || '',
-            isVideo: item.type === 'reel' || item.type === 'yt_video',
-            isYtVideo: item.type === 'yt_video',
-            type: item.type,
-            watchOnYtLink: item.watchOnYtLink || '',
-            votes: item.votes || [],
-          }));
-        }
-
-        if (pollsRes.data?.success && pollsRes.data.data?.length > 0) {
+        if (socialFeedRes.data?.success && Array.isArray(socialFeedRes.data.data)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pollPosts = pollsRes.data.data.map((p: any) => ({
-            id: p.id,
-            user: {
-              username: p.user?.username || 'Creator',
-              profile: {
-                name: p.user?.profile?.name || '',
-                profile_picture: p.user?.profile?.profile_picture || ''
-              }
-            },
-            type: p.type, // Should be "POLL"
-            poll: {
-              ...p.poll,
-              totalVotes: p.poll?._count?.responses || 0,
-              hasVoted: Array.isArray(p.poll?.responses) && p.poll.responses.length > 0,
-              userResponse: p.poll?.responses?.[0] || null
+          dbPosts = socialFeedRes.data.data.map((item: any) => {
+            if (item.contentType === 'POLL') {
+              return {
+                ...item,
+                poll: {
+                  ...item,
+                  totalVotes: item._count?.responses || 0,
+                  hasVoted: Array.isArray(item.responses) && item.responses.length > 0,
+                  userResponse: item.responses?.[0] || null
+                }
+              };
             }
-          }));
-          dbPosts = [...dbPosts, ...pollPosts];
+            return item;
+          });
         }
 
         if (dbPosts.length > 0) {
           return dbPosts.sort(() => Math.random() - 0.5);
         }
 
-        return POSTS;
+        return [];
       } catch (err) {
         console.error("Failed to fetch feeds:", err);
-        return POSTS;
+        return [];
       }
     }
   });
@@ -748,19 +464,17 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex flex-col gap-6 lg:gap-8 w-full">
-            {feedPosts.map((post, idx) => {
+            {feedPosts.slice(0, visibleCount).map((post, idx) => {
               const isActive = activePostId === post.id;
               let postEl = null;
-              if (post.type === 'reel') {
-                postEl = <FeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.type === 'yt_video') {
-                postEl = <FeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.type === 'thumbnail_vote') {
-                postEl = <FeedThumbnailVote key={post.id} post={post} isDarkMode={isDarkMode} />;
-              } else if (post.type === 'POLL' || post.type === 'poll') {
-                postEl = <FeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
+              if (post.contentType === 'REEL') {
+                postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              } else if (post.contentType === 'YOUTUBE_POST') {
+                postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+              } else if (post.contentType === 'POLL') {
+                postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
               } else {
-                postEl = <FeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+                postEl = <RealFeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
               }
 
               return (
@@ -770,6 +484,21 @@ export default function Home() {
                 </Fragment>
               );
             })}
+
+            {visibleCount < feedPosts.length && (
+              <div className="w-full flex justify-center py-6">
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 5)}
+                  className={`px-8 py-3 rounded-full font-semibold text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm ${
+                    isDarkMode 
+                      ? 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700' 
+                      : 'bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200'
+                  }`}
+                >
+                  Load More
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

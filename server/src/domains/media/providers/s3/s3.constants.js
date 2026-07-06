@@ -13,14 +13,17 @@ export const S3_REGION = process.env.AWS_REGION;
  * 📂 PRODUCTION FOLDER STRUCTURE
  */
 export const STORAGE_FOLDERS = {
-  RAW: "uploads/raw",                 // Original uploads (untouched)
-  IMAGES: "uploads/processed/images", // Optimized image variants
-  VIDEOS: "uploads/processed/videos", // Transcoded video variants
-  AVATARS: "uploads/avatars",         // User profile pictures
+  RAW: "temp/raw",                      // Original uploads (untouched)
+  IMAGES: "media/posts/images",         // Optimized image variants
+  VIDEOS: "media/posts/videos",         // Transcoded video variants
+  REELS: "media/reels",                 // Dedicated reels storage
+  POLLS: "media/polls",                 // Poll thumbnails and media
+  YOUTUBE: "media/youtube",             // Synced YouTube media
+  AVATARS: "media/avatars",             // User profile pictures
   THUMBNAILS: "creators/thumbnails",
   PORTFOLIO: "creators/portfolio",
   DRAFTS: "temp/drafts",
-  STORIES: "uploads/processed/stories",
+  STORIES: "media/stories",             // Ephemeral stories
 };
 
 /**

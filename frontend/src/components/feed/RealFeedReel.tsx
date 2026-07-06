@@ -1,25 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube, MapPin } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
-
-interface Post {
-  id: string | number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: string | any;
-  location: string;
-  img: string;
-  likes: string | number;
-  comment: string;
-  commentsCount: number;
-  videoUrl?: string;
-  type?: string;
-  tags?: string[];
-  likedByAvatars?: string[];
-  watchOnYtLink?: string;
-  mediaWidth?: number;
-  mediaHeight?: number;
-}
+import type { RealPost } from './types';
 
 const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;
@@ -30,14 +13,14 @@ function getClampedRatio(width?: number, height?: number): number {
   return Math.min(MAX_RATIO, Math.max(MIN_RATIO, raw));
 }
 
-export function FeedReel({ 
+export function RealFeedReel({ 
   post, 
   isDarkMode, 
   isActive, 
   isMuted = true, 
   onToggleMute 
 }: { 
-  post: Post; 
+  post: RealPost; 
   isDarkMode: boolean;
   isActive?: boolean;
   isMuted?: boolean;
@@ -46,7 +29,11 @@ export function FeedReel({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [mediaDims, setMediaDims] = useState({ width: post.mediaWidth, height: post.mediaHeight });
+
+  const mediaDims = post.media?.[0]?.metadata || { width: 0, height: 0 };
+  const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
+
+  const videoUrl = resolveMediaUrl(post.media?.[0]?.urls?.video || post.media?.[0]?.urls?.fallback || '');
 
   const playMedia = useCallback(() => {
     if (videoRef.current) {
@@ -78,7 +65,6 @@ export function FeedReel({
     }
   }, [isMuted]);
 
-  // Called directly on click - this IS a user gesture so browsers allow audio
   const handleMuteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const video = videoRef.current;
@@ -87,7 +73,6 @@ export function FeedReel({
       video.muted = newMuted;
       video.volume = newMuted ? 1 : 1;
       if (!newMuted) {
-        // Re-play from current position with audio - browser permits this since it's a user gesture
         video.pause();
         video.play().catch(() => {});
       }
@@ -102,11 +87,10 @@ export function FeedReel({
     }
   };
 
+  const userName = post.youtube_channel?.channel_name || post.user?.profile?.name || post.user?.username || 'User';
+  const avatarSrc = resolveMediaUrl(post.youtube_channel?.thumbnail_url) || resolveMediaUrl(post.user?.profile?.profile_picture) || defaultProfile;
 
-  const isDynamicPost = typeof post.id === 'string';
-  const avatarSrc = isDynamicPost ? defaultProfile : post.img;
-
-  const isTallMedia = (mediaDims.width && mediaDims.height && (mediaDims.width / mediaDims.height) <= 1.0);
+  const isTallMedia = (dimensions.width && dimensions.height && (dimensions.width / dimensions.height) <= 1.0);
   const objectFitClass = !isTallMedia ? 'object-contain' : 'object-cover';
 
   return (
@@ -118,37 +102,25 @@ export function FeedReel({
     >
       <div 
         className="w-full relative overflow-hidden flex items-center justify-center cursor-pointer bg-black" 
+        onClick={() => {
+          if (videoRef.current) {
+            if (isPlaying) pauseMedia();
+            else playMedia();
+          }
+        }}
         style={{ 
-          aspectRatio: getClampedRatio(mediaDims.width, mediaDims.height),
+          aspectRatio: getClampedRatio(dimensions.width, dimensions.height),
           maxHeight: 'min(80vh, 650px)'
         }}
-        onClick={() => { if (isPlaying) { pauseMedia(); } else { playMedia(); } }}
       >
-        {/* Instagram-style overlaid header (top-left) */}
-        <div 
-          className="absolute top-4 left-4 flex items-center gap-2.5 z-20 select-none pointer-events-auto" 
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-8 h-8 rounded-full border border-white/60 p-[1.5px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] bg-black/20 shrink-0">
-            <img src={avatarSrc} alt={typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')} className="w-full h-full rounded-full object-cover" />
+        <div className="absolute top-4 left-4 flex items-center gap-2.5 z-20 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="w-9 h-9 rounded-full border border-white/20 p-[1.5px] bg-black/30 backdrop-blur-md shadow-sm">
+            <img src={avatarSrc} alt={userName} className="w-full h-full rounded-full object-cover" />
           </div>
-          <div className="flex flex-col justify-center">
-            <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
-              {typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')}
+          <div>
+            <h4 className="text-[13px] font-bold text-white drop-shadow-md leading-none mb-1">
+              {userName}
             </h4>
-            {post.location && (
-              <div className="flex items-center gap-1.5 mt-0.5 leading-none">
-                <MapPin size={10} className="text-white/80 animate-pulse drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] shrink-0" />
-                <p className="text-[10px] text-white/85 font-medium tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] animate-pulse">{post.location}</p>
-                {isPlaying && !isMuted && (
-                  <div className="flex items-end gap-[1px] h-[7px] w-[8px]">
-                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.1s' }} />
-                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.4s' }} />
-                    <span className="w-[1.2px] bg-white rounded-full visualizer-bar" style={{ animationDelay: '0.2s' }} />
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -172,14 +144,14 @@ export function FeedReel({
 
         <video 
           ref={videoRef}
-          src={post.videoUrl}
+          src={videoUrl}
           loop
           playsInline
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={(e) => {
             if (videoRef.current) videoRef.current.muted = true;
-            if (!mediaDims.width || !mediaDims.height) {
-              setMediaDims({ width: e.currentTarget.videoWidth, height: e.currentTarget.videoHeight });
+            if (!dimensions.width || !dimensions.height) {
+              setDimensions({ width: e.currentTarget.videoWidth, height: e.currentTarget.videoHeight });
             }
           }}
           className={`absolute inset-0 w-full h-full ${objectFitClass}`}
@@ -226,9 +198,9 @@ export function FeedReel({
         )}
 
         {/* Watch on YT Button */}
-        {post.watchOnYtLink && (
+        {post.youtube_link && (
           <button 
-            onClick={(e) => { e.stopPropagation(); window.open(post.watchOnYtLink, '_blank'); }}
+            onClick={(e) => { e.stopPropagation(); window.open(post.youtube_link, '_blank'); }}
             className={`absolute right-3 bg-black/60 backdrop-blur-md hover:bg-black/80 px-3 py-1.5 rounded-full flex items-center gap-2 text-white text-[11px] font-semibold tracking-wide border border-white/20 transition-all z-20 shadow-lg cursor-pointer ${isTallMedia ? 'bottom-16' : 'bottom-3'}`}
           >
             <Youtube size={14} className="text-red-500" />
@@ -251,42 +223,30 @@ export function FeedReel({
         <div className="space-y-2">
           {/* Liked By Section */}
           <div className="flex items-center gap-2">
-            {post.likedByAvatars && post.likedByAvatars.length > 0 && (
-              <div className="flex -space-x-1.5">
-                {post.likedByAvatars.map((avatar, idx) => (
-                  <img key={idx} src={avatar} alt="Liked by" className={`w-[22px] h-[22px] rounded-full border-[1.5px] object-cover ${isDarkMode ? 'border-black' : 'border-white'}`} style={{ zIndex: 3 - idx }} />
-                ))}
-              </div>
-            )}
             <p className="text-[13px] text-text-main font-medium">
-              Liked by <span className="font-semibold">Jane</span>, <span className="font-semibold">Alex</span> and <span className="font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes} others</span>
+              Liked by <span className="font-semibold">{post.like_count?.toLocaleString() || '0'}</span> others
             </p>
           </div>
 
           {/* Caption */}
           <p className="text-[13px] text-text-main leading-relaxed">
             <span className="font-semibold mr-2 uppercase tracking-tight text-[11px]">
-              {typeof post.user === 'string' 
-                ? post.user.split(' ')[0] 
-                : (post.user?.profile?.name?.split(' ')[0] || post.user?.username?.split(' ')[0] || 'USER')}
+              {userName.split(' ')[0]}
             </span>
-            <span className="text-text-muted dark:text-zinc-400 font-medium">{post.comment}</span>
+            <span className="text-text-muted dark:text-zinc-400 font-medium">{post.caption}</span>
           </p>
 
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {post.tags.map((tag, idx) => (
-                <span key={idx} className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors cursor-pointer">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.commentsCount} comments</button>
+          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.comment_count || 0} comments</button>
         </div>
       </div>
     </motion.article>
   );
+}
+
+function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const apiBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5051';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${apiBase}${cleanUrl}`;
 }

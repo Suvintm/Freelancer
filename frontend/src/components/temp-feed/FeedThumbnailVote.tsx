@@ -6,7 +6,7 @@ import { api } from '../../api/client';
 
 interface Post {
   id: string | number;
-  user: string;
+  user: string | { username?: string; profile?: { name?: string } };
   location: string;
   img: string; // The first thumbnail is used as fallback or main
   images?: string[]; // Array of 2-4 thumbnails
@@ -104,11 +104,13 @@ export function FeedThumbnailVote({ post, isDarkMode }: { post: Post; isDarkMode
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full border-2 border-border-main p-0.5">
-            <img src={avatarSrc} alt={post.user} className="w-full h-full rounded-full object-cover" />
+            <img src={avatarSrc} alt={typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')} className="w-full h-full rounded-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <h4 className="text-[13px] font-semibold text-text-main leading-none">{post.user}</h4>
+              <h4 className="text-[13px] font-semibold text-text-main leading-none">
+                {typeof post.user === 'string' ? post.user : (post.user?.profile?.name || post.user?.username || 'User')}
+              </h4>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
                 Thumbnail Poll
               </span>

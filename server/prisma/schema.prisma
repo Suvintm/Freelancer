@@ -33,11 +33,17 @@ model User {
   youtubeProfiles        YouTubeProfile[]
   youtube_videos         YouTubeVideo[]
   posts                  Post[]
+  reels                  Reel[]
+  youtube_posts          YoutubePost[]
+  polls                  Poll[]
   media                  Media[]
   stories                Story[]
   story_views            StoryView[]
   poll_responses         PollResponse[]
   post_likes             PostLike[]
+  reel_likes             ReelLike[]
+  youtube_post_likes     YoutubePostLike[]
+  poll_likes             PollLike[]
 
   // Community Relations
   communities_owned         Community[]                @relation("CommunityOwner")
@@ -51,6 +57,10 @@ model User {
   refundsAsEditor           Refund[]                   @relation("EditorRefunds")
   withdrawalRequests        WithdrawalRequest[]
   walletTransactions        WalletTransaction[]
+
+  post_collaborations       PostCollaborator[]
+  post_mentions             PostMention[]
+  media_user_tags           MediaUserTag[]
 
   @@index([role])
   @@index([is_onboarded])
@@ -181,10 +191,11 @@ model YouTubeProfile {
   engagement_rate         Float                    @default(0.0) @map("engagement_rate")
   avg_views_per_video     Float                    @default(0.0) @map("avg_views_per_video")
 
-  subCategory RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sync_logs   YouTubeSyncLog[]
-  videos      YouTubeVideo[]
+  subCategory   RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sync_logs     YouTubeSyncLog[]
+  videos        YouTubeVideo[]
+  youtube_posts YoutubePost[]
 
   @@map("youtube_profiles")
 }
@@ -370,29 +381,117 @@ enum AvailabilityStatus {
   away
 }
 
+// ── Image Posts ──────────────────────────────────────────────────────────────
 model Post {
-  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String     @map("user_id") @db.Uuid
-  caption    String?    @db.Text
-  type       PostType   @default(IMAGE)
-  isReel     Boolean    @default(false) @map("is_reel")
-  visibility Visibility @default(PUBLIC)
-  created_at DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String     @map("user_id") @db.Uuid
+  caption         String?    @db.Text
+  visibility      Visibility @default(PUBLIC)
+  like_count      Int        @default(0) @map("like_count")
+  
+  // ── NEW: Advanced Settings ──────────────────────────────────────
+  allow_comments  Boolean    @default(true)
+  hide_like_count Boolean    @default(false)
+  is_scheduled    Boolean    @default(false)
+  scheduled_at    DateTime?  @db.Timestamptz(6)
 
-  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media Media[]
-  poll  Poll?
-  likes PostLike[]
-  like_count Int @default(0) @map("like_count")
+  // ── NEW: Location (Optional) ────────────────────────────────────
+  location_name   String?
+  location_lat    Float?
+  location_lng    Float?
+  
+  // ── NEW: Audio/Music (For future functionality) ─────────────────
+  audio_track_id  String?    @db.Uuid 
+
+  created_at      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media           Media[]
+  likes           PostLike[]
+  collaborators   PostCollaborator[]
+  mentions        PostMention[]
 
   @@index([userId, created_at])
   @@map("posts")
 }
 
+model PostCollaborator {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String       @map("post_id") @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  status     CollabStatus @default(PENDING)
+  created_at DateTime     @default(now()) @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_collaborators")
+}
+
+model PostMention {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String   @map("post_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_mentions")
+}
+
+enum CollabStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// ── Short-form Video Reels ────────────────────────────────────────────────────
+model Reel {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String     @map("user_id") @db.Uuid
+  caption    String?    @db.Text
+  visibility Visibility @default(PUBLIC)
+  like_count Int        @default(0) @map("like_count")
+  view_count Int        @default(0) @map("view_count")
+  created_at DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media Media[]
+  likes ReelLike[]
+
+  @@index([userId, created_at])
+  @@map("reels")
+}
+
+// ── YouTube Link Share Posts ──────────────────────────────────────────────────
+model YoutubePost {
+  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String     @map("user_id") @db.Uuid
+  youtube_channel_id String?    @map("youtube_channel_id") @db.Uuid
+  caption            String?    @db.Text
+  youtube_link       String
+  visibility         Visibility @default(PUBLIC)
+  like_count         Int        @default(0) @map("like_count")
+  created_at         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  youtube_channel YouTubeProfile?   @relation(fields: [youtube_channel_id], references: [id], onDelete: SetNull)
+  media           Media[]
+  likes           YoutubePostLike[]
+
+  @@index([userId, created_at])
+  @@index([youtube_channel_id])
+  @@map("youtube_posts")
+}
+
+// ── Central Media Store (linked to any content entity) ───────────────────────
 model Media {
   id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId           String?     @map("post_id") @db.Uuid
   userId           String      @map("user_id") @db.Uuid
   type             MediaType   @default(IMAGE)
   storageKey       String      @map("storage_key")
@@ -406,16 +505,47 @@ model Media {
   hash             String?     @db.VarChar(64)
   status           MediaStatus @default(PENDING)
   storage_provider String      @default("S3") @map("storage_provider")
+  
+  // ── NEW: Pro Media Features ─────────────────────────────────────
+  order_index      Int         @default(0) // Crucial for multi-image carousel order
+  alt_text         String?     @db.Text    // Accessibility
+  
   created_at       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  post              Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // ── Content entity FKs (exactly one will be set per media row) ─────────────
+  postId        String? @map("post_id")         @db.Uuid
+  reelId        String? @map("reel_id")         @db.Uuid
+  youtubePostId String? @map("youtube_post_id") @db.Uuid
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post              Post?             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reel              Reel?             @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  youtubePost       YoutubePost?      @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
   story             Story?
+  poll_option       PollOption?
   communityMessages CommunityMessage[]
+  user_tags         MediaUserTag[]
 
   @@index([postId])
+  @@index([reelId])
+  @@index([youtubePostId])
   @@index([userId])
   @@map("media")
+}
+
+model MediaUserTag {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId   String @map("media_id") @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  
+  // Coordinates where the tag should hover on the image (0.0 to 1.0 representing percentage)
+  pos_x     Float  
+  pos_y     Float  
+
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("media_user_tags")
 }
 
 model Story {
@@ -464,11 +594,7 @@ model StoryView {
   @@map("story_views")
 }
 
-enum PostType {
-  IMAGE
-  VIDEO
-  POLL
-}
+// PostType enum removed — content type is determined by which table the record is in
 
 enum MediaType {
   IMAGE
@@ -962,29 +1088,36 @@ enum PollLayout {
 }
 
 model Poll {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId              String   @unique @map("post_id") @db.Uuid
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String     @map("user_id") @db.Uuid
   question            String     @db.Text
+  caption             String?    @db.Text
   type                PollType   @default(MULTIPLE_CHOICE)
   layout              PollLayout @default(STANDARD)
   show_response_count Boolean    @default(true)
+  visibility          Visibility @default(PUBLIC)
+  like_count          Int        @default(0) @map("like_count")
   created_at          DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime   @default(now()) @db.Timestamptz(6)
 
-  post      Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   options   PollOption[]
   responses PollResponse[]
+  likes     PollLike[]
 
+  @@index([userId, created_at])
   @@map("polls")
 }
 
 model PollOption {
-  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   pollId      String  @map("poll_id") @db.Uuid
+  mediaId     String? @unique @map("media_id") @db.Uuid
   text        String
-  image_url   String?
   order_index Int
 
   poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  media     Media?         @relation(fields: [mediaId], references: [id], onDelete: SetNull)
   responses PollResponse[]
 
   @@map("poll_options")
@@ -1017,4 +1150,43 @@ model PostLike {
 
   @@unique([postId, userId])
   @@map("post_likes")
+}
+
+model ReelLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reelId     String   @map("reel_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  reel Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, userId])
+  @@map("reel_likes")
+}
+
+model YoutubePostLike {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  youtubePostId String   @map("youtube_post_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  youtubePost YoutubePost @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([youtubePostId, userId])
+  @@map("youtube_post_likes")
+}
+
+model PollLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pollId     String   @map("poll_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@map("poll_likes")
 }

@@ -53,13 +53,13 @@ export const requireCapability = (capability) => (req, res, next) => {
     return next();
   }
 
-  // Get user's sub-category slug from their primary role
-  const userSubCategorySlug = req.user.primaryRole?.subCategorySlug || '';
+  // Get user's category slug from their primary role
+  const userCategorySlug = req.user.primaryRole?.categorySlug || '';
   const userGroupRole = req.user.primaryRole?.group || '';
 
-  // Check if user's subCategory is in the allowed list
+  // Check if user's category is in the allowed list
   const hasCapability = allowedSubCategories.some((allowed) =>
-    userSubCategorySlug.toLowerCase().includes(allowed.toLowerCase())
+    userCategorySlug.toLowerCase().includes(allowed.toLowerCase())
   );
 
   if (!hasCapability) {

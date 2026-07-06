@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const NAV_ITEMS = [
   { name: 'home', icon: Home, label: 'Home', path: '/home' },
   { name: 'explore', icon: Search, label: 'Explore', path: '/explore' },
-  { name: 'upload', icon: PlusCircle, label: 'Upload', path: '/upload-portal', isUpload: true },
+  { name: 'upload', icon: PlusCircle, label: 'Upload', path: '/create', isUpload: true },
   { name: 'nearby', icon: MapPin, label: 'Nearby', path: '/nearby' },
   { name: 'profile', icon: null, label: 'Profile', path: '/profile', isProfile: true },
 ];

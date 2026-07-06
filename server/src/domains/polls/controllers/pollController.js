@@ -132,21 +132,17 @@ export const respondToPoll = async (req, res) => {
 export const getPollPosts = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const posts = await prisma.post.findMany({
-      where: { type: "POLL", visibility: "PUBLIC" },
+    const posts = await prisma.poll.findMany({
+      where: { visibility: "PUBLIC" },
       orderBy: { created_at: 'desc' },
       include: {
         user: { include: { profile: true } },
-        poll: { 
-          include: { 
-            options: { 
-              orderBy: { order_index: 'asc' },
-              include: { _count: { select: { responses: true } } }
-            },
-            _count: { select: { responses: true } },
-            ...(userId ? { responses: { where: { userId } } } : {})
-          } 
-        }
+        options: { 
+          orderBy: { order_index: 'asc' },
+          include: { _count: { select: { responses: true } } }
+        },
+        _count: { select: { responses: true } },
+        ...(userId ? { responses: { where: { userId } } } : {})
       },
       take: 25
     });
@@ -171,8 +167,8 @@ export const getPollPosts = async (req, res) => {
           isLiked = userId ? memoryLikes.get(post.id).has(userId) : false;
         } else {
           if (userId) {
-            const likedInDb = await prisma.postLike.findUnique({
-              where: { postId_userId: { postId: post.id, userId } }
+            const likedInDb = await prisma.pollLike.findUnique({
+              where: { pollId_userId: { pollId: post.id, userId } }
             });
             isLiked = !!likedInDb;
           }
@@ -190,13 +186,13 @@ export const getPollPosts = async (req, res) => {
         },
         like_count: likesCount,
         isLiked,
-        poll: post.poll ? {
-          ...post.poll,
-          options: post.poll.options?.map(opt => ({
+        poll: {
+          ...post,
+          options: post.options?.map(opt => ({
             ...opt,
             image_url: smartResolveMediaUrl(opt.image_url)
           }))
-        } : null
+        }
       };
     }));
 
@@ -210,15 +206,11 @@ export const getPollPosts = async (req, res) => {
 export const getMyPolls = async (req, res) => {
   try {
     const userId = req.user.id;
-    const posts = await prisma.post.findMany({
-      where: { type: "POLL", userId },
+    const posts = await prisma.poll.findMany({
+      where: { userId },
       orderBy: { created_at: 'desc' },
       include: {
-        poll: { 
-          include: { 
-            _count: { select: { responses: true } }
-          } 
-        }
+        _count: { select: { responses: true } }
       }
     });
 
@@ -238,8 +230,8 @@ export const getMyPolls = async (req, res) => {
           likesCount = memoryLikes.get(post.id).size;
           isLiked = memoryLikes.get(post.id).has(userId);
         } else {
-          const likedInDb = await prisma.postLike.findUnique({
-            where: { postId_userId: { postId: post.id, userId } }
+          const likedInDb = await prisma.pollLike.findUnique({
+            where: { pollId_userId: { pollId: post.id, userId } }
           });
           isLiked = !!likedInDb;
         }
@@ -247,22 +239,22 @@ export const getMyPolls = async (req, res) => {
 
       return {
         ...post,
-        user: {
+        user: post.user ? {
           ...post.user,
           profile: post.user.profile ? {
             ...post.user.profile,
             profile_picture: smartResolveMediaUrl(post.user.profile.profile_picture)
           } : null
-        },
+        } : null,
         like_count: likesCount,
         isLiked,
-        poll: post.poll ? {
-          ...post.poll,
-          options: post.poll.options?.map(opt => ({
+        poll: {
+          ...post,
+          options: post.options?.map(opt => ({
             ...opt,
             image_url: smartResolveMediaUrl(opt.image_url)
           }))
-        } : null
+        }
       };
     }));
 
