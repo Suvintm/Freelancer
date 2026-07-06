@@ -5,7 +5,7 @@ import { selectUser } from '../store/slices/authSlice';
 import { api } from '../api/client';
 import { uploadMediaDetailed } from '../utils/s3Uploader';
 import { motion, AnimatePresence } from 'framer-motion';
-import CreateImagePostWizard from '../components/create-post/CreateImagePostWizard';
+import CreateImagePostWizard, { CreatePostData } from '../components/create-post/CreateImagePostWizard';
 import { 
   Image as ImageIcon, 
   Video, 
@@ -111,7 +111,7 @@ export default function CreateContent() {
     });
   };
 
-  const handleWizardSubmit = async (data: any) => {
+  const handleWizardSubmit = async (data: CreatePostData) => {
     setIsSubmitting(true);
     setStatus(null);
     try {

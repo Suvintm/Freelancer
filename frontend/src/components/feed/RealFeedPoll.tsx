@@ -10,6 +10,12 @@ import { BarChartLayout, DonutChartLayout, GridCardsLayout, ImageCarouselLayout 
 
 import type { RealPost } from './types';
 
+interface PollOption {
+  id: string;
+  text: string;
+  _count?: { responses: number };
+}
+
 export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode: boolean }) {
   const resolveImg = (url: string | null | undefined) => {
     if (!url) return null;
@@ -24,7 +30,7 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
   
   const [selectedOption, setSelectedOption] = useState<number | null>(() => {
     if (poll.userResponse?.optionId) {
-      return poll.options?.findIndex((o: any) => o.id === poll.userResponse?.optionId) ?? null;
+      return poll.options?.findIndex((o: PollOption) => o.id === poll.userResponse?.optionId) ?? null;
     }
     return null;
   });
@@ -376,7 +382,7 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
             default:
               return (
                 <div className="space-y-3 mt-4">
-                  {(poll.options || []).map((opt: any, index: number) => {
+                  {(poll.options || []).map((opt: PollOption, index: number) => {
                     const baseCount = opt._count?.responses || 0;
                     const addedCount = localCounts[opt.id] || 0;
                     const optCount = baseCount + addedCount;

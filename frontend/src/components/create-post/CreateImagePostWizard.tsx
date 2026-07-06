@@ -27,8 +27,18 @@ export interface MediaItem {
   altText: string;
 }
 
+export interface CreatePostData {
+  mediaItems: MediaItem[];
+  caption: string;
+  location: string;
+  visibility: 'PUBLIC' | 'PRIVATE';
+  allowComments: boolean;
+  hideLikeCount: boolean;
+  scheduledAt: string;
+}
+
 interface CreateImagePostWizardProps {
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: CreatePostData) => Promise<void>;
   isSubmitting: boolean;
 }
 

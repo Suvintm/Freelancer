@@ -57,6 +57,17 @@ interface YouTubeVideo {
   made_for_kids?: boolean;
 }
 
+interface RawFeedItem {
+  id: string;
+  contentType: string;
+  user?: { username: string };
+  media?: { url: string }[];
+  caption?: string;
+  likes?: number;
+  commentsCount?: number;
+  created_at: string;
+}
+
 export const DesktopProfile = () => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
@@ -81,16 +92,16 @@ export const DesktopProfile = () => {
         const response = await api.get('/social/feed');
         if (response.data.success && active) {
           const creatorFeed = response.data.data.filter(
-            (item: any) => item.user?.username === user.username
+            (item: RawFeedItem) => item.user?.username === user.username
           );
           
-          const mappedFeed = creatorFeed.map((item: any) => ({
+          const mappedFeed = creatorFeed.map((item: RawFeedItem) => ({
             _id: item.id,
             id: item.id,
             user: item.user?.username,
             type: item.contentType === 'POST' ? 'post' : item.contentType === 'REEL' ? 'reel' : item.contentType === 'YOUTUBE_POST' ? 'yt_video' : 'poll',
             img: item.media?.[0]?.url || '',
-            images: item.media?.map((m: any) => m.url) || [],
+            images: item.media?.map((m) => m.url) || [],
             comment: item.caption || '',
             likes: item.likes || 0,
             commentsCount: item.commentsCount || 0,
@@ -98,10 +109,10 @@ export const DesktopProfile = () => {
             createdAt: item.created_at,
           }));
 
-          setReels(mappedFeed.filter((item: any) => item.type === 'reel'));
-          setPosts(mappedFeed.filter((item: any) => item.type === 'post'));
-          setYtVideos(mappedFeed.filter((item: any) => item.type === 'yt_video'));
-          setThumbnailVotes(mappedFeed.filter((item: any) => item.type === 'thumbnail_vote'));
+          setReels(mappedFeed.filter((item: FeedItem) => item.type === 'reel'));
+          setPosts(mappedFeed.filter((item: FeedItem) => item.type === 'post'));
+          setYtVideos(mappedFeed.filter((item: FeedItem) => item.type === 'yt_video'));
+          setThumbnailVotes(mappedFeed.filter((item: FeedItem) => item.type === 'thumbnail_vote'));
         }
       } catch (err) {
         console.error('Failed to fetch real feed for profile:', err);
