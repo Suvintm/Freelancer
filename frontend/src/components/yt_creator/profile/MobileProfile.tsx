@@ -77,18 +77,33 @@ export const MobileProfile = () => {
       if (!active || !user?.username) return;
       setIsLoadingFeed(true);
       try {
-        const response = await api.get('/temp-feed');
+        const response = await api.get('/social/feed');
         if (response.data.success && active) {
           const creatorFeed = response.data.data.filter(
-            (item: FeedItem) => item.user === user.username
+            (item: any) => item.user?.username === user.username
           );
-          setReels(creatorFeed.filter((item: FeedItem) => item.type === 'reel'));
-          setPosts(creatorFeed.filter((item: FeedItem) => item.type === 'post'));
-          setYtVideos(creatorFeed.filter((item: FeedItem) => item.type === 'yt_video'));
-          setThumbnailVotes(creatorFeed.filter((item: FeedItem) => item.type === 'thumbnail_vote'));
+          
+          const mappedFeed = creatorFeed.map((item: any) => ({
+            _id: item.id,
+            id: item.id,
+            user: item.user?.username,
+            type: item.contentType === 'POST' ? 'post' : item.contentType === 'REEL' ? 'reel' : item.contentType === 'YOUTUBE_POST' ? 'yt_video' : 'poll',
+            img: item.media?.[0]?.url || '',
+            images: item.media?.map((m: any) => m.url) || [],
+            comment: item.caption || '',
+            likes: item.likes || 0,
+            commentsCount: item.commentsCount || 0,
+            videoUrl: item.media?.[0]?.url || '',
+            createdAt: item.created_at,
+          }));
+
+          setReels(mappedFeed.filter((item: any) => item.type === 'reel'));
+          setPosts(mappedFeed.filter((item: any) => item.type === 'post'));
+          setYtVideos(mappedFeed.filter((item: any) => item.type === 'yt_video'));
+          setThumbnailVotes(mappedFeed.filter((item: any) => item.type === 'thumbnail_vote'));
         }
       } catch (err) {
-        console.error('Failed to fetch temp feed for profile:', err);
+        console.error('Failed to fetch real feed for mobile profile:', err);
       } finally {
         if (active) {
           setIsLoadingFeed(false);
@@ -106,7 +121,18 @@ export const MobileProfile = () => {
     if (e) e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
-      const response = await api.delete(`/temp-feed/${id}`);
+      // In a real app we'd call the proper delete endpoint per content type
+      let endpoint = '';
+      const type = reels.find(r => r._id === id)?.type 
+                || posts.find(p => p._id === id)?.type 
+                || ytVideos.find(v => v._id === id)?.type;
+                
+      if (type === 'post') endpoint = `/social/posts/${id}`;
+      else if (type === 'reel') endpoint = `/social/reels/${id}`;
+      else if (type === 'yt_video') endpoint = `/social/posts/youtube/${id}`;
+      else endpoint = `/temp-feed/${id}`; // fallback for mocks
+
+      const response = await api.delete(endpoint);
       if (response.data.success) {
         setReels((prev) => prev.filter((item) => item._id !== id));
         setPosts((prev) => prev.filter((item) => item._id !== id));

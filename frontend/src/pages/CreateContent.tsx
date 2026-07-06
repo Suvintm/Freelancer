@@ -5,6 +5,7 @@ import { selectUser } from '../store/slices/authSlice';
 import { api } from '../api/client';
 import { uploadMediaDetailed } from '../utils/s3Uploader';
 import { motion, AnimatePresence } from 'framer-motion';
+import CreateImagePostWizard from '../components/create-post/CreateImagePostWizard';
 import { 
   Image as ImageIcon, 
   Video, 
@@ -110,6 +111,56 @@ export default function CreateContent() {
     });
   };
 
+  const handleWizardSubmit = async (data: any) => {
+    setIsSubmitting(true);
+    setStatus(null);
+    try {
+      if (data.mediaItems.length === 0) {
+        throw new Error("Please select a media file to upload.");
+      }
+
+      // 1. Upload Media
+      const uploadedMediaIds: string[] = [];
+      for (const item of data.mediaItems) {
+        const file = item.file;
+        const { mediaId } = await uploadMediaDetailed(file, 'IMAGE');
+        uploadedMediaIds.push(mediaId);
+      }
+
+      // 2. Submit Post Data
+      const payload = {
+        caption: data.caption,
+        mediaIds: uploadedMediaIds,
+        location_name: data.location,
+        visibility: data.visibility,
+        allow_comments: data.allowComments,
+        hide_like_count: data.hideLikeCount,
+        scheduled_at: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : undefined
+      };
+
+      const response = await api.post('/social/posts', payload);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Upload failed');
+      }
+
+      setStatus({ type: 'success', text: 'Successfully uploaded!' });
+      setTimeout(() => {
+        navigate('/home');
+      }, 1500);
+
+    } catch (err: unknown) {
+      console.error(err);
+      if (err instanceof Error) {
+        setStatus({ type: 'error', text: err.message || 'Something went wrong.' });
+      } else {
+        setStatus({ type: 'error', text: 'Something went wrong.' });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -138,10 +189,7 @@ export default function CreateContent() {
       let endpoint = '';
       let payload: Record<string, unknown> = {};
 
-      if (activeTab === 'POST') {
-        endpoint = '/social/posts';
-        payload = { caption, mediaIds: uploadedMediaIds };
-      } else if (activeTab === 'REEL') {
+      if (activeTab === 'REEL') {
         endpoint = '/social/reels';
         payload = { caption, mediaIds: uploadedMediaIds };
       } else if (activeTab === 'YOUTUBE') {
@@ -178,8 +226,8 @@ export default function CreateContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100 p-4 md:p-8 flex justify-center overflow-x-hidden">
-      <div className="w-full max-w-4xl pt-20 pb-24">
+    <div className="min-h-screen bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100 p-2 md:p-8 flex justify-center m-0 overflow-x-hidden">
+      <div className="w-full max-w-4xl pt-4 pb-24">
         
         {/* Header */}
         <div className="mb-8">
@@ -188,7 +236,7 @@ export default function CreateContent() {
         </div>
 
         {/* Tab Selection */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-4 md:grid-cols-4 gap-3 mb-8">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -227,17 +275,36 @@ export default function CreateContent() {
             transition={{ duration: 0.2 }}
             className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm"
           >
+            {activeTab === 'POST' ? (
+              <>
+                <CreateImagePostWizard onSubmit={handleWizardSubmit} isSubmitting={isSubmitting} />
+                {status && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mt-4 p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                      status.type === 'error' 
+                        ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50' 
+                        : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
+                    }`}
+                  >
+                    {status.type === 'error' ? <X className="w-4 h-4" /> : <UploadCloud className="w-4 h-4" />}
+                    {status.text}
+                  </motion.div>
+                )}
+              </>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               
               {/* Media Upload Area */}
-              {(activeTab === 'POST' || activeTab === 'REEL' || activeTab === 'YOUTUBE') && (
+              {(activeTab === 'REEL' || activeTab === 'YOUTUBE') && (
                 <div>
                   <label className="block text-sm font-medium mb-3 text-zinc-700 dark:text-zinc-300">
-                    {activeTab === 'REEL' ? 'Video File *' : activeTab === 'YOUTUBE' ? 'Thumbnail (Optional)' : 'Images *'}
+                    {activeTab === 'REEL' ? 'Video File *' : 'Thumbnail (Optional)'}
                   </label>
                   
                   {previewUrls.length > 0 ? (
-                    <div className={`grid gap-4 ${activeTab === 'POST' ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-1 max-w-sm'}`}>
+                    <div className="grid gap-4 grid-cols-1 max-w-sm">
                       {previewUrls.map((url, i) => (
                         <div key={url} className="relative group rounded-xl overflow-hidden aspect-[4/5] bg-zinc-100 dark:bg-zinc-800 shadow-inner">
                           {activeTab === 'REEL' ? (
@@ -254,15 +321,6 @@ export default function CreateContent() {
                           </button>
                         </div>
                       ))}
-                      {activeTab === 'POST' && (
-                        <div 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 dark:hover:border-zinc-500 cursor-pointer aspect-[4/5] bg-zinc-50 dark:bg-zinc-800/50 transition-colors"
-                        >
-                          <UploadCloud className="w-8 h-8 text-zinc-400 mb-2" />
-                          <span className="text-sm text-zinc-500 font-medium">Add more</span>
-                        </div>
-                      )}
                     </div>
                   ) : (
                     <div 
@@ -273,7 +331,7 @@ export default function CreateContent() {
                         <UploadCloud className="w-8 h-8 text-zinc-900 dark:text-white" />
                       </div>
                       <p className="text-zinc-900 dark:text-zinc-100 font-semibold">
-                        Click to upload {activeTab === 'REEL' ? 'a video' : activeTab === 'YOUTUBE' ? 'a thumbnail' : 'images'}
+                        Click to upload {activeTab === 'REEL' ? 'a video' : 'a thumbnail'}
                       </p>
                       <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-2">
                         {activeTab === 'REEL' ? 'MP4, WebM up to 100MB' : 'JPG, PNG up to 10MB'}
@@ -286,7 +344,7 @@ export default function CreateContent() {
                     ref={fileInputRef}
                     onChange={handleFileSelect}
                     className="hidden"
-                    multiple={activeTab === 'POST'}
+                    multiple={false}
                     accept={activeTab === 'REEL' ? 'video/*' : 'image/*'}
                   />
                 </div>
@@ -366,12 +424,13 @@ export default function CreateContent() {
                   </>
                 ) : (
                   <>
-                    <span>Share {activeTab === 'POST' ? 'Post' : activeTab === 'REEL' ? 'Reel' : 'Video'}</span>
+                    <span>Share {activeTab === 'REEL' ? 'Reel' : 'Video'}</span>
                     <ChevronRight className="w-5 h-5" />
                   </>
                 )}
               </button>
             </form>
+            )}
           </motion.div>
         </AnimatePresence>
 
