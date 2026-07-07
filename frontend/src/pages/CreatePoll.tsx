@@ -286,7 +286,7 @@ export default function CreatePoll() {
         finalOptions = await Promise.all(validOptions.map(async (opt, idx) => {
           let image_url = null;
           if (opt.file) {
-            image_url = await uploadMediaToS3(opt.file);
+            image_url = await uploadMediaToS3(opt.file, 'poll');
           }
           return { text: opt.text || `Option ${String.fromCharCode(65 + idx)}`, image_url };
         }));

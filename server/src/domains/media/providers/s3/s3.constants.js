@@ -13,17 +13,31 @@ export const S3_REGION = process.env.AWS_REGION;
  * 📂 PRODUCTION FOLDER STRUCTURE
  */
 export const STORAGE_FOLDERS = {
-  RAW: "temp/raw",                      // Original uploads (untouched)
-  IMAGES: "media/posts/images",         // Optimized image variants
-  VIDEOS: "media/posts/videos",         // Transcoded video variants
-  REELS: "media/reels",                 // Dedicated reels storage
-  POLLS: "media/polls",                 // Poll thumbnails and media
-  YOUTUBE: "media/youtube",             // Synced YouTube media
-  AVATARS: "media/avatars",             // User profile pictures
-  THUMBNAILS: "creators/thumbnails",
-  PORTFOLIO: "creators/portfolio",
-  DRAFTS: "temp/drafts",
-  STORIES: "media/stories",             // Ephemeral stories
+  RAW: "raw",                      // Original uploads (untouched)
+  PROCESSED: "processed",          // Final variants served via CDN
+};
+
+/**
+ * Maps a module context to the correct semantic subfolder name.
+ */
+export const getMediaSubfolder = (moduleContext) => {
+  switch (moduleContext?.toLowerCase()) {
+    case "post":
+      return "post";
+    case "reel":
+    case "reels":
+      return "reels";
+    case "youtube":
+    case "youtube_post":
+      return "youtube_post";
+    case "youtube_thumbnail":
+      return "youtube_thumbnail";
+    case "avatar":
+    case "other":
+      return "other";
+    default:
+      return "post"; // Fallback to post for safety
+  }
 };
 
 /**
@@ -40,5 +54,6 @@ export default {
   S3_BUCKET_NAME,
   S3_REGION,
   STORAGE_FOLDERS,
+  getMediaSubfolder,
   CACHE_POLICIES
 };

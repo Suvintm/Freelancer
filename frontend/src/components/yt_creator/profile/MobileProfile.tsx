@@ -61,7 +61,11 @@ interface RawFeedItem {
   id: string;
   contentType: string;
   user?: { username: string };
-  media?: { url: string }[];
+  media?: { 
+    urls?: { post?: string; full?: string; thumb?: string; hls?: string; video?: string; fallback?: string }; 
+    thumbnailUrl?: string; 
+    url?: string; 
+  }[];
   caption?: string;
   likes?: number;
   commentsCount?: number;
@@ -99,12 +103,12 @@ export const MobileProfile = () => {
             id: item.id,
             user: item.user?.username,
             type: item.contentType === 'POST' ? 'post' : item.contentType === 'REEL' ? 'reel' : item.contentType === 'YOUTUBE_POST' ? 'yt_video' : 'poll',
-            img: item.media?.[0]?.url || '',
-            images: item.media?.map((m) => m.url) || [],
+            img: item.media?.[0]?.urls?.post || item.media?.[0]?.thumbnailUrl || item.media?.[0]?.url || '',
+            images: item.media?.map((m) => m.urls?.post || m.thumbnailUrl || m.url || '') || [],
             comment: item.caption || '',
             likes: item.likes || 0,
             commentsCount: item.commentsCount || 0,
-            videoUrl: item.media?.[0]?.url || '',
+            videoUrl: item.media?.[0]?.urls?.hls || item.media?.[0]?.urls?.video || item.media?.[0]?.urls?.fallback || item.media?.[0]?.url || '',
             createdAt: item.created_at,
           }));
 
@@ -983,9 +987,9 @@ export const MobileProfile = () => {
                   onClick={() => setSelectedMedia(video)}
                   className="relative aspect-video bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
                 >
-                  <video 
-                    src={video.videoUrl} 
-                    preload="metadata" 
+                  <img 
+                    src={video.img || video.videoUrl} 
+                    alt="YT Video Thumbnail"
                     className="w-full h-full object-cover pointer-events-none"
                   />
                   <div className="absolute bottom-1.5 left-1.5 bg-black/60 p-1 rounded-full text-white scale-75">
@@ -1135,9 +1139,9 @@ export const MobileProfile = () => {
                   onClick={() => setSelectedMedia(reel)}
                   className="relative aspect-[9/16] bg-[#0B0B0B] border border-[#1A1A1B] active:opacity-75 overflow-hidden"
                 >
-                  <video 
-                    src={reel.videoUrl} 
-                    preload="metadata" 
+                  <img 
+                    src={reel.img || reel.videoUrl} 
+                    alt="Reel Thumbnail"
                     className="w-full h-full object-cover pointer-events-none"
                   />
                   <div className="absolute bottom-1.5 left-1.5 bg-black/60 p-1 rounded-full text-white scale-75">
@@ -1199,6 +1203,7 @@ export const MobileProfile = () => {
               {selectedMedia.type === 'reel' ? (
                 <video 
                   src={selectedMedia.videoUrl} 
+                  poster={selectedMedia.img}
                   controls 
                   autoPlay 
                   loop 

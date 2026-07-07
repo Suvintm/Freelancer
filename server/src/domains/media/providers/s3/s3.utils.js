@@ -25,7 +25,7 @@ export const buildS3Key = (name, folder, userId, mediaId, originalExt = null, en
     .substring(0, 30);
   
   // RAW files keep original extension. Processed files use optimized (webp/mp4)
-  let ext = enforcedExt || (originalExt ? originalExt.replace(".", "") : (folder.includes("video") ? "mp4" : "webp"));
+  let ext = enforcedExt || (originalExt ? originalExt.replace(".", "") : (cleanName.includes("video") || cleanName.includes("hls") ? "mp4" : "webp"));
   
   if (folder.includes("raw") && !originalExt && !enforcedExt) {
      // Safety fallback if no extension provided for raw

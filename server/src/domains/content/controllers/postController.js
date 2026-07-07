@@ -3,6 +3,7 @@ import logger from "../../../infrastructure/monitoring/logger.js";
 import { resolveMediaForApi, resolveAvatarUrl } from "../../../shared/utils/media-resolver.js";
 import { purgeMediaFiles } from "../../media/services/purge.utils.js";
 import { withCache, hashQuery } from "../../../shared/utils/cache.js";
+import { toggleLike, getLikeCount } from "../services/like.service.js";
 
 /**
  * 📝 CONTENT CONTROLLER (SOCIAL MODULE)
@@ -248,8 +249,8 @@ export const deleteReel = async (req, res) => {
  * @route   GET /api/social/feed
  */
 const MEDIA_SELECT = {
-  where: { status: "READY" },
-  select: { id: true, type: true, variants: true, blurhash: true, width: true, height: true, duration: true },
+  where: { status: { in: ["READY", "PROCESSING"] } },
+  select: { id: true, type: true, storageKey: true, variants: true, blurhash: true, width: true, height: true, duration: true, storage_provider: true },
 };
 
 const USER_SELECT = {
@@ -343,4 +344,135 @@ export const getFeed = async (req, res) => {
   }
 };
 
-export default { createPost, createReel, createYoutubePost, createPoll, deletePost, deleteReel, getFeed };
+// ─────────────────────────────────────────────────────────────────────────────
+// SPECIFIC FEEDS (Posts, Reels, YouTube)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getPostsFeed = async (req, res) => {
+  try {
+    const { cursor, limit = 10 } = req.query;
+    const take = parseInt(limit, 10);
+    const cacheKey = `cache:feed:posts:public:${hashQuery({ cursor, limit })}`;
+    const TTL_SECONDS = 30;
+
+    const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const posts = await prisma.post.findMany({
+        where: { visibility: "PUBLIC" },
+        include: { user: USER_SELECT, media: MEDIA_SELECT },
+        orderBy: { created_at: "desc" },
+        take,
+      });
+
+      const tagged = posts.map((p) => {
+        if (p.user?.profile?.profile_picture) p.user.profile.profile_picture = resolveAvatarUrl(p.user.id, p.user.profile.profile_picture);
+        return { ...p, contentType: "POST", media: p.media.map(resolveMediaForApi) };
+      });
+
+      const nextCursor = tagged.length === take ? tagged[tagged.length - 1].id : null;
+      return { data: tagged, nextCursor };
+    });
+
+    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+  } catch (error) {
+    logger.error(`❌ [CONTENT_CTRL] getPostsFeed failure: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch posts feed" });
+  }
+};
+
+export const getReelsFeed = async (req, res) => {
+  try {
+    const { cursor, limit = 10 } = req.query;
+    const take = parseInt(limit, 10);
+    const cacheKey = `cache:feed:reels:public:${hashQuery({ cursor, limit })}`;
+    const TTL_SECONDS = 30;
+
+    const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const reels = await prisma.reel.findMany({
+        where: { visibility: "PUBLIC" },
+        include: { user: USER_SELECT, media: MEDIA_SELECT },
+        orderBy: { created_at: "desc" },
+        take,
+      });
+
+      const tagged = reels.map((r) => {
+        if (r.user?.profile?.profile_picture) r.user.profile.profile_picture = resolveAvatarUrl(r.user.id, r.user.profile.profile_picture);
+        return { ...r, contentType: "REEL", media: r.media.map(resolveMediaForApi) };
+      });
+
+      const nextCursor = tagged.length === take ? tagged[tagged.length - 1].id : null;
+      return { data: tagged, nextCursor };
+    });
+
+    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+  } catch (error) {
+    logger.error(`❌ [CONTENT_CTRL] getReelsFeed failure: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch reels feed" });
+  }
+};
+
+export const getYoutubeFeed = async (req, res) => {
+  try {
+    const { cursor, limit = 10 } = req.query;
+    const take = parseInt(limit, 10);
+    const cacheKey = `cache:feed:youtube:public:${hashQuery({ cursor, limit })}`;
+    const TTL_SECONDS = 30;
+
+    const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const youtubePosts = await prisma.youtubePost.findMany({
+        where: { visibility: "PUBLIC" },
+        include: {
+          user: USER_SELECT,
+          media: MEDIA_SELECT,
+          youtube_channel: {
+            select: { id: true, channel_id: true, channel_name: true, thumbnail_url: true, custom_url: true },
+          },
+        },
+        orderBy: { created_at: "desc" },
+        take,
+      });
+
+      const tagged = youtubePosts.map((y) => {
+        if (y.user?.profile?.profile_picture) y.user.profile.profile_picture = resolveAvatarUrl(y.user.id, y.user.profile.profile_picture);
+        if (y.youtube_channel?.thumbnail_url) y.youtube_channel.thumbnail_url = resolveAvatarUrl(y.youtube_channel.id, y.youtube_channel.thumbnail_url);
+        return { ...y, contentType: "YOUTUBE_POST", media: y.media.map(resolveMediaForApi) };
+      });
+
+      const nextCursor = tagged.length === take ? tagged[tagged.length - 1].id : null;
+      return { data: tagged, nextCursor };
+    });
+
+    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+  } catch (error) {
+    logger.error(`❌ [CONTENT_CTRL] getYoutubeFeed failure: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch youtube feed" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIKE HANDLER (REDIS-BACKED)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * @desc    Toggle like for any content type
+ * @route   POST /api/social/:type/:id/like
+ */
+export const toggleLikeController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    
+    // Determine content type from URL path
+    const url = req.originalUrl;
+    let type = "POST";
+    if (url.includes("/reels/")) type = "REEL";
+    else if (url.includes("/posts/youtube/")) type = "YOUTUBE_POST";
+    else if (url.includes("/polls/")) type = "POLL";
+
+    const result = await toggleLike(type, id, userId);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    logger.error(`❌ [CONTENT_CTRL] toggleLike failure: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to toggle like" });
+  }
+};
+
+export default { createPost, createReel, createYoutubePost, createPoll, deletePost, deleteReel, getFeed, getPostsFeed, getReelsFeed, getYoutubeFeed, toggleLikeController };

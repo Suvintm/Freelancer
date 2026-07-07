@@ -127,6 +127,7 @@ export function FeedYoutube({
           src={post.videoUrl}
           loop
           playsInline
+          poster={post.img}
           onLoadedMetadata={() => {
             if (videoRef.current) videoRef.current.muted = true;
           }}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
+import Hls from 'hls.js';
 import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useLottie } from 'lottie-react';
@@ -23,7 +24,13 @@ export function RealFeedYoutube({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const videoUrl = resolveMediaUrl(post.media?.[0]?.urls?.video || post.media?.[0]?.urls?.fallback || '');
+  const mediaUrls = post.media?.[0]?.urls;
+  const hlsUrl = resolveMediaUrl(mediaUrls?.hls);
+  const mp4Url = resolveMediaUrl(mediaUrls?.video || mediaUrls?.fallback);
+  const thumbnailUrl = resolveMediaUrl(post.media?.[0]?.thumbnailUrl || mediaUrls?.thumb);
+  const mediaStatus = post.media?.[0]?.status;
+  const isProcessing = mediaStatus === 'PROCESSING';
+  
   const userName = post.youtube_channel?.channel_name || post.user?.profile?.name || post.user?.username || 'User';
   const avatarSrc = resolveMediaUrl(post.youtube_channel?.thumbnail_url) || resolveMediaUrl(post.user?.profile?.profile_picture) || defaultProfile;
   const location = 'YouTube';
@@ -71,10 +78,36 @@ export function RealFeedYoutube({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isProcessing) return;
     video.muted = isMuted;
     if (!isMuted) video.volume = 1;
   }, [isMuted]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    let hls: Hls | null = null;
+
+    if (hlsUrl && Hls.isSupported()) {
+      hls = new Hls({
+        capLevelToPlayerSize: true,
+        maxBufferLength: 30,
+      });
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+    } else if (hlsUrl && video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = hlsUrl;
+    } else if (mp4Url) {
+      video.src = mp4Url;
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [hlsUrl, mp4Url]);
 
   const handleMuteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -108,16 +141,23 @@ export function RealFeedYoutube({
         className="relative w-full aspect-video bg-black cursor-pointer overflow-hidden rounded-t-[28px]"
         onClick={(e) => { e.stopPropagation(); if (isPlaying) pauseMedia(); else playMedia(); }}
       >
-        <video 
-          ref={videoRef}
-          src={videoUrl}
-          loop
-          playsInline
-          onLoadedMetadata={() => {
-            if (videoRef.current) videoRef.current.muted = true;
-          }}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90 group-hover:opacity-100"
-        />
+        {isProcessing ? (
+          <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-zinc-900/80 backdrop-blur-sm z-10 rounded-[24px]">
+            <div className="w-8 h-8 border-4 border-white/20 border-t-red-500 rounded-full animate-spin mb-3" />
+            <p className="text-white text-sm font-medium tracking-wide">Processing Video...</p>
+          </div>
+        ) : (
+          <video 
+            ref={videoRef}
+            loop
+            playsInline
+            poster={thumbnailUrl}
+            onLoadedMetadata={() => {
+              if (videoRef.current) videoRef.current.muted = true;
+            }}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+          />
+        )}
 
         {/* Top Gradient Overlay */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />

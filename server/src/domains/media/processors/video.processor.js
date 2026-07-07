@@ -18,7 +18,7 @@ ffmpeg.setFfprobePath(ffprobe.path);
  * Handles Transcoding, Compression, and Thumbnail Extraction.
  */
 
-export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.VIDEOS, options = {}) => {
+export const processVideo = async (rawBuffer, userId, mediaId, folder, options = {}) => {
   const { cacheControl } = options;
   const tempDir = path.join(os.tmpdir(), "suvix-media");
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -35,9 +35,30 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     fs.writeFileSync(inputPath, rawBuffer);
     logger.info(`📝 [DISK] Raw file written to: ${inputPath}`);
 
-    // 3. Transcode & Compress & Generate Thumbnail & HLS (Parallel)
-    logger.info(`🔥 [FFMPEG] Starting Transcode Engine (MP4 + HLS Chunks)...`);
-    
+    // 3. Extract original video metadata to determine ABR limits
+    logger.info(`📡 [FFPROBE] Probing input video for ABR capabilities...`);
+    const inputMetadataPromise = new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(inputPath, (err, metadata) => {
+        if (err) return reject(err);
+        const stream = metadata.streams.find(s => s.codec_type === "video");
+        resolve(stream);
+      });
+    });
+    const inputMetadata = await inputMetadataPromise;
+    const inputHeight = inputMetadata?.height || 720;
+    const inputWidth = inputMetadata?.width || 1280;
+
+    // Define ABR variants based on original height (never upscale)
+    // NOTE TO DEVELOPER (Suvin): I have aggressively lowered these bitrates to optimize S3 storage costs.
+    // If the client demands higher visual fidelity later, upgrade 1080p back to 5000k and 720p to 2800k.
+    const abrVariants = [];
+    if (inputHeight >= 1080) abrVariants.push({ name: "1080p", height: 1080, bitrate: "3000k" });
+    if (inputHeight >= 720) abrVariants.push({ name: "720p", height: 720, bitrate: "1500k" });
+    if (inputHeight >= 480) abrVariants.push({ name: "480p", height: 480, bitrate: "1000k" });
+    abrVariants.push({ name: "360p", height: 360, bitrate: "800k" });
+
+    logger.info(`🔥 [FFMPEG] Starting Transcode Engine for ${abrVariants.length} qualities...`);
+
     // Create HLS temp directory
     const hlsDir = path.join(tempDir, `${mediaId}-hls`);
     if (!fs.existsSync(hlsDir)) fs.mkdirSync(hlsDir);
@@ -47,74 +68,67 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
         .output(outputPath)
         .videoCodec("libx264")
         .audioCodec("aac")
-        .size("720x?") 
+        .size("?x720") 
         .videoBitrate("2000k")
         .outputOptions("-crf 23")
         .outputOptions("-preset fast")
-        .outputOptions("-movflags +faststart") // Enable "Fast Start" for immediate MP4 play
+        .outputOptions("-movflags +faststart")
         .on("start", (cmd) => logger.debug(`   🚀 [FFMPEG-MP4] Command: ${cmd}`))
-        .on("end", () => {
-          logger.info(`   🎬 [FFMPEG] MP4 Optimization complete.`);
-          resolve();
-        })
-        .on("error", (err) => {
-           logger.error(`   ❌ [FFMPEG-MP4] Error: ${err.message}`);
-           reject(err);
-        })
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err))
         .run();
     });
 
-    const hlsPromise = new Promise((resolve, reject) => {
+    const hlsPromises = abrVariants.map((variant) => {
+      return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
-          .output(path.join(hlsDir, "master.m3u8"))
+          .output(path.join(hlsDir, `${variant.name}.m3u8`))
           .videoCodec("libx264")
           .audioCodec("aac")
+          .size(`?x${variant.height}`)
+          .videoBitrate(variant.bitrate)
           .addOptions([
             "-profile:v baseline",
             "-level 3.0",
             "-start_number 0",
-            "-hls_time 3", // Reduced to 3s for faster "First Frame" latency
+            "-hls_time 3",
             "-hls_list_size 0",
             "-f hls",
-            "-hls_segment_filename", path.join(hlsDir, "seg%d.ts")
+            "-hls_segment_filename", path.join(hlsDir, `${variant.name}_seg%d.ts`)
           ])
-          .on("start", (cmd) => logger.debug(`   🚀 [FFMPEG-HLS] Command: ${cmd}`))
-          .on("end", () => {
-            logger.info(`   📡 [FFMPEG] HLS Segmenting complete.`);
-            resolve();
-          })
-          .on("error", (err) => {
-            logger.error(`   ❌ [FFMPEG-HLS] Error: ${err.message}`);
-            reject(err);
-          })
+          .on("start", (cmd) => logger.debug(`   🚀 [FFMPEG-HLS-${variant.name}] Command: ${cmd}`))
+          .on("end", () => resolve())
+          .on("error", (err) => reject(err))
           .run();
       });
+    });
 
     const thumbnailPromise = new Promise((resolve, reject) => {
-        ffmpeg(inputPath)
-          .screenshots({
-            timestamps: ["1"], 
-            filename: path.basename(thumbPath),
-            folder: path.dirname(thumbPath),
-            size: "720x1280", 
-          })
-          .on("start", (cmd) => logger.debug(`   🚀 [FFMPEG-THUMB] Command: ${cmd}`))
-          .on("end", () => {
-            if (fs.existsSync(thumbPath)) {
-               logger.info(`   📸 [FFMPEG] Thumbnail captured successfully: ${thumbPath}`);
-               resolve();
-            } else {
-               logger.warn(`   ⚠️ [FFMPEG] Thumbnail process finished but file not found!`);
-               reject(new Error("Thumbnail file not found"));
-            }
-          })
-          .on("error", (err) => {
-            logger.error(`   ❌ [FFMPEG-THUMB] Error: ${err.message}`);
-            reject(err);
-          });
-      });
+      ffmpeg(inputPath)
+        .screenshots({
+          timestamps: ["1"], 
+          filename: path.basename(thumbPath),
+          folder: path.dirname(thumbPath),
+          size: "?x720", 
+        })
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err));
+    });
 
-    await Promise.all([compressionPromise, hlsPromise, thumbnailPromise]);
+    await Promise.all([compressionPromise, thumbnailPromise, ...hlsPromises]);
+    logger.info(`   🎬 [FFMPEG] All transcode processes complete.`);
+
+    // Generate Master Playlist manually
+    let masterContent = "#EXTM3U\n";
+    abrVariants.forEach(v => {
+      const bw = parseInt(v.bitrate) * 1000 + 128000;
+      // Estimate width by maintaining aspect ratio
+      const estimatedWidth = Math.round((inputWidth / inputHeight) * v.height);
+      masterContent += `#EXT-X-STREAM-INF:BANDWIDTH=${bw},RESOLUTION=${estimatedWidth}x${v.height}\n`;
+      masterContent += `${v.name}.m3u8\n`;
+    });
+    fs.writeFileSync(path.join(hlsDir, "master.m3u8"), masterContent);
+    logger.info(`   📝 [HLS] Master playlist created successfully.`);
 
     // 4. Extract Metadata
     logger.info(`📡 [FFPROBE] Probing final deliverables...`);
@@ -140,9 +154,8 @@ export const processVideo = async (rawBuffer, userId, mediaId, folder = STORAGE_
     const metadata = await metadataPromise;
 
     // 5. Upload to S3
-    const videoKey = buildS3Key("optimized", folder, userId, mediaId, null, "mp4");
+    const videoKey = buildS3Key("video", folder, userId, mediaId, null, "mp4");
     const thumbKey = buildS3Key("thumbnail", folder, userId, mediaId, null, "webp");
-    // const hlsMasterKey = buildS3Key("master", `${folder}/${userId}/${mediaId}/hls`, null, null, null, "m3u8");
 
     logger.info(`📦 [S3-UPLOAD] Storing final variants...`);
     logger.info(`   📤 [VIDEO] Key: ${videoKey}`);

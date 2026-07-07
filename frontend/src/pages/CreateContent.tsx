@@ -5,7 +5,8 @@ import { selectUser } from '../store/slices/authSlice';
 import { api } from '../api/client';
 import { uploadMediaDetailed } from '../utils/s3Uploader';
 import { motion, AnimatePresence } from 'framer-motion';
-import CreateImagePostWizard, { type CreatePostData } from '../components/create-post/CreateImagePostWizard';
+import CreateImagePostWizard from '../components/create-post/CreateImagePostWizard';
+import type { CreatePostData } from '../components/create-post/CreateImagePostWizard';
 import { 
   Image as ImageIcon, 
   Video, 
@@ -123,7 +124,7 @@ export default function CreateContent() {
       const uploadedMediaIds: string[] = [];
       for (const item of data.mediaItems) {
         const file = item.file;
-        const { mediaId } = await uploadMediaDetailed(file, 'IMAGE');
+        const { mediaId } = await uploadMediaDetailed(file, 'IMAGE', 'post');
         uploadedMediaIds.push(mediaId);
       }
 
@@ -181,7 +182,11 @@ export default function CreateContent() {
       const uploadedMediaIds: string[] = [];
       for (const file of selectedFiles) {
         const type = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
-        const { mediaId } = await uploadMediaDetailed(file, type);
+        let moduleContext: 'reels' | 'youtube_post' | 'post' = 'post';
+        if (activeTab === 'REEL') moduleContext = 'reels';
+        else if (activeTab === 'YOUTUBE') moduleContext = 'youtube_post';
+
+        const { mediaId } = await uploadMediaDetailed(file, type, moduleContext);
         uploadedMediaIds.push(mediaId);
       }
 

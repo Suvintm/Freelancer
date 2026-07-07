@@ -12,7 +12,12 @@ export interface RealMedia {
     width?: number;
     height?: number;
   };
+  width?: number;
+  height?: number;
+  duration?: number;
   blurhash?: string;
+  thumbnailUrl?: string;
+  status?: string;
 }
 
 export interface RealUser {

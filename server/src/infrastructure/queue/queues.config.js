@@ -52,6 +52,19 @@ export const analyticsQueue = connection ? new Queue("analytics", {
     }
 }) : null;
 
+/**
+ * likeSyncQueue
+ * Used for periodically flushing cached likes from Redis to PostgreSQL
+ */
+export const likeSyncQueue = connection ? new Queue("like-sync", {
+    connection,
+    defaultJobOptions: {
+        attempts: 2,
+        removeOnComplete: true,
+        removeOnFail: 100,
+    }
+}) : null;
+
 if (connection) {
     logger.info("[Queues] BullMQ initialized ✅");
 }
