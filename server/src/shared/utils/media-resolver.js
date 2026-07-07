@@ -101,11 +101,13 @@ export const resolveMediaForApi = (media) => {
   if (!media) return null;
   const { id, userId, type, status, blurhash, storageKey, variants, width, height, duration, storage_provider = "S3" } = media;
   
-  // 🧱 LEGACY & HYBRID CHECK: If we have a key, we can probably show it.
-  const hasContent = (variants && Object.keys(variants).length > 0) || !!storageKey;
+  // 🧱 LEGACY & HYBRID CHECK: If we have variants, we definitely have content.
+  // If we only have storageKey, check if it's not a raw/ key (which is inaccessible).
+  const isTempKey = storageKey && (storageKey.includes('temp/raw') || storageKey.startsWith('raw/'));
+  const hasContent = (variants && Object.keys(variants).length > 0) || (storageKey && !isTempKey);
 
   if (status !== "READY" && !hasContent) {
-    return { id, type, status, urls: null };
+    return { id, type, status, blurhash, width, height, urls: null };
   }
 
   let urls = {};
@@ -142,14 +144,14 @@ export const resolveMediaForApi = (media) => {
   return {
     id,
     type,
-    status: status === "READY" || hasContent ? "READY" : status, // Normalize status for UI
+    status: status, // Do not override status, frontend needs to know if it's PROCESSING
     blurhash,
     urls,
     thumbnail: {
       id,
       url: urls.thumb,
       blurhash,
-      status: status === "READY" || hasContent ? "READY" : status
+      status: status
     },
     thumbnailUrl: urls.thumb,
     width,

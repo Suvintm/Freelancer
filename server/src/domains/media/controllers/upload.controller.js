@@ -1,7 +1,7 @@
 import prisma from "../../../infrastructure/database/postgres.js";
 import storage from "../services/storage.service.js";
 import { buildS3Key } from "../providers/s3/s3.utils.js";
-import { STORAGE_FOLDERS } from "../providers/s3/s3.constants.js";
+import { STORAGE_FOLDERS, getMediaSubfolder } from "../providers/s3/s3.constants.js";
 import { addMediaJob } from "../../../infrastructure/queue/workers/queues.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 
@@ -16,7 +16,7 @@ import logger from "../../../infrastructure/monitoring/logger.js";
  */
 export const getUploadUrl = async (req, res) => {
   try {
-    const { filename, contentType, type = "IMAGE" } = req.query;
+    const { filename, contentType, type = "IMAGE", module = "post" } = req.query;
     const userId = req.user.id;
 
     // 1. Create PENDING record in DB
@@ -32,7 +32,9 @@ export const getUploadUrl = async (req, res) => {
 
     // 2. Generate unique S3 key for RAW storage
     const originalExt = filename.split(".").pop();
-    const rawKey = buildS3Key("original", STORAGE_FOLDERS.RAW, userId, media.id, originalExt);
+    const subfolder = getMediaSubfolder(module);
+    const rawFolder = `${STORAGE_FOLDERS.RAW}/${subfolder}`;
+    const rawKey = buildS3Key("original", rawFolder, userId, media.id, originalExt);
     logger.info(`🛰️ [S3-SIGN] Generating Signed PUT URL. Key: ${rawKey}`);
 
     // 3. Generate Signed PUT URL (valid for 5 mins)

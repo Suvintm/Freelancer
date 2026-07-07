@@ -7,6 +7,7 @@ import { validateMediaPayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { emitToUser } from '../../../../platform/socket/socket.gateway.js';
 import notificationService from '../../../../domains/notification/services/notificationService.js';
+import { getMediaSubfolder, STORAGE_FOLDERS } from "../../../../domains/media/providers/s3/s3.constants.js";
 import logger from "../../../monitoring/logger.js";
 
 /**
@@ -81,10 +82,14 @@ const mediaProcessor = async (job) => {
       await job.updateProgress(55);
       emitToUser(userId, "media:progress", { mediaId, progress: 55 });
       
+      // Extract subfolder directly from the raw S3 key (e.g. raw/reels/...) to preserve module context
+      const subfolder = key.split('/')[1] || "post";
+      const targetFolder = `${STORAGE_FOLDERS.PROCESSED}/${subfolder}`;
+      
       if (type === "VIDEO") {
-        results = await processVideo(rawBuffer, userId, mediaId);
+        results = await processVideo(rawBuffer, userId, mediaId, targetFolder);
       } else {
-        results = await processImage(rawBuffer, userId, mediaId);
+        results = await processImage(rawBuffer, userId, mediaId, targetFolder);
       }
       results.hash = hash;
       logger.info(`✅ [PROCESS-DONE] Completed processing for Media: ${mediaId}`);

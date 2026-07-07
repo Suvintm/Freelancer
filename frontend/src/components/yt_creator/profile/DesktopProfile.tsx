@@ -61,7 +61,11 @@ interface RawFeedItem {
   id: string;
   contentType: string;
   user?: { username: string };
-  media?: { url: string }[];
+  media?: { 
+    urls?: { post?: string; full?: string; thumb?: string; hls?: string; video?: string; fallback?: string }; 
+    thumbnailUrl?: string; 
+    url?: string; 
+  }[];
   caption?: string;
   likes?: number;
   commentsCount?: number;
@@ -100,12 +104,12 @@ export const DesktopProfile = () => {
             id: item.id,
             user: item.user?.username,
             type: item.contentType === 'POST' ? 'post' : item.contentType === 'REEL' ? 'reel' : item.contentType === 'YOUTUBE_POST' ? 'yt_video' : 'poll',
-            img: item.media?.[0]?.url || '',
-            images: item.media?.map((m) => m.url) || [],
+            img: item.media?.[0]?.urls?.post || item.media?.[0]?.thumbnailUrl || item.media?.[0]?.url || '',
+            images: item.media?.map((m) => m.urls?.post || m.thumbnailUrl || m.url || '') || [],
             comment: item.caption || '',
             likes: item.likes || 0,
             commentsCount: item.commentsCount || 0,
-            videoUrl: item.media?.[0]?.url || '',
+            videoUrl: item.media?.[0]?.urls?.hls || item.media?.[0]?.urls?.video || item.media?.[0]?.urls?.fallback || item.media?.[0]?.url || '',
             createdAt: item.created_at,
           }));
 
@@ -723,9 +727,9 @@ export const DesktopProfile = () => {
                       onClick={() => setSelectedMedia(reel)}
                       className="group relative aspect-[9/16] rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
                     >
-                      <video 
-                        src={reel.videoUrl} 
-                        preload="metadata" 
+                      <img 
+                        src={reel.img || reel.videoUrl} 
+                        alt="Reel thumbnail"
                         className="w-full h-full object-cover"
                       />
                       {/* Hover Info Overlay */}
@@ -775,9 +779,9 @@ export const DesktopProfile = () => {
                       onClick={() => setSelectedMedia(video)}
                       className="group relative aspect-video rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
                     >
-                      <video 
-                        src={video.videoUrl} 
-                        preload="metadata" 
+                      <img 
+                        src={video.img || video.videoUrl} 
+                        alt="Post thumbnail"
                         className="w-full h-full object-cover"
                       />
                       {/* Hover Info Overlay */}
@@ -828,7 +832,7 @@ export const DesktopProfile = () => {
                       className="group relative aspect-square rounded-2xl overflow-hidden bg-border-secondary border border-border-secondary cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                       <img 
-                        src={post.images?.[0]} 
+                        src={post.images?.[0] || post.img} 
                         alt={post.comment} 
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
@@ -1052,10 +1056,11 @@ export const DesktopProfile = () => {
                 {selectedMedia.type === 'reel' ? (
                   <video 
                     src={selectedMedia.videoUrl} 
+                    poster={selectedMedia.img}
                     controls 
                     autoPlay 
                     loop 
-                    className="w-full h-full object-contain"
+                    className="w-full max-h-[80vh] object-contain rounded-lg"
                   />
                 ) : (
                   <PostImageSlider images={selectedMedia.images || []} />

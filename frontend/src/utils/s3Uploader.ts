@@ -1,18 +1,26 @@
 import { api } from '../api/client';
 
-export const uploadMediaToS3 = async (file: File): Promise<string> => {
-  const result = await uploadMediaDetailed(file, 'IMAGE');
+export const uploadMediaToS3 = async (
+  file: File, 
+  moduleContext: 'post' | 'reels' | 'youtube_post' | 'avatar' | 'poll' = 'post'
+): Promise<string> => {
+  const result = await uploadMediaDetailed(file, 'IMAGE', moduleContext);
   return result.key;
 };
 
-export const uploadMediaDetailed = async (file: File, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): Promise<{ key: string, mediaId: string }> => {
+export const uploadMediaDetailed = async (
+  file: File, 
+  type: 'IMAGE' | 'VIDEO' = 'IMAGE',
+  moduleContext: 'post' | 'reels' | 'youtube_post' | 'avatar' | 'poll' = 'post'
+): Promise<{ key: string, mediaId: string }> => {
   try {
     // 1. Get pre-signed URL from our backend
     const signRes = await api.get('/media/signed-url', {
       params: {
         filename: file.name,
         contentType: file.type,
-        type
+        type,
+        module: moduleContext
       }
     });
 

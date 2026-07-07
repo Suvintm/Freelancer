@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import Hls from 'hls.js';
 import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import type { RealPost } from './types';
@@ -34,7 +35,40 @@ export function RealFeedReel({
   const mediaDims = { width: mediaObj?.width || mediaObj?.metadata?.width || 0, height: mediaObj?.height || mediaObj?.metadata?.height || 0 };
   const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
 
-  const videoUrl = resolveMediaUrl(post.media?.[0]?.urls?.video || post.media?.[0]?.urls?.fallback || '');
+  const mediaUrls = post.media?.[0]?.urls;
+  const hlsUrl = resolveMediaUrl(mediaUrls?.hls);
+  const mp4Url = resolveMediaUrl(mediaUrls?.video || mediaUrls?.fallback);
+  const thumbnailUrl = resolveMediaUrl(post.media?.[0]?.thumbnailUrl || mediaUrls?.thumb);
+  const mediaStatus = mediaObj?.status;
+  const isProcessing = mediaStatus === 'PROCESSING';
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || isProcessing) return;
+
+    let hls: Hls | null = null;
+
+    if (hlsUrl && Hls.isSupported()) {
+      hls = new Hls({
+        capLevelToPlayerSize: true,
+        maxBufferLength: 30,
+      });
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+    } else if (hlsUrl && video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS (Safari)
+      video.src = hlsUrl;
+    } else if (mp4Url) {
+      // MP4 Fallback
+      video.src = mp4Url;
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [hlsUrl, mp4Url]);
 
   const playMedia = useCallback(() => {
     if (videoRef.current) {
@@ -148,20 +182,28 @@ export function RealFeedReel({
           </button>
         </div>
 
-        <video 
-          ref={videoRef}
-          src={videoUrl}
-          loop
-          playsInline
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={(e) => {
-            if (videoRef.current) videoRef.current.muted = true;
-            if (!dimensions.width || !dimensions.height) {
-              setDimensions({ width: e.currentTarget.videoWidth, height: e.currentTarget.videoHeight });
-            }
-          }}
-          className={`absolute inset-0 w-full h-full ${objectFitClass}`}
-        />
+        {isProcessing ? (
+          <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-zinc-900/80 backdrop-blur-sm z-10">
+            <div className="w-10 h-10 border-4 border-white/20 border-t-green-400 rounded-full animate-spin mb-4" />
+            <p className="text-white text-sm font-medium tracking-wide">Processing Video...</p>
+            <p className="text-white/60 text-xs mt-1">This will only take a moment</p>
+          </div>
+        ) : (
+          <video 
+            ref={videoRef}
+            loop
+            playsInline
+            poster={thumbnailUrl}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={(e) => {
+              if (videoRef.current) videoRef.current.muted = true;
+              if (!dimensions.width || !dimensions.height) {
+                setDimensions({ width: e.currentTarget.videoWidth, height: e.currentTarget.videoHeight });
+              }
+            }}
+            className={`absolute inset-0 w-full h-full ${objectFitClass}`}
+          />
+        )}
 
         {isPlaying && (
           <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20 z-10">

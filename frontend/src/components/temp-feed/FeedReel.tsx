@@ -175,6 +175,7 @@ export function FeedReel({
           src={post.videoUrl}
           loop
           playsInline
+          poster={post.img}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={(e) => {
             if (videoRef.current) videoRef.current.muted = true;

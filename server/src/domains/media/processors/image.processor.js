@@ -33,7 +33,7 @@ const generateBlurhash = async (buffer) => {
   }
 };
 
-export const processImage = async (rawBuffer, userId, mediaId, folder = STORAGE_FOLDERS.IMAGES, options = {}) => {
+export const processImage = async (rawBuffer, userId, mediaId, folder, options = {}) => {
   try {
     const { cacheControl } = options;
     logger.info(`🖼️ [PROCESSOR] Processing Image: ${mediaId} in folder: ${folder}`);
