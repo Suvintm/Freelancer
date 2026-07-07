@@ -99,7 +99,7 @@ export const resolveAvatarUrl = (userId, filename) => {
  */
 export const resolveMediaForApi = (media) => {
   if (!media) return null;
-  const { id, userId, type, status, blurhash, storageKey, variants, storage_provider = "S3" } = media;
+  const { id, userId, type, status, blurhash, storageKey, variants, width, height, duration, storage_provider = "S3" } = media;
   
   // 🧱 LEGACY & HYBRID CHECK: If we have a key, we can probably show it.
   const hasContent = (variants && Object.keys(variants).length > 0) || !!storageKey;
@@ -151,7 +151,10 @@ export const resolveMediaForApi = (media) => {
       blurhash,
       status: status === "READY" || hasContent ? "READY" : status
     },
-    thumbnailUrl: urls.thumb
+    thumbnailUrl: urls.thumb,
+    width,
+    height,
+    duration
   };
 };
 

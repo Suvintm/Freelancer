@@ -30,7 +30,8 @@ export function RealFeedReel({
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const mediaDims = post.media?.[0]?.metadata || { width: 0, height: 0 };
+  const mediaObj = post.media?.[0];
+  const mediaDims = { width: mediaObj?.width || mediaObj?.metadata?.width || 0, height: mediaObj?.height || mediaObj?.metadata?.height || 0 };
   const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
 
   const videoUrl = resolveMediaUrl(post.media?.[0]?.urls?.video || post.media?.[0]?.urls?.fallback || '');
@@ -113,14 +114,19 @@ export function RealFeedReel({
           maxHeight: 'min(80vh, 650px)'
         }}
       >
-        <div className="absolute top-4 left-4 flex items-center gap-2.5 z-20 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-          <div className="w-9 h-9 rounded-full border border-white/20 p-[1.5px] bg-black/30 backdrop-blur-md shadow-sm">
+        {/* Instagram-style overlaid header (top-left) */}
+        <div 
+          className="absolute top-4 left-4 flex items-center gap-2.5 z-20 select-none pointer-events-auto" 
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-8 rounded-full border border-white/60 p-[1.5px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] bg-black/20 shrink-0">
             <img src={avatarSrc} alt={userName} className="w-full h-full rounded-full object-cover" />
           </div>
-          <div>
-            <h4 className="text-[13px] font-bold text-white drop-shadow-md leading-none mb-1">
+          <div className="flex flex-col justify-center">
+            <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
               {userName}
             </h4>
+            {/* Keeping the location placeholder for later if RealPost gets location */}
           </div>
         </div>
 

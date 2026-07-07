@@ -8,7 +8,8 @@ import storyProcessor from "./processors/storyProcessor.js";
 import storyCleanupProcessor from "./processors/storyCleanupProcessor.js";
 import searchFeedbackProcessor from "./processors/searchFeedbackProcessor.js";
 import searchAnalyticsProcessor from "./processors/searchAnalyticsProcessor.js";
-import { storyCleanupQueue, searchFeedbackQueue, searchAnalyticsQueue } from "./queues.js";
+import likeSyncProcessor from "./processors/likeSyncProcessor.js";
+import { storyCleanupQueue, searchFeedbackQueue, searchAnalyticsQueue, likeSyncQueue } from "./queues.js";
 
 /**
  * 🏗️ BACKGROUND WORKER HUB
@@ -89,6 +90,14 @@ if (connection) {
     lockDuration: 60000, // Batches shouldn't take more than 60s
   });
 
+  // ─── 7. LIKE SYNC WORKER ────────────────────────────────────────────────────
+  const likeSyncWorker = new Worker("like-sync", likeSyncProcessor, {
+    connection,
+    concurrency: 1,      // Prevent concurrent DB writes for the same posts
+    drainDelay: 30000,   // Wait 30s before checking queue again when empty
+    lockDuration: 60000, // Sync shouldn't take long
+  });
+
   // ─── EVENT HANDLERS ─────────────────────────────────────────────────────────
   // SUCCESS: sampled at 5% — prevents log flooding
   syncWorker.on("completed", (job) =>
@@ -144,8 +153,12 @@ if (connection) {
   cleanupWorker.on("failed", (job, err) => 
     logger.error(`🧹 [CLEANUP] Worker failed job ${job?.id}:`, err)
   );
+  
+  likeSyncWorker.on("failed", (job, err) => 
+    sampledLogger.error("[Workers] Like Sync job failed", err, { jobId: job?.id })
+  );
 
-  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, searchFeedbackWorker, searchAnalyticsWorker);
+  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, searchFeedbackWorker, searchAnalyticsWorker, likeSyncWorker);
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
   // 🧹 [STORY SWEEPER] Run cleanup every 2 minutes (⚡ TEST MODE)
@@ -167,6 +180,13 @@ if (connection) {
     repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
   }).then(() => logger.info("📊 [SCHEDULED] Search Analytics Flusher active (Every 2 Minutes)."))
     .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Search Analytics: ${err.message}`));
+
+  // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 2 minutes
+  likeSyncQueue.add("flush-likes", {}, {
+    jobId: "like-sync-flush",
+    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
+  }).then(() => logger.info("❤️ [SCHEDULED] Like Sync Flusher active (Every 2 Minutes)."))
+    .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
 
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
   logger.info(`   📊 YT Sync:       drainDelay=60s  | concurrency=2 | stall-check=10m`);

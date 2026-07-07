@@ -75,6 +75,17 @@ export const searchAnalyticsQueue = createQueue("search-analytics", {
   removeOnFail: { age: 86400, count: 50 },       // Keep failures 24h
 });
 
+/**
+ * Like Sync Queue
+ * Periodically flushes likes from Redis to DB.
+ */
+export const likeSyncQueue = createQueue("like-sync", {
+  attempts: 2,
+  backoff: { type: "fixed", delay: 10000 },
+  removeOnComplete: { age: 3600, count: 50 },
+  removeOnFail: { age: 86400, count: 50 },
+});
+
 
 
 // ─── HELPER: YOUTUBE SYNC ENQUEUER ────────────────────────────────────────────

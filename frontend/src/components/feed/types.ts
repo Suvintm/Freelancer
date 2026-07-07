@@ -12,6 +12,9 @@ export interface RealMedia {
     width?: number;
     height?: number;
   };
+  width?: number;
+  height?: number;
+  duration?: number;
   blurhash?: string;
 }
 

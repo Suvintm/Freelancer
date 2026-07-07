@@ -8,6 +8,10 @@ import {
   deletePost,
   deleteReel,
   getFeed,
+  getPostsFeed,
+  getReelsFeed,
+  getYoutubeFeed,
+  toggleLikeController,
 } from "./controllers/postController.js";
 import { interactionLimiter, feedLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
 import { requireCapability } from "../../shared/middleware/capability.middleware.js";
@@ -27,6 +31,7 @@ const router = express.Router();
  */
 router.post("/posts", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createPost);
 router.delete("/posts/:postId", authenticate, interactionLimiter, deletePost);
+router.post("/posts/:id/like", authenticate, interactionLimiter, toggleLikeController);
 
 // ── Short-form Video Reels ────────────────────────────────────────────────────
 /**
@@ -36,6 +41,7 @@ router.delete("/posts/:postId", authenticate, interactionLimiter, deletePost);
  */
 router.post("/reels", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createReel);
 router.delete("/reels/:reelId", authenticate, interactionLimiter, deleteReel);
+router.post("/reels/:id/like", authenticate, interactionLimiter, toggleLikeController);
 
 // ── YouTube Link Share Posts ──────────────────────────────────────────────────
 /**
@@ -44,6 +50,7 @@ router.delete("/reels/:reelId", authenticate, interactionLimiter, deleteReel);
  * @access  Private
  */
 router.post("/posts/youtube", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createYoutubePost);
+router.post("/posts/youtube/:id/like", authenticate, interactionLimiter, toggleLikeController);
 
 // ── Polls ─────────────────────────────────────────────────────────────────────
 /**
@@ -52,6 +59,7 @@ router.post("/posts/youtube", authenticate, requireCapability(CAPABILITIES.CONTE
  * @access  Private
  */
 router.post("/polls", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createPoll);
+router.post("/polls/:id/like", authenticate, interactionLimiter, toggleLikeController);
 
 // ── Unified Feed ──────────────────────────────────────────────────────────────
 /**
@@ -60,5 +68,8 @@ router.post("/polls", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOA
  * @access  Public
  */
 router.get("/feed", feedLimiter, getFeed);
+router.get("/feed/posts", feedLimiter, getPostsFeed);
+router.get("/feed/reels", feedLimiter, getReelsFeed);
+router.get("/feed/youtube", feedLimiter, getYoutubeFeed);
 
 export default router;

@@ -25,6 +25,8 @@ import { StoryViewer } from '../components/home/StoryViewer';
 import { FeedPostSkeleton } from '../components/temp-feed/FeedPostSkeleton';
 import type { RealPost } from '../components/feed/types';
 
+type TabType = 'all' | 'posts' | 'reels' | 'youtube';
+
 // STORIES array moved inside Home component to support dynamic user state.
  
 
@@ -40,15 +42,21 @@ export default function Home() {
   const userAvatar = user?.profilePicture || defaultProfile;
 
   const [globalMuted, setGlobalMuted] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [visibleCount, setVisibleCount] = useState(5);
 
   const { data: feedPosts = [], isLoading } = useQuery<RealPost[]>({
-    queryKey: ['real-feed'],
+    queryKey: ['real-feed', activeTab],
     queryFn: async () => {
       try {
-        const socialFeedRes = await api.get('/social/feed?limit=50').catch(() => ({ data: { success: false, data: [] } }));
+        let endpoint = '/social/feed';
+        if (activeTab === 'posts') endpoint = '/social/feed/posts';
+        if (activeTab === 'reels') endpoint = '/social/feed/reels';
+        if (activeTab === 'youtube') endpoint = '/social/feed/youtube';
+
+        const socialFeedRes = await api.get(`${endpoint}?limit=50`).catch(() => ({ data: { success: false, data: [] } }));
 
         let dbPosts: RealPost[] = [];
 
@@ -456,6 +464,23 @@ export default function Home() {
 
       {/* 4. Unified Feed */}
       <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
+        {/* Feed Type Tabs */}
+        <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
+          {(['all', 'posts', 'reels', 'youtube'] as TabType[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => { setActiveTab(tab); setVisibleCount(5); }}
+              className={`text-sm font-bold capitalize pb-3 border-b-[3px] transition-all flex-shrink-0 ${
+                activeTab === tab
+                  ? 'border-[#7c42f8] text-[#7c42f8] dark:text-[#9e76f9]'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+              }`}
+            >
+              {tab === 'all' ? 'For You' : tab}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="w-full pb-20">
             {[1, 2, 3].map((i) => (
