@@ -61,7 +61,11 @@ interface RawFeedItem {
   id: string;
   contentType: string;
   user?: { username: string };
-  media?: { url: string }[];
+  media?: { 
+    urls?: { post?: string; full?: string; thumb?: string; hls?: string; video?: string; fallback?: string }; 
+    thumbnailUrl?: string; 
+    url?: string; 
+  }[];
   caption?: string;
   likes?: number;
   commentsCount?: number;

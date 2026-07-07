@@ -16,6 +16,8 @@ export interface RealMedia {
   height?: number;
   duration?: number;
   blurhash?: string;
+  thumbnailUrl?: string;
+  status?: string;
 }
 
 export interface RealUser {
