@@ -459,6 +459,7 @@ export const toggleLikeController = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
+    const { action } = req.body; // Explicitly 'like' or 'unlike'
     
     // Determine content type from URL path
     const url = req.originalUrl;
@@ -467,7 +468,7 @@ export const toggleLikeController = async (req, res) => {
     else if (url.includes("/posts/youtube/")) type = "YOUTUBE_POST";
     else if (url.includes("/polls/")) type = "POLL";
 
-    const result = await toggleLike(type, id, userId);
+    const result = await toggleLike(type, id, userId, action);
     res.json({ success: true, ...result });
   } catch (error) {
     logger.error(`❌ [CONTENT_CTRL] toggleLike failure: ${error.message}`);

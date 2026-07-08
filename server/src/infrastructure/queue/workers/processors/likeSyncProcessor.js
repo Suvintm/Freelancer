@@ -14,12 +14,13 @@ import prisma from "../../../database/postgres.js";
  */
 export default async function likeSyncProcessor(job) {
   try {
-    // 1. Get all dirty keys
+    // 1. Get dirty keys (only posts added to queue > 10 seconds ago to avoid thrashing viral posts)
     const dirtyKey = `feed:likes:dirty`;
+    const now = Date.now();
+    const cutoff = now - 10000;
     
-    // We use a transaction (multi) to fetch all and clear atomically
-    // Actually, spop is better to pop N elements, but we might just SMEMBERS then DEL
-    const dirtyItems = await redisProxy.smembers(dirtyKey);
+    // Fetch items with score up to 10 seconds ago
+    const dirtyItems = await redisProxy.zrangebyscore(dirtyKey, 0, cutoff);
     if (!dirtyItems || dirtyItems.length === 0) {
       return; // Nothing to sync
     }
@@ -67,7 +68,7 @@ export default async function likeSyncProcessor(job) {
         parentIdField = "pollId";
       } else {
         // Unknown type, skip
-        await redisProxy.srem(dirtyKey, item);
+        await redisProxy.zrem(dirtyKey, item);
         continue;
       }
 
@@ -108,7 +109,7 @@ export default async function likeSyncProcessor(job) {
       });
 
       // Remove from dirty queue
-      await redisProxy.srem(dirtyKey, item);
+      await redisProxy.zrem(dirtyKey, item);
       processedCount++;
     }
 
