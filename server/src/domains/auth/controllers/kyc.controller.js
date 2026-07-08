@@ -4,12 +4,12 @@
  */
 
 import prisma from "../../../infrastructure/database/postgres.js";
-import storageService from "../../../shared/utils/storage-service.js";
+import storageService from "../../../infrastructure/storage/storage-client.js";
 import { RazorpayProvider } from "../../payment/services/razorpay.client.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 import { asyncHandler } from "../../../shared/middleware/error-handler.middleware.js";;
-import { calculateProfileCompletion } from "../../user/utils/profileUtils.js";
-import { Portfolio } from "../../user/models/Portfolio.js";
+import { calculateProfileCompletion } from "../../user/utils/profile.utils.js";
+import { Portfolio } from "../../../infrastructure/database/mongo-models/Portfolio.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 
 /**

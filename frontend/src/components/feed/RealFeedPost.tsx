@@ -202,7 +202,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
             >
-              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500 ${likedByMe ? 'text-red-500' : ''}`}><Heart size={26} fill={likedByMe ? "currentColor" : "rgba(0,0,0,0.2)"} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500`}><Heart size={26} fill={likedByMe ? "#ef4444" : "rgba(0,0,0,0.2)"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
             </div>
@@ -232,7 +232,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
         {!isTallMedia && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 hover:text-rose-500 ${likedByMe ? 'text-red-500' : (isDarkMode ? 'text-white' : 'text-zinc-950')}`}><Heart size={24} fill={likedByMe ? "currentColor" : "none"} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
             </div>

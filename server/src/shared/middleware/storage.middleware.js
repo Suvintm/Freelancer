@@ -3,7 +3,7 @@
  * Blocks uploads when storage limit is reached
  */
 
-import User from '../../domains/user/models/User.js';
+import User from "../../infrastructure/database/mongo-models/User.js";
 import { calculateStorageUsed } from '../../domains/media/controllers/upload.controller.js';
 import { ApiError } from './error-handler.middleware.js';
 import logger from "../../infrastructure/monitoring/logger.js";

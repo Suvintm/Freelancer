@@ -1,5 +1,5 @@
 import express from "express";
-import passport from "../../../config/passport.js";
+import passport from "../../infrastructure/config/passport.js";
 import jwt from "jsonwebtoken";
 import prisma from "../../infrastructure/database/postgres.js";
 import logger from "../../infrastructure/monitoring/logger.js";
@@ -9,7 +9,7 @@ import { authLimiter, redis } from "../../shared/middleware/rate-limiter.middlew
 import { redisAvailable } from "../../infrastructure/cache/redis.client.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken, hashToken } from "./services/token.service.js";
-import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
+import { checkAccountLockout } from "../../shared/middleware/lockout.middleware.js";
 import youtubeSyncService from '../creator/services/youtubeSyncService.js';
 import { 
     USER_INCLUDE, 

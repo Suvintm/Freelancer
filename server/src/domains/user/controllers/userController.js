@@ -1,12 +1,12 @@
 import prisma from "../../../infrastructure/database/postgres.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 import { asyncHandler } from "../../../shared/middleware/error-handler.middleware.js";;
-import storageService from "../../../shared/utils/storage-service.js";
+import storageService from "../../../infrastructure/storage/storage-client.js";
 import { redis, redisAvailable } from "../../../infrastructure/cache/redis.client.js";
 import { emitToUser } from '../../../platform/socket/socket.gateway.js';
 import logger from "../../../infrastructure/monitoring/logger.js";
-import { deleteCache, CacheKey } from "../../../shared/utils/cache.js";
-import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
+import { deleteCache, CacheKey } from "../../../infrastructure/cache/cache.service.js";
+import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 import { formatAuthResponse, USER_INCLUDE } from "../../auth/services/identity.service.js";
 
 // @desc    Get current authenticated user basic info

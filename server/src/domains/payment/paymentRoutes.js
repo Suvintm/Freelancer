@@ -10,7 +10,7 @@
 import express from "express";
 import authMiddleware from "../../shared/middleware/auth.middleware.js";
 // import { protectAdmin } from "../../shared/middleware/admin-auth.middleware.js";
-import { proxyToPaymentService } from "../../../kafka/paymentProxy.js";
+import { proxyToPaymentService } from "../../infrastructure/gateway/javaPayment.client.js";
 
 // ── Commented out — migrated to Java Payment Service ─────────────
 // import {

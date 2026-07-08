@@ -18,7 +18,7 @@
  */
 
 import { generateAccessToken, generateRefreshToken } from "./token.service.js";
-import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
+import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 
 // ─── Role Mapping ──────────────────────────────────────────────────────────
 

@@ -1,11 +1,11 @@
 import prisma from "../../../infrastructure/database/postgres.js";
-import storageService from "../../../shared/utils/storage-service.js";
+import storageService from "../../../infrastructure/storage/storage-client.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 ;
-import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
+import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 import { emitToUser } from '../../../platform/socket/socket.gateway.js';
-import { deleteCache, CacheKey } from "../../../shared/utils/cache.js";
+import { deleteCache, CacheKey } from "../../../infrastructure/cache/cache.service.js";
 
 /**
  * PRODUCTION-GRADE YOUTUBE SYNC SERVICE

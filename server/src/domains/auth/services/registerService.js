@@ -2,13 +2,9 @@ import prisma from "../../../infrastructure/database/postgres.js";
 import { hashPassword } from "./password.service.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 ;
-import youtubeApiService from "../../creator/services/youtubeApiService.js";
-import youtubeSyncService from '../../../domains/creator/services/youtubeSyncService.js';
 import { eventBus } from "../../../shared/kernel/events.js";
-import { youtubeSyncQueue, scheduleYouTubeSync } from "../../../infrastructure/queue/workers/queues.js";
-import storageService from "../../../shared/utils/storage-service.js";
+import storageService from "../../../infrastructure/storage/storage-client.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
-import mongoose from "mongoose";
 
 /**
  * PRODUCTION-GRADE ATOMIC REGISTRATION (Split Schema)
@@ -348,15 +344,8 @@ export const registerFullUser = async (userData) => {
     // VIP Token is inserted in the main registration transaction, so this is instant!
     eventBus.publish('user.registered', {
       userId: hydratedUser.id,
-      fullName,
+      email: hydratedUser.email,
     });
-
-    // 6. 🚀 UNIFIED SYNC: Dispatch to background BullMQ workers for production stability
-    // This offloads the heavy mirroring logic (S3 uploads) to workers, keeping registration fast.
-    if (user._deferredYoutubeChannels) {
-        logger.info(`✨ [REG-SERVICE] Scheduling background sync for ${user.id} (${user._deferredYoutubeChannels.length} channels)`);
-        await scheduleYouTubeSync(user.id, user._deferredYoutubeChannels, "onboarding");
-    }
     
     return hydratedUser;
 

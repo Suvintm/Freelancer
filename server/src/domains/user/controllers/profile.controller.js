@@ -6,7 +6,7 @@
  */
 import profileService from "../services/profile.service.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
-import { withCache } from "../../../shared/utils/cache.js";
+import { withCache } from "../../../infrastructure/cache/cache.service.js";
 import prisma from "../../../infrastructure/database/postgres.js";
 import { formatAuthResponse, USER_INCLUDE } from "../../auth/services/identity.service.js";
 

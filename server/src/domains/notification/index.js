@@ -1,6 +1,9 @@
 // src/domains/notification/index.js
-import { initNotificationSubscribers } from './notification.subscriber.js';
+import { initNotificationSubscribers } from "./events/notification.handlers.js";
+import logger from '../../infrastructure/monitoring/logger.js';
 export { default as notificationRouter } from './notificationRoutes.js';
 
-// Initialize domain listeners
-initNotificationSubscribers();
+export function bootstrapNotification() {
+  initNotificationSubscribers();
+  logger.info('Notification domain bootstrapped');
+}

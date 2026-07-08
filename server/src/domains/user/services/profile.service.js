@@ -6,7 +6,7 @@
  */
 import prisma from "../../../infrastructure/database/postgres.js";
 import { paginate } from "../../../shared/utils/pagination.js";
-import { resolveMediaForApi, resolveImageUrls, resolveVideoUrls, smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
+import { resolveMediaForApi, resolveImageUrls, resolveVideoUrls, smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 
 const PAGE_SIZE = 12; // Instagram sweet spot for grid loading
 

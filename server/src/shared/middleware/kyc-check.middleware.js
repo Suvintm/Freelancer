@@ -1,5 +1,5 @@
 // kycCheckMiddleware.js - Middleware to verify client KYC before sensitive operations
-import User from '../../domains/user/models/User.js';
+import User from "../../infrastructure/database/mongo-models/User.js";
 import { ApiError } from "./error-handler.middleware.js";
 
 /**

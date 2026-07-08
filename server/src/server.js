@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import "../config/env.js";
+import "./infrastructure/config/env.js";
 import logger from "./infrastructure/monitoring/logger.js";
 import { createApp } from "./app.js";
 import { connectMongo, disconnectMongo } from "./infrastructure/database/mongo.js";
@@ -9,11 +9,12 @@ import { connectPostgres } from "./infrastructure/database/postgres.js";
 import prisma from "./infrastructure/database/postgres.js";
 import { initSocket } from "./platform/socket/socket.gateway.js";
 import { initFirebaseAdmin } from "./infrastructure/push/fcm.admin.js";
-import { startScheduledJobs } from "./platform/scheduler/scheduled.jobs.js";
-
+import { startLikeSyncScheduler } from "./infrastructure/queue/workers/schedulers/likeSync.scheduler.js";
+import { startQuotaResetScheduler } from "./infrastructure/queue/workers/schedulers/quotaReset.scheduler.js";
 // Domain entrypoints
-import { youtubeQuotaManager } from "./domains/creator/index.js";
-import { initReactionWorker } from "./domains/content/index.js";
+import { youtubeQuotaManager, bootstrapCreator } from "./domains/creator/index.js";
+import { initReactionWorker } from "./domains/messaging/index.js";
+import { bootstrapNotification } from "./domains/notification/index.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -47,13 +48,17 @@ const startServer = async () => {
   } catch (err) {
     logger.error(`❌ [QUOTA] Failed to initialize: ${err.message}`);
   }
+  
+  bootstrapCreator();
+  bootstrapNotification();
 
   // 4. In-Memory Workers (always active — zero Redis cost)
   initReactionWorker(10000); // Batch-flush reactions to DB every 10 seconds
 
   // 5. Scheduled Jobs (cron-based, zero-cost — only fires at specific times)
   //    Includes: YouTube quota reset at midnight Pacific (YouTube's actual reset time)
-  startScheduledJobs();
+  startLikeSyncScheduler();
+  startQuotaResetScheduler();
 
   // 6. BullMQ Background Workers
   //    Controlled by ENABLE_WORKERS env var so you decide when they run.

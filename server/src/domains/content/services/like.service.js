@@ -1,85 +1,86 @@
-import redisProxy from '../../../infrastructure/cache/redis.client.js';
+import prisma from '../../../infrastructure/database/postgres.js';
 import logger from '../../../infrastructure/monitoring/logger.js';
 
-const LUA_TOGGLE_LIKE = `
-  local likeSetKey = KEYS[1]
-  local countKey = KEYS[2]
-  local dirtyKey = KEYS[3]
-  local userId = ARGV[1]
-  local itemKey = ARGV[2]
-  local action = ARGV[3]
-  local nowScore = ARGV[4]
-
-  local isCurrentlyLiked = redis.call('sismember', likeSetKey, userId)
-  
-  local shouldLike = 0
-  if action == "like" then
-    shouldLike = 1
-  elseif action == "unlike" then
-    shouldLike = 0
-  else
-    -- Fallback to toggle behavior if no explicit action
-    if isCurrentlyLiked == 1 then
-      shouldLike = 0
-    else
-      shouldLike = 1
-    end
-  end
-
-  if shouldLike == 1 and isCurrentlyLiked == 0 then
-    -- User wants to like, and is NOT currently liking
-    redis.call('sadd', likeSetKey, userId)
-    redis.call('incr', countKey)
-    redis.call('zadd', dirtyKey, nowScore, itemKey)
-    return {1, redis.call('get', countKey)}
-  elseif shouldLike == 0 and isCurrentlyLiked == 1 then
-    -- User wants to unlike, and IS currently liking
-    redis.call('srem', likeSetKey, userId)
-    redis.call('decr', countKey)
-    redis.call('zadd', dirtyKey, nowScore, itemKey)
-    return {0, redis.call('get', countKey)}
-  else
-    -- No-op: already in desired state
-    return {isCurrentlyLiked, redis.call('get', countKey)}
-  end
-`;
-
 /**
- * Handle a like/unlike optimally using a strictly atomic Redis Lua Script
+ * Handle a like/unlike atomically using PostgreSQL
  * @param {string} type - 'POST', 'REEL', 'YOUTUBE_POST', 'POLL'
  * @param {string} id - The content ID
  * @param {string} userId - The user ID
  * @param {string} action - 'like' or 'unlike' (optional, falls back to toggle)
  */
 export const toggleLike = async (type, id, userId, action = "") => {
-    if (!redisProxy) {
-        throw new Error("Redis is required for this operation");
+    let LikeModel;
+    let ContentModel;
+    let parentIdField;
+    
+    if (type === "POST") {
+      LikeModel = prisma.postLike;
+      ContentModel = prisma.post;
+      parentIdField = "postId";
+    } else if (type === "REEL") {
+      LikeModel = prisma.reelLike;
+      ContentModel = prisma.reel;
+      parentIdField = "reelId";
+    } else if (type === "YOUTUBE_POST") {
+      LikeModel = prisma.youtubePostLike;
+      ContentModel = prisma.youtubePost;
+      parentIdField = "youtubePostId";
+    } else if (type === "POLL") {
+      LikeModel = prisma.pollLike;
+      ContentModel = prisma.poll;
+      parentIdField = "pollId";
+    } else {
+      throw new Error(`Unsupported content type: ${type}`);
     }
 
-    const setKey = `feed:likes:users:${type}:${id}`;
-    const countKey = `feed:likes:count:${type}:${id}`;
-    const dirtyKey = `feed:likes:dirty`;
-    const itemKey = `${type}:${id}`;
-    const nowScore = Date.now().toString();
+    // Check existing like
+    const existing = await LikeModel.findFirst({
+        where: { [parentIdField]: id, userId }
+    });
 
-    const [isLikedResult, newCount] = await redisProxy.eval(
-        LUA_TOGGLE_LIKE,
-        3, // number of keys
-        setKey, countKey, dirtyKey,
-        userId, itemKey, action, nowScore
-    );
+    let shouldLike = false;
+    if (action === "like") shouldLike = true;
+    else if (action === "unlike") shouldLike = false;
+    else shouldLike = !existing; // toggle
 
-    return { 
-        isLiked: isLikedResult === 1,
-        count: parseInt(newCount || '0', 10) 
-    };
+    try {
+        if (shouldLike && !existing) {
+            // Create like and increment count atomically
+            await prisma.$transaction([
+                LikeModel.create({ data: { [parentIdField]: id, userId } }),
+                ContentModel.update({ where: { id }, data: { like_count: { increment: 1 } } })
+            ]);
+            const current = await ContentModel.findUnique({ where: { id }, select: { like_count: true } });
+            return { isLiked: true, count: current.like_count };
+        } else if (!shouldLike && existing) {
+            // Delete like and decrement count atomically
+            await prisma.$transaction([
+                LikeModel.deleteMany({ where: { [parentIdField]: id, userId } }), // deleteMany used since we don't have a unique compound ID defined in this context
+                ContentModel.update({ where: { id }, data: { like_count: { decrement: 1 } } })
+            ]);
+            const current = await ContentModel.findUnique({ where: { id }, select: { like_count: true } });
+            return { isLiked: false, count: current.like_count };
+        }
+    } catch (error) {
+        logger.warn(`Like toggle race condition avoided for ${type}:${id}, falling back to read.`);
+    }
+
+    // No-op or recovered from race condition
+    const current = await ContentModel.findUnique({ where: { id }, select: { like_count: true } });
+    return { isLiked: !!existing, count: current ? current.like_count : 0 };
 };
 
 /**
- * Helper to fetch the current count from Redis, falling back to DB eventually
+ * Helper to fetch the current count from DB
  */
 export const getLikeCount = async (type, id) => {
-    const countKey = `feed:likes:count:${type}:${id}`;
-    const val = await redisProxy.get(countKey);
-    return val ? parseInt(val, 10) : null;
+    let ContentModel;
+    if (type === "POST") ContentModel = prisma.post;
+    else if (type === "REEL") ContentModel = prisma.reel;
+    else if (type === "YOUTUBE_POST") ContentModel = prisma.youtubePost;
+    else if (type === "POLL") ContentModel = prisma.poll;
+    else return 0;
+    
+    const current = await ContentModel.findUnique({ where: { id }, select: { like_count: true } });
+    return current ? current.like_count : 0;
 };

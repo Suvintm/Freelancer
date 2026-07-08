@@ -19,11 +19,11 @@
 
 import prisma from "../../../infrastructure/database/postgres.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
-import { getStoryUploadUrl } from "../services/StoryStorageManager.js";
+import { getStoryUploadUrl } from "../services/story-storage.service.js";
 import { addStoryJob } from "../../../infrastructure/queue/workers/queues.js";
-import { resolveMediaForApi } from "../../../shared/utils/media-resolver.js";
-import storage from '../../../domains/media/services/storage.service.js';
-import { STORAGE_FOLDERS } from '../../../domains/media/providers/s3/s3.constants.js';
+import { resolveMediaForApi } from "../../../infrastructure/storage/media-resolver.js";
+import storage from '../../../infrastructure/storage/storage.service.js';
+import { STORAGE_FOLDERS } from '../../../infrastructure/storage/providers/s3/s3.constants.js';
 import notificationService from '../../../domains/notification/services/notificationService.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────

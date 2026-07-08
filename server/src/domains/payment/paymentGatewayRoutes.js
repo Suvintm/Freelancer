@@ -21,7 +21,7 @@
 import express from "express";
 import authMiddleware from "../../shared/middleware/auth.middleware.js";
 // import { protectAdmin } from "../../shared/middleware/admin-auth.middleware.js";
-import { proxyToPaymentService } from "../../../kafka/paymentProxy.js";
+import { proxyToPaymentService } from "../../infrastructure/gateway/javaPayment.client.js";
 import { publicApiLimiter, heavyLimiter, interactionLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
 
 // ── RESTORED: Native Node (Java is not ready due to Kafka) ──────────────

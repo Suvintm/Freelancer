@@ -4,9 +4,9 @@ import { ApiError } from "../../../shared/kernel/errors.js";
 ;
 import prisma from "../../../infrastructure/database/postgres.js";
 import quotaManager from "../services/youtubeQuotaManager.js";
-import { deleteCache, CacheKey, withCache, TTL } from "../../../shared/utils/cache.js";
+import { deleteCache, CacheKey, withCache, TTL } from "../../../infrastructure/cache/cache.service.js";
 import { emitToUser } from '../../../platform/socket/socket.gateway.js';
-import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
+import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 import { paginate } from "../../../shared/utils/pagination.js";
 
 /**

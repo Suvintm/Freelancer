@@ -1,0 +1,137 @@
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import dotenv from "dotenv";
+import crypto from "crypto";
+import prisma from "../database/postgres.js";
+import logger from "../monitoring/logger.js";
+
+// Load environment variables
+dotenv.config();
+
+// Serialize user for session
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+// Deserialize user from session
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id },
+        });
+        done(null, user);
+    } catch (error) {
+        done(error, null);
+    }
+});
+
+// Google OAuth Strategy
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+// Auto-derive callback URL: prefer explicit env var, then derive from backend URL, then fallback to localhost
+const _backendBase = process.env.BACKEND_URL || process.env.API_BASE_URL || "";
+const _isProduction = process.env.NODE_ENV === "production";
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL
+  || (_isProduction && _backendBase ? `${_backendBase}/api/v1/auth/google/callback` : null)
+  || (_isProduction ? "https://api.suvix.in/api/v1/auth/google/callback" : "http://localhost:5051/api/v1/auth/google/callback");
+
+console.log("Google OAuth Config Check (Prisma):", {
+    hasClientId: !!GOOGLE_CLIENT_ID,
+    hasClientSecret: !!GOOGLE_CLIENT_SECRET,
+    callbackUrl: GOOGLE_CALLBACK_URL,
+});
+
+if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+    passport.use(
+        new GoogleStrategy(
+            {
+                clientID: GOOGLE_CLIENT_ID,
+                clientSecret: GOOGLE_CLIENT_SECRET,
+                callbackURL: GOOGLE_CALLBACK_URL,
+                state: false,
+                scope: ["profile", "email"],
+            },
+            async (accessToken, refreshToken, profile, done) => {
+                try {
+                    // Extract user info from Google profile
+                    const googleId = profile.id;
+                    const email = profile.emails?.[0]?.value?.toLowerCase();
+                    const profilePicture = profile.photos?.[0]?.value || "";
+
+                    logger.debug("[OAuth] Profile received:", { 
+                        id: profile.id, 
+                        email, 
+                        displayName: profile.displayName 
+                    });
+
+                    if (!email) {
+                        return done(new Error("No email provided by Google"), null);
+                    }
+
+                    // 1. Check if user already exists with this Google ID 
+                    let user = await prisma.user.findUnique({
+                        where: { google_id: googleId },
+                        include: { profile: true }
+                    });
+
+                    if (user) {
+                        logger.info(`[OAuth] Google login (Postgres): ${email}`);
+                        // @ts-ignore
+                        user.accessToken = accessToken;
+                        return done(null, user);
+                    }
+
+                    // 2. Check if user exists with same email (link account)
+                    user = await prisma.user.findUnique({
+                        where: { email },
+                        include: { profile: true }
+                    });
+
+                    if (user) {
+                        // Link Google account to existing user
+                        user = await prisma.user.update({
+                            where: { id: user.id },
+                            data: {
+                                google_id: googleId,
+                                auth_provider: "google",
+                                is_verified: true
+                            },
+                            include: { profile: true }
+                        });
+                        logger.info(`[OAuth] Linked Google account to existing user in Postgres: ${email}`);
+                        // @ts-ignore
+                        user.accessToken = accessToken;
+                        return done(null, user);
+                    }
+
+                    // 3. NEW USER (Atomic Onboarding Flow)
+                    // Smart Name Generation
+                    let baseName = profile.displayName || profile.name?.givenName || "User";
+                    let finalName = baseName.trim();
+
+                    // We do NOT create a record in the DB yet to keep it clean.
+                    const socialProfile = {
+                        isNewUser: true,
+                        email,
+                        googleId,
+                        name: finalName,
+                        picture: profilePicture,
+                        accessToken
+                    };
+
+                    logger.info(`[OAuth] New user detected via Google (Discovery Mode): ${email}`);
+                    return done(null, socialProfile);
+                } catch (error) {
+                    console.error("Google OAuth error:", error);
+                    return done(error, null);
+                }
+            }
+        )
+    );
+    console.log("✅ Google OAuth strategy (Prisma) initialized successfully");
+} else {
+    console.log("⚠️ Google OAuth credentials not found - Google login disabled");
+}
+
+export default passport;

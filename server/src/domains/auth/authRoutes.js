@@ -18,7 +18,7 @@ import {
 import { authenticate } from "../../shared/middleware/auth.middleware.js";
 
 import { authLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
-import { checkAccountLockout } from "../../../middleware/lockoutMiddleware.js";
+import { checkAccountLockout } from "../../shared/middleware/lockout.middleware.js";
 
 const router = express.Router();
 const storage = multer.memoryStorage();

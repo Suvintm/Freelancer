@@ -5,7 +5,7 @@ import { redis } from "../../../infrastructure/cache/redis.client.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 ;
 import youtubeApiService from "./youtubeApiService.js";
-import { deleteCache, CacheKey } from "../../../shared/utils/cache.js";
+import { deleteCache, CacheKey } from "../../../infrastructure/cache/cache.service.js";
 import { scheduleYouTubeSync } from "../../../infrastructure/queue/workers/queues.js";
 
 /**

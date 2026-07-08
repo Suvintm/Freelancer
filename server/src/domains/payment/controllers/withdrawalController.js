@@ -1,7 +1,7 @@
 import asyncHandler from "express-async-handler";
-import User from "../../user/models/User.js";
-import WithdrawalRequest from "../models/WithdrawalRequest.js";
-import WalletTransaction from "../models/WalletTransaction.js";
+import User from "../../../infrastructure/database/mongo-models/User.js";
+import WithdrawalRequest from "../../../infrastructure/database/mongo-models/WithdrawalRequest.js";
+import WalletTransaction from "../../../infrastructure/database/mongo-models/WalletTransaction.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 ;
 import mongoose from "mongoose";
