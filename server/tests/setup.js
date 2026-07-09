@@ -132,7 +132,6 @@ const mockRazorpayModule = {
   verifyPaymentSignature: vi.fn(() => true),
 };
 
-vi.mock("../config/razorpay.js", () => mockRazorpayModule);
 vi.mock("../src/domains/payment/services/razorpay.config.js", () => mockRazorpayModule);
 
 vi.mock("../services/RazorpayProvider.js", () => ({

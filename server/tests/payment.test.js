@@ -41,7 +41,7 @@ describe("💳 Payment Gateway Tests", () => {
 
     it("CRITICAL: should reject webhook with INVALID/TAMPERED signature", async () => {
       // Override the mock to return false (bad signature)
-      const { verifyWebhookSignature } = await import("../config/razorpay.js");
+      const { verifyWebhookSignature } = await import("../src/domains/payment/services/razorpay.config.js");
       verifyWebhookSignature.mockReturnValueOnce(false);
 
       const res = await request(app)
