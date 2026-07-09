@@ -16,14 +16,15 @@ export const MobileProfile = () => {
         <MobileTopSplit user={profileData.user} />
 
         <div className="flex flex-col px-4">
-          
           <MobileIdentity user={profileData.user} />
+        </div>
 
         <MobileContentTabs 
           allVideos={profileData.allVideos} 
-          ytVideos={profileData.ytVideos} 
+          ytVideos={profileData.ytVideos}
+          reels={profileData.reels}
+          posts={profileData.posts}
         />
-
       </div>
     </div>
   );

@@ -51,12 +51,18 @@ export const ProfileIdentity = ({ user }: { user: any }) => {
     <div className="flex flex-col gap-4 min-w-0 max-w-[60%]">
       {/* Avatar & Identity Row */}
       <div className="-mt-16 relative flex items-end gap-5">
-        <div className="w-[120px] h-[120px] rounded-full border-4 border-white bg-card overflow-hidden shadow-sm shrink-0 relative z-10">
-          <img 
-            src={user?.profilePicture || 'https://images.unsplash.com/photo-1524666041070-9d87656c25bb?auto=format&fit=crop&q=80&w=400'} 
-            alt="Profile"
-            className="w-full h-full object-cover"
-          />
+        <div className="relative shrink-0 w-[120px] h-[120px] z-10">
+          <div className="w-full h-full rounded-full border-4 border-white bg-card overflow-hidden shadow-sm">
+            <img 
+              src={user?.profilePicture || 'https://images.unsplash.com/photo-1524666041070-9d87656c25bb?auto=format&fit=crop&q=80&w=400'} 
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {/* Circular Plus Badge */}
+          <button className="absolute bottom-2 right-0 w-8 h-8 rounded-full bg-zinc-800 dark:bg-white border-[3px] border-card flex items-center justify-center text-white dark:text-zinc-800 shadow-sm hover:scale-105 transition-transform z-30">
+            <Plus size={18} strokeWidth={4} />
+          </button>
         </div>
 
         {/* Identity Info next to Avatar */}
@@ -133,6 +139,47 @@ export const ProfileIdentity = ({ user }: { user: any }) => {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Linked Channels */}
+      <div className="flex flex-col gap-2 mt-2">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+          Linked Channels ({youtubeProfiles.length})
+        </span>
+        
+        <div className="flex items-center no-scrollbar py-1 pl-1 w-full">
+          {youtubeProfiles.length > 0 ? (
+            youtubeProfiles.map((channel: any, i: number) => (
+              <div 
+                key={i} 
+                className={`w-10 h-10 rounded-full border-[3px] border-card bg-page overflow-hidden shadow-sm shrink-0 relative ${i > 0 ? '-ml-4' : ''}`}
+                style={{ zIndex: 100 - i }}
+              >
+                <img 
+                  src={channel.thumbnail_url || channel.profile_image_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80'} 
+                  alt="Channel" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))
+          ) : (
+            <span className="text-xs font-medium text-text-muted italic mr-3">No channels</span>
+          )}
+
+          {/* Restored Default ... Slice */}
+          {youtubeProfiles.length > 0 && (
+            <div 
+              className={`w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0 relative -ml-4 z-0 border-[3px] border-card`}
+            >
+              <span className="text-zinc-800 dark:text-zinc-200 text-[16px] leading-none mb-2 font-black">...</span>
+            </div>
+          )}
+
+          {/* Circular Plus Button inside the component */}
+          <button className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white hover:opacity-80 transition-opacity shrink-0 ml-3 shadow-sm border border-card">
+            <Plus size={14} strokeWidth={3} />
+          </button>
+        </div>
       </div>
 
     </div>

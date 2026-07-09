@@ -15,38 +15,53 @@ export const useProfileData = () => {
 
   useEffect(() => {
     let active = true;
-    const fetchFeed = async () => {
-      await Promise.resolve();
-      if (!active || !user?.username) return;
+    
+    const fetchProfileContent = async () => {
+      if (!active || !user?.id) return;
       setIsLoadingFeed(true);
+      
       try {
-        const response = await api.get('/social/feed');
-        if (response.data.success && active) {
-          const creatorFeed = response.data.data.filter(
-            (item: any) => item.user?.username === user.username
-          );
-          
-          const mappedFeed = creatorFeed.map((item: any) => ({
-            _id: item.id,
-            id: item.id,
-            user: item.user?.username,
-            type: item.contentType === 'POST' ? 'post' : item.contentType === 'REEL' ? 'reel' : item.contentType === 'YOUTUBE_POST' ? 'yt_video' : 'poll',
-            img: item.media?.[0]?.urls?.post || item.media?.[0]?.thumbnailUrl || item.media?.[0]?.url || '',
-            images: item.media?.map((m: any) => m.urls?.post || m.thumbnailUrl || m.url || '') || [],
-            comment: item.caption || '',
-            likes: item.likes || 0,
-            commentsCount: item.commentsCount || 0,
-            videoUrl: item.media?.[0]?.urls?.hls || item.media?.[0]?.urls?.video || item.media?.[0]?.urls?.fallback || item.media?.[0]?.url || '',
-            createdAt: item.created_at,
-          }));
+        const [reelsRes, postsRes, ytVideosRes, pollsRes] = await Promise.allSettled([
+          api.get(`/profile/${user.id}/reels`),
+          api.get(`/profile/${user.id}/posts`),
+          api.get(`/profile/${user.id}/youtube-posts`),
+          api.get(`/profile/${user.id}/polls`)
+        ]);
 
-          setReels(mappedFeed.filter((item: any) => item.type === 'reel'));
-          setPosts(mappedFeed.filter((item: any) => item.type === 'post'));
-          setYtVideos(mappedFeed.filter((item: any) => item.type === 'yt_video'));
-          setThumbnailVotes(mappedFeed.filter((item: any) => item.type === 'thumbnail_vote'));
+        if (!active) return;
+
+        const formatItem = (item: any) => ({
+          _id: item.id,
+          id: item.id,
+          user: item.author?.username || user.username,
+          type: item.type === 'POST' ? 'post' : item.type === 'REEL' ? 'reel' : item.type === 'YOUTUBE_POST' ? 'yt_video' : 'poll',
+          img: item.media?.urls?.post || item.media?.thumbnailUrl || item.media?.urls?.thumb || '',
+          images: item.media ? [item.media.urls?.post || item.media.thumbnailUrl || item.media.urls?.thumb || ''] : [],
+          comment: item.caption || '',
+          likes: item.likes || item.like_count || 0,
+          commentsCount: item.commentsCount || 0,
+          videoUrl: item.media?.urls?.hls || item.media?.urls?.video || item.media?.urls?.fallback || '',
+          createdAt: item.createdAt || item.created_at,
+        });
+
+        if (reelsRes.status === 'fulfilled' && reelsRes.value.data.success) {
+          setReels(reelsRes.value.data.items.map(formatItem));
         }
+        
+        if (postsRes.status === 'fulfilled' && postsRes.value.data.success) {
+          setPosts(postsRes.value.data.items.map(formatItem));
+        }
+
+        if (ytVideosRes.status === 'fulfilled' && ytVideosRes.value.data.success) {
+          setYtVideos(ytVideosRes.value.data.items.map(formatItem));
+        }
+
+        if (pollsRes.status === 'fulfilled' && pollsRes.value.data.success) {
+          setThumbnailVotes(pollsRes.value.data.items.map(formatItem));
+        }
+
       } catch (err) {
-        console.error('Failed to fetch real feed for profile:', err);
+        console.error('Failed to fetch profile content:', err);
       } finally {
         if (active) {
           setIsLoadingFeed(false);
@@ -54,11 +69,12 @@ export const useProfileData = () => {
       }
     };
 
-    fetchFeed();
+    fetchProfileContent();
+    
     return () => {
       active = false;
     };
-  }, [user?.username]);
+  }, [user?.id, user?.username]);
 
   const { data: videosData } = useQuery<any[]>({
     queryKey: ['youtube-videos', user?.id],

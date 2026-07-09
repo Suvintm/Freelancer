@@ -136,6 +136,130 @@ export const getProfileReels = async (targetUserId, cursor = null) => {
 };
 
 /**
+ * Get paginated YOUTUBE POSTS for a user's profile grid
+ */
+export const getProfileYoutubePosts = async (targetUserId, cursor = null) => {
+  const youtubePosts = await prisma.youtubePost.findMany({
+    where: {
+      userId: targetUserId,
+      visibility: "PUBLIC",
+    },
+    include: {
+      media: {
+        take: 1,
+        orderBy: { created_at: "asc" },
+      },
+      user: {
+        include: {
+          profile: {
+            select: {
+              name: true,
+              username: true,
+              profile_picture: true,
+              category: {
+                select: {
+                  slug: true,
+                  roleGroup: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    take: PAGE_SIZE + 1,
+    ...(cursor && { skip: 1, cursor: { id: cursor } }),
+    orderBy: { created_at: "desc" },
+  });
+
+  const paginated = paginate(youtubePosts, PAGE_SIZE);
+
+  paginated.items = paginated.items.map(post => {
+    const firstMedia = post.media[0];
+    return {
+      id: post.id,
+      type: "YOUTUBE_POST",
+      caption: post.caption,
+      createdAt: post.created_at,
+      media: firstMedia ? resolveMediaForApi(firstMedia) : null,
+      author: post.user?.profile ? {
+        name: post.user.profile.name,
+        username: post.user.profile.username,
+        profilePicture: post.user.profile.profile_picture,
+        category: post.user.profile.category?.slug,
+        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+      } : null
+    };
+  });
+
+  return paginated;
+};
+
+/**
+ * Get paginated POLLS for a user's profile grid
+ */
+export const getProfilePolls = async (targetUserId, cursor = null) => {
+  const polls = await prisma.poll.findMany({
+    where: {
+      userId: targetUserId,
+      visibility: "PUBLIC",
+    },
+    include: {
+      options: {
+        include: {
+          media: true
+        }
+      },
+      user: {
+        include: {
+          profile: {
+            select: {
+              name: true,
+              username: true,
+              profile_picture: true,
+              category: {
+                select: {
+                  slug: true,
+                  roleGroup: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    take: PAGE_SIZE + 1,
+    ...(cursor && { skip: 1, cursor: { id: cursor } }),
+    orderBy: { created_at: "desc" },
+  });
+
+  const paginated = paginate(polls, PAGE_SIZE);
+
+  paginated.items = paginated.items.map(poll => {
+    // Attempt to extract the first media from any poll option
+    const firstOptionWithMedia = poll.options?.find(opt => opt.media);
+    const firstMedia = firstOptionWithMedia ? firstOptionWithMedia.media : null;
+    
+    return {
+      id: poll.id,
+      type: "POLL",
+      caption: poll.caption || poll.question,
+      createdAt: poll.created_at,
+      media: firstMedia ? resolveMediaForApi(firstMedia) : null,
+      author: poll.user?.profile ? {
+        name: poll.user.profile.name,
+        username: poll.user.profile.username,
+        profilePicture: poll.user.profile.profile_picture,
+        category: poll.user.profile.category?.slug,
+        roleGroup: poll.user.profile.category?.roleGroup || 'CLIENT'
+      } : null
+    };
+  });
+
+  return paginated;
+};
+
+/**
  * Get profiles belonging to a specific category slug
  */
 export const getProfilesByCategory = async (categorySlug) => {
@@ -286,4 +410,4 @@ export const getChannelDetails = async (channelId) => {
   };
 };
 
-export default { getProfilePosts, getProfileReels, getProfilesByCategory, getChannelDetails };
+export default { getProfilePosts, getProfileReels, getProfileYoutubePosts, getProfilePolls, getProfilesByCategory, getChannelDetails };

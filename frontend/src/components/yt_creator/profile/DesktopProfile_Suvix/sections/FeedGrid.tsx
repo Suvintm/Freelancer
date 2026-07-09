@@ -10,6 +10,27 @@ const formatCount = (num?: number | string) => {
   return n.toString();
 };
 
+const timeAgo = (dateStr?: string | Date) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} mins ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hours ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} days ago`;
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+  const diffInYears = Math.floor(diffInDays / 365);
+  return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
+};
+
 interface FeedGridProps {
   activeTab: string;
   reels: any[];
@@ -86,24 +107,165 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, thumbnailVotes, is
     );
   }
 
-  if (activeTab === 'yt_videos') {
-    if (ytVideos.length === 0) return renderEmptyState('No YouTube videos available', <Play size={48} />);
+  if (activeTab === 'posts') {
+    if (posts.length === 0) return renderEmptyState('No posts available', <MessageSquare size={48} />);
     return (
       <div className="grid grid-cols-3 gap-6">
-        {ytVideos.map((video) => (
-          <div key={video._id} className="group flex flex-col gap-3 cursor-pointer">
-            <div className="relative aspect-video rounded-[20px] overflow-hidden bg-container border border-border-main">
-              <img src={video.img || video.videoUrl} alt="Video" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        {posts.map((post) => (
+          <div key={post.id || post._id} className="group flex flex-col gap-3 cursor-pointer">
+            <div className="relative aspect-square rounded-[20px] overflow-hidden bg-container border border-border-main">
+              <img src={post.media?.url || post.img || post.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80'} alt="Post" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
             </div>
             <div className="flex flex-col gap-1 px-1">
-              <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{video.comment || "YouTube Video"}</h4>
+              <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{post.caption || post.comment || "Post"}</h4>
               <div className="flex items-center gap-4 mt-1">
-                <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted"><Heart size={14} /> {video.likes || 0}</span>
-                <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted"><MessageCircle size={14} /> {video.commentsCount || 0}</span>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted"><Heart size={14} /> {post.likes || 0}</span>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted"><MessageCircle size={14} /> {post.commentsCount || 0}</span>
               </div>
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (activeTab === 'yt_posts') {
+    if (ytVideos.length === 0) return renderEmptyState('No YouTube posts available', <MessageSquare size={48} />);
+    return (
+      <div className="grid grid-cols-3 gap-6">
+        {ytVideos.map((post) => (
+          <div key={post.id || post._id} className="group flex flex-col gap-3 cursor-pointer">
+            <div className="relative aspect-video rounded-[20px] overflow-hidden bg-container border border-border-main">
+              <img src={post.media?.url || post.img || post.videoUrl} alt="Post" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            </div>
+            <div className="flex flex-col gap-1 px-1">
+              <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{post.caption || post.comment || "YouTube Post"}</h4>
+              <div className="flex items-center gap-4 mt-1">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted"><Heart size={14} /> {post.likes || 0}</span>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted"><MessageCircle size={14} /> {post.commentsCount || 0}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (activeTab === 'yt_videos') {
+    if (allVideos.length === 0) return renderEmptyState('No YouTube videos available', <Play size={48} />);
+    
+    const latestVideos = allVideos.slice(0, 2);
+    const trendingVideos = allVideos.slice(2, 6);
+    const remainingVideos = allVideos.slice(6);
+
+    return (
+      <div className="flex flex-col gap-10 w-full">
+        {/* Section 1: Latest YouTube Videos */}
+        {latestVideos.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-text-main">Latest YouTube Videos</h3>
+              <button className="text-sm font-medium text-text-muted hover:text-text-main transition-colors">View all {'>'}</button>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              {latestVideos.map((video) => {
+                const title = video.title || video.snippet?.title || 'YouTube Video';
+                const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
+                const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
+                
+                return (
+                  <div key={video.id || video._id} className="group flex flex-col gap-3 cursor-pointer">
+                    <div className="relative aspect-[16/9] rounded-[20px] overflow-hidden bg-container border border-border-main">
+                      <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    </div>
+                    <div className="flex flex-col gap-1.5 px-1 relative">
+                      <div className="flex items-start justify-between gap-4">
+                        <h4 className="text-base font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{title}</h4>
+                        <button className="text-text-muted hover:text-text-main px-1">⋮</button>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
+                        <span>{formatCount(video.viewCount || video.view_count || 0)} views</span>
+                        <span>•</span>
+                        <span>{timeAgo(publishedAt) || 'Recently'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Section 2: Trending on YouTube */}
+        {trendingVideos.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-text-main">🔥 Trending on YouTube</h3>
+              <button className="text-sm font-medium text-text-muted hover:text-text-main transition-colors">View all {'>'}</button>
+            </div>
+            <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar snap-x">
+              {trendingVideos.map((video) => {
+                const title = video.title || video.snippet?.title || 'YouTube Video';
+                const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
+                const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
+                
+                return (
+                  <div key={video.id || video._id} className="shrink-0 w-[280px] group flex flex-col gap-3 cursor-pointer snap-start">
+                    <div className="relative aspect-[16/9] rounded-[20px] overflow-hidden bg-container border border-border-main">
+                      <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    </div>
+                    <div className="flex flex-col gap-1 px-1 relative">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{title}</h4>
+                        <button className="text-text-muted hover:text-text-main shrink-0">⋮</button>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
+                        <span>{formatCount(video.viewCount || video.view_count || 0)} views</span>
+                        <span>•</span>
+                        <span>{timeAgo(publishedAt) || 'Recently'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Section 3: All Videos */}
+        {remainingVideos.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-bold text-text-main">All Videos</h3>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+              {remainingVideos.map((video) => {
+                const title = video.title || video.snippet?.title || 'YouTube Video';
+                const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
+                const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
+                const description = video.description || video.snippet?.description || 'Watch this amazing video to learn more.';
+
+                return (
+                  <div key={video.id || video._id} className="group flex items-start gap-4 cursor-pointer">
+                    <div className="relative w-[180px] shrink-0 aspect-[16/9] rounded-[12px] overflow-hidden bg-container border border-border-main">
+                      <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    </div>
+                    <div className="flex flex-col flex-1 py-0.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{title}</h4>
+                        <button className="text-text-muted hover:text-text-main shrink-0">⋮</button>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-text-muted mt-1.5">
+                        <span>{formatCount(video.viewCount || video.view_count || 0)} views</span>
+                        <span>•</span>
+                        <span>{timeAgo(publishedAt) || 'Recently'}</span>
+                      </div>
+                      <p className="text-xs text-text-muted mt-2.5 line-clamp-2 pr-4">{description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
