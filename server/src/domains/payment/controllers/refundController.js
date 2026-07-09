@@ -1,9 +1,9 @@
 // refundController.js - Refund processing controller
 import asyncHandler from "express-async-handler";
 import razorpay from "../services/razorpay.config.js";
-import Refund from "../models/Refund.js";
-import { Order } from "../models/Order.js";
-import User from "../../user/models/User.js";
+import Refund from "../../../infrastructure/database/mongo-models/Refund.js";
+import { Order } from "../../../infrastructure/database/mongo-models/Order.js";
+import User from "../../../infrastructure/database/mongo-models/User.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
 ;
 import logger from "../../../infrastructure/monitoring/logger.js";

@@ -5,12 +5,12 @@
 
 import prisma from "../../../infrastructure/database/postgres.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
-// import { Message } from "../../messaging/models/Message.js"; // DEPRECATED
-// import { Order } from "../models/Order.js"; // DEPRECATED
-// import User from "../../user/models/User.js"; // DEPRECATED (Using Prisma)
-// import { SiteSettings } from "../../../shared/models/SiteSettings.js"; // DEPRECATED
+// import { Message } from "../../../infrastructure/database/mongo-models/Message.js"; // DEPRECATED
+// import { Order } from "../../../infrastructure/database/mongo-models/Order.js"; // DEPRECATED
+// import User from "../../../infrastructure/database/mongo-models/User.js"; // DEPRECATED (Using Prisma)
+// import { SiteSettings } from "../../../infrastructure/database/mongo-models/SiteSettings.js"; // DEPRECATED
 
-import paymentAdapter from "../services/payment.adapter.js";
+import paymentAdapter from "../services/payment-adapter.service.js";
 import { RazorpayProvider } from "../services/razorpay.client.js";
 import { getRazorpayKeyId, verifyWebhookSignature, isRazorpayConfigured } from "../services/razorpay.config.js";
 import { redis, redisAvailable } from "../../../infrastructure/cache/redis.client.js";

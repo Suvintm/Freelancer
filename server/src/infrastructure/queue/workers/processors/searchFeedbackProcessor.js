@@ -13,7 +13,7 @@
 
 import logger from "../../../monitoring/logger.js";
 import prisma from "../../../database/postgres.js";
-import YouTubeSearchEvent from "../../../../domains/creator/models/YouTubeSearchEvent.js";
+import YouTubeSearchEvent from "../../../database/mongo-models/YouTubeSearchEvent.js";
 
 const searchFeedbackProcessor = async (job) => {
   logger.info("[SEARCH-FEEDBACK] 🔄 Starting weekly search ranking recalibration...");

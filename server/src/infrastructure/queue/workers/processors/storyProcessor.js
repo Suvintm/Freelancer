@@ -22,11 +22,11 @@
  */
 
 import prisma from "../../../database/postgres.js";
-import storage from '../../../../domains/media/services/storage.service.js';
-import { processImage } from '../../../../domains/media/processors/image.processor.js';
-import { processVideo } from '../../../../domains/media/processors/video.processor.js';
+import storage from '../../../storage/storage.service.js';
+import { processImage } from '../../../storage/processors/image.processor.js';
+import { processVideo } from '../../../storage/processors/video.processor.js';
 import { emitToUser } from '../../../../platform/socket/socket.gateway.js';
-import { STORAGE_FOLDERS } from '../../../../domains/media/providers/s3/s3.constants.js';
+import { STORAGE_FOLDERS } from '../../../storage/providers/s3/s3.constants.js';
 import notificationService from '../../../../domains/notification/services/notificationService.js';
 import logger from "../../../monitoring/logger.js";
 

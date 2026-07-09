@@ -29,11 +29,11 @@ import redisClient from '../../infrastructure/cache/redis.client.js';
 import { Worker } from "bullmq";
 import Redis from "ioredis";
 
-// ⚠️ MIGRATION PENDING — These models/utils don't exist in the new domain structure yet.
-// Remove these null placeholders and import from the correct new paths once migrated.
-const Reel = null;            // TODO: import from src/domains/content/models/Reel.js
-const compositeScore = null;  // TODO: import from src/domains/content/utils/reelScorer.js
-const markSeen = null;        // TODO: import from src/domains/content/utils/reelBloomFilter.js
+import prisma from '../../infrastructure/database/postgres.js';
+import { compositeScore } from '../../domains/content/utils/reelScorer.js';
+import { markSeen } from '../../domains/content/utils/reelBloomFilter.js';
+
+const Reel = prisma.reel;
 
 // Collaborative Filtering keys
 const REEL_CO_VIEWERS_PREFIX = "reels:co_viewers:";
@@ -63,10 +63,10 @@ export const videoWorker = (connection && Reel && compositeScore) ? new Worker("
     logger.info(`[VideoWorker] Job ${job.id} started for action: ${action}`);
 
     if (action === "REFRESH_SCORE") {
-        const reel = await Reel.findById(reelId);
+        const reel = await Reel.findUnique({ where: { id: reelId } });
         if (reel) {
             const newScore = compositeScore(reel);
-            await Reel.findByIdAndUpdate(reelId, { recommendationScore: newScore });
+            await Reel.update({ where: { id: reelId }, data: { recommendationScore: newScore } });
             logger.info(`[VideoWorker] Reel ${reelId} score refreshed to: ${newScore}`);
         }
     }
@@ -86,7 +86,7 @@ export const analyticsWorker = (connection && Reel && markSeen) ? new Worker("an
             markSeen(userId, reelId).catch(() => {});
 
             // 2. Track trending (zero-cost Redis ZADD)
-            const reel = await Reel.findById(reelId, { language: 1, hashtags: 1 }).lean();
+            const reel = await Reel.findUnique({ where: { id: reelId }, select: { language: true, hashtags: true } });
             if (reel) {
                 trackTrendingInteraction(country, reel.language, reel.hashtags, 1).catch(() => {});
 
@@ -109,8 +109,7 @@ if (connection) {
     if (videoWorker && analyticsWorker) {
         logger.info("[Workers] Legacy video + analytics workers initialized ✅");
     } else {
-        logger.warn("[Workers] Legacy videoWorker/analyticsWorker are DISABLED — Reel model migration pending.");
-        logger.warn("   See src/platform/scheduler/worker.jobs.js for migration instructions.");
+        logger.warn("[Workers] Legacy videoWorker/analyticsWorker are DISABLED.");
     }
 }
 

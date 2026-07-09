@@ -1,8 +1,8 @@
 import prisma from "../../../database/postgres.js";
-import storage from '../../../../domains/media/services/storage.service.js';
-import { STORAGE_FOLDERS } from '../../../../domains/media/providers/s3/s3.constants.js';
-import { resolveMediaForApi } from "../../../../shared/utils/media-resolver.js";
-import { purgeUrlsFromCache } from '../../../../shared/utils/cloudflare.js';
+import storage from '../../../storage/storage.service.js';
+import { STORAGE_FOLDERS } from '../../../storage/providers/s3/s3.constants.js';
+import { resolveMediaForApi } from "../../../storage/media-resolver.js";
+import { purgeUrlsFromCache } from '../../../storage/cloudflare.js';
 import notificationService from '../../../../domains/notification/services/notificationService.js';
 import logger from "../../../monitoring/logger.js";
 

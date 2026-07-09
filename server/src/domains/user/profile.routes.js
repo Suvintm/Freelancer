@@ -2,7 +2,7 @@
  * 🛣️ PROFILE ROUTES
  */
 import { Router } from "express";
-import { getProfilePosts, getProfileReels, getProfilesByCategory, getProfileDetails, getChannelDetails } from "./controllers/profile.controller.js";
+import { getProfilePosts, getProfileReels, getProfileYoutubePosts, getProfilePolls, getProfilesByCategory, getProfileDetails, getChannelDetails } from "./controllers/profile.controller.js";
 import { publicApiLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
 
 const router = Router();
@@ -21,6 +21,18 @@ router.get("/:userId/posts", getProfilePosts);
  * Publicly accessible list of reels
  */
 router.get("/:userId/reels", getProfileReels);
+
+/**
+ * @route GET /api/profile/:userId/youtube-posts
+ * Publicly accessible list of youtube posts
+ */
+router.get("/:userId/youtube-posts", getProfileYoutubePosts);
+
+/**
+ * @route GET /api/profile/:userId/polls
+ * Publicly accessible list of polls
+ */
+router.get("/:userId/polls", getProfilePolls);
 
 /**
  * @route GET /api/profile/category/:categorySlug

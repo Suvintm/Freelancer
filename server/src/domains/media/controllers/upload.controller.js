@@ -1,7 +1,7 @@
 import prisma from "../../../infrastructure/database/postgres.js";
-import storage from "../services/storage.service.js";
-import { buildS3Key } from "../providers/s3/s3.utils.js";
-import { STORAGE_FOLDERS, getMediaSubfolder } from "../providers/s3/s3.constants.js";
+import storage from "../../../infrastructure/storage/storage.service.js";
+import { buildS3Key, getContentType } from "../../../infrastructure/storage/providers/s3/s3.utils.js";
+import { STORAGE_FOLDERS, getMediaSubfolder } from "../../../infrastructure/storage/providers/s3/s3.constants.js";
 import { addMediaJob } from "../../../infrastructure/queue/workers/queues.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 

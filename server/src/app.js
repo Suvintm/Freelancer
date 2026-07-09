@@ -1,6 +1,5 @@
 import express from "express";
 import http from "http";
-import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
 import mongoSanitize from "@exortek/express-mongo-sanitize";
@@ -15,7 +14,7 @@ import * as Sentry from "@sentry/node";
 import { publicApiLimiter } from "./shared/middleware/rate-limiter.middleware.js";
 import { errorHandler, notFoundHandler } from "./shared/middleware/error-handler.middleware.js";
 import { geoCheckMiddleware } from "./shared/middleware/geo-check.middleware.js";
-import passport from "../config/passport.js";
+import passport from "./infrastructure/config/passport.js";
 import v1Router from "./platform/gateway/v1.router.js";
 
 import { healthRouter } from "./platform/health/health.controller.js";

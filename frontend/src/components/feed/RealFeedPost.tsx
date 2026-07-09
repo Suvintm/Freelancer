@@ -5,7 +5,7 @@ import defaultProfile from '../../assets/defaultprofile.png';
 import LottieComponent from 'lottie-react';
 import imageErrorAnimation from '../../assets/lottie/image-error.json';
 import type { RealPost } from './types';
-import { api } from '../../api/client';
+import { useLike } from '../../hooks/useLike';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Lottie = ((LottieComponent as any).default || LottieComponent) as any;
@@ -30,11 +30,13 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
   const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   
-  const [localLiked, setLocalLiked] = useState(post.isLiked || false);
-  const [localLikesCount, setLocalLikesCount] = useState(post.like_count || 0);
-  const [showHeartPop, setShowHeartPop] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
-  
+  const { likedByMe, likeCount, isAnimating, toggleLike, triggerLike } = useLike({
+    postId: post.id,
+    contentType: post.contentType,
+    initialLiked: post.isLiked || false,
+    initialCount: post.like_count || 0
+  });
+
   const minSwipeDistance = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -59,47 +61,6 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
     }
   };
 
-  const handleLikeToggle = async (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (isLiking) return;
-    setIsLiking(true);
-    const nextLiked = !localLiked;
-    setLocalLiked(nextLiked);
-    setLocalLikesCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
-
-    if (nextLiked) {
-      setShowHeartPop(true);
-      setTimeout(() => setShowHeartPop(false), 800);
-    }
-
-    try {
-      let endpointType = 'posts';
-      if (post.contentType === 'REEL') endpointType = 'reels';
-      if (post.contentType === 'YOUTUBE_POST') endpointType = 'posts/youtube';
-      await api.post(`/social/${endpointType}/${post.id}/like`);
-    } catch (err) {
-      console.error("Failed to toggle like:", err);
-      // Revert optimistic state
-      setLocalLiked(!nextLiked);
-      setLocalLikesCount((prev) => Math.max(0, prev - (nextLiked ? 1 : -1)));
-    } finally {
-      setIsLiking(false);
-    }
-  };
-
-  const handleDoubleTap = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Always show the heart pop animation on double tap
-    setShowHeartPop(true);
-    setTimeout(() => setShowHeartPop(false), 800);
-
-    // If it's already liked, do NOT call the API (since API is a toggle and would unlike it)
-    if (localLiked) return;
-    
-    // If it's not liked yet, perform the like action
-    handleLikeToggle();
-  };
-
   const userName = post.youtube_channel?.channel_name || post.user?.profile?.name || post.user?.username || 'User';
   const avatarSrc = resolveMediaUrl(post.youtube_channel?.thumbnail_url) || resolveMediaUrl(post.user?.profile?.profile_picture) || defaultProfile;
 
@@ -113,7 +74,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
       }`}
     >
       <AnimatePresence>
-        {showHeartPop && (
+        {isAnimating && (
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: [0, 1.3, 0.9, 1], opacity: [0, 1, 1, 0] }}
@@ -150,7 +111,10 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        onDoubleClick={handleDoubleTap}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          triggerLike();
+        }}
       >
         {images && images.length > 0 ? (
           <div className="w-full h-full relative group flex items-center">
@@ -238,7 +202,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
             >
-              <button onClick={handleLikeToggle} className={`text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500 ${localLiked ? 'text-red-500' : ''}`}><Heart size={26} fill={localLiked ? "currentColor" : "rgba(0,0,0,0.2)"} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500`}><Heart size={26} fill={likedByMe ? "#ef4444" : "rgba(0,0,0,0.2)"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
             </div>
@@ -268,7 +232,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
         {!isTallMedia && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button onClick={handleLikeToggle} className={`transition-colors transform active:scale-90 hover:text-rose-500 ${localLiked ? 'text-red-500' : (isDarkMode ? 'text-white' : 'text-zinc-950')}`}><Heart size={24} fill={localLiked ? "currentColor" : "none"} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
             </div>
@@ -280,7 +244,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
           {/* Liked By Section */}
           <div className="flex items-center gap-2">
             <p className="text-[13px] text-text-main font-medium">
-              Liked by <span className="font-semibold">{localLikesCount.toLocaleString()}</span> others
+              Liked by <span className="font-semibold">{likeCount.toLocaleString()}</span> others
             </p>
           </div>
 

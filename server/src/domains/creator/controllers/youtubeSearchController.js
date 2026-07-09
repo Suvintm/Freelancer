@@ -17,10 +17,10 @@
 
 import logger from "../../../infrastructure/monitoring/logger.js";
 import prisma from "../../../infrastructure/database/postgres.js";
-import YouTubeSearchEvent from "../models/YouTubeSearchEvent.js";
+
 import { redis as redisProxy } from "../../../infrastructure/cache/redis.client.js";
-import { smartResolveMediaUrl } from "../../../shared/utils/media-resolver.js";
-import { getCache, setCache } from "../../../shared/utils/cache.js";
+import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
+import { getCache, setCache } from "../../../infrastructure/cache/cache.service.js";
 
 // ─── Redis client ──────────────────────────────────────────────────────────────
 let redis = null;

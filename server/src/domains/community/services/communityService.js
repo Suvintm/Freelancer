@@ -1,7 +1,7 @@
 import prisma from '../../../infrastructure/database/postgres.js';
-import reactionBuffer from "../../content/services/reaction-buffer.service.js";
+import reactionBuffer from "../../messaging/services/reaction.service.js";
 import slugify from 'slugify';
-import { smartResolveMediaUrl } from '../../../shared/utils/media-resolver.js';
+import { smartResolveMediaUrl } from '../../../infrastructure/storage/media-resolver.js';
 
 class CommunityService {
   /**

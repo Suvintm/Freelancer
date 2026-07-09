@@ -10,7 +10,7 @@
  */
 
 import logger from "../../../monitoring/logger.js";
-import YouTubeSearchEvent from "../../../../domains/creator/models/YouTubeSearchEvent.js";
+import YouTubeSearchEvent from "../../../database/mongo-models/YouTubeSearchEvent.js";
 import { redis as redisProxy } from "../../../cache/redis.client.js";
 
 const searchAnalyticsProcessor = async (job) => {

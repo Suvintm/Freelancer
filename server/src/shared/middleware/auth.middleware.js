@@ -23,7 +23,7 @@ import { USER_INCLUDE, formatAuthResponse } from '../../domains/auth/services/id
 import { getUserSubscriptionData } from '../../domains/auth/controllers/auth.controller.js';
 import { ApiError } from "./error-handler.middleware.js";
 import logger from "../../infrastructure/monitoring/logger.js";
-import { getCache, setCache, deleteCache, CacheKey, TTL } from "../utils/cache.js";
+import { getCache, setCache, deleteCache, CacheKey, TTL } from "../../infrastructure/cache/cache.service.js";
 import { redis, redisAvailable } from "../../infrastructure/cache/redis.client.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;

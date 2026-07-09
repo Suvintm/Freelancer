@@ -8,7 +8,7 @@ import crypto from "crypto";
 import prisma from "../../../infrastructure/database/postgres.js";
 import { asyncHandler } from "../../../shared/middleware/error-handler.middleware.js";
 import notificationService from '../../../domains/notification/services/notificationService.js';
-import { withCache, deleteCache, CacheKey, TTL } from "../../../shared/utils/cache.js";
+import { withCache, deleteCache, CacheKey, TTL } from "../../../infrastructure/cache/cache.service.js";
 
 // ============ GET ALL PLANS ============
 export const getPlans = asyncHandler(async (req, res) => {

@@ -51,7 +51,7 @@ import {
   deleteCache,
   CacheKey,
   TTL,
-} from "../../../shared/utils/cache.js";
+} from "../../../infrastructure/cache/cache.service.js";
 import {
   isValidEmail,
   isValidUsername,

@@ -1,4 +1,4 @@
-import "../../../../config/env.js";
+import "../../config/env.js";
 import { getRedisConnection } from "./connection.js";
 import { createQueue } from "./queueFactory.js";
 import redisProxy from "../../cache/redis.client.js";

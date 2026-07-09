@@ -44,7 +44,7 @@ export default async function youtubeSyncProcessor(job) {
     triggerReason,
   });
 
-  const { default: youtubeApiService } = await import("../creator/services/youtubeApiService.js");
+  const { default: youtubeApiService } = await import("../../../../domains/creator/services/youtubeApiService.js");
   let processedCount = 0;
   const totalChannels = channelsToSync.length;
 

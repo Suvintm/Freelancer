@@ -10,7 +10,7 @@ import { creatorRouter } from "../../domains/creator/index.js";
 import { mediaRouter } from "../../domains/media/index.js";
 import { postRouter, storyRouter } from "../../domains/content/index.js";
 import { communityRouter } from "../../domains/community/index.js";
-import { tempFeedRouter } from "../../domains/discover/index.js";
+
 import { messagingRouter } from "../../domains/messaging/index.js";
 import { pollRouter } from "../../domains/polls/index.js";
 
@@ -41,7 +41,5 @@ v1Router.use("/polls", pollRouter);
 v1Router.use("/payment-gateway", paymentGatewayRouter);
 v1Router.use("/payments", subscriptionRouter);
 
-// ─── DISCOVERY / FEED ──────────────────────────────────────────────────────
-v1Router.use("/temp-feed", tempFeedRouter);
 
 export default v1Router;

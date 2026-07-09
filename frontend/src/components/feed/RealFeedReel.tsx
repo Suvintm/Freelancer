@@ -68,7 +68,7 @@ export function RealFeedReel({
         hls.destroy();
       }
     };
-  }, [hlsUrl, mp4Url]);
+  }, [hlsUrl, mp4Url, isProcessing]);
 
   const playMedia = useCallback(() => {
     if (videoRef.current) {

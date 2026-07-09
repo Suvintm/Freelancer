@@ -6,7 +6,7 @@
  */
 import profileService from "../services/profile.service.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
-import { withCache } from "../../../shared/utils/cache.js";
+import { withCache } from "../../../infrastructure/cache/cache.service.js";
 import prisma from "../../../infrastructure/database/postgres.js";
 import { formatAuthResponse, USER_INCLUDE } from "../../auth/services/identity.service.js";
 
@@ -56,6 +56,52 @@ export const getProfileReels = async (req, res) => {
   } catch (error) {
     logger.error(`❌ [PROFILE_CTRL] getProfileReels Error: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch profile reels" });
+  }
+};
+
+/**
+ * @desc Get User Youtube Posts Grid
+ * @route GET /api/profile/:userId/youtube-posts
+ */
+export const getProfileYoutubePosts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { cursor } = req.query;
+
+    const data = await profileService.getProfileYoutubePosts(userId, cursor);
+
+    res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
+
+    res.json({
+      success: true,
+      ...data
+    });
+  } catch (error) {
+    logger.error(`❌ [PROFILE_CTRL] getProfileYoutubePosts Error: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch profile youtube posts" });
+  }
+};
+
+/**
+ * @desc Get User Polls Grid
+ * @route GET /api/profile/:userId/polls
+ */
+export const getProfilePolls = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { cursor } = req.query;
+
+    const data = await profileService.getProfilePolls(userId, cursor);
+
+    res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
+
+    res.json({
+      success: true,
+      ...data
+    });
+  } catch (error) {
+    logger.error(`❌ [PROFILE_CTRL] getProfilePolls Error: ${error.message}`);
+    res.status(500).json({ success: false, message: "Failed to fetch profile polls" });
   }
 };
 
@@ -132,4 +178,4 @@ export const getChannelDetails = async (req, res) => {
   }
 };
 
-export default { getProfilePosts, getProfileReels, getProfilesByCategory, getProfileDetails, getChannelDetails };
+export default { getProfilePosts, getProfileReels, getProfileYoutubePosts, getProfilePolls, getProfilesByCategory, getProfileDetails, getChannelDetails };

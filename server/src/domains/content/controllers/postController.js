@@ -1,8 +1,8 @@
 import prisma from "../../../infrastructure/database/postgres.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
-import { resolveMediaForApi, resolveAvatarUrl } from "../../../shared/utils/media-resolver.js";
-import { purgeMediaFiles } from "../../media/services/purge.utils.js";
-import { withCache, hashQuery } from "../../../shared/utils/cache.js";
+import { resolveMediaForApi, resolveAvatarUrl } from "../../../infrastructure/storage/media-resolver.js";
+import { purgeMediaFiles } from "../../../infrastructure/storage/purge.utils.js";
+import { withCache, hashQuery } from "../../../infrastructure/cache/cache.service.js";
 import { toggleLike, getLikeCount } from "../services/like.service.js";
 
 /**
@@ -241,8 +241,34 @@ export const deleteReel = async (req, res) => {
   }
 };
 
+
+const populateIsLiked = async (items, userId) => {
+  if (!userId || !items || items.length === 0) return items;
+
+  const postIds = items.filter(i => i.contentType === 'POST').map(i => i.id);
+  const reelIds = items.filter(i => i.contentType === 'REEL').map(i => i.id);
+  const youtubeIds = items.filter(i => i.contentType === 'YOUTUBE_POST').map(i => i.id);
+  const pollIds = items.filter(i => i.contentType === 'POLL').map(i => i.id);
+
+  const [postLikes, reelLikes, youtubeLikes, pollLikes] = await Promise.all([
+    postIds.length > 0 ? prisma.postLike.findMany({ where: { userId, postId: { in: postIds } }, select: { postId: true } }) : [],
+    reelIds.length > 0 ? prisma.reelLike.findMany({ where: { userId, reelId: { in: reelIds } }, select: { reelId: true } }) : [],
+    youtubeIds.length > 0 ? prisma.youtubePostLike.findMany({ where: { userId, youtubePostId: { in: youtubeIds } }, select: { youtubePostId: true } }) : [],
+    pollIds.length > 0 ? prisma.pollLike.findMany({ where: { userId, pollId: { in: pollIds } }, select: { pollId: true } }) : []
+  ]);
+
+  const likedSet = new Set([
+    ...postLikes.map(l => l.postId),
+    ...reelLikes.map(l => l.reelId),
+    ...youtubeLikes.map(l => l.youtubePostId),
+    ...pollLikes.map(l => l.pollId)
+  ]);
+
+  return items.map(item => ({ ...item, isLiked: likedSet.has(item.id) }));
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
-// UNIFIED FEED
+// UNIFIED FEED (Polymorphic merge)
 // ─────────────────────────────────────────────────────────────────────────────
 /**
  * @desc    Get unified social feed (all 4 content types, merged by created_at)
@@ -337,7 +363,9 @@ export const getFeed = async (req, res) => {
       return { data: merged, nextCursor };
     });
 
-    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+    const dataWithLikes = await populateIsLiked(feedData.data, req.user?.id);
+
+    res.json({ success: true, data: dataWithLikes, nextCursor: feedData.nextCursor });
   } catch (error) {
     logger.error(`❌ [CONTENT_CTRL] getFeed failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch feed" });
@@ -372,7 +400,9 @@ export const getPostsFeed = async (req, res) => {
       return { data: tagged, nextCursor };
     });
 
-    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+    const dataWithLikes = await populateIsLiked(feedData.data, req.user?.id);
+
+    res.json({ success: true, data: dataWithLikes, nextCursor: feedData.nextCursor });
   } catch (error) {
     logger.error(`❌ [CONTENT_CTRL] getPostsFeed failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch posts feed" });
@@ -403,7 +433,9 @@ export const getReelsFeed = async (req, res) => {
       return { data: tagged, nextCursor };
     });
 
-    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+    const dataWithLikes = await populateIsLiked(feedData.data, req.user?.id);
+
+    res.json({ success: true, data: dataWithLikes, nextCursor: feedData.nextCursor });
   } catch (error) {
     logger.error(`❌ [CONTENT_CTRL] getReelsFeed failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch reels feed" });
@@ -441,7 +473,9 @@ export const getYoutubeFeed = async (req, res) => {
       return { data: tagged, nextCursor };
     });
 
-    res.json({ success: true, data: feedData.data, nextCursor: feedData.nextCursor });
+    const dataWithLikes = await populateIsLiked(feedData.data, req.user?.id);
+
+    res.json({ success: true, data: dataWithLikes, nextCursor: feedData.nextCursor });
   } catch (error) {
     logger.error(`❌ [CONTENT_CTRL] getYoutubeFeed failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch youtube feed" });
@@ -459,6 +493,7 @@ export const toggleLikeController = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
+    const { action } = req.body; // Explicitly 'like' or 'unlike'
     
     // Determine content type from URL path
     const url = req.originalUrl;
@@ -467,7 +502,7 @@ export const toggleLikeController = async (req, res) => {
     else if (url.includes("/posts/youtube/")) type = "YOUTUBE_POST";
     else if (url.includes("/polls/")) type = "POLL";
 
-    const result = await toggleLike(type, id, userId);
+    const result = await toggleLike(type, id, userId, action);
     res.json({ success: true, ...result });
   } catch (error) {
     logger.error(`❌ [CONTENT_CTRL] toggleLike failure: ${error.message}`);

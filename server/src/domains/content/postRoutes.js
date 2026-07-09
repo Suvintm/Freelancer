@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticate } from "../../shared/middleware/auth.middleware.js";
+import { authenticate, optionalAuth } from "../../shared/middleware/auth.middleware.js";
 import {
   createPost,
   createReel,
@@ -65,11 +65,11 @@ router.post("/polls/:id/like", authenticate, interactionLimiter, toggleLikeContr
 /**
  * @route   GET /api/social/feed
  * @desc    Fetch global public feed (all content types merged)
- * @access  Public
+ * @access  Public (optional auth for likes)
  */
-router.get("/feed", feedLimiter, getFeed);
-router.get("/feed/posts", feedLimiter, getPostsFeed);
-router.get("/feed/reels", feedLimiter, getReelsFeed);
-router.get("/feed/youtube", feedLimiter, getYoutubeFeed);
+router.get("/feed", optionalAuth, feedLimiter, getFeed);
+router.get("/feed/posts", optionalAuth, feedLimiter, getPostsFeed);
+router.get("/feed/reels", optionalAuth, feedLimiter, getReelsFeed);
+router.get("/feed/youtube", optionalAuth, feedLimiter, getYoutubeFeed);
 
 export default router;
