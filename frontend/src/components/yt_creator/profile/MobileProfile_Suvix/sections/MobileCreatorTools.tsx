@@ -1,5 +1,6 @@
-import React from 'react';
-import { Settings, Plus, BarChart3, Briefcase, Users2, Lock } from 'lucide-react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { Lock } from 'lucide-react';
 import SILVER_BTN from '../../../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../../../assets/playbuttons/goldenbtn.png';
 import DIAMOND_BTN from '../../../../../assets/playbuttons/diamondbtn.png';

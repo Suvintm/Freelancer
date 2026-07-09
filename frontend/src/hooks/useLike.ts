@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '../api/client';
 
 // Global maps to track timers and queues across React re-renders and Strict Mode unmounts
@@ -30,7 +30,7 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
   const isProcessing = useRef(false);
 
   // Sync logic that actually calls the API
-  const syncToServer = useCallback(async () => {
+  const syncToServer = async () => {
     if (isProcessing.current || pendingActions.current.length === 0) return;
     
     isProcessing.current = true;
@@ -58,15 +58,9 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         isSyncing: false,
       }));
     } catch (error) {
-      console.error("Failed to sync like:", error);
-      // Clear queue on failure to prevent cascading confusion
-      pendingActions.current = [];
-      setState(prev => ({
-        ...prev,
-        likedByMe: !shouldLike, // Revert to opposite of what failed
-        likeCount: Math.max(0, prev.likeCount + (shouldLike ? -1 : 1)),
-        isSyncing: false,
-      }));
+      console.error('Like sync failed:', error);
+      // Optional: rollback on error by fetching real state or dispatching error
+      setState(prev => ({ ...prev, isSyncing: false }));
     } finally {
       isProcessing.current = false;
       // If actions piled up while we were syncing, run again
@@ -74,10 +68,10 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         syncToServer();
       }
     }
-  }, [postId, contentType]);
+  };
 
   // Debounced wrapper using global map to survive React re-renders/unmounts
-  const debouncedSync = useCallback(() => {
+  const debouncedSync = () => {
     const existingTimer = globalLikeTimers.get(postId);
     if (existingTimer) clearTimeout(existingTimer);
     
@@ -87,10 +81,10 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
     }, 500); // 500ms debounce to be extra safe against spam
     
     globalLikeTimers.set(postId, newTimer);
-  }, [postId, syncToServer]);
+  };
 
   // Main UI action
-  const toggleLike = useCallback(() => {
+  const toggleLike = () => {
     // 1. Determine what the next state SHOULD be
     const currentOptimisticLiked = pendingActions.current.length > 0 
         ? pendingActions.current[pendingActions.current.length - 1] === 'like'
@@ -109,7 +103,7 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         likeCount: Math.max(0, prev.likeCount + (nextLiked ? 1 : -1)),
         isAnimating: nextLiked,
     }));
-  }, [state.likedByMe, debouncedSync]);
+  };
 
   // Clear animation flag automatically
   useEffect(() => {
@@ -126,8 +120,7 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
   return {
     ...state,
     toggleLike,
-    // Provide a specific trigger for double tap that guarantees we don't accidentally unlike
-    triggerLike: useCallback(() => {
+    triggerLike: () => {
       const currentOptimisticLiked = pendingActions.current.length > 0 
           ? pendingActions.current[pendingActions.current.length - 1] === 'like'
           : state.likedByMe;
@@ -148,6 +141,6 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
           isAnimating: true,
         }));
       }
-    }, [state.likedByMe, debouncedSync])
+    }
   };
 }

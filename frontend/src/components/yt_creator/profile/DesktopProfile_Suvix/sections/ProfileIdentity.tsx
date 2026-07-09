@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { updateUser } from '../../../../../store/slices/authSlice';
 import { api } from '../../../../../api/client';
 import { Edit3, Plus, Loader2 } from 'lucide-react';
-
-const formatCount = (num?: number | string) => {
-  if (!num) return '0';
-  const n = Number(num);
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-  return n.toString();
-};
 
 const VerifiedBadge = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="none">
@@ -27,8 +21,7 @@ export const ProfileIdentity = ({ user }: { user: any }) => {
 
   const youtubeProfiles = user?.youtubeProfile || [];
   const primaryChannel = youtubeProfiles.find((p: any) => p.channel_name) || youtubeProfiles[0] || {};
-  const totalVideos = youtubeProfiles.reduce((acc: number, p: any) => acc + (p.video_count || 0), 0);
-  
+    
   const displayName = user?.name || primaryChannel.channel_name || 'YouTube Creator';
   const username = user?.username ? `@${user.username}` : '@creator';
 

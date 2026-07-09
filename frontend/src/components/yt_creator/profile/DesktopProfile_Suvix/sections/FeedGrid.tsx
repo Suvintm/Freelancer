@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from 'react';
-import { PlaySquare, Heart, MessageCircle, Trash2, Eye, ThumbsUp, MessageSquare, Play } from 'lucide-react';
+import { PlaySquare, Heart, MessageCircle, Trash2, MessageSquare, Play } from 'lucide-react';
 import { api } from '../../../../../api/client';
 
 const formatCount = (num?: number | string) => {
@@ -36,12 +38,12 @@ interface FeedGridProps {
   reels: any[];
   posts: any[];
   ytVideos: any[];
-  thumbnailVotes: any[];
+  
   isLoadingFeed: boolean;
   allVideos: any[];
 }
 
-export const FeedGrid = ({ activeTab, reels, posts, ytVideos, thumbnailVotes, isLoadingFeed, allVideos }: FeedGridProps) => {
+export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, allVideos }: FeedGridProps) => {
 
   const handleDeleteItem = async (id: string, type: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();

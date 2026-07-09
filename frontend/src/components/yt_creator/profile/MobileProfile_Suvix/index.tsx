@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProfileData } from '../DesktopProfile_Suvix/hooks/useProfileData';
 import { MobileTopSplit } from './sections/MobileTopSplit';
 import { MobileIdentity } from './sections/MobileIdentity';

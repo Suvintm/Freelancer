@@ -81,7 +81,7 @@ export function RealFeedYoutube({
     if (!video || isProcessing) return;
     video.muted = isMuted;
     if (!isMuted) video.volume = 1;
-  }, [isMuted]);
+  }, [isMuted, isProcessing]);
 
   useEffect(() => {
     const video = videoRef.current;

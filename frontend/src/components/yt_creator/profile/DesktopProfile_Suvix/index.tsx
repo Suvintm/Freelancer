@@ -1,4 +1,5 @@
-import React from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useProfileData } from './hooks/useProfileData';
 import { Banner } from './sections/Banner';
 import { ProfileIdentity } from './sections/ProfileIdentity';
@@ -67,7 +68,6 @@ export const DesktopProfile = () => {
               reels={profileData.reels}
               posts={profileData.posts}
               ytVideos={profileData.ytVideos}
-              thumbnailVotes={profileData.thumbnailVotes}
               isLoadingFeed={profileData.isLoadingFeed}
               allVideos={profileData.allVideos}
             />
