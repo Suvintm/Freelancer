@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import { Lock } from 'lucide-react';
 import SILVER_BTN from '../../../../../assets/playbuttons/silverbtn.png';
 import GOLD_BTN from '../../../../../assets/playbuttons/goldenbtn.png';

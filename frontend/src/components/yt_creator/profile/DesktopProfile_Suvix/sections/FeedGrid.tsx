@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import React from 'react';
 import { PlaySquare, Heart, MessageCircle, Trash2, MessageSquare, Play } from 'lucide-react';
 import { api } from '../../../../../api/client';

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { updateUser } from '../../../../../store/slices/authSlice';

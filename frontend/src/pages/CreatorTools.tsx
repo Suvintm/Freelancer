@@ -4,9 +4,9 @@ import { useTheme } from '../hooks/useTheme';
 import { motion } from 'framer-motion';
 import { 
   Youtube, UploadCloud, DollarSign, MessageSquare, 
-  BrainCircuit, User, ArrowRight, Sparkles, ChevronRight,
-  TrendingUp, BarChart3, Settings, Search, Compass,
-  LayoutTemplate, Briefcase, Users, Zap
+  BrainCircuit, User, Sparkles, ChevronRight,
+  Search, Compass,
+  LayoutTemplate, Briefcase, Users
 } from 'lucide-react';
 import LottieComponent from 'lottie-react';
 import toolsHeroAnimation from '../assets/lottie/tools_hero.json';
