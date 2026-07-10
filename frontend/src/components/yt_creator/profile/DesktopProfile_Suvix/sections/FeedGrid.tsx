@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import React from 'react';
 import { PlaySquare, Heart, MessageCircle, Trash2, MessageSquare, Play } from 'lucide-react';
 import { api } from '../../../../../api/client';
@@ -83,10 +83,18 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
     if (reels.length === 0) return renderEmptyState('No reels uploaded yet', <PlaySquare size={48} />);
     return (
       <div className="grid grid-cols-3 gap-6">
-        {reels.map((reel) => (
-          <div key={reel._id} className="group relative aspect-[9/16] rounded-[24px] overflow-hidden bg-container border border-border-main cursor-pointer shadow-sm hover:shadow-md transition-all duration-300">
-            <img src={reel.img || reel.videoUrl} alt="Reel" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4">
+        {reels.map((reel: any) => (
+          <div key={reel._id} className={`group relative aspect-[9/16] rounded-[24px] overflow-hidden bg-container border border-border-main ${reel.isProcessing ? 'opacity-80 cursor-wait' : 'cursor-pointer shadow-sm hover:shadow-md transition-all duration-300'}`}>
+            <img src={reel.img || reel.videoUrl || reel.thumbnail?.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80'} alt="Reel" className={`w-full h-full object-cover ${reel.isProcessing ? 'blur-sm grayscale-[50%]' : ''}`} />
+            
+            {reel.isProcessing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+                <div className="w-8 h-8 border-4 border-[#FF3040] border-t-transparent rounded-full animate-spin mb-3"></div>
+                <span className="text-white font-bold text-sm bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-md">Processing...</span>
+              </div>
+            )}
+            
+            <div className={`absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 ${reel.isProcessing ? 'hidden' : ''}`}>
               <div className="flex justify-end">
                 <button onClick={(e) => handleDeleteItem(reel._id, 'reel', e)} className="p-2 bg-card/20 hover:bg-[#FF3040] rounded-full text-white backdrop-blur-md transition-colors">
                   <Trash2 size={16} />
@@ -100,7 +108,7 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
                 </div>
               </div>
             </div>
-            <div className="absolute bottom-4 left-4 p-2 bg-card/20 backdrop-blur-md border border-white/20 rounded-full text-white group-hover:scale-110 transition-transform duration-300">
+            <div className={`absolute bottom-4 left-4 p-2 bg-card/20 backdrop-blur-md border border-white/20 rounded-full text-white group-hover:scale-110 transition-transform duration-300 ${reel.isProcessing ? 'hidden' : ''}`}>
               <PlaySquare size={16} fill="white" />
             </div>
           </div>
@@ -113,10 +121,17 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
     if (posts.length === 0) return renderEmptyState('No posts available', <MessageSquare size={48} />);
     return (
       <div className="grid grid-cols-3 gap-6">
-        {posts.map((post) => (
-          <div key={post.id || post._id} className="group flex flex-col gap-3 cursor-pointer">
+        {posts.map((post: any) => (
+          <div key={post.id || post._id} className={`group flex flex-col gap-3 ${post.isProcessing ? 'opacity-80 cursor-wait' : 'cursor-pointer'}`}>
             <div className="relative aspect-square rounded-[20px] overflow-hidden bg-container border border-border-main">
-              <img src={post.media?.url || post.img || post.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80'} alt="Post" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <img src={post.media?.url || post.thumbnail?.url || post.img || post.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80'} alt="Post" className={`w-full h-full object-cover transition-transform duration-500 ${post.isProcessing ? 'blur-sm grayscale-[50%]' : 'group-hover:scale-105'}`} />
+              
+              {post.isProcessing && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+                  <div className="w-8 h-8 border-4 border-[#FF3040] border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <span className="text-white font-bold text-sm bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-md">Processing...</span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1 px-1">
               <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{post.caption || post.comment || "Post"}</h4>
@@ -135,10 +150,17 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
     if (ytVideos.length === 0) return renderEmptyState('No YouTube posts available', <MessageSquare size={48} />);
     return (
       <div className="grid grid-cols-3 gap-6">
-        {ytVideos.map((post) => (
-          <div key={post.id || post._id} className="group flex flex-col gap-3 cursor-pointer">
+        {ytVideos.map((post: any) => (
+          <div key={post.id || post._id} className={`group flex flex-col gap-3 ${post.isProcessing ? 'opacity-80 cursor-wait' : 'cursor-pointer'}`}>
             <div className="relative aspect-video rounded-[20px] overflow-hidden bg-container border border-border-main">
-              <img src={post.media?.url || post.img || post.videoUrl} alt="Post" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <img src={post.media?.url || post.thumbnail?.url || post.img || post.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80'} alt="Post" className={`w-full h-full object-cover transition-transform duration-500 ${post.isProcessing ? 'blur-sm grayscale-[50%]' : 'group-hover:scale-105'}`} />
+
+              {post.isProcessing && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+                  <div className="w-8 h-8 border-4 border-[#FF3040] border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <span className="text-white font-bold text-sm bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-md">Processing...</span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1 px-1">
               <h4 className="text-sm font-bold text-text-main line-clamp-2 leading-snug group-hover:text-[#FF3040] transition-colors">{post.caption || post.comment || "YouTube Post"}</h4>

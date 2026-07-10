@@ -16,6 +16,10 @@ import {
 import darkLogo  from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import defaultProfile from '../../assets/defaultprofile.png';
+import LottieComponent from 'lottie-react';
+import upgradeLottieAnimation from '../../assets/lottie/upgrade_lottie.json';
+
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
@@ -279,6 +283,15 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Upgrade Lottie Animation Box */}
+            <div className="w-10 h-10 mr-1 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform hidden sm:flex" onClick={() => navigate('/subscription')}>
+              <Lottie 
+                animationData={upgradeLottieAnimation} 
+                loop={true} 
+                style={{ width: '150%', height: '150%', objectFit: 'contain' }} 
+              />
+            </div>
+
             {/* Subscription Badge */}
             <button
               type="button"

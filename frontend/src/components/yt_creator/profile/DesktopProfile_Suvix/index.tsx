@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import { useProfileData } from './hooks/useProfileData';
 import { Banner } from './sections/Banner';
 import { ProfileIdentity } from './sections/ProfileIdentity';

@@ -19,8 +19,9 @@ export const getProfilePosts = async (req, res) => {
   try {
     const { userId } = req.params;
     const { cursor } = req.query;
+    const currentUserId = req.user?.id;
 
-    const data = await profileService.getProfilePosts(userId, cursor);
+    const data = await profileService.getProfilePosts(userId, cursor, currentUserId);
 
     // 🛡️ HTTP CACHING: Allow Edge CDN to serve stale content while revalidating
     // This is the Netflix/Instagram secret for instant-load profiles.
@@ -44,8 +45,9 @@ export const getProfileReels = async (req, res) => {
   try {
     const { userId } = req.params;
     const { cursor } = req.query;
+    const currentUserId = req.user?.id;
 
-    const data = await profileService.getProfileReels(userId, cursor);
+    const data = await profileService.getProfileReels(userId, cursor, currentUserId);
 
     res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
 
@@ -67,8 +69,9 @@ export const getProfileYoutubePosts = async (req, res) => {
   try {
     const { userId } = req.params;
     const { cursor } = req.query;
+    const currentUserId = req.user?.id;
 
-    const data = await profileService.getProfileYoutubePosts(userId, cursor);
+    const data = await profileService.getProfileYoutubePosts(userId, cursor, currentUserId);
 
     res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
 

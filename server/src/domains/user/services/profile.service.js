@@ -14,12 +14,13 @@ const PAGE_SIZE = 12; // Instagram sweet spot for grid loading
  * Get paginated POSTS for a user's profile grid
  * Only returns THUMBNAIL variants to save bandwidth
  */
-export const getProfilePosts = async (targetUserId, cursor = null) => {
+export const getProfilePosts = async (targetUserId, cursor = null, currentUserId = null) => {
+  const isOwner = targetUserId === currentUserId;
   const posts = await prisma.post.findMany({
     where: {
       userId: targetUserId,
       visibility: "PUBLIC",
-      // Removed isReel filter to show both Posts and Reels in the unified grid
+      ...(isOwner ? {} : { is_ready: true })
     },
     include: {
       media: {
@@ -68,7 +69,8 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
         roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
       } : null,
       media: firstMedia ? resolveMediaForApi(firstMedia) : null,
-      thumbnail: firstMedia ? resolveMediaForApi(firstMedia).thumbnail : null
+      thumbnail: firstMedia ? resolveMediaForApi(firstMedia).thumbnail : null,
+      isProcessing: !post.is_ready
     };
   });
 
@@ -78,11 +80,13 @@ export const getProfilePosts = async (targetUserId, cursor = null) => {
 /**
  * Get paginated REELS for a user's profile reels tab
  */
-export const getProfileReels = async (targetUserId, cursor = null) => {
+export const getProfileReels = async (targetUserId, cursor = null, currentUserId = null) => {
+  const isOwner = targetUserId === currentUserId;
   const reels = await prisma.reel.findMany({
     where: {
       userId: targetUserId,
       visibility: "PUBLIC",
+      ...(isOwner ? {} : { is_ready: true })
     },
     include: {
       media: {
@@ -128,7 +132,8 @@ export const getProfileReels = async (targetUserId, cursor = null) => {
         profilePicture: reel.user.profile.profile_picture,
         category: reel.user.profile.category?.slug,
         roleGroup: reel.user.profile.category?.roleGroup || 'CLIENT'
-      } : null
+      } : null,
+      isProcessing: !reel.is_ready
     };
   });
 
@@ -138,11 +143,13 @@ export const getProfileReels = async (targetUserId, cursor = null) => {
 /**
  * Get paginated YOUTUBE POSTS for a user's profile grid
  */
-export const getProfileYoutubePosts = async (targetUserId, cursor = null) => {
+export const getProfileYoutubePosts = async (targetUserId, cursor = null, currentUserId = null) => {
+  const isOwner = targetUserId === currentUserId;
   const youtubePosts = await prisma.youtubePost.findMany({
     where: {
       userId: targetUserId,
       visibility: "PUBLIC",
+      ...(isOwner ? {} : { is_ready: true })
     },
     include: {
       media: {
@@ -188,7 +195,8 @@ export const getProfileYoutubePosts = async (targetUserId, cursor = null) => {
         profilePicture: post.user.profile.profile_picture,
         category: post.user.profile.category?.slug,
         roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
-      } : null
+      } : null,
+      isProcessing: !post.is_ready
     };
   });
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../../../../store/slices/authSlice';

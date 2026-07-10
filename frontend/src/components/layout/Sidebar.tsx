@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ReactLenis }       from 'lenis/react';
-import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase, BarChart3 } from 'lucide-react';
+import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase, BarChart3, ChevronRight } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -8,9 +8,10 @@ import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
 import defaultProfile       from '../../assets/defaultprofile.png';
 import { AccountSwitcher } from '../profile/AccountSwitcher';
+import LottieComponent from 'lottie-react';
+import verifyLottieAnimation from '../../assets/lottie/verify_lottie.json';
 
-
-
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 const HIGHLIGHTS = [
   { id: 1, label: 'New',      img: null,  isNew: true  },
   { id: 2, label: 'Garden',   img: auth1, isNew: false },
@@ -165,6 +166,31 @@ export const Sidebar = () => {
           >
             View full profile
           </button>
+        </div>
+
+        {/* ── 1.25 Get Verified Lottie ────────────────────────────────────────────── */}
+        <div className="w-full flex justify-center -mt-2 -mb-1">
+          <div 
+            onClick={() => navigate('/settings')}
+            className={`w-[90%] flex flex-row items-center justify-between px-3 cursor-pointer z-10 relative group py-1.5 rounded-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${
+              isDarkMode ? 'bg-white text-black' : 'bg-zinc-950 text-white'
+            }`}
+            title="Get Verified"
+          >
+            <div className="flex items-center gap-2">
+              <Lottie 
+                animationData={verifyLottieAnimation} 
+                loop={true} 
+                style={{ width: '42px', height: '42px', objectFit: 'contain' }} 
+              />
+              <span className="text-[12px] font-black tracking-tight group-hover:translate-x-1 transition-transform">Get Verified !!</span>
+            </div>
+            <div className={`flex items-center justify-center w-7 h-7 rounded-full transition-transform group-hover:translate-x-1 ${
+              isDarkMode ? 'bg-zinc-100 text-black' : 'bg-zinc-800 text-white'
+            }`}>
+              <ChevronRight size={14} strokeWidth={3} />
+            </div>
+          </div>
         </div>
 
         {/* ── 1.5 Growth Tools ────────────────────────────────────────────── */}
