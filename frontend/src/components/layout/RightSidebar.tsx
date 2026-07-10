@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMemo, useState, useEffect } from 'react';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, Plus, Heart
+  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, Plus, Heart, ArrowRight
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -11,6 +11,10 @@ import { useTheme } from '../../hooks/useTheme';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../api/client';
+import LottieComponent from 'lottie-react';
+import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
+
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 const NAV_ITEMS = [
   { icon: Home,       label: 'Feed',      path: '/home'    },
@@ -96,6 +100,32 @@ export const RightSidebar = () => {
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
       <div className="flex flex-col flex-1 px-4 py-6 gap-4">
+
+        {/* ── Creator Tools Promotion Widget ── */}
+        <div 
+          onClick={() => navigate('/creator-tools')}
+          className={`w-full rounded-2xl overflow-hidden mb-2 flex flex-col cursor-pointer transition-all border ${
+            isDarkMode ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+          }`}
+        >
+          <div className="w-full aspect-video flex items-center justify-center p-4">
+            <Lottie 
+              animationData={sidebarLottieAnimation} 
+              loop={true} 
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            />
+          </div>
+          <div className="w-full p-3 pt-0 flex justify-center">
+            <button className={`w-full text-xs font-bold uppercase tracking-wider py-2.5 rounded-xl shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-1.5 ${
+              isDarkMode 
+                ? 'bg-white text-black hover:bg-zinc-200' 
+                : 'bg-black text-white hover:bg-zinc-800'
+            }`}>
+              Explore Tools
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
 
         {/* ── Latest Messages Widget ── */}
         {visibleConvs.length > 0 && (

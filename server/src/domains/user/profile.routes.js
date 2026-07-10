@@ -4,6 +4,7 @@
 import { Router } from "express";
 import { getProfilePosts, getProfileReels, getProfileYoutubePosts, getProfilePolls, getProfilesByCategory, getProfileDetails, getChannelDetails } from "./controllers/profile.controller.js";
 import { publicApiLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
+import { optionalAuth } from "../../shared/middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -14,19 +15,19 @@ router.use(publicApiLimiter);
  * @route GET /api/profile/:userId/posts
  * Publicly accessible list of standard posts
  */
-router.get("/:userId/posts", getProfilePosts);
+router.get("/:userId/posts", optionalAuth, getProfilePosts);
 
 /**
  * @route GET /api/profile/:userId/reels
  * Publicly accessible list of reels
  */
-router.get("/:userId/reels", getProfileReels);
+router.get("/:userId/reels", optionalAuth, getProfileReels);
 
 /**
  * @route GET /api/profile/:userId/youtube-posts
  * Publicly accessible list of youtube posts
  */
-router.get("/:userId/youtube-posts", getProfileYoutubePosts);
+router.get("/:userId/youtube-posts", optionalAuth, getProfileYoutubePosts);
 
 /**
  * @route GET /api/profile/:userId/polls

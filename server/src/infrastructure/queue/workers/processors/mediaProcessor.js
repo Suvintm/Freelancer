@@ -101,10 +101,19 @@ const mediaProcessor = async (job) => {
 
     // ── STEP 7: Update DB — READY ─────────────────────────────────────────
     logger.info(`💾 [DB-WRITE] Committing READY status and metadata for: ${mediaId}`);
-    await prisma.media.update({
+    const updatedMedia = await prisma.media.update({
       where: { id: mediaId },
       data: { ...results, status: "READY" },
+      select: { postId: true, reelId: true, youtubePostId: true }
     });
+
+    if (updatedMedia.postId) {
+      await prisma.post.update({ where: { id: updatedMedia.postId }, data: { is_ready: true } });
+    } else if (updatedMedia.reelId) {
+      await prisma.reel.update({ where: { id: updatedMedia.reelId }, data: { is_ready: true } });
+    } else if (updatedMedia.youtubePostId) {
+      await prisma.youtubePost.update({ where: { id: updatedMedia.youtubePostId }, data: { is_ready: true } });
+    }
 
     await job.updateProgress(100);
     emitToUser(userId, "media:status", { mediaId, status: "READY", type });

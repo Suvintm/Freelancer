@@ -390,6 +390,7 @@ model Post {
   like_count      Int        @default(0) @map("like_count")
   
   // ── NEW: Advanced Settings ──────────────────────────────────────
+  is_ready        Boolean    @default(false)
   allow_comments  Boolean    @default(true)
   hide_like_count Boolean    @default(false)
   is_scheduled    Boolean    @default(false)
@@ -454,6 +455,7 @@ model Reel {
   userId     String     @map("user_id") @db.Uuid
   caption    String?    @db.Text
   visibility Visibility @default(PUBLIC)
+  is_ready   Boolean    @default(false)
   like_count Int        @default(0) @map("like_count")
   view_count Int        @default(0) @map("view_count")
   created_at DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -475,6 +477,7 @@ model YoutubePost {
   caption            String?    @db.Text
   youtube_link       String
   visibility         Visibility @default(PUBLIC)
+  is_ready           Boolean    @default(false)
   like_count         Int        @default(0) @map("like_count")
   created_at         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)

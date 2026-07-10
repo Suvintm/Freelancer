@@ -298,19 +298,19 @@ export const getFeed = async (req, res) => {
       // Query all 4 content tables in parallel
       const [posts, reels, youtubePosts, polls] = await Promise.all([
         prisma.post.findMany({
-          where: { visibility: "PUBLIC" },
+          where: { visibility: "PUBLIC", is_ready: true },
           include: { user: USER_SELECT, media: MEDIA_SELECT },
           orderBy: { created_at: "desc" },
           take,
         }),
         prisma.reel.findMany({
-          where: { visibility: "PUBLIC" },
+          where: { visibility: "PUBLIC", is_ready: true },
           include: { user: USER_SELECT, media: MEDIA_SELECT },
           orderBy: { created_at: "desc" },
           take,
         }),
         prisma.youtubePost.findMany({
-          where: { visibility: "PUBLIC" },
+          where: { visibility: "PUBLIC", is_ready: true },
           include: {
             user: USER_SELECT,
             media: MEDIA_SELECT,

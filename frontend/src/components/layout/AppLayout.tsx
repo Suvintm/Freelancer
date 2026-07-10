@@ -19,7 +19,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isNearbyPage = location.pathname === '/nearby';
   const isChatPage = location.pathname === '/communication-hub';
   const hasActiveChat = searchParams.has('userId');
-  const isFullPage = isExplorePage || isNotificationsPage || isChatPage;
+  const isCreatorToolsPage = location.pathname === '/creator-tools';
+  const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage;
   const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage || isHomePage;
   const { isDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
