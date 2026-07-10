@@ -2,7 +2,7 @@ import prisma from "../../../infrastructure/database/postgres.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 import { redis, redisAvailable } from "../../../infrastructure/cache/redis.client.js";
 import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
-import { memoryLikes, memoryDirty } from "../services/likeSync.service.js";
+import { pollMemoryLikes, pollMemoryDirty } from "../services/likeSync.service.js";
 
 /**
  * 📝 POLL CONTROLLER (SOCIAL MODULE)
@@ -11,7 +11,7 @@ import { memoryLikes, memoryDirty } from "../services/likeSync.service.js";
 
 export const createPoll = async (req, res) => {
   try {
-    const { question, type = "MULTIPLE_CHOICE", layout = "STANDARD", options = [], show_response_count = true, visibility = "PUBLIC" } = req.body;
+    const { question, type = "MULTIPLE_CHOICE", layout = "STANDARD", options = [], show_response_count = true, visibility = "PUBLIC", caption = "" } = req.body;
     const userId = req.user.id;
 
     if (!question) {
@@ -22,34 +22,26 @@ export const createPoll = async (req, res) => {
       return res.status(400).json({ success: false, message: "Multiple choice polls require at least 2 options." });
     }
 
-    // Atomic Transaction: Create Post (for feed) and Poll
     const poll = await prisma.$transaction(async (tx) => {
-      // 1. Create the base Post
-      const post = await tx.post.create({
+      // Create the Poll
+      const newPoll = await tx.poll.create({
         data: {
           userId,
-          type: "POLL",
+          question,
+          caption,
+          type,
+          layout,
+          show_response_count,
           visibility,
         },
       });
 
-      // 2. Create the Poll
-      const newPoll = await tx.poll.create({
-        data: {
-          postId: post.id,
-          question,
-          type,
-          layout,
-          show_response_count,
-        },
-      });
-
-      // 3. Create Options if multiple choice
+      // Create Options if multiple choice
       if (type === "MULTIPLE_CHOICE") {
         const optionsData = options.map((opt, index) => ({
           pollId: newPoll.id,
           text: opt.text,
-          image_url: opt.image_url || null,
+          // Media handling logic would go here if mediaId is available
           order_index: index,
         }));
         await tx.pollOption.createMany({
@@ -129,14 +121,17 @@ export const respondToPoll = async (req, res) => {
 export const getPollPosts = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const posts = await prisma.poll.findMany({
+    const polls = await prisma.poll.findMany({
       where: { visibility: "PUBLIC" },
       orderBy: { created_at: 'desc' },
       include: {
         user: { include: { profile: true } },
         options: { 
           orderBy: { order_index: 'asc' },
-          include: { _count: { select: { responses: true } } }
+          include: { 
+            media: true,
+            _count: { select: { responses: true } } 
+          }
         },
         _count: { select: { responses: true } },
         ...(userId ? { responses: { where: { userId } } } : {})
@@ -145,27 +140,27 @@ export const getPollPosts = async (req, res) => {
     });
     
     // Merge cached values and override DB ones
-    const postsWithLikes = await Promise.all(posts.map(async (post) => {
+    const pollsWithLikes = await Promise.all(polls.map(async (poll) => {
       let isLiked = false;
-      let likesCount = post.like_count || 0;
+      let likesCount = poll.like_count || 0;
 
       if (redisAvailable) {
-        const cachedCount = await redis.hget(`post:likes:count`, post.id);
+        const cachedCount = await redis.hget(`poll:likes:count`, poll.id);
         if (cachedCount !== null) {
           likesCount = parseInt(cachedCount, 10);
         }
         if (userId) {
-          const isMember = await redis.sismember(`post:likes:users:${post.id}`, userId);
+          const isMember = await redis.sismember(`poll:likes:users:${poll.id}`, userId);
           isLiked = !!isMember;
         }
       } else {
-        if (memoryLikes.has(post.id)) {
-          likesCount = memoryLikes.get(post.id).size;
-          isLiked = userId ? memoryLikes.get(post.id).has(userId) : false;
+        if (pollMemoryLikes.has(poll.id)) {
+          likesCount = pollMemoryLikes.get(poll.id).size;
+          isLiked = userId ? pollMemoryLikes.get(poll.id).has(userId) : false;
         } else {
           if (userId) {
             const likedInDb = await prisma.pollLike.findUnique({
-              where: { pollId_userId: { pollId: post.id, userId } }
+              where: { pollId_userId: { pollId: poll.id, userId } }
             });
             isLiked = !!likedInDb;
           }
@@ -173,27 +168,24 @@ export const getPollPosts = async (req, res) => {
       }
 
       return {
-        ...post,
+        ...poll,
         user: {
-          ...post.user,
-          profile: post.user.profile ? {
-            ...post.user.profile,
-            profile_picture: smartResolveMediaUrl(post.user.profile.profile_picture)
+          ...poll.user,
+          profile: poll.user.profile ? {
+            ...poll.user.profile,
+            profile_picture: smartResolveMediaUrl(poll.user.profile.profile_picture)
           } : null
         },
         like_count: likesCount,
         isLiked,
-        poll: {
-          ...post,
-          options: post.options?.map(opt => ({
-            ...opt,
-            image_url: smartResolveMediaUrl(opt.image_url)
-          }))
-        }
+        options: poll.options?.map(opt => ({
+          ...opt,
+          image_url: opt.media ? smartResolveMediaUrl(opt.media.url) : null
+        }))
       };
     }));
 
-    res.status(200).json({ success: true, data: postsWithLikes });
+    res.status(200).json({ success: true, data: pollsWithLikes });
   } catch (error) {
     logger.error(`❌ [POLL_CONTROLLER] getPollPosts failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch polls" });
@@ -203,59 +195,61 @@ export const getPollPosts = async (req, res) => {
 export const getMyPolls = async (req, res) => {
   try {
     const userId = req.user.id;
-    const posts = await prisma.poll.findMany({
+    const polls = await prisma.poll.findMany({
       where: { userId },
       orderBy: { created_at: 'desc' },
       include: {
-        _count: { select: { responses: true } }
+        _count: { select: { responses: true } },
+        options: {
+          orderBy: { order_index: 'asc' },
+          include: { media: true }
+        },
+        user: { include: { profile: true } }
       }
     });
 
-    const postsWithLikes = await Promise.all(posts.map(async (post) => {
+    const pollsWithLikes = await Promise.all(polls.map(async (poll) => {
       let isLiked = false;
-      let likesCount = post.like_count || 0;
+      let likesCount = poll.like_count || 0;
 
       if (redisAvailable) {
-        const cachedCount = await redis.hget(`post:likes:count`, post.id);
+        const cachedCount = await redis.hget(`poll:likes:count`, poll.id);
         if (cachedCount !== null) {
           likesCount = parseInt(cachedCount, 10);
         }
-        const isMember = await redis.sismember(`post:likes:users:${post.id}`, userId);
+        const isMember = await redis.sismember(`poll:likes:users:${poll.id}`, userId);
         isLiked = !!isMember;
       } else {
-        if (memoryLikes.has(post.id)) {
-          likesCount = memoryLikes.get(post.id).size;
-          isLiked = memoryLikes.get(post.id).has(userId);
+        if (pollMemoryLikes.has(poll.id)) {
+          likesCount = pollMemoryLikes.get(poll.id).size;
+          isLiked = pollMemoryLikes.get(poll.id).has(userId);
         } else {
           const likedInDb = await prisma.pollLike.findUnique({
-            where: { pollId_userId: { pollId: post.id, userId } }
+            where: { pollId_userId: { pollId: poll.id, userId } }
           });
           isLiked = !!likedInDb;
         }
       }
 
       return {
-        ...post,
-        user: post.user ? {
-          ...post.user,
-          profile: post.user.profile ? {
-            ...post.user.profile,
-            profile_picture: smartResolveMediaUrl(post.user.profile.profile_picture)
+        ...poll,
+        user: poll.user ? {
+          ...poll.user,
+          profile: poll.user.profile ? {
+            ...poll.user.profile,
+            profile_picture: smartResolveMediaUrl(poll.user.profile.profile_picture)
           } : null
         } : null,
         like_count: likesCount,
         isLiked,
-        poll: {
-          ...post,
-          options: post.options?.map(opt => ({
-            ...opt,
-            image_url: smartResolveMediaUrl(opt.image_url)
-          }))
-        }
+        options: poll.options?.map(opt => ({
+          ...opt,
+          image_url: opt.media ? smartResolveMediaUrl(opt.media.url) : null
+        }))
       };
     }));
 
-    res.status(200).json({ success: true, data: postsWithLikes });
+    res.status(200).json({ success: true, data: pollsWithLikes });
   } catch (error) {
     logger.error(`❌ [POLL_CONTROLLER] getMyPolls failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to fetch your polls" });
@@ -270,10 +264,12 @@ export const getPollDetails = async (req, res) => {
     const poll = await prisma.poll.findUnique({
       where: { id },
       include: {
-        post: true,
         options: { 
           orderBy: { order_index: 'asc' },
-          include: { _count: { select: { responses: true } } }
+          include: { 
+            media: true,
+            _count: { select: { responses: true } } 
+          }
         },
         responses: {
           orderBy: { created_at: 'desc' },
@@ -290,12 +286,10 @@ export const getPollDetails = async (req, res) => {
       return res.status(404).json({ success: false, message: "Poll not found" });
     }
 
-    // Ensure the user owns this poll (or maybe allow public if they want? The spec says "view full details" for creators)
-    if (poll.post.userId !== userId) {
+    if (poll.userId !== userId) {
       return res.status(403).json({ success: false, message: "Not authorized to view details" });
     }
 
-    // Resolve participant avatars and poll option images
     if (poll.responses) {
       poll.responses = poll.responses.map(resp => {
         if (resp.user?.profile) {
@@ -308,7 +302,7 @@ export const getPollDetails = async (req, res) => {
     if (poll.options) {
       poll.options = poll.options.map(opt => ({
         ...opt,
-        image_url: smartResolveMediaUrl(opt.image_url)
+        image_url: opt.media ? smartResolveMediaUrl(opt.media.url) : null
       }));
     }
 
@@ -321,40 +315,40 @@ export const getPollDetails = async (req, res) => {
 
 export const likePoll = async (req, res) => {
   try {
-    const { id: postId } = req.params;
+    const { id: pollId } = req.params;
     const userId = req.user.id;
 
     let hasLiked = false;
     let newLikeCount = 0;
 
     if (redisAvailable) {
-      const redisKey = `post:likes:users:${postId}`;
+      const redisKey = `poll:likes:users:${pollId}`;
       const isMember = await redis.sismember(redisKey, userId);
       if (isMember) {
         await redis.srem(redisKey, userId);
-        await redis.hincrby(`post:likes:count`, postId, -1);
+        await redis.hincrby(`poll:likes:count`, pollId, -1);
         hasLiked = false;
       } else {
         await redis.sadd(redisKey, userId);
-        await redis.hincrby(`post:likes:count`, postId, 1);
+        await redis.hincrby(`poll:likes:count`, pollId, 1);
         hasLiked = true;
       }
       
-      const countStr = await redis.hget(`post:likes:count`, postId);
+      const countStr = await redis.hget(`poll:likes:count`, pollId);
       newLikeCount = parseInt(countStr || "0", 10);
       
-      await redis.sadd("posts:dirty_likes", postId);
+      await redis.sadd("polls:dirty_likes", pollId);
     } else {
-      if (!memoryLikes.has(postId)) {
-        const post = await prisma.post.findUnique({
-          where: { id: postId },
+      if (!pollMemoryLikes.has(pollId)) {
+        const poll = await prisma.poll.findUnique({
+          where: { id: pollId },
           select: { like_count: true, likes: { select: { userId: true } } }
         });
-        const userSet = new Set(post?.likes.map(l => l.userId) || []);
-        memoryLikes.set(postId, userSet);
+        const userSet = new Set(poll?.likes.map(l => l.userId) || []);
+        pollMemoryLikes.set(pollId, userSet);
       }
 
-      const userSet = memoryLikes.get(postId);
+      const userSet = pollMemoryLikes.get(pollId);
       if (userSet.has(userId)) {
         userSet.delete(userId);
         hasLiked = false;
@@ -364,7 +358,7 @@ export const likePoll = async (req, res) => {
       }
 
       newLikeCount = userSet.size;
-      memoryDirty.add(postId);
+      pollMemoryDirty.add(pollId);
     }
 
     res.status(200).json({ success: true, liked: hasLiked, likesCount: newLikeCount });
@@ -373,5 +367,3 @@ export const likePoll = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to process like" });
   }
 };
-
-// Trigger Nodemon Restart - Cache Clear
