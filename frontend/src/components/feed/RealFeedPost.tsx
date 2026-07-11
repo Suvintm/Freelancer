@@ -6,6 +6,7 @@ import LottieComponent from 'lottie-react';
 import imageErrorAnimation from '../../assets/lottie/image-error.json';
 import type { RealPost } from './types';
 import { useLike } from '../../hooks/useLike';
+import { CommentsModal } from '../../features/comments/components/CommentsModal';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Lottie = ((LottieComponent as any).default || LottieComponent) as any;
@@ -23,6 +24,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   
   // Extract images and dimensions from media
   const images = post.media?.filter(m => m.urls.post || m.urls.full).map(m => resolveMediaUrl(m.urls.post || m.urls.full)) || [];
@@ -203,7 +205,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
               onTouchStart={(e) => e.stopPropagation()}
             >
               <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500`}><Heart size={26} fill={likedByMe ? "#ef4444" : "rgba(0,0,0,0.2)"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
-              <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
+              <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
             </div>
             <button 
@@ -233,7 +235,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
-              <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
             </div>
             <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Bookmark size={24} /></button>
@@ -256,9 +258,21 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
             <span className="text-text-muted dark:text-zinc-400 font-medium">{post.caption}</span>
           </p>
 
-          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.comment_count || 0} comments</button>
+          <button 
+            onClick={() => setIsCommentsOpen(true)}
+            className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity"
+          >
+            View all {post.comment_count || 0} comments
+          </button>
         </div>
       </div>
+
+      <CommentsModal 
+        isOpen={isCommentsOpen} 
+        onClose={() => setIsCommentsOpen(false)} 
+        entityType="POST" 
+        entityId={post.id} 
+      />
     </motion.article>
   );
 }

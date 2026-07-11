@@ -9,6 +9,7 @@ import storyCleanupProcessor from "./processors/storyCleanupProcessor.js";
 import searchFeedbackProcessor from "./processors/searchFeedbackProcessor.js";
 import searchAnalyticsProcessor from "./processors/searchAnalyticsProcessor.js";
 import likeSyncProcessor from "./processors/likeSyncProcessor.js";
+import commentProcessor from "./processors/commentProcessor.js";
 import { storyCleanupQueue, searchFeedbackQueue, searchAnalyticsQueue, likeSyncQueue } from "./queues.js";
 
 /**
@@ -98,6 +99,14 @@ if (connection) {
     lockDuration: 60000, // Sync shouldn't take long
   });
 
+  // ─── 8. COMMENT PROCESSING WORKER ───────────────────────────────────────────
+  const commentWorker = new Worker("comment-processing", commentProcessor, {
+    connection,
+    concurrency: 2,
+    drainDelay: 30000,
+    lockDuration: 30000,
+  });
+
   // ─── EVENT HANDLERS ─────────────────────────────────────────────────────────
   // SUCCESS: sampled at 5% — prevents log flooding
   syncWorker.on("completed", (job) =>
@@ -108,6 +117,9 @@ if (connection) {
   );
   storyWorker.on("completed", (job) =>
     sampledLogger.success("[Workers] Story job done", { jobId: job.id })
+  );
+  commentWorker.on("completed", (job) =>
+    sampledLogger.success("[Workers] Comment job done", { jobId: job.id })
   );
 
   // FAILURES: always log — never sample errors
@@ -155,10 +167,20 @@ if (connection) {
   );
   
   likeSyncWorker.on("failed", (job, err) => 
-    sampledLogger.error("[Workers] Like Sync job failed", err, { jobId: job?.id })
+    sampledLogger.error("[Workers] Like Sync job failed", err, {
+      jobId: job?.id,
+      attempt: job?.attemptsMade,
+    })
   );
 
-  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, searchFeedbackWorker, searchAnalyticsWorker, likeSyncWorker);
+  commentWorker.on("failed", (job, err) =>
+    sampledLogger.error("[Workers] Comment job failed", err, {
+      jobId: job?.id,
+      attempt: job?.attemptsMade,
+    })
+  );
+
+  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, searchFeedbackWorker, searchAnalyticsWorker, likeSyncWorker, commentWorker);
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
   // 🧹 [STORY SWEEPER] Run cleanup every 2 minutes (⚡ TEST MODE)

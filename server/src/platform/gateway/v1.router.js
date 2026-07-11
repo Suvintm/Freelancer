@@ -8,7 +8,7 @@ import { notificationRouter } from "../../domains/notification/index.js";
 import { paymentGatewayRouter, subscriptionRouter } from "../../domains/payment/index.js";
 import { creatorRouter } from "../../domains/creator/index.js";
 import { mediaRouter } from "../../domains/media/index.js";
-import { postRouter, storyRouter } from "../../domains/content/index.js";
+import { postRouter, storyRouter, commentRouter } from "../../domains/content/index.js";
 import { communityRouter } from "../../domains/community/index.js";
 
 import { messagingRouter } from "../../domains/messaging/index.js";
@@ -32,6 +32,7 @@ v1Router.use("/user", userRouter);
 v1Router.use("/notifications", notificationRouter);
 v1Router.use("/media", mediaRouter);
 v1Router.use("/social/stories", storyRouter);
+v1Router.use("/social/comments", commentRouter);
 v1Router.use("/social", postRouter); // Mount social base after specific sub-routes
 v1Router.use("/profile", profileRouter);
 v1Router.use("/youtube-creator", creatorRouter);

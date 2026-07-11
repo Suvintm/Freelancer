@@ -4,6 +4,7 @@ import Hls from 'hls.js';
 import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import type { RealPost } from './types';
+import { CommentsModal } from '../../features/comments/components/CommentsModal';
 
 const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;
@@ -30,6 +31,7 @@ export function RealFeedReel({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   const mediaObj = post.media?.[0];
   const mediaDims = { width: mediaObj?.width || mediaObj?.metadata?.width || 0, height: mediaObj?.height || mediaObj?.metadata?.height || 0 };
@@ -233,7 +235,7 @@ export function RealFeedReel({
               onClick={(e) => e.stopPropagation()}
             >
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500"><Heart size={26} fill="rgba(0,0,0,0.2)" /></button>
-              <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
+              <button onClick={() => setIsCommentsOpen(true)} className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
             </div>
             <button 
@@ -261,7 +263,7 @@ export function RealFeedReel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} /></button>
-              <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
             </div>
             <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Bookmark size={24} /></button>
@@ -284,9 +286,21 @@ export function RealFeedReel({
             <span className="text-text-muted dark:text-zinc-400 font-medium">{post.caption}</span>
           </p>
 
-          <button className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity">View all {post.comment_count || 0} comments</button>
+          <button 
+            onClick={() => setIsCommentsOpen(true)}
+            className="text-[12px] text-text-muted font-medium mt-2 opacity-60 hover:opacity-100 transition-opacity"
+          >
+            View all {post.comment_count || 0} comments
+          </button>
         </div>
       </div>
+
+      <CommentsModal 
+        isOpen={isCommentsOpen} 
+        onClose={() => setIsCommentsOpen(false)} 
+        entityType="REEL" 
+        entityId={post.id} 
+      />
     </motion.article>
   );
 }
