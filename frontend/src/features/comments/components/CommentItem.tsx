@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Heart, MoreHorizontal } from 'lucide-react';
 import { useToggleCommentLike } from '../../../mutations/commentMutations';
 import { useReplies } from '../../../queries/commentQueries';
 import type { Comment } from '../../../queries/commentQueries';

@@ -26,12 +26,8 @@ export const CommentsSheet: React.FC<CommentsSheetProps> = ({ entityType, entity
     // If it's a top level comment, we reply to it directly.
     // If it's a nested reply, the item passes up its own ID, but since our backend is 1-level deep,
     // we should actually set the parentId to the top-level comment's ID.
-    // Assuming `parentId` is available, if not, fallback to comment.id
-    const targetId = comment.id; // For 1-level nesting, we ideally need the parentId if this is already a reply.
-    // However, our CommentItem component passes the top level comment if clicked from top level.
-    // If clicked from a reply, it passes the reply.
     // To strictly enforce 1-level deep nesting, if the comment has a parentId, use that.
-    const resolvedParentId = (comment as any).parentId || comment.id;
+    const resolvedParentId = comment.parentId || comment.id;
     
     setReplyingTo({
       id: resolvedParentId,

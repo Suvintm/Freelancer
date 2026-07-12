@@ -12,6 +12,7 @@ export interface CommentUser {
 export interface Comment {
   id: string;
   userId: string;
+  parentId?: string | null;
   content: string;
   like_count: number;
   reply_count: number;
