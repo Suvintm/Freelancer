@@ -7,6 +7,7 @@ import { useLottie } from 'lottie-react';
 import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
 import watchFullVideoLottieData from '../../assets/lottie/WatchFullVideoCTA.json';
 import type { RealPost } from './types';
+import { CommentsModal } from '../../features/comments/components/CommentsModal';
 
 export function RealFeedYoutube({ 
   post, 
@@ -23,6 +24,7 @@ export function RealFeedYoutube({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   const mediaUrls = post.media?.[0]?.urls;
   const hlsUrl = resolveMediaUrl(mediaUrls?.hls);
@@ -247,7 +249,7 @@ export function RealFeedYoutube({
               <Heart size={20} className="hover:text-red-500 transition-colors" />
               <span className="text-[13px] font-semibold">{post.like_count?.toLocaleString() || 0}</span>
             </button>
-            <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
+            <button onClick={() => setIsCommentsOpen(true)} className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
               <MessageCircle size={20} />
               <span className="text-[13px] font-semibold">{post.comment_count || 0}</span>
             </button>
@@ -263,6 +265,13 @@ export function RealFeedYoutube({
           </div>
         </div>
       </div>
+
+      <CommentsModal 
+        isOpen={isCommentsOpen} 
+        onClose={() => setIsCommentsOpen(false)} 
+        entityType="YOUTUBE_POST" 
+        entityId={post.id} 
+      />
     </motion.article>
   );
 }

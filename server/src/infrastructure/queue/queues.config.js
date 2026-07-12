@@ -65,6 +65,20 @@ export const likeSyncQueue = connection ? new Queue("like-sync", {
     }
 }) : null;
 
+/**
+ * commentProcessingQueue
+ * Used for syncing comment counts and dispatching notifications asynchronously.
+ */
+export const commentProcessingQueue = connection ? new Queue("comment-processing", {
+    connection,
+    defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 2000 },
+        removeOnComplete: true,
+        removeOnFail: 100,
+    }
+}) : null;
+
 if (connection) {
     logger.info("[Queues] BullMQ initialized ✅");
 }
