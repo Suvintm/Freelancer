@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Comment } from '../queries/commentQueries';
 
 interface AddCommentPayload {
   entityType: 'POST' | 'REEL' | 'YOUTUBE_POST';
