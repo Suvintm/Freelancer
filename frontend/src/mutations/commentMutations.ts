@@ -25,7 +25,7 @@ export const useAddComment = () => {
       const { data } = await api.post('/social/comments', payload);
       return data.data; // Returns the created comment
     },
-    onSuccess: (newComment: Comment, variables) => {
+    onSuccess: (_, variables) => {
       // Optimistically invalidate/update queries
       if (variables.parentId) {
         queryClient.invalidateQueries({ queryKey: ['replies', variables.parentId] });
