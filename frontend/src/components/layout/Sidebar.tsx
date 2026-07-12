@@ -10,6 +10,11 @@ import defaultProfile       from '../../assets/defaultprofile.png';
 import { AccountSwitcher } from '../profile/AccountSwitcher';
 import LottieComponent from 'lottie-react';
 import verifyLottieAnimation from '../../assets/lottie/verify_lottie.json';
+import verifyLottieBlue from '../../assets/lottie/verify_lottie_blue.json';
+import verifyLottiePurple from '../../assets/lottie/verify_lottie_purple.json';
+import brandBadge from '../../assets/verifiedBadges/brand_badge.png';
+import editorBadge from '../../assets/verifiedBadges/editor_badge.png';
+import ytBadge from '../../assets/verifiedBadges/yt_badge.png';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 const HIGHLIGHTS = [
@@ -40,6 +45,17 @@ export const Sidebar = () => {
 
   const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
 
+  const userCategory = user?.primaryRole?.category || user?.role || '';
+  let activeLottie = verifyLottieAnimation;
+  let activeBadge = ytBadge;
+  
+  if (isClientCategory || userCategory.includes('client') || userCategory.includes('brand')) {
+    activeLottie = verifyLottieBlue;
+    activeBadge = brandBadge;
+  } else if (userCategory.includes('editor')) {
+    activeLottie = verifyLottiePurple;
+    activeBadge = editorBadge;
+  }
   const CHANNEL = {
     name:           user?.name || 'User',
     handle:         `@${user?.username || 'user'}`,
@@ -83,11 +99,11 @@ export const Sidebar = () => {
                   className={`w-11 h-11 rounded-full object-cover border-2 ${isDarkMode ? 'border-border-main' : 'border-zinc-200'}`}
                 />
                 {/* Verified badge */}
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center border-2 border-container">
-                  <svg width="7" height="6" viewBox="0 0 7 6" fill="none">
-                    <path d="M1 3l1.5 1.5L6 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
+                <img 
+                  src={activeBadge} 
+                  alt="Verified" 
+                  className="absolute -bottom-1 -right-1 w-[22px] h-[22px] rounded-full object-contain" 
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <div 
@@ -179,7 +195,7 @@ export const Sidebar = () => {
           >
             <div className="flex items-center gap-2">
               <Lottie 
-                animationData={verifyLottieAnimation} 
+                animationData={activeLottie} 
                 loop={true} 
                 style={{ width: '42px', height: '42px', objectFit: 'contain' }} 
               />
