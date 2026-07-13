@@ -9,6 +9,8 @@ import type { AuthState } from './slices/authSlice';
 import { onboardingReducer } from './slices/onboardingSlice';
 import type { TempSignupData, YouTubeChannel } from './slices/onboardingSlice';
 import { uiReducer } from './slices/uiSlice';
+import { uploadReducer } from './slices/uploadSlice';
+import type { UploadState } from './slices/uploadSlice';
 
 const authPersistConfig = {
   key: 'auth',
@@ -27,6 +29,7 @@ export const store = configureStore({
     auth: persistReducer(authPersistConfig, authReducer) as unknown as Reducer,
     onboarding: persistReducer(onboardingPersistConfig, onboardingReducer) as unknown as Reducer,
     ui: uiReducer,
+    upload: uploadReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -51,6 +54,7 @@ export interface RootState {
   ui: {
     sidebarOpen: boolean;
   };
+  upload: UploadState;
 }
 
 export type AppDispatch = typeof store.dispatch;
