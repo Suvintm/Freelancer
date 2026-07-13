@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
 import { removeUpload } from '../../store/slices/uploadSlice';
 import type { UploadJob } from '../../store/slices/uploadSlice';
-import { useTheme } from '../../hooks/useTheme';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Video, Image as ImageIcon, Youtube, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import LottieComponent from 'lottie-react';
@@ -27,31 +26,33 @@ const getIconForType = (type: UploadJob['type']) => {
 
 const UploadProgressBar = ({ job, isStackItem = false }: { job: UploadJob, isStackItem?: boolean }) => {
   const dispatch = useDispatch();
-  const { isDarkMode } = useTheme();
   const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (job.status === 'success' || job.status === 'failed') {
-      setCountdown(5);
+      // Async start to avoid synchronous setState cascading renders
+      setTimeout(() => {
+        setCountdown(5);
+      }, 0);
+
+      timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev === null) return null;
+          const next = prev - 1;
+          if (next <= 0) {
+            clearInterval(timer);
+            dispatch(removeUpload({ id: job.id }));
+          }
+          return next;
+        });
+      }, 1000);
     }
-  }, [job.status]);
 
-  useEffect(() => {
-    if (countdown === null) return;
-    
-    if (countdown <= 0) {
-      dispatch(removeUpload({ id: job.id }));
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setCountdown(prev => (prev !== null ? prev - 1 : null));
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdown, dispatch, job.id]);
-
-  const isTerminal = job.status === 'success' || job.status === 'failed';
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [job.status, dispatch, job.id]);
   const isFailed = job.status === 'failed';
   const isSuccess = job.status === 'success';
 

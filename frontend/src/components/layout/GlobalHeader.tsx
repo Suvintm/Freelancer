@@ -346,10 +346,6 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
 
           <div className="h-5 w-px bg-border-main shrink-0" />
 
-           
-
-          <div className="h-5 w-px bg-border-main shrink-0" />
-
           {/* SuviX Credits */}
           <div 
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-all group shrink-0"
