@@ -67,6 +67,8 @@ model User {
   @@index([role])
   @@index([is_onboarded])
   @@map("users")
+  content_affinities UserContentAffinity[]
+  recommendation_logs RecommendationLog[]
 }
 
 model UserProfile {
@@ -89,6 +91,14 @@ model UserProfile {
   categoryId        String?            @map("role_category_id") @db.Uuid
   created_at        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at        DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  
+  // Recommendation Engine Preferences
+  preferences_completed Boolean        @default(false)
+  preferred_language    String?        @db.VarChar(50)
+  preferred_region      String?        @db.VarChar(100)
+  preferred_vibe        String?        @db.VarChar(50)
+  content_interests     String[]       @default([])
+
   category          RoleCategory?      @relation(fields: [categoryId], references: [id])
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   roles             UserRoleMapping[]
@@ -1244,3 +1254,56 @@ model CommentLike {
   @@unique([commentId, userId])
   @@map("comment_likes")
 }
+
+// ── Recommendation Engine Tables ────────────────────────────────────────
+model ContentMeta {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentId   String   @db.Uuid
+  contentType ContentType
+  language    String?  @db.VarChar(50)
+  region      String?  @db.VarChar(100)
+  tags        String[] @default([])
+  vibe        String?  @db.VarChar(50)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([contentType, language])
+  @@index([contentId, contentType])
+  @@map("content_meta")
+}
+
+enum ContentType {
+  POST
+  REEL
+  YOUTUBE_POST
+  POLL
+}
+
+model UserContentAffinity {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  contentId       String   @db.Uuid
+  contentType     ContentType
+  affinityScore   Float    @default(0)
+  last_interaction DateTime @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId, contentType])
+  @@index([userId, affinityScore])
+  @@map("user_content_affinity")
+}
+
+model RecommendationLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  contentId   String   @db.Uuid
+  contentType ContentType
+  served_at   DateTime @default(now()) @db.Timestamptz(6)
+  algorithm   String?  @db.VarChar(100)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, served_at])
+  @@map("recommendation_log")
+}
+

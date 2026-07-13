@@ -10,6 +10,7 @@ export interface AuthUser {
   profilePicture?: string;
   coverBanner?: string | null;
   isOnboarded: boolean;
+  preferencesCompleted?: boolean;
   primaryRole: {
     group: 'CLIENT' | 'PROVIDER';
     category: string;
