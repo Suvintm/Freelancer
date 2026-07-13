@@ -7,7 +7,8 @@ import {
    updateMinimalProfile,
    updateCoverBanner,
    followUser,
-   unfollowUser
+   unfollowUser,
+   updatePreferences
 } from "./controllers/userController.js";
 import { upload } from "../../shared/middleware/upload.middleware.js";
 import { publicApiLimiter, heavyLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
@@ -21,6 +22,7 @@ router.put("/me/cover-banner", authenticate, heavyLimiter, updateCoverBanner);
 router.put("/profile/minimal", authenticate, heavyLimiter, updateMinimalProfile);
 router.post("/follow", authenticate, heavyLimiter, followUser);
 router.post("/unfollow", authenticate, heavyLimiter, unfollowUser);
+router.put("/me/preferences", authenticate, heavyLimiter, updatePreferences);
 
 export default router;
 

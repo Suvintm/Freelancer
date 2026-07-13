@@ -1,4 +1,4 @@
-import prisma from '../config/prisma.js';
+import prisma from '../src/infrastructure/database/postgres.js';
 
 const DUMMY_CATEGORIES = {
   direct_client: {

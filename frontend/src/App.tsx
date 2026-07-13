@@ -18,6 +18,7 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import Maintenance from './pages/Maintenance';
 import OAuthSuccess from './pages/OAuthSuccess';
 import CompleteProfile from './pages/CompleteProfile';
+import Preferences from './pages/onboarding/Preferences';
 import Notifications from './pages/Notifications';
 import TempUploadPortal from './pages/TempUploadPortal';
 import CreateContent from './pages/CreateContent';
@@ -161,6 +162,16 @@ function App() {
             <OnboardingGuard requiredStep="role">
               <CompleteProfile />
             </OnboardingGuard>
+          }
+        />
+
+        {/* Preferences page — immediately after profile completion */}
+        <Route
+          path="/onboarding/preferences"
+          element={
+            <AuthGuard>
+              <Preferences />
+            </AuthGuard>
           }
         />
 

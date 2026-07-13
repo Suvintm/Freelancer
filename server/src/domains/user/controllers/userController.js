@@ -380,6 +380,51 @@ export const unfollowUser = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Update user recommendation preferences
+// @route   PUT /api/user/me/preferences
+// @access  Private
+export const updatePreferences = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const { language, region, vibe, interests } = req.body;
+
+  if (!language || !region || !vibe) {
+    throw new ApiError(400, "Language, region, and vibe are required");
+  }
+
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId }
+  });
+
+  if (!profile) throw new ApiError(404, "User profile not found");
+
+  const updatedProfile = await prisma.userProfile.update({
+    where: { userId },
+    data: {
+      preferred_language: language,
+      preferred_region: region,
+      preferred_vibe: vibe,
+      content_interests: interests || [],
+      preferences_completed: true,
+    }
+  });
+
+  await deleteCache(CacheKey.userProfile(userId));
+
+  return res.status(200).json({
+    success: true,
+    message: "Preferences updated successfully",
+    preferences: {
+      language: updatedProfile.preferred_language,
+      region: updatedProfile.preferred_region,
+      vibe: updatedProfile.preferred_vibe,
+      interests: updatedProfile.content_interests,
+      completed: updatedProfile.preferences_completed
+    }
+  });
+});
+
 export default {
   getMyBasicInfo,
   updateMyBasicInfo,
@@ -387,6 +432,7 @@ export default {
   updateMinimalProfile,
   updateCoverBanner,
   followUser,
-  unfollowUser
+  unfollowUser,
+  updatePreferences
 };
 

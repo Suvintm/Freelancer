@@ -196,6 +196,8 @@ export const formatAuthResponse = (user, subscription = null) => {
 
     // ── Guaranteed strict boolean — the navigation guard uses === true ────────
     isOnboarded: !!user.is_onboarded,
+    
+    preferencesCompleted: !!user.profile?.preferences_completed,
 
     isVerified: !!user.is_verified,
     isBanned: !!user.is_banned,

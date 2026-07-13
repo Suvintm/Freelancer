@@ -54,9 +54,25 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   // 5. ONBOARDING GUARD: Ensure user has completed setup
-  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/subcategory-selection', '/complete-profile'];
+  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
   if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
+  }
+
+  // 6. PREFERENCES GUARD: Ensure fully onboarded users have completed their preferences
+  // We check for preferencesCompleted === false explicitly to avoid redirecting 
+  // if the backend hasn't populated this field yet (e.g., during migration rollout).
+  // NOTE: Brand Sponsors (social_promoter) are exempt from content preferences.
+  const isBrandClient = user?.primaryRole?.category === 'social_promoter';
+  
+  if (
+    user && 
+    user.isOnboarded && 
+    user.preferencesCompleted === false && 
+    !isBrandClient && 
+    location.pathname !== '/onboarding/preferences'
+  ) {
+    return <Navigate to="/onboarding/preferences" replace />;
   }
 
   return <>{children}</>;

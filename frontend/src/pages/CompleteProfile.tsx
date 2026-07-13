@@ -169,7 +169,7 @@ export default function CompleteProfile() {
         // Mark onboarding as complete before clearing (for any analytics/logging)
         dispatch(setAuth({ user: res.data.user, token: res.data.token, refreshToken: res.data.refreshToken }));
         dispatch(clearTempSignupData());
-        navigate('/home');
+        navigate('/onboarding/preferences');
       }
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
