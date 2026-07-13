@@ -8,6 +8,7 @@ import { MobileSidebar } from './MobileSidebar';
 import { useTheme } from '../../hooks/useTheme';
 import { useState } from 'react';
 import { SyncProgressBar } from './SyncProgressBar';
+import { GlobalUploadProgress } from './GlobalUploadProgress';
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -44,6 +45,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="flex-1 min-w-0 h-full flex flex-col relative bg-page lg:py-4 lg:px-2">
           {/* Real-time background sync progress tracker */}
           <SyncProgressBar />
+          
+          <GlobalUploadProgress />
 
           {/* Floating Canvas with Rounded Corners */}
           <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${isFullPage || location.pathname === '/home' ? (isDarkMode ? 'bg-[#000000]' : 'bg-white') : 'bg-container'}`}>

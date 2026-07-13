@@ -1,8 +1,9 @@
 import { Search, Bell, Plus, Sun, Moon, Sparkles, Crown, Zap, Gem, ChevronRight, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme }  from '../../hooks/useTheme';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
+import { addUpload, updateUploadProgress, updateUploadStatus } from '../../store/slices/uploadSlice';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useState, useEffect, useRef } from 'react';
 import { SearchDropdown } from './SearchDropdown';
@@ -23,6 +24,7 @@ const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent 
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { isDarkMode, toggleTheme } = useTheme();
   const user = useSelector(selectUser);
   const { tier, isPremium } = useSubscription();
@@ -344,13 +346,78 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
 
           <div className="h-5 w-px bg-border-main shrink-0" />
 
-          {/* Wallet / Earnings Summary */}
-          <div className="flex flex-col items-end px-2 group cursor-pointer">
-            <p className="text-[11px] font-black text-text-main leading-tight tracking-tight group-hover:text-blue-500 transition-colors">$0.00</p>
-            <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider opacity-60">Balance</p>
+           
+
+          <div className="h-5 w-px bg-border-main shrink-0" />
+
+          {/* SuviX Credits */}
+          <div 
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-all group shrink-0"
+            title="SuviX Credits"
+            onClick={() => navigate('/subscription')}
+          >
+            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-sm group-hover:scale-110 transition-transform">
+              <Sparkles size={10} className="text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[12px] font-black leading-none text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-400 dark:to-purple-400">
+                1,250
+              </span>
+            </div>
           </div>
 
+          <div className="h-5 w-px bg-border-main shrink-0 mr-1" />
+
           <div ref={createDropdownRef} className="relative shrink-0 z-40">
+            {/* Test Upload Button (Temporary) */}
+            <button
+              onClick={() => {
+                const id = Math.random().toString(36).substring(7);
+                const types: ('reel' | 'post' | 'youtube')[] = ['reel', 'post', 'youtube'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                dispatch(addUpload({
+                  id,
+                  type,
+                  status: 'uploading',
+                  progress: 0,
+                  message: `Uploading ${type}...`
+                }));
+
+                // Simulate progress
+                let progress = 0;
+                const interval = setInterval(() => {
+                  progress += Math.floor(Math.random() * 20) + 5;
+                  if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    
+                    // Simulate success or failure
+                    const isSuccess = Math.random() > 0.3;
+                    dispatch(updateUploadStatus({
+                      id,
+                      status: isSuccess ? 'success' : 'failed',
+                      message: isSuccess ? 'Upload successful!' : 'Failed: Redis Unavailable',
+                      progress: 100
+                    }));
+                  } else {
+                    dispatch(updateUploadProgress({ id, progress }));
+                    if (progress > 50) {
+                      dispatch(updateUploadStatus({ id, status: 'processing', message: `Processing ${type}...` }));
+                    }
+                  }
+                }, 1000);
+              }}
+              className="
+                inline-flex items-center gap-1.5 h-8 px-3 mr-2 rounded-full
+                bg-zinc-800 hover:bg-zinc-700
+                text-white text-[12px] font-semibold cursor-pointer
+                shadow-sm active:scale-[0.98] transition-all shrink-0
+              "
+            >
+              Test Upload
+            </button>
+
             <button 
               onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
               className="
