@@ -29,7 +29,7 @@ const UploadProgressBar = ({ job, isStackItem = false }: { job: UploadJob, isSta
   const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (job.status === 'success' || job.status === 'failed') {
       // Async start to avoid synchronous setState cascading renders
       setTimeout(() => {
