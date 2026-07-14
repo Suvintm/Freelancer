@@ -1,4 +1,4 @@
-# 🎬 SuviX - Video Editor Freelancing Platform
+# 🎬 SuviX - Freelancing Platform
 
 <div align="center">
 
