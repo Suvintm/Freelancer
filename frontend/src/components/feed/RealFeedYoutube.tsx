@@ -8,6 +8,8 @@ import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
 import watchFullVideoLottieData from '../../assets/lottie/WatchFullVideoCTA.json';
 import type { RealPost } from './types';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
+import { formatTimeAgo } from '../../utils/dateFormatter';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 
 export function RealFeedYoutube({ 
   post, 
@@ -173,6 +175,13 @@ export function RealFeedYoutube({
             <div className="flex flex-col drop-shadow-md">
               <h4 className="text-[14px] font-bold text-white tracking-wide leading-tight flex items-center gap-2">
                 {userName}
+                <VerifiedBadge isVerified={post.user?.is_verified} role={post.user?.role} />
+                {post.created_at && (
+                  <>
+                    <span className="text-white/70 font-medium text-[11px]">•</span>
+                    <span className="text-white/70 font-medium text-[13px]">{formatTimeAgo(post.created_at)}</span>
+                  </>
+                )}
                 <div ref={lottieContainerRef} className="w-12 h-6 flex items-center justify-center -ml-1 scale-[1.75] transform origin-left">
                   {LottieView}
                 </div>

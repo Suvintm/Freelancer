@@ -5,7 +5,8 @@ import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmar
 import defaultProfile from '../../assets/defaultprofile.png';
 import type { RealPost } from './types';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
-
+import { formatTimeAgo } from '../../utils/dateFormatter';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;
 
@@ -161,6 +162,13 @@ export function RealFeedReel({
           <div className="flex flex-col justify-center">
             <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
               {userName}
+              <VerifiedBadge isVerified={post.user?.is_verified} role={post.user?.role} className="w-[12px] h-[12px]" />
+              {post.created_at && (
+                <>
+                  <span className="text-white/80 font-normal text-[11px]">•</span>
+                  <span className="text-white/80 font-normal text-[13px]">{formatTimeAgo(post.created_at)}</span>
+                </>
+              )}
             </h4>
             {/* Keeping the location placeholder for later if RealPost gets location */}
           </div>

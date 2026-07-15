@@ -5,13 +5,7 @@ import { useDispatch } from 'react-redux';
 import { updateUser } from '../../../../../store/slices/authSlice';
 import { api } from '../../../../../api/client';
 import { Edit3, Plus, Loader2, Globe, BarChart3, Briefcase, Users2 } from 'lucide-react';
-
-const VerifiedBadge = () => (
-  <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none">
-    <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" fill="#FF3040" />
-    <path d="m9 12 2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+import { VerifiedBadge } from '../../../../ui/VerifiedBadge';
 
 export const MobileIdentity = ({ user }: { user: any }) => {
   const dispatch = useDispatch();
@@ -69,7 +63,7 @@ export const MobileIdentity = ({ user }: { user: any }) => {
             <h1 className="text-base font-bold text-text-main leading-none tracking-tight truncate max-w-[140px]">
               {displayName}
             </h1>
-            <VerifiedBadge />
+            <VerifiedBadge isVerified={user?.is_verified} role={user?.role} className="w-4 h-4" />
           </div>
           <p className="text-[11px] font-normal text-text-muted mt-0.5 truncate max-w-[160px]">
             {user?.username 

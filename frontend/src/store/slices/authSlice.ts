@@ -9,6 +9,7 @@ export interface AuthUser {
   role: string;
   profilePicture?: string;
   coverBanner?: string | null;
+  is_verified?: boolean;
   isOnboarded: boolean;
   preferencesCompleted?: boolean;
   primaryRole: {

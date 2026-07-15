@@ -200,6 +200,7 @@ export const formatAuthResponse = (user, subscription = null) => {
     preferencesCompleted: !!user.profile?.preferences_completed,
 
     isVerified: !!user.is_verified,
+    is_verified: !!user.is_verified,
     isBanned: !!user.is_banned,
     createdAt: user.created_at,
 

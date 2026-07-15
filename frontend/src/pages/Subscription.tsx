@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectUser, setTokens } from '../store/slices/authSlice';
+import { selectUser, updateUser } from '../store/slices/authSlice';
 import { subscriptionService } from '../api/services/subscription.service';
 import type { Plan, UserSubscription } from '../api/services/subscription.service';
 import { authService } from '../api/services/auth.service';
@@ -136,13 +136,7 @@ export default function Subscription() {
     try {
       const meRes = await authService.fetchMe();
       if (meRes.success && meRes.user) {
-        const { store } = await import('../store');
-        const currentAuth = store.getState().auth;
-        dispatch(setTokens({
-          token: currentAuth.token,
-          refreshToken: currentAuth.refreshToken,
-          user: meRes.user
-        }));
+        dispatch(updateUser(meRes.user));
       }
     } catch (err) {
       console.error('Failed to refresh user auth state:', err);
@@ -495,7 +489,7 @@ export default function Subscription() {
                     </p>
 
                     <div className="space-y-2 mb-6">
-                      {plan.features.map((feat, idx) => (
+                      {[...plan.features, ...(plan.planTier !== 'free' ? ['Verified Account Badge'] : [])].map((feat, idx) => (
                         <div key={idx} className="flex items-start gap-2">
                           <MdCheck size={14} className={`mt-0.5 shrink-0 ${plan.planTier === 'pro' ? 'text-[#1a73e8]' : isDarkMode ? 'text-zinc-400' : 'text-[#5f6368]'}`} />
                           <span className={`text-xs ${isDarkMode ? 'text-zinc-300' : 'text-[#3c4043]'}`}>{feat}</span>

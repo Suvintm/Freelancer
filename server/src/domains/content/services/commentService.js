@@ -28,7 +28,7 @@ class CommentService {
     const comment = await prisma.comment.create({
       data: commentData,
       include: {
-        user: { select: { id: true, username: true, profile: { select: { profile_picture: true } } } }
+        user: { select: { id: true, username: true, role: true, is_verified: true, profile: { select: { profile_picture: true } } } }
       }
     });
 
@@ -78,7 +78,7 @@ class CommentService {
         { id: 'desc' }
       ],
       include: {
-        user: { select: { id: true, username: true, profile: { select: { profile_picture: true } } } },
+        user: { select: { id: true, username: true, role: true, is_verified: true, profile: { select: { profile_picture: true } } } },
         // If 1-level deep, maybe we don't fetch replies here, just show reply_count
       }
     };
@@ -115,7 +115,7 @@ class CommentService {
         { id: 'asc' }
       ],
       include: {
-        user: { select: { id: true, username: true, profile: { select: { profile_picture: true } } } }
+        user: { select: { id: true, username: true, role: true, is_verified: true, profile: { select: { profile_picture: true } } } }
       }
     };
 

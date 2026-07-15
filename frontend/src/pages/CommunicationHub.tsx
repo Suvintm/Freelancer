@@ -7,8 +7,9 @@ import { api } from '../api/client';
 import defaultProfile from '../assets/defaultprofile.png';
 import { Search, Send, Plus, MessageSquare, ArrowLeft, Loader2, UserCheck, X, Check, CheckCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
+import { useSearchParams } from 'react-router-dom';
+import { VerifiedBadge } from '../components/ui/VerifiedBadge';
 
 interface Conversation {
   id: string;
@@ -18,6 +19,8 @@ interface Conversation {
     username: string;
     profilePicture: string | null;
     primaryRole: string;
+    is_verified?: boolean;
+    role?: string;
   };
   lastMessage: {
     id: string;
@@ -47,6 +50,8 @@ interface Contact {
   username: string;
   profilePicture: string | null;
   primaryRole: string;
+  is_verified?: boolean;
+  role?: string;
 }
 
 export default function CommunicationHub() {
@@ -203,7 +208,9 @@ export default function CommunicationHub() {
                   name: matched.name,
                   username: matched.username,
                   profilePicture: matched.profilePicture,
-                  primaryRole: matched.primaryRole
+                  primaryRole: matched.primaryRole,
+                  is_verified: matched.is_verified,
+                  role: matched.role
                 },
                 lastMessage: {
                   id: '',
@@ -292,7 +299,9 @@ export default function CommunicationHub() {
           name: contact.name,
           username: contact.username,
           profilePicture: contact.profilePicture,
-          primaryRole: contact.primaryRole
+          primaryRole: contact.primaryRole,
+          is_verified: contact.is_verified,
+          role: contact.role
         },
         lastMessage: {
           id: '',
@@ -815,9 +824,12 @@ export default function CommunicationHub() {
                         alt={contact.name} 
                         className="w-10 h-10 rounded-full object-cover border dark:border-white/10 border-zinc-200"
                       />
-                      <div>
-                        <h4 className="text-xs font-bold leading-tight">{contact.name}</h4>
-                        <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">@{contact.username}</p>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <h4 className="text-xs font-bold leading-tight truncate">{contact.name}</h4>
+                          <VerifiedBadge isVerified={contact.is_verified} role={contact.role} className="w-[12px] h-[12px]" />
+                        </div>
+                        <p className="text-[10px] text-zinc-500 font-semibold mt-0.5 truncate">@{contact.username}</p>
                         <p className="text-[9px] font-bold text-rose-500 mt-1 uppercase tracking-wider">{contact.primaryRole}</p>
                       </div>
                     </button>
