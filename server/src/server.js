@@ -11,6 +11,7 @@ import { initSocket } from "./platform/socket/socket.gateway.js";
 import { initFirebaseAdmin } from "./infrastructure/push/fcm.admin.js";
 import { startLikeSyncScheduler } from "./infrastructure/queue/workers/schedulers/likeSync.scheduler.js";
 import { startQuotaResetScheduler } from "./infrastructure/queue/workers/schedulers/quotaReset.scheduler.js";
+import { startSubscriptionSyncScheduler } from "./infrastructure/queue/workers/schedulers/subscriptionSync.scheduler.js";
 // Domain entrypoints
 import { youtubeQuotaManager, bootstrapCreator } from "./domains/creator/index.js";
 import { initReactionWorker } from "./domains/messaging/index.js";
@@ -59,6 +60,7 @@ const startServer = async () => {
   //    Includes: YouTube quota reset at midnight Pacific (YouTube's actual reset time)
   startLikeSyncScheduler();
   startQuotaResetScheduler();
+  startSubscriptionSyncScheduler();
 
   // 6. BullMQ Background Workers
   //    Controlled by ENABLE_WORKERS env var so you decide when they run.

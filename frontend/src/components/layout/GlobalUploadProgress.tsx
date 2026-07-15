@@ -57,12 +57,12 @@ const UploadProgressBar = ({ job, isStackItem = false }: { job: UploadJob, isSta
   const isSuccess = job.status === 'success';
 
   return (
-    <div className={`relative flex items-center p-3 gap-3 w-full bg-white dark:bg-zinc-900 overflow-hidden ${isStackItem ? 'border-b border-zinc-100 dark:border-zinc-800 last:border-0' : 'rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-zinc-200 dark:border-zinc-800'}`}>
+    <div className={`relative flex items-center p-3 gap-3 w-full bg-white dark:bg-black overflow-hidden ${isStackItem ? 'border-b border-black/20 dark:border-white/20 last:border-0' : 'rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-black/20 dark:border-white/20'}`}>
       
       {/* Background Progress Fill */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-5 dark:opacity-[0.03]">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <motion.div 
-          className="h-full bg-black dark:bg-white"
+          className={`h-full ${isFailed ? 'bg-rose-500/10' : isSuccess ? 'bg-emerald-500/10' : 'bg-black/10 dark:bg-white/10'}`}
           initial={{ width: 0 }}
           animate={{ width: `${job.progress}%` }}
           transition={{ ease: 'easeOut', duration: 0.3 }}
@@ -70,7 +70,7 @@ const UploadProgressBar = ({ job, isStackItem = false }: { job: UploadJob, isSta
       </div>
 
       {/* Lottie Animation or Status Icon */}
-      <div className="z-10 shrink-0 w-10 h-10 flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+      <div className="z-10 shrink-0 w-10 h-10 flex items-center justify-center bg-white dark:bg-black border border-black/5 dark:border-white/10 rounded-xl">
         {isSuccess ? (
           <CheckCircle2 className="w-6 h-6 text-emerald-500" />
         ) : isFailed ? (
@@ -90,19 +90,19 @@ const UploadProgressBar = ({ job, isStackItem = false }: { job: UploadJob, isSta
       <div className="z-10 flex-1 min-w-0 flex flex-col justify-center">
         <div className="flex items-center gap-2 mb-1">
           {getIconForType(job.type)}
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs font-semibold uppercase tracking-wider text-black dark:text-white">
             {job.type} Upload
           </span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className={`text-sm font-medium truncate ${isFailed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+          <span className={`text-sm font-medium truncate ${isFailed ? 'text-rose-600 dark:text-rose-400' : 'text-black dark:text-white'}`}>
             {job.message || 'Processing...'}
           </span>
           <div className="flex items-center gap-3 shrink-0">
             {countdown !== null ? (
-              <span className="text-xs text-zinc-400">Dismissing in {countdown}s</span>
+              <span className="text-xs font-medium text-black/60 dark:text-white/60">Dismissing in {countdown}s</span>
             ) : (
-              <span className="text-sm font-bold text-zinc-800 dark:text-white">{job.progress}%</span>
+              <span className="text-sm font-semibold text-black dark:text-white">{job.progress}%</span>
             )}
           </div>
         </div>
@@ -163,24 +163,24 @@ export const GlobalUploadProgress = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="w-full rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden flex flex-col"
+            className="w-full rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-black/20 dark:border-white/20 bg-white dark:bg-black overflow-hidden flex flex-col"
           >
             <div 
-              className="flex items-center justify-between px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 cursor-pointer border-b border-zinc-100 dark:border-zinc-800 select-none hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              className="flex items-center justify-between px-4 py-2 bg-white dark:bg-black cursor-pointer border-b border-black/20 dark:border-white/20 select-none hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               onClick={() => setIsExpanded(!isExpanded)}
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                <span className="text-xs font-semibold text-black dark:text-white">
                   {jobs.length} Active Uploads
                 </span>
-                <span className="flex items-center justify-center bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                <span className="flex items-center justify-center bg-black dark:bg-white text-white dark:text-black text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
                   {remainingCount}+
                 </span>
               </div>
               {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-zinc-500" />
+                <ChevronDown className="w-4 h-4 text-black dark:text-white" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-zinc-500" />
+                <ChevronUp className="w-4 h-4 text-black dark:text-white" />
               )}
             </div>
 

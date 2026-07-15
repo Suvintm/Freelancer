@@ -1,12 +1,13 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import { api } from '../api/client';
 import { uploadMediaDetailed } from '../utils/s3Uploader';
 import { motion, AnimatePresence } from 'framer-motion';
 import CreateImagePostWizard from '../components/create-post/CreateImagePostWizard';
 import type { CreatePostData } from '../components/create-post/CreateImagePostWizard';
+import { addUpload, updateUploadProgress, updateUploadStatus } from '../store/slices/uploadSlice';
 import { 
   Image as ImageIcon, 
   Video, 
@@ -22,6 +23,7 @@ type TabType = 'POST' | 'REEL' | 'YOUTUBE' | 'POLL';
 
 export default function CreateContent() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const channels = useMemo(() => user?.youtubeProfile || [], [user?.youtubeProfile]);
   const isYoutubeCreator = channels.length > 0 || user?.role === 'YOUTUBE_CREATOR';
@@ -115,10 +117,30 @@ export default function CreateContent() {
   const handleWizardSubmit = async (data: CreatePostData) => {
     setIsSubmitting(true);
     setStatus(null);
+    const uploadId = Date.now().toString();
+    let progressInterval: ReturnType<typeof setInterval>;
+
     try {
       if (data.mediaItems.length === 0) {
         throw new Error("Please select a media file to upload.");
       }
+
+      dispatch(addUpload({
+        id: uploadId,
+        type: 'post',
+        status: 'uploading',
+        progress: 0,
+        message: 'Uploading post...'
+      }));
+
+      let currentProgress = 0;
+      progressInterval = setInterval(() => {
+        currentProgress += Math.floor(Math.random() * 15) + 5;
+        if (currentProgress > 90) {
+          currentProgress = 90;
+        }
+        dispatch(updateUploadProgress({ id: uploadId, progress: currentProgress }));
+      }, 500);
 
       // 1. Upload Media
       const uploadedMediaIds: string[] = [];
@@ -145,12 +167,19 @@ export default function CreateContent() {
         throw new Error(response.data.message || 'Upload failed');
       }
 
+      clearInterval(progressInterval!);
+      dispatch(updateUploadProgress({ id: uploadId, progress: 100 }));
+      dispatch(updateUploadStatus({ id: uploadId, status: 'success', message: 'Post uploaded successfully!' }));
+
       setStatus({ type: 'success', text: 'Successfully uploaded!' });
       setTimeout(() => {
         navigate('/home');
       }, 1500);
 
     } catch (err: unknown) {
+      clearInterval(progressInterval!);
+      dispatch(updateUploadStatus({ id: uploadId, status: 'failed', message: 'Failed to upload post' }));
+      
       console.error(err);
       if (err instanceof Error) {
         setStatus({ type: 'error', text: err.message || 'Something went wrong.' });
@@ -166,6 +195,8 @@ export default function CreateContent() {
     e.preventDefault();
     setIsSubmitting(true);
     setStatus(null);
+    const uploadId = Date.now().toString();
+    let progressInterval: ReturnType<typeof setInterval>;
 
     try {
       if (activeTab === 'YOUTUBE') {
@@ -177,6 +208,24 @@ export default function CreateContent() {
           throw new Error("Please select a media file to upload.");
         }
       }
+
+      const uploadType = activeTab === 'REEL' ? 'reel' : activeTab === 'YOUTUBE' ? 'youtube' : 'post';
+      dispatch(addUpload({
+        id: uploadId,
+        type: uploadType,
+        status: 'uploading',
+        progress: 0,
+        message: `Uploading ${uploadType}...`
+      }));
+
+      let currentProgress = 0;
+      progressInterval = setInterval(() => {
+        currentProgress += Math.floor(Math.random() * 15) + 5;
+        if (currentProgress > 90) {
+          currentProgress = 90;
+        }
+        dispatch(updateUploadProgress({ id: uploadId, progress: currentProgress }));
+      }, 500);
 
       // 1. Upload Media
       const uploadedMediaIds: string[] = [];
@@ -213,12 +262,19 @@ export default function CreateContent() {
         throw new Error(response.data.message || 'Upload failed');
       }
 
+      clearInterval(progressInterval!);
+      dispatch(updateUploadProgress({ id: uploadId, progress: 100 }));
+      dispatch(updateUploadStatus({ id: uploadId, status: 'success', message: `${activeTab === 'REEL' ? 'Reel' : activeTab === 'YOUTUBE' ? 'YouTube post' : 'Post'} uploaded successfully!` }));
+
       setStatus({ type: 'success', text: 'Successfully uploaded!' });
       setTimeout(() => {
         navigate('/home');
       }, 1500);
 
     } catch (err: unknown) {
+      clearInterval(progressInterval!);
+      dispatch(updateUploadStatus({ id: uploadId, status: 'failed', message: `Failed to upload ${activeTab === 'REEL' ? 'reel' : activeTab === 'YOUTUBE' ? 'YouTube post' : 'post'}` }));
+      
       console.error(err);
       if (err instanceof Error) {
         setStatus({ type: 'error', text: err.message || 'Something went wrong.' });

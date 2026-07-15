@@ -154,23 +154,29 @@ export const startTrial = asyncHandler(async (req, res) => {
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + (plan.trialDays || 3));
 
-  const subscription = await prisma.subscription.create({
-    data: {
-      userId,
-      planId: plan.id,
-      planName: plan.name,
-      planType: plan.duration,
-      feature: plan.feature,
-      planTier: plan.planTier,
-      status: "trial",
-      startDate,
-      endDate,
-      trialEndDate: endDate,
-      isTrial: true,
-      amount: 0,
-      currency: plan.currency,
-    }
-  });
+  const [subscription] = await prisma.$transaction([
+    prisma.subscription.create({
+      data: {
+        userId,
+        planId: plan.id,
+        planName: plan.name,
+        planType: plan.duration,
+        feature: plan.feature,
+        planTier: plan.planTier,
+        status: "trial",
+        startDate,
+        endDate,
+        trialEndDate: endDate,
+        isTrial: true,
+        amount: 0,
+        currency: plan.currency,
+      }
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { is_verified: true }
+    })
+  ]);
 
   // Invalidate user profile cache so the new trial subscription status is active immediately
   await deleteCache(CacheKey.userProfile(userId));
@@ -335,6 +341,10 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         endDate,
       }
     }),
+    prisma.user.update({
+      where: { id: subscription.userId },
+      data: { is_verified: true }
+    }),
     ...(plan ? [
       prisma.subscriptionPlan.update({
         where: { id: plan.id },
@@ -394,14 +404,20 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
     });
   }
 
-  const updatedSubscription = await prisma.subscription.update({
-    where: { id },
-    data: {
-      status: "cancelled",
-      cancelledAt: new Date(),
-      autoRenew: false
-    }
-  });
+  const [updatedSubscription] = await prisma.$transaction([
+    prisma.subscription.update({
+      where: { id },
+      data: {
+        status: "cancelled",
+        cancelledAt: new Date(),
+        autoRenew: false
+      }
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { is_verified: false }
+    })
+  ]);
 
   // Invalidate user profile cache so new subscription details are reflected immediately
   await deleteCache(CacheKey.userProfile(subscription.userId));

@@ -4,6 +4,7 @@ import { Heart, MoreHorizontal } from 'lucide-react';
 import { useToggleCommentLike } from '../../../mutations/commentMutations';
 import { useReplies } from '../../../queries/commentQueries';
 import type { Comment } from '../../../queries/commentQueries';
+import { VerifiedBadge } from '../../../components/ui/VerifiedBadge';
 
 interface CommentItemProps {
   comment: Comment;
@@ -42,8 +43,9 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+              <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-1">
                 {comment.user?.username}
+                <VerifiedBadge isVerified={comment.user?.is_verified} role={comment.user?.role} className="w-[12px] h-[12px]" />
               </span>
               <span className="text-xs text-gray-500">
                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, includeSeconds: false }).replace('about ', '')}

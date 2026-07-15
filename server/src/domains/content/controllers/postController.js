@@ -283,6 +283,8 @@ const USER_SELECT = {
   select: {
     id: true,
     username: true,
+    role: true,
+    is_verified: true,
     profile: { select: { name: true, profile_picture: true } },
   },
 };

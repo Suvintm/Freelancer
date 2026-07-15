@@ -23,6 +23,8 @@ export interface RealMedia {
 export interface RealUser {
   id: string;
   username?: string;
+  is_verified?: boolean;
+  role?: string;
   profile?: {
     name?: string;
     profile_picture?: string;

@@ -5,6 +5,8 @@ import defaultProfile from '../../assets/defaultprofile.png';
 import LottieComponent from 'lottie-react';
 import imageErrorAnimation from '../../assets/lottie/image-error.json';
 import type { RealPost } from './types';
+import { formatTimeAgo } from '../../utils/dateFormatter';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { useLike } from '../../hooks/useLike';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
 
@@ -94,8 +96,15 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
             <img src={avatarSrc} alt={userName} className="w-full h-full rounded-full object-cover" />
           </div>
           <div>
-            <h4 className="text-[13px] font-semibold text-text-main leading-none mb-1">
+            <h4 className="text-[13px] font-semibold text-text-main leading-none mb-1 flex items-center gap-1.5">
               {userName}
+              <VerifiedBadge isVerified={post.user?.is_verified} role={post.user?.role} />
+              {post.created_at && (
+                <>
+                  <span className="text-zinc-500 dark:text-zinc-400 font-normal text-[11px]">•</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 font-normal text-[13px]">{formatTimeAgo(post.created_at)}</span>
+                </>
+              )}
             </h4>
           </div>
         </div>

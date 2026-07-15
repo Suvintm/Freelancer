@@ -152,7 +152,7 @@ export default function Signup() {
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
 
     // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com', 'uber@company.com'];
+    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com','suvineditography@gmail.com', 'uber@company.com'];
     if (!allowedEmails.includes(form.email.toLowerCase().trim())) {
       setError('Server busy ! Please try again later or contact SuviX team.');
       return;

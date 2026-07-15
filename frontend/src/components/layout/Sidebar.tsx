@@ -12,9 +12,8 @@ import LottieComponent from 'lottie-react';
 import verifyLottieAnimation from '../../assets/lottie/verify_lottie.json';
 import verifyLottieBlue from '../../assets/lottie/verify_lottie_blue.json';
 import verifyLottiePurple from '../../assets/lottie/verify_lottie_purple.json';
-import brandBadge from '../../assets/verifiedBadges/brand_badge.png';
-import editorBadge from '../../assets/verifiedBadges/editor_badge.png';
 import ytBadge from '../../assets/verifiedBadges/yt_badge.png';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 const HIGHLIGHTS = [
@@ -47,14 +46,10 @@ export const Sidebar = () => {
 
   const userCategory = user?.primaryRole?.category || user?.role || '';
   let activeLottie = verifyLottieAnimation;
-  let activeBadge = ytBadge;
-  
   if (isClientCategory || userCategory.includes('client') || userCategory.includes('brand')) {
     activeLottie = verifyLottieBlue;
-    activeBadge = brandBadge;
   } else if (userCategory.includes('editor')) {
     activeLottie = verifyLottiePurple;
-    activeBadge = editorBadge;
   }
   const CHANNEL = {
     name:           user?.name || 'User',
@@ -98,21 +93,19 @@ export const Sidebar = () => {
                   alt={CHANNEL.name}
                   className={`w-11 h-11 rounded-full object-cover border-2 ${isDarkMode ? 'border-border-main' : 'border-zinc-200'}`}
                 />
-                {/* Verified badge */}
-                <img 
-                  src={activeBadge} 
-                  alt="Verified" 
-                  className="absolute -bottom-1 -right-1 w-[22px] h-[22px] rounded-full object-contain" 
-                />
+                {/* Removed hardcoded avatar badge */}
               </div>
               <div className="min-w-0 flex-1">
                 <div 
                   className="flex items-center gap-1 cursor-pointer group"
                   onClick={() => setIsSwitcherOpen(true)}
                 >
-                  <p className="text-[14px] font-semibold text-text-main font-display leading-tight truncate">
-                    {CHANNEL.name}
-                  </p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-[14px] font-semibold text-text-main font-display leading-tight truncate">
+                      {CHANNEL.name}
+                    </p>
+                    <VerifiedBadge isVerified={user?.is_verified} role={user?.primaryRole?.category || user?.role} />
+                  </div>
                   <svg 
                     width="12" 
                     height="12" 
@@ -187,7 +180,7 @@ export const Sidebar = () => {
         {/* ── 1.25 Get Verified Lottie ────────────────────────────────────────────── */}
         <div className="w-full flex justify-center -mt-2 -mb-1">
           <div 
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate('/subscription')}
             className={`w-[90%] flex flex-row items-center justify-between px-3 cursor-pointer z-10 relative group py-1.5 rounded-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${
               isDarkMode ? 'bg-white text-black' : 'bg-zinc-950 text-white'
             }`}
@@ -199,7 +192,9 @@ export const Sidebar = () => {
                 loop={true} 
                 style={{ width: '42px', height: '42px', objectFit: 'contain' }} 
               />
-              <span className="text-[12px] font-black tracking-tight group-hover:translate-x-1 transition-transform">Get Verified !!</span>
+              <span className="text-[12px] font-black tracking-tight group-hover:translate-x-1 transition-transform">
+                {user?.is_verified ? 'Already Verified !!' : 'Get Verified !!'}
+              </span>
             </div>
             <div className={`flex items-center justify-center w-7 h-7 rounded-full transition-transform group-hover:translate-x-1 ${
               isDarkMode ? 'bg-zinc-100 text-black' : 'bg-zinc-800 text-white'

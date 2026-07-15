@@ -4,6 +4,8 @@ import { api } from '../api/client';
 export interface CommentUser {
   id: string;
   username: string;
+  is_verified?: boolean;
+  role?: string;
   profile?: {
     profile_picture?: string;
   };
