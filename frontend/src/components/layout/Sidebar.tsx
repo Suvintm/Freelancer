@@ -12,7 +12,7 @@ import LottieComponent from 'lottie-react';
 import verifyLottieAnimation from '../../assets/lottie/verify_lottie.json';
 import verifyLottieBlue from '../../assets/lottie/verify_lottie_blue.json';
 import verifyLottiePurple from '../../assets/lottie/verify_lottie_purple.json';
-import ytBadge from '../../assets/verifiedBadges/yt_badge.png';
+
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;

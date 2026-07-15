@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectUser, setTokens, updateUser } from '../store/slices/authSlice';
+import { selectUser, updateUser } from '../store/slices/authSlice';
 import { subscriptionService } from '../api/services/subscription.service';
 import type { Plan, UserSubscription } from '../api/services/subscription.service';
 import { authService } from '../api/services/auth.service';
