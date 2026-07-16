@@ -21,7 +21,7 @@ import { CreatorMasterCard } from '../../src/modules/explore/redesign/CreatorMas
 import { ReelCinematicStrip } from '../../src/modules/explore/redesign/ReelCinematicStrip';
 import { RentalPodGrid } from '../../src/modules/explore/redesign/RentalPodGrid';
 import { YouTubeTabPortal } from '../../src/modules/explore/redesign/YouTubeTabPortal';
-import { YOUTUBE_ARCHIVE, YouTubeVideo } from '../../src/modules/explore/redesign/youtubeMockData';
+import { YouTubeVideo } from '../../src/modules/explore/redesign/youtubeMockData';
 import { api } from '../../src/api/client';
 import Animated, { 
   useSharedValue, 
@@ -65,11 +65,6 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
   const [ytVideos, setYtVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingYt, setIsLoadingYt] = useState(false);
 
-  // 🔍 [SEARCH INTELLIGENCE] Shared State for All Portals
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
 
   // 📡 [DATA FETCHING] YouTube Explore Content
   useEffect(() => {
@@ -117,41 +112,7 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
     }
   };
 
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-    if (text.length > 0) {
-      setIsSearching(true);
-      if (activeTab === 'YT Videos') {
-        const matches = YOUTUBE_ARCHIVE.filter(v => 
-          v.title.toLowerCase().includes(text.toLowerCase()) || 
-          v.category.toLowerCase().includes(text.toLowerCase())
-        );
-        const suggs = Array.from(new Set(matches.map(m => {
-          if (m.title.toLowerCase().startsWith(text.toLowerCase())) return m.title;
-          return m.category;
-        }))).slice(0, 5);
-        setSuggestions(suggs);
-      }
-    } else {
-      setIsSearching(false);
-      setSuggestions([]);
-      setSearchResults([]);
-    }
-  };
 
-  const onExecuteSearch = (query: string) => {
-    setSearchQuery(query);
-    setSuggestions([]);
-    if (activeTab === 'YT Videos') {
-      const results = YOUTUBE_ARCHIVE.filter(v => 
-        v.title.toLowerCase().includes(query.toLowerCase()) || 
-        v.category.toLowerCase().includes(query.toLowerCase()) ||
-        v.description.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(results);
-    }
-  };
-  
   const renderContent = () => {
     switch (activeTab) {
       case 'All':
@@ -193,11 +154,6 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
           <YouTubeTabPortal 
             videos={ytVideos}
             isLoading={isLoadingYt}
-            searchQuery={searchQuery}
-            isSearching={isSearching}
-            suggestions={suggestions}
-            searchResults={searchResults}
-            onSuggestionPress={onExecuteSearch}
             onRefresh={fetchYouTubeVideos}
           />
         );
@@ -267,9 +223,9 @@ export default function ExploreScreen({ scrollY: globalScrollY }: { scrollY?: Sh
               <ExploreSearchV2 
                 placeholder={getSearchPlaceholder()} 
                 activeColor={currentTheme.active}
-                value={searchQuery}
-                onChangeText={handleSearchChange}
-                onSubmitEditing={() => onExecuteSearch(searchQuery)}
+                value={''}
+                onChangeText={() => {}}
+                onSubmitEditing={() => {}}
               />
             )}
           </View>
