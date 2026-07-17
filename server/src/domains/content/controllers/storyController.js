@@ -27,7 +27,7 @@ import { STORAGE_FOLDERS } from '../../../infrastructure/storage/providers/s3/s3
 import notificationService from '../../../domains/notification/services/notificationService.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const STORY_EXPIRY_MINUTES = 720; // 12 hours (Production Ready)
+const STORY_EXPIRY_MINUTES = 1440; // 24 hours (Instagram Standard)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/social/stories/upload-url
