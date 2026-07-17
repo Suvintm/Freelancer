@@ -58,8 +58,8 @@ export const mediaQueue = createQueue("media-processing", {
  * Periodically flushes likes from Redis to DB.
  */
 export const likeSyncQueue = createQueue("like-sync", {
-  attempts: 2,
-  backoff: { type: "fixed", delay: 10000 },
+  attempts: Number(process.env.LIKE_SYNC_ATTEMPTS || 5),
+  backoff: { type: process.env.LIKE_SYNC_BACKOFF || "exponential", delay: 5000 },
   removeOnComplete: { age: 3600, count: 50 },
   removeOnFail: { age: 86400, count: 50 },
 });

@@ -242,29 +242,37 @@ export const deleteReel = async (req, res) => {
 };
 
 
+import redisProxy from "../../../infrastructure/cache/redis.client.js";
+
 const populateIsLiked = async (items, userId) => {
   if (!userId || !items || items.length === 0) return items;
 
-  const postIds = items.filter(i => i.contentType === 'POST').map(i => i.id);
-  const reelIds = items.filter(i => i.contentType === 'REEL').map(i => i.id);
-  const youtubeIds = items.filter(i => i.contentType === 'YOUTUBE_POST').map(i => i.id);
-  const pollIds = items.filter(i => i.contentType === 'POLL').map(i => i.id);
+  // Since we have items with 'id' and 'contentType' (POST, REEL, YOUTUBE_POST, POLL)
+  // We can build a single Redis pipeline to check SISMEMBER for all of them
+  const pipeline = redisProxy.pipeline();
+  
+  items.forEach(item => {
+    // Determine type for Redis key. The feed tags items with `contentType`
+    let type = item.contentType;
+    if (!type) {
+      // Fallback for missing contentType (e.g., if a specific feed doesn't tag it)
+      if (item.youtube_link) type = "YOUTUBE_POST";
+      else if (item.question) type = "POLL";
+      else if (item.media && item.media.some(m => m.type === "VIDEO")) type = "REEL";
+      else type = "POST";
+    }
+    const setKey = `feed:likes:users:${type}:${item.id}`;
+    pipeline.sismember(setKey, userId);
+  });
 
-  const [postLikes, reelLikes, youtubeLikes, pollLikes] = await Promise.all([
-    postIds.length > 0 ? prisma.postLike.findMany({ where: { userId, postId: { in: postIds } }, select: { postId: true } }) : [],
-    reelIds.length > 0 ? prisma.reelLike.findMany({ where: { userId, reelId: { in: reelIds } }, select: { reelId: true } }) : [],
-    youtubeIds.length > 0 ? prisma.youtubePostLike.findMany({ where: { userId, youtubePostId: { in: youtubeIds } }, select: { youtubePostId: true } }) : [],
-    pollIds.length > 0 ? prisma.pollLike.findMany({ where: { userId, pollId: { in: pollIds } }, select: { pollId: true } }) : []
-  ]);
+  const results = await pipeline.exec();
 
-  const likedSet = new Set([
-    ...postLikes.map(l => l.postId),
-    ...reelLikes.map(l => l.reelId),
-    ...youtubeLikes.map(l => l.youtubePostId),
-    ...pollLikes.map(l => l.pollId)
-  ]);
-
-  return items.map(item => ({ ...item, isLiked: likedSet.has(item.id) }));
+  // Map results back to items
+  return items.map((item, index) => {
+    // results[index] is [error, result]
+    const isLiked = results[index][1] === 1;
+    return { ...item, isLiked };
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -74,9 +74,12 @@ if (connection) {
 
 
   // ─── 7. LIKE SYNC WORKER ────────────────────────────────────────────────────
+  // CONCURRENCY WARNING: This is intentionally set to 1. The current design processes 
+  // a single shared `feed:likes:dirty` queue. Increasing this without sharding the queue 
+  // will cause race conditions and duplicate writes.
   const likeSyncWorker = new Worker("like-sync", likeSyncProcessor, {
     connection,
-    concurrency: 1,      // Prevent concurrent DB writes for the same posts
+    concurrency: Number(process.env.LIKE_SYNC_CONCURRENCY || 1),
     drainDelay: 30000,   // Wait 30s before checking queue again when empty
     lockDuration: 60000, // Sync shouldn't take long
   });
@@ -172,11 +175,12 @@ if (connection) {
     .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Story Sweeper: ${err.message}`));
 
 
-  // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 2 minutes
+  // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 5 minutes (configurable)
+  const likeSyncCron = process.env.LIKE_SYNC_CRON || "*/5 * * * *";
   likeSyncQueue.add("flush-likes", {}, {
     jobId: "like-sync-flush",
-    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
-  }).then(() => logger.info("❤️ [SCHEDULED] Like Sync Flusher active (Every 2 Minutes)."))
+    repeat: { pattern: likeSyncCron }
+  }).then(() => logger.info(`❤️ [SCHEDULED] Like Sync Flusher active (Cron: ${likeSyncCron}).`))
     .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
 
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");

@@ -2,7 +2,7 @@ import prisma from "../../../infrastructure/database/postgres.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 import { redis, redisAvailable } from "../../../infrastructure/cache/redis.client.js";
 import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
-import { pollMemoryLikes, pollMemoryDirty } from "../services/likeSync.service.js";
+import { toggleLike } from "../../content/services/like.service.js";
 
 /**
  * 📝 POLL CONTROLLER (SOCIAL MODULE)
@@ -145,25 +145,20 @@ export const getPollPosts = async (req, res) => {
       let likesCount = poll.like_count || 0;
 
       if (redisAvailable) {
-        const cachedCount = await redis.hget(`poll:likes:count`, poll.id);
+        const cachedCount = await redis.get(`feed:likes:count:POLL:${poll.id}`);
         if (cachedCount !== null) {
           likesCount = parseInt(cachedCount, 10);
         }
         if (userId) {
-          const isMember = await redis.sismember(`poll:likes:users:${poll.id}`, userId);
+          const isMember = await redis.sismember(`feed:likes:users:POLL:${poll.id}`, userId);
           isLiked = !!isMember;
         }
       } else {
-        if (pollMemoryLikes.has(poll.id)) {
-          likesCount = pollMemoryLikes.get(poll.id).size;
-          isLiked = userId ? pollMemoryLikes.get(poll.id).has(userId) : false;
-        } else {
-          if (userId) {
-            const likedInDb = await prisma.pollLike.findUnique({
-              where: { pollId_userId: { pollId: poll.id, userId } }
-            });
-            isLiked = !!likedInDb;
-          }
+        if (userId) {
+          const likedInDb = await prisma.pollLike.findUnique({
+            where: { pollId_userId: { pollId: poll.id, userId } }
+          });
+          isLiked = !!likedInDb;
         }
       }
 
@@ -213,22 +208,17 @@ export const getMyPolls = async (req, res) => {
       let likesCount = poll.like_count || 0;
 
       if (redisAvailable) {
-        const cachedCount = await redis.hget(`poll:likes:count`, poll.id);
+        const cachedCount = await redis.get(`feed:likes:count:POLL:${poll.id}`);
         if (cachedCount !== null) {
           likesCount = parseInt(cachedCount, 10);
         }
-        const isMember = await redis.sismember(`poll:likes:users:${poll.id}`, userId);
+        const isMember = await redis.sismember(`feed:likes:users:POLL:${poll.id}`, userId);
         isLiked = !!isMember;
       } else {
-        if (pollMemoryLikes.has(poll.id)) {
-          likesCount = pollMemoryLikes.get(poll.id).size;
-          isLiked = pollMemoryLikes.get(poll.id).has(userId);
-        } else {
-          const likedInDb = await prisma.pollLike.findUnique({
-            where: { pollId_userId: { pollId: poll.id, userId } }
-          });
-          isLiked = !!likedInDb;
-        }
+        const likedInDb = await prisma.pollLike.findUnique({
+          where: { pollId_userId: { pollId: poll.id, userId } }
+        });
+        isLiked = !!likedInDb;
       }
 
       return {
@@ -318,50 +308,10 @@ export const likePoll = async (req, res) => {
     const { id: pollId } = req.params;
     const userId = req.user.id;
 
-    let hasLiked = false;
-    let newLikeCount = 0;
+    // Use the unified Redis buffer from content domain
+    const { isLiked, count } = await toggleLike("POLL", pollId, userId);
 
-    if (redisAvailable) {
-      const redisKey = `poll:likes:users:${pollId}`;
-      const isMember = await redis.sismember(redisKey, userId);
-      if (isMember) {
-        await redis.srem(redisKey, userId);
-        await redis.hincrby(`poll:likes:count`, pollId, -1);
-        hasLiked = false;
-      } else {
-        await redis.sadd(redisKey, userId);
-        await redis.hincrby(`poll:likes:count`, pollId, 1);
-        hasLiked = true;
-      }
-      
-      const countStr = await redis.hget(`poll:likes:count`, pollId);
-      newLikeCount = parseInt(countStr || "0", 10);
-      
-      await redis.sadd("polls:dirty_likes", pollId);
-    } else {
-      if (!pollMemoryLikes.has(pollId)) {
-        const poll = await prisma.poll.findUnique({
-          where: { id: pollId },
-          select: { like_count: true, likes: { select: { userId: true } } }
-        });
-        const userSet = new Set(poll?.likes.map(l => l.userId) || []);
-        pollMemoryLikes.set(pollId, userSet);
-      }
-
-      const userSet = pollMemoryLikes.get(pollId);
-      if (userSet.has(userId)) {
-        userSet.delete(userId);
-        hasLiked = false;
-      } else {
-        userSet.add(userId);
-        hasLiked = true;
-      }
-
-      newLikeCount = userSet.size;
-      pollMemoryDirty.add(pollId);
-    }
-
-    res.status(200).json({ success: true, liked: hasLiked, likesCount: newLikeCount });
+    res.status(200).json({ success: true, liked: isLiked, likesCount: count });
   } catch (error) {
     logger.error(`❌ [POLL_CONTROLLER] likePoll failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to process like" });

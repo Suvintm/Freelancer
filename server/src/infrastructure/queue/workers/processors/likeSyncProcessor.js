@@ -7,78 +7,76 @@ import prisma from "../../../database/postgres.js";
  *
  * Consumes jobs from the `like-sync` queue.
  * Flow:
- *  1. Pop all dirty items from `feed:likes:dirty` in Redis.
- *  2. For each `{type}:{id}`:
- *     - Read the true count and the full Set of user IDs from Redis.
- *     - Sync to PostgreSQL (`PostLike`, `ReelLike`, etc. and `like_count` on the content).
+ *  1. Pop up to LIKE_BATCH_SIZE items from `feed:likes:dirty`.
+ *  2. Use a Redis Pipeline to fetch all sets and counts in one network trip.
+ *  3. Diff with PostgreSQL and perform chunked updates.
+ *  4. ZREM from dirty queue ONLY after successful DB commit.
  */
 export default async function likeSyncProcessor(job) {
   try {
-    // 1. Get dirty keys (only posts added to queue > 10 seconds ago to avoid thrashing viral posts)
     const dirtyKey = `feed:likes:dirty`;
-    const now = Date.now();
-    const cutoff = now - 10000;
+    const batchSize = Number(process.env.LIKE_BATCH_SIZE || 500);
     
-    // Fetch items with score up to 10 seconds ago
-    const dirtyItems = await redisProxy.zrangebyscore(dirtyKey, 0, cutoff);
+    // 1. Get oldest dirty keys up to batch size
+    const dirtyItems = await redisProxy.zrange(dirtyKey, 0, batchSize - 1);
     if (!dirtyItems || dirtyItems.length === 0) {
       return; // Nothing to sync
     }
 
-    // Clear the set. If new likes come in during this fraction of a millisecond, 
-    // they might get dropped from the dirty queue, but next like will re-add.
-    // For a 100% safe approach, we can do SREM for each item we successfully process.
-    // Let's just process them and SREM them one by one.
-    
-    let processedCount = 0;
-
+    // 2. Pipeline Read: Get all sets (SMEMBERS) and counts (GET) in one go
+    const pipeline = redisProxy.pipeline();
     for (const item of dirtyItems) {
       const [type, id] = item.split(":");
-      const setKey = `feed:likes:users:${type}:${id}`;
-      
-      // Get all users who liked this post currently in Redis
-      const likedUserIds = await redisProxy.smembers(setKey);
-      const likeCount = likedUserIds.length;
+      pipeline.smembers(`feed:likes:users:${type}:${id}`);
+      pipeline.get(`feed:likes:count:${type}:${id}`);
+    }
+    
+    const pipelineResults = await pipeline.exec();
+    
+    let processedCount = 0;
+    const successfullyProcessedItems = [];
 
-      // Ensure DB reflects this state.
-      // We could either:
-      // A) Delete all likes for this post, then insert all (expensive for huge posts).
-      // B) Get current likes from DB, compute diff, insert/delete.
-      // For now, since this is a robust system, let's do a diff approach.
+    // Parse pipeline results
+    for (let i = 0; i < dirtyItems.length; i++) {
+      const item = dirtyItems[i];
+      const [type, id] = item.split(":");
+      
+      const setIdx = i * 2;
+      const countIdx = i * 2 + 1;
+      
+      const setRes = pipelineResults[setIdx];
+      const countRes = pipelineResults[countIdx];
+      
+      // If there was a redis error fetching this specific item, skip it
+      if (setRes[0] || countRes[0]) {
+        continue;
+      }
+      
+      const likedUserIds = setRes[1] || [];
+      const likeCount = countRes[1] ? parseInt(countRes[1], 10) : likedUserIds.length;
 
       let LikeModel;
       let ContentModel;
       let parentIdField;
       
-      if (type === "POST") {
-        LikeModel = prisma.postLike;
-        ContentModel = prisma.post;
-        parentIdField = "postId";
-      } else if (type === "REEL") {
-        LikeModel = prisma.reelLike;
-        ContentModel = prisma.reel;
-        parentIdField = "reelId";
-      } else if (type === "YOUTUBE_POST") {
-        LikeModel = prisma.youtubePostLike;
-        ContentModel = prisma.youtubePost;
-        parentIdField = "youtubePostId";
-      } else if (type === "POLL") {
-        LikeModel = prisma.pollLike;
-        ContentModel = prisma.poll;
-        parentIdField = "pollId";
-      } else {
-        // Unknown type, skip
-        await redisProxy.zrem(dirtyKey, item);
+      if (type === "POST") { LikeModel = prisma.postLike; ContentModel = prisma.post; parentIdField = "postId"; }
+      else if (type === "REEL") { LikeModel = prisma.reelLike; ContentModel = prisma.reel; parentIdField = "reelId"; }
+      else if (type === "YOUTUBE_POST") { LikeModel = prisma.youtubePostLike; ContentModel = prisma.youtubePost; parentIdField = "youtubePostId"; }
+      else if (type === "POLL") { LikeModel = prisma.pollLike; ContentModel = prisma.poll; parentIdField = "pollId"; }
+      else {
+        // Unknown type, just mark for removal
+        successfullyProcessedItems.push(item);
         continue;
       }
 
-      // Sync likes
+      // 3. Sync to Postgres
       await prisma.$transaction(async (tx) => {
-        // 1. Fetch current users in DB
+        // Fetch current users in DB
         const dbLikes = await LikeModel.findMany({
           where: { [parentIdField]: id },
           select: { userId: true }
         });
+        
         const dbUserIds = new Set(dbLikes.map(l => l.userId));
         const redisUserSet = new Set(likedUserIds);
 
@@ -101,26 +99,35 @@ export default async function likeSyncProcessor(job) {
           });
         }
 
-        // 2. Sync count on the parent model
+        // Sync absolute count to the parent model (Idempotent)
         await ContentModel.update({
           where: { id },
           data: { like_count: likeCount }
         });
       });
 
-      // Remove from dirty queue
-      await redisProxy.zrem(dirtyKey, item);
+      // Track successful commits
+      successfullyProcessedItems.push(item);
       processedCount++;
     }
 
+    // 4. Safe Commit: Remove from dirty queue only if Postgres transaction succeeded
+    if (successfullyProcessedItems.length > 0) {
+      const zremPipeline = redisProxy.pipeline();
+      for (const item of successfullyProcessedItems) {
+        zremPipeline.zrem(dirtyKey, item);
+      }
+      await zremPipeline.exec();
+    }
+
     if (processedCount > 0) {
-      sampledLogger.success("Like Sync completed", {
+      sampledLogger.success("[Workers] Like Sync batch completed", {
         jobId: job.id,
         processed: processedCount
       });
     }
   } catch (error) {
-    sampledLogger.error("Like Sync failed", error, { jobId: job.id });
+    sampledLogger.error("[Workers] Like Sync failed", error, { jobId: job.id });
     throw error;
   }
 }
