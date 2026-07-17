@@ -1,4 +1,4 @@
-import { sampledLogger } from "../sampledLogger.js";
+import logger from "../../../monitoring/logger.js";
 import redisProxy from "../../../cache/redis.client.js";
 import prisma from "../../../database/postgres.js";
 
@@ -6,11 +6,6 @@ import prisma from "../../../database/postgres.js";
  * 🔄 LIKE SYNC PROCESSOR
  *
  * Consumes jobs from the `like-sync` queue.
- * Flow:
- *  1. Pop up to LIKE_BATCH_SIZE items from `feed:likes:dirty`.
- *  2. Use a Redis Pipeline to fetch all sets and counts in one network trip.
- *  3. Diff with PostgreSQL and perform chunked updates.
- *  4. ZREM from dirty queue ONLY after successful DB commit.
  */
 export default async function likeSyncProcessor(job) {
   try {
@@ -19,9 +14,14 @@ export default async function likeSyncProcessor(job) {
     
     // 1. Get oldest dirty keys up to batch size
     const dirtyItems = await redisProxy.zrange(dirtyKey, 0, batchSize - 1);
+    const totalDirtyInitial = await redisProxy.zcard(dirtyKey);
+
     if (!dirtyItems || dirtyItems.length === 0) {
       return; // Nothing to sync
     }
+
+    logger.info(`⚙️  [WORKER] LikeSyncProcessor started | Job ID: ${job.id}`);
+    logger.info(`📊 [WORKER] Queue Status: Processing ${dirtyItems.length} items | Total in queue: ${totalDirtyInitial}`);
 
     // 2. Pipeline Read: Get all sets (SMEMBERS) and counts (GET) in one go
     const pipeline = redisProxy.pipeline();
@@ -34,6 +34,8 @@ export default async function likeSyncProcessor(job) {
     const pipelineResults = await pipeline.exec();
     
     let processedCount = 0;
+    let totalDbAdds = 0;
+    let totalDbRemoves = 0;
     const successfullyProcessedItems = [];
 
     // Parse pipeline results
@@ -52,8 +54,17 @@ export default async function likeSyncProcessor(job) {
         continue;
       }
       
+      // Safety Circuit Breaker:
+      // If the count is missing from Redis entirely (expired/evicted), DO NOT sync.
+      // Syncing now would assume 0 likes and wipe Postgres. We drop it from the dirty queue.
+      if (countRes[1] === null) {
+        logger.warn(`⚠️ [WORKER] Cache expired for ${type}:${id} before sync! Skipping to prevent Postgres data wipe.`);
+        successfullyProcessedItems.push(item);
+        continue;
+      }
+      
       const likedUserIds = setRes[1] || [];
-      const likeCount = countRes[1] ? parseInt(countRes[1], 10) : likedUserIds.length;
+      const likeCount = parseInt(countRes[1], 10);
 
       let LikeModel;
       let ContentModel;
@@ -88,6 +99,7 @@ export default async function likeSyncProcessor(job) {
             data: toAdd.map(userId => ({ userId, [parentIdField]: id })),
             skipDuplicates: true
           });
+          totalDbAdds += toAdd.length;
         }
 
         if (toRemove.length > 0) {
@@ -97,6 +109,7 @@ export default async function likeSyncProcessor(job) {
               userId: { in: toRemove }
             }
           });
+          totalDbRemoves += toRemove.length;
         }
 
         // Sync absolute count to the parent model (Idempotent)
@@ -121,13 +134,12 @@ export default async function likeSyncProcessor(job) {
     }
 
     if (processedCount > 0) {
-      sampledLogger.success("[Workers] Like Sync batch completed", {
-        jobId: job.id,
-        processed: processedCount
-      });
+      const remainingDirty = await redisProxy.zcard(dirtyKey);
+      logger.info(`💾 [WORKER] Postgres Sync complete: +${totalDbAdds} additions, -${totalDbRemoves} removals`);
+      logger.info(`✅ [WORKER] LikeSyncProcessor finished! Items fully synced: ${processedCount} | Remaining in queue: ${remainingDirty}`);
     }
   } catch (error) {
-    sampledLogger.error("[Workers] Like Sync failed", error, { jobId: job.id });
+    logger.error(`❌ [WORKER] Like Sync failed for Job ID ${job.id}: ${error.message}`);
     throw error;
   }
 }

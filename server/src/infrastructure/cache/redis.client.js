@@ -248,6 +248,11 @@ const redisProxy = {
     return client.zrangebyscore(key, min, max);
   },
   
+  zrange: (key, start, stop) => {
+    if (!redisAvailable || !client) return Promise.resolve([]);
+    return client.zrange(key, start, stop);
+  },
+  
   zrem: (key, ...members) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.zrem(key, ...members);
@@ -261,6 +266,8 @@ const redisProxy = {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.zcard(key);
   },
+  zcard: (key) => redisProxy.zCard(key),
+  
   zIncrBy: (key, increment, member) => {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.zincrby(key, increment, member);

@@ -38,8 +38,10 @@ export const toggleLike = async (type, id, userId, action = "") => {
     const shouldLike = action === "like" ? true : (action === "unlike" ? false : !isCurrentlyLiked);
 
     try {
+        const ttl = Number(process.env.LIKE_CACHE_TTL || 86400);
+
         // Lua script for atomic operations
-        // ARGV[1] = shouldLike (1 or 0), ARGV[2] = userId, ARGV[3] = itemKey, ARGV[4] = timestamp
+        // ARGV[1] = shouldLike (1 or 0), ARGV[2] = userId, ARGV[3] = itemKey, ARGV[4] = timestamp, ARGV[5] = ttl
         const luaScript = `
             local setKey = KEYS[1]
             local countKey = KEYS[2]
@@ -48,6 +50,7 @@ export const toggleLike = async (type, id, userId, action = "") => {
             local userId = ARGV[2]
             local itemKey = ARGV[3]
             local timestamp = ARGV[4]
+            local ttl = tonumber(ARGV[5])
             local modified = 0
             
             if shouldLike == 1 then
@@ -64,6 +67,8 @@ export const toggleLike = async (type, id, userId, action = "") => {
             
             if modified == 1 then
                 redis.call('ZADD', dirtyKey, timestamp, itemKey)
+                redis.call('EXPIRE', setKey, ttl)
+                redis.call('EXPIRE', countKey, ttl)
             end
             
             return redis.call('GET', countKey)
@@ -78,7 +83,8 @@ export const toggleLike = async (type, id, userId, action = "") => {
             shouldLike ? 1 : 0,
             userId,
             itemKey,
-            Date.now()
+            Date.now(),
+            ttl
         );
 
         // Check threshold and debounce
@@ -86,6 +92,7 @@ export const toggleLike = async (type, id, userId, action = "") => {
         const threshold = Number(process.env.LIKE_SYNC_THRESHOLD || 500);
 
         if (dirtySize >= threshold) {
+            logger.info(`🚨 [LIKE_SYNC] Threshold reached! Dirty Queue Size: ${dirtySize}/${threshold}. Triggering BullMQ sync worker...`);
             if (likeSyncQueue) {
                 // Trigger worker immediately, but debounce with a fixed jobId
                 await likeSyncQueue.add(
@@ -94,6 +101,8 @@ export const toggleLike = async (type, id, userId, action = "") => {
                     { jobId: "like-sync" }
                 );
             }
+        } else {
+            logger.info(`✨ [LIKE_SYNC] Buffered in Redis. Dirty Queue Size: ${dirtySize}/${threshold}. Action: ${shouldLike ? 'LIKE' : 'UNLIKE'}`);
         }
 
         return { isLiked: shouldLike, count: parseInt(newCountStr || "0", 10) };
