@@ -565,6 +565,13 @@ export const toggleLikeController = async (req, res) => {
     const result = await toggleLike(type, id, userId, action);
     res.json({ success: true, ...result });
   } catch (error) {
+    if (error.code?.startsWith("RATE_LIMIT")) {
+      return res.status(429).json({ 
+        success: false, 
+        code: error.code, 
+        message: "You are liking too fast! Please wait a moment." 
+      });
+    }
     logger.error(`❌ [CONTENT_CTRL] toggleLike failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to toggle like" });
   }

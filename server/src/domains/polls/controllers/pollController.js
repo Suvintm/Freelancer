@@ -313,6 +313,13 @@ export const likePoll = async (req, res) => {
 
     res.status(200).json({ success: true, liked: isLiked, likesCount: count });
   } catch (error) {
+    if (error.code?.startsWith("RATE_LIMIT")) {
+      return res.status(429).json({ 
+        success: false, 
+        code: error.code, 
+        message: "You are liking too fast! Please wait a moment." 
+      });
+    }
     logger.error(`❌ [POLL_CONTROLLER] likePoll failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to process like" });
   }

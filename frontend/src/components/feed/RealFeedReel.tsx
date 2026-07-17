@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Hls from 'hls.js';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube, Lock } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import type { RealPost } from './types';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
 import { formatTimeAgo } from '../../utils/dateFormatter';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
+import { useLike } from '../../hooks/useLike';
 const MIN_RATIO = 9 / 16; // 0.5625, allows full vertical 9:16 height
 const MAX_RATIO = 1.91;
 
@@ -37,6 +38,13 @@ export function RealFeedReel({
   const mediaObj = post.media?.[0];
   const mediaDims = { width: mediaObj?.width || mediaObj?.metadata?.width || 0, height: mediaObj?.height || mediaObj?.metadata?.height || 0 };
   const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
+
+  const { likedByMe, likeCount, isAnimating, isLocked, lockTimeLeft, toggleLike, triggerLike } = useLike({
+    postId: post.id,
+    contentType: post.contentType || 'REEL',
+    initialLiked: post.isLiked || false,
+    initialCount: post.like_count || 0
+  });
 
   const mediaUrls = post.media?.[0]?.urls;
   const hlsUrl = resolveMediaUrl(mediaUrls?.hls);
@@ -148,9 +156,36 @@ export function RealFeedReel({
         }}
         style={{ 
           aspectRatio: getClampedRatio(dimensions.width, dimensions.height),
+          aspectRatio: getClampedRatio(dimensions.width, dimensions.height),
           maxHeight: 'min(80vh, 650px)'
         }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          triggerLike();
+        }}
       >
+        <AnimatePresence>
+          {isAnimating && (
+            <motion.div 
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.3, 0.9, 1], opacity: [0, 1, 1, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none"
+            >
+              <Heart size={100} fill="#ef4444" stroke="#ef4444" className="drop-shadow-2xl" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {isLocked && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-1 shadow-2xl animate-in fade-in zoom-in duration-300">
+              <Lock className="text-rose-500 w-8 h-8 mb-1" />
+              <p className="text-white font-semibold text-sm">Action Locked</p>
+              <p className="text-white/70 text-[11px] uppercase tracking-widest font-semibold">Wait {lockTimeLeft}s</p>
+            </div>
+          </div>
+        )}
         {/* Instagram-style overlaid header (top-left) */}
         <div 
           className="absolute top-4 left-4 flex items-center gap-2.5 z-20 select-none pointer-events-auto" 
@@ -242,7 +277,9 @@ export function RealFeedReel({
               className="flex items-center gap-6 pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <button className="text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500"><Heart size={26} fill="rgba(0,0,0,0.2)" /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 ${isLocked ? 'cursor-not-allowed opacity-50' : 'hover:text-rose-500'}`}>
+                {isLocked ? <Lock size={26} fill="rgba(0,0,0,0.2)" stroke="currentColor" /> : <Heart size={26} fill={likedByMe ? "#ef4444" : "rgba(0,0,0,0.2)"} stroke={likedByMe ? "#ef4444" : "currentColor"} />}
+              </button>
               <button onClick={() => setIsCommentsOpen(true)} className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
             </div>
@@ -270,7 +307,9 @@ export function RealFeedReel({
         {!isTallMedia && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 ${isLocked ? 'cursor-not-allowed opacity-50' : 'hover:text-rose-500'} ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
+                {isLocked ? <Lock size={24} fill="none" stroke="currentColor" /> : <Heart size={24} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} />}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
             </div>
@@ -282,7 +321,7 @@ export function RealFeedReel({
           {/* Liked By Section */}
           <div className="flex items-center gap-2">
             <p className="text-[13px] text-text-main font-medium">
-              Liked by <span className="font-semibold">{post.like_count?.toLocaleString() || '0'}</span> others
+              Liked by <span className="font-semibold">{likeCount.toLocaleString()}</span> others
             </p>
           </div>
 

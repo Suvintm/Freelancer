@@ -37,6 +37,48 @@ export const toggleLike = async (type, id, userId, action = "") => {
 
     const shouldLike = action === "like" ? true : (action === "unlike" ? false : !isCurrentlyLiked);
 
+    if (shouldLike) {
+        const postRateLimitKey = `rl:like:post:${userId}:${type}:${id}`;
+        const globalRateLimitKey = `rl:like:global:${userId}`;
+        const rateLimitLua = `
+            local postKey = KEYS[1]
+            local globalKey = KEYS[2]
+
+            local postCount = redis.call('INCR', postKey)
+            if postCount == 1 then
+                redis.call('EXPIRE', postKey, 60)
+            end
+
+            if postCount > 5 then
+                return -1
+            end
+
+            local globalCount = redis.call('INCR', globalKey)
+            if globalCount == 1 then
+                redis.call('EXPIRE', globalKey, 60)
+            end
+
+            if globalCount > 30 then
+                redis.call('DECR', postKey)
+                return -2
+            end
+
+            return 1
+        `;
+
+        const rlResult = await redisProxy.eval(rateLimitLua, 2, postRateLimitKey, globalRateLimitKey);
+        
+        if (rlResult === -1) {
+            const err = new Error("RATE_LIMIT_POST");
+            err.code = "RATE_LIMIT_POST";
+            throw err;
+        } else if (rlResult === -2) {
+            const err = new Error("RATE_LIMIT_GLOBAL");
+            err.code = "RATE_LIMIT_GLOBAL";
+            throw err;
+        }
+    }
+
     try {
         const ttl = Number(process.env.LIKE_CACHE_TTL || 86400);
 
