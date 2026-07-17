@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube, Lock } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
@@ -155,7 +155,6 @@ export function RealFeedReel({
           }
         }}
         style={{ 
-          aspectRatio: getClampedRatio(dimensions.width, dimensions.height),
           aspectRatio: getClampedRatio(dimensions.width, dimensions.height),
           maxHeight: 'min(80vh, 650px)'
         }}
