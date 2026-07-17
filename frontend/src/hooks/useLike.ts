@@ -61,8 +61,9 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         // likeCount: response.data.count ?? prev.likeCount,
         isSyncing: false,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Like sync failed:', error);
+      const err = error as { response?: { status?: number } };
       // Rollback on error by fetching real state or dispatching error
       setState(prev => ({ 
         ...prev, 
@@ -71,7 +72,7 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         isSyncing: false 
       }));
       
-      if (error.response?.status === 429) {
+      if (err.response?.status === 429) {
          setState(prev => ({ ...prev, isLocked: true, lockTimeLeft: 60 }));
       }
     } finally {
@@ -132,15 +133,19 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
   // Rate Limit Countdown Timer
   useEffect(() => {
     if (!state.isLocked) return;
-    if (state.lockTimeLeft <= 0) {
-      setState(prev => ({ ...prev, isLocked: false, lockTimeLeft: 0 }));
-      return;
-    }
+    
     const timer = setInterval(() => {
-      setState(prev => ({ ...prev, lockTimeLeft: Math.max(0, prev.lockTimeLeft - 1) }));
+      setState(prev => {
+        if (prev.lockTimeLeft <= 1) {
+          clearInterval(timer);
+          return { ...prev, isLocked: false, lockTimeLeft: 0 };
+        }
+        return { ...prev, lockTimeLeft: prev.lockTimeLeft - 1 };
+      });
     }, 1000);
+    
     return () => clearInterval(timer);
-  }, [state.isLocked, state.lockTimeLeft]);
+  }, [state.isLocked]);
 
   // We do NOT use an unmount effect to sync anymore, because the global timer
   // will continue to run even if this component unmounts, ensuring the like is saved!

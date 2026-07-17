@@ -82,9 +82,6 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
 
 
   // Handlers for likes are now managed by useLike
-  const handleLike = () => {
-    toggleLike();
-  };
 
   const handleVote = async (optId: string, index: number) => {
     if (hasVoted || isSubmitting) return;
