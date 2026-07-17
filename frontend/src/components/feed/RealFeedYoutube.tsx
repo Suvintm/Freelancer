@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
 import Hls from 'hls.js';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play, Lock } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useLottie } from 'lottie-react';
 import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
@@ -10,6 +10,8 @@ import type { RealPost } from './types';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
 import { formatTimeAgo } from '../../utils/dateFormatter';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
+import { useLike } from '../../hooks/useLike';
+import { AnimatePresence } from 'framer-motion';
 
 export function RealFeedYoutube({ 
   post, 
@@ -38,6 +40,13 @@ export function RealFeedYoutube({
   const userName = post.youtube_channel?.channel_name || post.user?.profile?.name || post.user?.username || 'User';
   const avatarSrc = resolveMediaUrl(post.youtube_channel?.thumbnail_url) || resolveMediaUrl(post.user?.profile?.profile_picture) || defaultProfile;
   const location = 'YouTube';
+
+  const { likedByMe, likeCount, isAnimating, isLocked, lockTimeLeft, toggleLike, triggerLike } = useLike({
+    postId: post.id,
+    contentType: post.contentType || 'YOUTUBE_POST',
+    initialLiked: post.isLiked || false,
+    initialCount: post.like_count || 0
+  });
 
   const playMedia = useCallback(() => {
     if (videoRef.current) {
@@ -142,9 +151,35 @@ export function RealFeedYoutube({
     >
       {/* Video Container (16:9 Aspect Ratio) */}
       <div 
-        className="relative w-full aspect-video bg-black cursor-pointer overflow-hidden rounded-t-[28px]"
-        onClick={(e) => { e.stopPropagation(); if (isPlaying) pauseMedia(); else playMedia(); }}
+        className="w-full relative overflow-hidden flex items-center justify-center bg-black cursor-pointer aspect-video rounded-t-[40px] lg:rounded-t-[40px]"
+        onClick={isPlaying ? pauseMedia : playMedia}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          triggerLike();
+        }}
       >
+        <AnimatePresence>
+          {isAnimating && (
+            <motion.div 
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.3, 0.9, 1], opacity: [0, 1, 1, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none"
+            >
+              <Heart size={80} fill="#ef4444" stroke="#ef4444" className="drop-shadow-2xl" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {isLocked && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-1 shadow-2xl animate-in fade-in zoom-in duration-300">
+              <Lock className="text-rose-500 w-8 h-8 mb-1" />
+              <p className="text-white font-semibold text-sm">Action Locked</p>
+              <p className="text-white/70 text-[11px] uppercase tracking-widest font-semibold">Wait {lockTimeLeft}s</p>
+            </div>
+          </div>
+        )}
         {isProcessing ? (
           <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-zinc-900/80 backdrop-blur-sm z-10 rounded-[24px]">
             <div className="w-8 h-8 border-4 border-white/20 border-t-red-500 rounded-full animate-spin mb-3" />
@@ -254,9 +289,9 @@ export function RealFeedYoutube({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-4">
-            <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
-              <Heart size={20} className="hover:text-red-500 transition-colors" />
-              <span className="text-[13px] font-semibold">{post.like_count?.toLocaleString() || 0}</span>
+            <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isLocked ? 'cursor-not-allowed opacity-50' : (isDarkMode ? 'hover:bg-white/10 text-zinc-300 hover:text-red-500' : 'hover:bg-zinc-100 text-zinc-600 hover:text-red-500')}`}>
+              {isLocked ? <Lock size={20} stroke="currentColor" /> : <Heart size={20} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} className="transition-colors" />}
+              <span className="text-[13px] font-semibold">{likeCount.toLocaleString()}</span>
             </button>
             <button onClick={() => setIsCommentsOpen(true)} className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
               <MessageCircle size={20} />

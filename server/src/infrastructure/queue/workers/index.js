@@ -6,11 +6,9 @@ import youtubeSyncProcessor from "./processors/youtubeSyncProcessor.js";
 import mediaProcessor from "./processors/mediaProcessor.js";
 import storyProcessor from "./processors/storyProcessor.js";
 import storyCleanupProcessor from "./processors/storyCleanupProcessor.js";
-import searchFeedbackProcessor from "./processors/searchFeedbackProcessor.js";
-import searchAnalyticsProcessor from "./processors/searchAnalyticsProcessor.js";
 import likeSyncProcessor from "./processors/likeSyncProcessor.js";
 import commentProcessor from "./processors/commentProcessor.js";
-import { storyCleanupQueue, searchFeedbackQueue, searchAnalyticsQueue, likeSyncQueue } from "./queues.js";
+import { storyCleanupQueue, likeSyncQueue } from "./queues.js";
 
 /**
  * 🏗️ BACKGROUND WORKER HUB
@@ -74,27 +72,14 @@ if (connection) {
     drainDelay: 300000,
   });
 
-  // ─── 5. SEARCH FEEDBACK WORKER (WEEKLY RANKING RECALIBRATION) ───────────────
-  const searchFeedbackWorker = new Worker("search-feedback", searchFeedbackProcessor, {
-    connection,
-    concurrency: 1,      // Heavy DB job — run one at a time
-    drainDelay: 600000,  // ✅ 10 min idle check (job runs once a week, very low cost)
-    lockDuration: 300000, // Allow up to 5 min to complete
-    maxStalledCount: 1,
-  });
-
-  // ─── 6. SEARCH ANALYTICS WORKER (BATCH LOGGING) ─────────────────────────────
-  const searchAnalyticsWorker = new Worker("search-analytics", searchAnalyticsProcessor, {
-    connection,
-    concurrency: 1,      // Must be 1 to prevent race conditions during batch writes
-    drainDelay: 30000,   // Check every 30s
-    lockDuration: 60000, // Batches shouldn't take more than 60s
-  });
 
   // ─── 7. LIKE SYNC WORKER ────────────────────────────────────────────────────
+  // CONCURRENCY WARNING: This is intentionally set to 1. The current design processes 
+  // a single shared `feed:likes:dirty` queue. Increasing this without sharding the queue 
+  // will cause race conditions and duplicate writes.
   const likeSyncWorker = new Worker("like-sync", likeSyncProcessor, {
     connection,
-    concurrency: 1,      // Prevent concurrent DB writes for the same posts
+    concurrency: Number(process.env.LIKE_SYNC_CONCURRENCY || 1),
     drainDelay: 30000,   // Wait 30s before checking queue again when empty
     lockDuration: 60000, // Sync shouldn't take long
   });
@@ -180,41 +165,27 @@ if (connection) {
     })
   );
 
-  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, searchFeedbackWorker, searchAnalyticsWorker, likeSyncWorker, commentWorker);
+  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, likeSyncWorker, commentWorker);
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
-  // 🧹 [STORY SWEEPER] Run cleanup every 2 minutes (⚡ TEST MODE)
+  // 🧹 [STORY SWEEPER] Run cleanup every 1 hour
   storyCleanupQueue.add("cleanup-stories", {}, {
-    repeat: { pattern: "*/2 * * * *" }
-  }).then(() => logger.info("🧹 [SCHEDULED] Story Sweeper active (Every 2 Minutes - Test Mode)."))
+    repeat: { pattern: "0 * * * *" }
+  }).then(() => logger.info("🧹 [SCHEDULED] Story Sweeper active (Every 1 Hour)."))
     .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Story Sweeper: ${err.message}`));
 
-  // 🔍 [SEARCH FEEDBACK] Run every Sunday at 02:00 — zero-cost since it's weekly
-  searchFeedbackQueue.add("search-ranking-recalibration", {}, {
-    jobId: "search-feedback-weekly", // deduplicated — only one scheduled at a time
-    repeat: { pattern: "0 2 * * 0" }, // Every Sunday at 02:00
-  }).then(() => logger.info("🔍 [SCHEDULED] Search Feedback Loop active (Every Sunday 02:00)."))
-    .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Search Feedback: ${err.message}`));
 
-  // 📊 [SEARCH ANALYTICS] Flush Redis buffer to MongoDB every 2 minutes
-  searchAnalyticsQueue.add("flush-search-buffer", {}, {
-    jobId: "search-analytics-flush",
-    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
-  }).then(() => logger.info("📊 [SCHEDULED] Search Analytics Flusher active (Every 2 Minutes)."))
-    .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Search Analytics: ${err.message}`));
-
-  // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 2 minutes
+  // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 5 minutes (configurable)
+  const likeSyncCron = process.env.LIKE_SYNC_CRON || "*/5 * * * *";
   likeSyncQueue.add("flush-likes", {}, {
     jobId: "like-sync-flush",
-    repeat: { pattern: "*/2 * * * *" } // Every 2 minutes
-  }).then(() => logger.info("❤️ [SCHEDULED] Like Sync Flusher active (Every 2 Minutes)."))
+    repeat: { pattern: likeSyncCron }
+  }).then(() => logger.info(`❤️ [SCHEDULED] Like Sync Flusher active (Cron: ${likeSyncCron}).`))
     .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
 
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
   logger.info(`   📊 YT Sync:       drainDelay=60s  | concurrency=2 | stall-check=10m`);
   logger.info(`   📊 Media:          drainDelay=30s  | concurrency=3 | stall-check=5m`);
-  logger.info(`   📊 SearchFeedback: drainDelay=600s | concurrency=1 | runs=weekly`);
-  logger.info(`   📊 SearchAnalytics: drainDelay=30s  | concurrency=1 | runs=every 2m`);
 
 } else {
   logger.warn("⚠️ [WORKERS] Redis connection missing. Background Workers will NOT start.");

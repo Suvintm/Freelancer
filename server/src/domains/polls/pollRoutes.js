@@ -40,6 +40,6 @@ router.get("/:id/details", authenticate, getPollDetails);
  * @desc    Like / Unlike a poll
  * @access  Private
  */
-router.post("/:id/like", authenticate, interactionLimiter, likePoll);
+router.post("/:id/like", authenticate, likePoll);
 
 export default router;

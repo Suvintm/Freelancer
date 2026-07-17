@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 
 const router = express.Router();
 
+import { likeSyncQueue } from "../../infrastructure/queue/workers/queues.js";
+
 router.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",

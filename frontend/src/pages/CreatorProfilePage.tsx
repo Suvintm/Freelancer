@@ -2,12 +2,12 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Youtube, Eye, ThumbsUp, MessageSquare, MapPin, 
   Globe, ExternalLink, MessageCircle, Send, 
-  ShieldAlert, Sparkles, ArrowLeft, Loader2 
+  ShieldAlert, Sparkles, ArrowLeft, Loader2, Trash2, AlertTriangle
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
@@ -87,6 +87,26 @@ export default function CreatorProfilePage() {
   const [activeTab, setActiveTab] = useState<'youtube' | 'posts'>('youtube');
   const currentUser = useSelector(selectUser);
   const isOwnProfile = currentUser?.id === userId;
+  const queryClient = useQueryClient();
+  const [postToDelete, setPostToDelete] = useState<CreatorPost | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!postToDelete) return;
+    setIsDeleting(true);
+    try {
+      const endpoint = postToDelete.type === 'reel' 
+        ? `/social/reels/${postToDelete.id}` 
+        : `/social/posts/${postToDelete.id}`;
+      await api.delete(endpoint);
+      queryClient.invalidateQueries({ queryKey: ['creator-posts', userId] });
+      setPostToDelete(null);
+    } catch (err) {
+      console.error('Delete failed', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // 1. Fetch Creator Basic & YouTube Profile Info
   const { data: creatorResponse, isLoading: isLoadingProfile, error: profileError } = useQuery({
@@ -482,6 +502,19 @@ export default function CreatorProfilePage() {
                                 Reel
                               </div>
                             )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                              {isOwnProfile && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPostToDelete(post);
+                                  }}
+                                  className="w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition-transform active:scale-95 pointer-events-auto"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -572,6 +605,54 @@ export default function CreatorProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${
+                isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'
+              }`}
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 text-red-600 dark:text-red-500">
+                  <AlertTriangle size={24} />
+                </div>
+                <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+                  Delete {postToDelete.type === 'reel' ? 'Reel' : 'Post'}?
+                </h3>
+                <p className="text-sm text-text-muted mb-6 leading-relaxed">
+                  Are you sure you want to delete this content? This action cannot be undone and will permanently remove the media from servers.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setPostToDelete(null)}
+                    disabled={isDeleting}
+                    className={`flex-1 h-11 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${
+                      isDarkMode 
+                        ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    disabled={isDeleting}
+                    className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    {isDeleting ? <Loader2 size={16} className="animate-spin" /> : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

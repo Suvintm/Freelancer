@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { MoreHorizontal, Heart, Send, CheckCircle2, MessageSquare, Image as ImageIcon, Smile, Lightbulb, Bookmark, Share2 } from 'lucide-react';
+import { MoreHorizontal, Heart, Send, CheckCircle2, MessageSquare, Image as ImageIcon, Smile, Lightbulb, Bookmark, Share2, Lock } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useLottie } from 'lottie-react';
 import successLottieData from '../../assets/success_lottie.json';
@@ -8,6 +8,7 @@ import { api } from '../../api/client';
 import { formatTimeAgo } from '../../utils/dateFormatter';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { BarChartLayout, DonutChartLayout, GridCardsLayout, ImageCarouselLayout } from './PollLayouts';
+import { useLike } from '../../hooks/useLike';
 
 import type { RealPost } from './types';
 
@@ -52,10 +53,12 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
   const [localCounts, setLocalCounts] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [localLiked, setLocalLiked] = useState(post.isLiked || false);
-  const [localLikesCount, setLocalLikesCount] = useState(post.like_count || 0);
-  const [showHeartPop, setShowHeartPop] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
+  const { likedByMe, likeCount, isAnimating, isLocked, lockTimeLeft, toggleLike, triggerLike } = useLike({
+    postId: post.id,
+    contentType: 'POLL',
+    initialLiked: post.isLiked || false,
+    initialCount: post.like_count || 0
+  });
   
   const totalVotes = poll.totalVotes || 0;
   const lottieContainerRef = useRef(null);
@@ -78,28 +81,7 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
 
 
 
-  const handleLike = async () => {
-    if (isLiking) return;
-    setIsLiking(true);
-    const nextLiked = !localLiked;
-    setLocalLiked(nextLiked);
-    setLocalLikesCount(prev => Math.max(0, prev + (nextLiked ? 1 : -1)));
-    
-    if (nextLiked) {
-      setShowHeartPop(true);
-      setTimeout(() => setShowHeartPop(false), 800);
-    }
-    
-    try {
-      await api.post(`/polls/${post.id}/like`);
-    } catch (err) {
-      console.error("Failed to toggle like:", err);
-      setLocalLiked(!nextLiked);
-      setLocalLikesCount(prev => Math.max(0, prev - (nextLiked ? 1 : -1)));
-    } finally {
-      setIsLiking(false);
-    }
-  };
+  // Handlers for likes are now managed by useLike
 
   const handleVote = async (optId: string, index: number) => {
     if (hasVoted || isSubmitting) return;
@@ -327,13 +309,13 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
   // --- MULTIPLE CHOICE UI (Original) ---
   return (
     <motion.article 
-      onDoubleClick={handleLike}
+      onDoubleClick={() => triggerLike()}
       className={`w-[calc(100%-24px)] max-w-[600px] mx-auto lg:border lg:rounded-[40px] overflow-hidden rounded-3xl group lg:shadow-xl mb-6 lg:mb-0 relative ${
         isDarkMode ? 'bg-black border-zinc-800/50' : 'bg-white border-zinc-200 shadow-sm'
       }`}
     >
       <AnimatePresence>
-        {showHeartPop && (
+        {isAnimating && (
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: [0, 1.3, 0.9, 1], opacity: [0, 1, 1, 0] }}
@@ -343,6 +325,15 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
           >
             <Heart size={90} fill="#ef4444" stroke="#ef4444" className="drop-shadow-2xl" />
           </motion.div>
+        )}
+        {isLocked && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-1 shadow-2xl animate-in fade-in zoom-in duration-300">
+              <Lock className="text-rose-500 w-8 h-8 mb-1" />
+              <p className="text-white font-semibold text-sm">Action Locked</p>
+              <p className="text-white/70 text-[11px] uppercase tracking-widest font-semibold">Wait {lockTimeLeft}s</p>
+            </div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -473,26 +464,34 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
       <div className={`p-4 flex items-center justify-between border-t ${isDarkMode ? 'border-zinc-800/50' : 'border-zinc-100'}`}>
         <div className="flex items-center gap-6">
           <button 
-            onClick={handleLike}
+            onClick={toggleLike}
             className="flex flex-col items-center gap-1 group relative outline-none"
           >
             <motion.div
               whileTap={{ scale: 1.4 }}
-              animate={{ scale: localLiked ? [1, 1.25, 1] : 1 }}
+              animate={{ scale: likedByMe ? [1, 1.25, 1] : 1 }}
               transition={{ duration: 0.3 }}
             >
-              <Heart 
-                size={22} 
-                fill={localLiked ? "#ef4444" : "none"}
-                className={`transition-colors ${
-                  localLiked 
-                    ? 'text-red-500' 
-                    : (isDarkMode ? 'text-white group-hover:text-zinc-300' : 'text-zinc-900 group-hover:text-zinc-500')
-                }`} 
-              />
+              {isLocked ? (
+                <Lock 
+                  size={22} 
+                  stroke="currentColor" 
+                  className="transition-colors opacity-50 cursor-not-allowed" 
+                />
+              ) : (
+                <Heart 
+                  size={22} 
+                  fill={likedByMe ? "#ef4444" : "none"}
+                  className={`transition-colors ${
+                    likedByMe 
+                      ? 'text-red-500' 
+                      : (isDarkMode ? 'text-white group-hover:text-zinc-300' : 'text-zinc-900 group-hover:text-zinc-500')
+                  }`} 
+                />
+              )}
             </motion.div>
             <span className="text-[10px] font-bold text-zinc-500">
-              {localLikesCount > 0 ? localLikesCount.toLocaleString() : 'Like'}
+              {likeCount > 0 ? likeCount.toLocaleString() : 'Like'}
             </span>
           </button>
         </div>

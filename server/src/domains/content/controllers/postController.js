@@ -242,29 +242,82 @@ export const deleteReel = async (req, res) => {
 };
 
 
+import redisProxy from "../../../infrastructure/cache/redis.client.js";
+
 const populateIsLiked = async (items, userId) => {
   if (!userId || !items || items.length === 0) return items;
 
-  const postIds = items.filter(i => i.contentType === 'POST').map(i => i.id);
-  const reelIds = items.filter(i => i.contentType === 'REEL').map(i => i.id);
-  const youtubeIds = items.filter(i => i.contentType === 'YOUTUBE_POST').map(i => i.id);
-  const pollIds = items.filter(i => i.contentType === 'POLL').map(i => i.id);
+  // 1. Pipeline check for cache existence AND membership
+  const pipeline = redisProxy.pipeline();
+  
+  items.forEach(item => {
+    // Determine type for Redis key
+    let type = item.contentType;
+    if (!type) {
+      if (item.youtube_link) type = "YOUTUBE_POST";
+      else if (item.question) type = "POLL";
+      else if (item.media && item.media.some(m => m.type === "VIDEO")) type = "REEL";
+      else type = "POST";
+    }
+    // Temporarily store resolved type for DB fallback
+    item._resolvedType = type;
+    
+    // If the count key exists, the cache is warm. SISMEMBER is then 100% accurate.
+    pipeline.exists(`feed:likes:count:${type}:${item.id}`);
+    pipeline.sismember(`feed:likes:users:${type}:${item.id}`, userId);
+  });
 
-  const [postLikes, reelLikes, youtubeLikes, pollLikes] = await Promise.all([
-    postIds.length > 0 ? prisma.postLike.findMany({ where: { userId, postId: { in: postIds } }, select: { postId: true } }) : [],
-    reelIds.length > 0 ? prisma.reelLike.findMany({ where: { userId, reelId: { in: reelIds } }, select: { reelId: true } }) : [],
-    youtubeIds.length > 0 ? prisma.youtubePostLike.findMany({ where: { userId, youtubePostId: { in: youtubeIds } }, select: { youtubePostId: true } }) : [],
-    pollIds.length > 0 ? prisma.pollLike.findMany({ where: { userId, pollId: { in: pollIds } }, select: { pollId: true } }) : []
-  ]);
+  const results = await pipeline.exec();
 
-  const likedSet = new Set([
-    ...postLikes.map(l => l.postId),
-    ...reelLikes.map(l => l.reelId),
-    ...youtubeLikes.map(l => l.youtubePostId),
-    ...pollLikes.map(l => l.pollId)
-  ]);
+  const coldItems = { POST: [], REEL: [], YOUTUBE_POST: [], POLL: [] };
 
-  return items.map(item => ({ ...item, isLiked: likedSet.has(item.id) }));
+  // 2. Process Redis results
+  items.forEach((item, index) => {
+    const existsResult = results[index * 2][1];
+    const sismemberResult = results[index * 2 + 1][1];
+
+    if (existsResult === 1) {
+      // Cache is warm
+      item.isLiked = (sismemberResult === 1);
+    } else {
+      // Cache is cold (expired). We must ask Postgres.
+      item.isLiked = false; // Default until DB check
+      coldItems[item._resolvedType].push(item.id);
+    }
+  });
+
+  // 3. Fallback to DB ONLY for items that were missing from Redis
+  const dbQueries = [];
+  
+  if (coldItems.POST.length > 0) {
+    dbQueries.push(prisma.postLike.findMany({ where: { userId, postId: { in: coldItems.POST } }, select: { postId: true } }).then(res => res.map(r => r.postId)));
+  }
+  if (coldItems.REEL.length > 0) {
+    dbQueries.push(prisma.reelLike.findMany({ where: { userId, reelId: { in: coldItems.REEL } }, select: { reelId: true } }).then(res => res.map(r => r.reelId)));
+  }
+  if (coldItems.YOUTUBE_POST.length > 0) {
+    dbQueries.push(prisma.youtubePostLike.findMany({ where: { userId, youtubePostId: { in: coldItems.YOUTUBE_POST } }, select: { youtubePostId: true } }).then(res => res.map(r => r.youtubePostId)));
+  }
+  if (coldItems.POLL.length > 0) {
+    dbQueries.push(prisma.pollLike.findMany({ where: { userId, pollId: { in: coldItems.POLL } }, select: { pollId: true } }).then(res => res.map(r => r.pollId)));
+  }
+
+  if (dbQueries.length > 0) {
+    const dbResults = await Promise.all(dbQueries);
+    const likedInDbSet = new Set(dbResults.flat()); // Merge all found IDs
+    
+    items.forEach(item => {
+      // If it was a cold item, update its status from the DB result
+      if (coldItems[item._resolvedType].includes(item.id)) {
+        item.isLiked = likedInDbSet.has(item.id);
+      }
+    });
+  }
+
+  // Cleanup temporary property
+  items.forEach(item => delete item._resolvedType);
+
+  return items;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -297,22 +350,24 @@ export const getFeed = async (req, res) => {
     const TTL_SECONDS = 30;
 
     const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const dateFilter = cursor ? { created_at: { lt: new Date(cursor) } } : {};
+
       // Query all 4 content tables in parallel
       const [posts, reels, youtubePosts, polls] = await Promise.all([
         prisma.post.findMany({
-          where: { visibility: "PUBLIC", is_ready: true },
+          where: { visibility: "PUBLIC", is_ready: true, ...dateFilter },
           include: { user: USER_SELECT, media: MEDIA_SELECT },
           orderBy: { created_at: "desc" },
           take,
         }),
         prisma.reel.findMany({
-          where: { visibility: "PUBLIC", is_ready: true },
+          where: { visibility: "PUBLIC", is_ready: true, ...dateFilter },
           include: { user: USER_SELECT, media: MEDIA_SELECT },
           orderBy: { created_at: "desc" },
           take,
         }),
         prisma.youtubePost.findMany({
-          where: { visibility: "PUBLIC", is_ready: true },
+          where: { visibility: "PUBLIC", is_ready: true, ...dateFilter },
           include: {
             user: USER_SELECT,
             media: MEDIA_SELECT,
@@ -324,7 +379,7 @@ export const getFeed = async (req, res) => {
           take,
         }),
         prisma.poll.findMany({
-          where: { visibility: "PUBLIC" },
+          where: { visibility: "PUBLIC", ...dateFilter },
           include: {
             user: USER_SELECT,
             options: { orderBy: { order_index: "asc" } },
@@ -360,7 +415,7 @@ export const getFeed = async (req, res) => {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, take);
 
-      const nextCursor = merged.length === take ? merged[merged.length - 1].id : null;
+      const nextCursor = merged.length === take ? new Date(merged[merged.length - 1].created_at).toISOString() : null;
 
       return { data: merged, nextCursor };
     });
@@ -386,8 +441,9 @@ export const getPostsFeed = async (req, res) => {
     const TTL_SECONDS = 30;
 
     const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const dateFilter = cursor ? { created_at: { lt: new Date(cursor) } } : {};
       const posts = await prisma.post.findMany({
-        where: { visibility: "PUBLIC" },
+        where: { visibility: "PUBLIC", ...dateFilter },
         include: { user: USER_SELECT, media: MEDIA_SELECT },
         orderBy: { created_at: "desc" },
         take,
@@ -398,7 +454,7 @@ export const getPostsFeed = async (req, res) => {
         return { ...p, contentType: "POST", media: p.media.map(resolveMediaForApi) };
       });
 
-      const nextCursor = tagged.length === take ? tagged[tagged.length - 1].id : null;
+      const nextCursor = tagged.length === take ? new Date(tagged[tagged.length - 1].created_at).toISOString() : null;
       return { data: tagged, nextCursor };
     });
 
@@ -419,8 +475,9 @@ export const getReelsFeed = async (req, res) => {
     const TTL_SECONDS = 30;
 
     const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const dateFilter = cursor ? { created_at: { lt: new Date(cursor) } } : {};
       const reels = await prisma.reel.findMany({
-        where: { visibility: "PUBLIC" },
+        where: { visibility: "PUBLIC", ...dateFilter },
         include: { user: USER_SELECT, media: MEDIA_SELECT },
         orderBy: { created_at: "desc" },
         take,
@@ -431,7 +488,7 @@ export const getReelsFeed = async (req, res) => {
         return { ...r, contentType: "REEL", media: r.media.map(resolveMediaForApi) };
       });
 
-      const nextCursor = tagged.length === take ? tagged[tagged.length - 1].id : null;
+      const nextCursor = tagged.length === take ? new Date(tagged[tagged.length - 1].created_at).toISOString() : null;
       return { data: tagged, nextCursor };
     });
 
@@ -452,8 +509,9 @@ export const getYoutubeFeed = async (req, res) => {
     const TTL_SECONDS = 30;
 
     const feedData = await withCache(cacheKey, TTL_SECONDS, async () => {
+      const dateFilter = cursor ? { created_at: { lt: new Date(cursor) } } : {};
       const youtubePosts = await prisma.youtubePost.findMany({
-        where: { visibility: "PUBLIC" },
+        where: { visibility: "PUBLIC", ...dateFilter },
         include: {
           user: USER_SELECT,
           media: MEDIA_SELECT,
@@ -471,7 +529,7 @@ export const getYoutubeFeed = async (req, res) => {
         return { ...y, contentType: "YOUTUBE_POST", media: y.media.map(resolveMediaForApi) };
       });
 
-      const nextCursor = tagged.length === take ? tagged[tagged.length - 1].id : null;
+      const nextCursor = tagged.length === take ? new Date(tagged[tagged.length - 1].created_at).toISOString() : null;
       return { data: tagged, nextCursor };
     });
 
@@ -507,6 +565,13 @@ export const toggleLikeController = async (req, res) => {
     const result = await toggleLike(type, id, userId, action);
     res.json({ success: true, ...result });
   } catch (error) {
+    if (error.code?.startsWith("RATE_LIMIT")) {
+      return res.status(429).json({ 
+        success: false, 
+        code: error.code, 
+        message: "You are liking too fast! Please wait a moment." 
+      });
+    }
     logger.error(`❌ [CONTENT_CTRL] toggleLike failure: ${error.message}`);
     res.status(500).json({ success: false, message: "Failed to toggle like" });
   }

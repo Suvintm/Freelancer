@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube } from 'lucide-react';
+import { MoreHorizontal, ChevronLeft, ChevronRight, Heart, MessageCircle, Share2, Bookmark, Youtube, Lock } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import LottieComponent from 'lottie-react';
 import imageErrorAnimation from '../../assets/lottie/image-error.json';
@@ -34,7 +34,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
   const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   
-  const { likedByMe, likeCount, isAnimating, toggleLike, triggerLike } = useLike({
+  const { likedByMe, likeCount, isAnimating, isLocked, lockTimeLeft, toggleLike, triggerLike } = useLike({
     postId: post.id,
     contentType: post.contentType,
     initialLiked: post.isLiked || false,
@@ -90,6 +90,15 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
           </motion.div>
         )}
       </AnimatePresence>
+      {isLocked && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-1 shadow-2xl animate-in fade-in zoom-in duration-300">
+            <Lock className="text-rose-500 w-8 h-8 mb-1" />
+            <p className="text-white font-semibold text-sm">Action Locked</p>
+            <p className="text-white/70 text-[11px] uppercase tracking-widest font-semibold">Wait {lockTimeLeft}s</p>
+          </div>
+        </div>
+      )}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full border-2 border-border-main p-0.5">
@@ -213,7 +222,9 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
             >
-              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 hover:text-rose-500`}><Heart size={26} fill={likedByMe ? "#ef4444" : "rgba(0,0,0,0.2)"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`text-white drop-shadow-md transition-colors transform active:scale-90 ${isLocked ? 'cursor-not-allowed opacity-50' : 'hover:text-rose-500'}`}>
+                {isLocked ? <Lock size={26} fill="rgba(0,0,0,0.2)" stroke="currentColor" /> : <Heart size={26} fill={likedByMe ? "#ef4444" : "rgba(0,0,0,0.2)"} stroke={likedByMe ? "#ef4444" : "currentColor"} />}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className="text-white drop-shadow-md transition-colors transform active:scale-90"><MessageCircle size={26} fill="rgba(0,0,0,0.2)" /></button>
               <button className="text-white drop-shadow-md transition-colors transform active:scale-90"><Share2 size={26} fill="rgba(0,0,0,0.2)" /></button>
             </div>
@@ -243,7 +254,9 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
         {!isTallMedia && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 hover:text-rose-500 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Heart size={24} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className={`transition-colors transform active:scale-90 ${isLocked ? 'cursor-not-allowed opacity-50' : 'hover:text-rose-500'} ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}>
+                {isLocked ? <Lock size={24} fill="none" stroke="currentColor" /> : <Heart size={24} fill={likedByMe ? "#ef4444" : "none"} stroke={likedByMe ? "#ef4444" : "currentColor"} />}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><MessageCircle size={24} /></button>
               <button className={`transition-colors transform active:scale-90 ${isDarkMode ? 'text-white' : 'text-zinc-950'}`}><Share2 size={24} /></button>
             </div>

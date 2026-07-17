@@ -16,6 +16,8 @@ interface LikeState {
   likeCount: number;
   isAnimating: boolean;
   isSyncing: boolean;
+  isLocked: boolean;
+  lockTimeLeft: number;
 }
 
 export function useLike({ postId, contentType, initialLiked, initialCount }: UseLikeOptions) {
@@ -24,6 +26,8 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
     likeCount: initialCount,
     isAnimating: false,
     isSyncing: false,
+    isLocked: false,
+    lockTimeLeft: 0,
   });
 
   const pendingActions = useRef<Array<'like' | 'unlike'>>([]);
@@ -57,10 +61,20 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         // likeCount: response.data.count ?? prev.likeCount,
         isSyncing: false,
       }));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Like sync failed:', error);
-      // Optional: rollback on error by fetching real state or dispatching error
-      setState(prev => ({ ...prev, isSyncing: false }));
+      const err = error as { response?: { status?: number } };
+      // Rollback on error by fetching real state or dispatching error
+      setState(prev => ({ 
+        ...prev, 
+        likedByMe: !shouldLike, // Revert to the opposite of what we tried to do
+        likeCount: shouldLike ? Math.max(0, prev.likeCount - 1) : prev.likeCount + 1, // Revert count
+        isSyncing: false 
+      }));
+      
+      if (err.response?.status === 429) {
+         setState(prev => ({ ...prev, isLocked: true, lockTimeLeft: 60 }));
+      }
     } finally {
       isProcessing.current = false;
       // If actions piled up while we were syncing, run again
@@ -85,6 +99,8 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
 
   // Main UI action
   const toggleLike = () => {
+    if (state.isLocked) return;
+    
     // 1. Determine what the next state SHOULD be
     const currentOptimisticLiked = pendingActions.current.length > 0 
         ? pendingActions.current[pendingActions.current.length - 1] === 'like'
@@ -114,6 +130,23 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
     return () => clearTimeout(timer);
   }, [state.isAnimating]);
 
+  // Rate Limit Countdown Timer
+  useEffect(() => {
+    if (!state.isLocked) return;
+    
+    const timer = setInterval(() => {
+      setState(prev => {
+        if (prev.lockTimeLeft <= 1) {
+          clearInterval(timer);
+          return { ...prev, isLocked: false, lockTimeLeft: 0 };
+        }
+        return { ...prev, lockTimeLeft: prev.lockTimeLeft - 1 };
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [state.isLocked]);
+
   // We do NOT use an unmount effect to sync anymore, because the global timer
   // will continue to run even if this component unmounts, ensuring the like is saved!
 
@@ -121,6 +154,7 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
     ...state,
     toggleLike,
     triggerLike: () => {
+      if (state.isLocked) return;
       const currentOptimisticLiked = pendingActions.current.length > 0 
           ? pendingActions.current[pendingActions.current.length - 1] === 'like'
           : state.likedByMe;

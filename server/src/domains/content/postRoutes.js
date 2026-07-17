@@ -31,7 +31,7 @@ const router = express.Router();
  */
 router.post("/posts", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createPost);
 router.delete("/posts/:postId", authenticate, interactionLimiter, deletePost);
-router.post("/posts/:id/like", authenticate, interactionLimiter, toggleLikeController);
+router.post("/posts/:id/like", authenticate, toggleLikeController);
 
 // ── Short-form Video Reels ────────────────────────────────────────────────────
 /**
@@ -41,7 +41,7 @@ router.post("/posts/:id/like", authenticate, interactionLimiter, toggleLikeContr
  */
 router.post("/reels", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createReel);
 router.delete("/reels/:reelId", authenticate, interactionLimiter, deleteReel);
-router.post("/reels/:id/like", authenticate, interactionLimiter, toggleLikeController);
+router.post("/reels/:id/like", authenticate, toggleLikeController);
 
 // ── YouTube Link Share Posts ──────────────────────────────────────────────────
 /**
@@ -50,7 +50,7 @@ router.post("/reels/:id/like", authenticate, interactionLimiter, toggleLikeContr
  * @access  Private
  */
 router.post("/posts/youtube", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createYoutubePost);
-router.post("/posts/youtube/:id/like", authenticate, interactionLimiter, toggleLikeController);
+router.post("/posts/youtube/:id/like", authenticate, toggleLikeController);
 
 // ── Polls ─────────────────────────────────────────────────────────────────────
 /**
@@ -59,7 +59,7 @@ router.post("/posts/youtube/:id/like", authenticate, interactionLimiter, toggleL
  * @access  Private
  */
 router.post("/polls", authenticate, requireCapability(CAPABILITIES.CONTENT_UPLOAD_POST), interactionLimiter, createPoll);
-router.post("/polls/:id/like", authenticate, interactionLimiter, toggleLikeController);
+router.post("/polls/:id/like", authenticate, toggleLikeController);
 
 // ── Unified Feed ──────────────────────────────────────────────────────────────
 /**

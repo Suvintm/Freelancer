@@ -11,16 +11,12 @@ const storyCleanupProcessor = async (job) => {
   logger.info(`🧹 [CLEANUP] Starting Story Sweeper Job: ${job.id}`);
 
   try {
-    // 1. Find Expired Stories (Harden with UTC ISO string)
+    // 1. Find Expired Stories
     const now = new Date();
-    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
 
     const expiredStories = await prisma.story.findMany({
       where: {
-        OR: [
-          { expires_at: { lt: now } },
-          { created_at: { lt: twoMinutesAgo } } // 🚀 TEST MODE: Force delete anything older than 2 mins
-        ]
+        expires_at: { lt: now }
       },
       include: {
         media: true
@@ -28,11 +24,11 @@ const storyCleanupProcessor = async (job) => {
     });
 
     if (expiredStories.length === 0) {
-      logger.info(`🧹 [CLEANUP] No expired stories found. (Threshold: ${twoMinutesAgo.toISOString()}). Sweeper idle.`);
+      logger.info(`🧹 [CLEANUP] No expired stories found. Sweeper idle.`);
       return { purgedCount: 0 };
     }
 
-    logger.info(`🧹 [CLEANUP] Found ${expiredStories.length} stories to purge. (Threshold: ${twoMinutesAgo.toISOString()})`);
+    logger.info(`🧹 [CLEANUP] Found ${expiredStories.length} stories to purge.`);
 
     const cdnPurgeList = [];
 
@@ -64,7 +60,7 @@ const storyCleanupProcessor = async (job) => {
             userId,
             type: "STORY_EXPIRED",
             title: "Story Expired",
-            body: "Your story has reached its 2-minute limit and has been safely removed.",
+            body: "Your story has reached its 24-hour limit and has been safely removed.",
             entityId: id,
             entityType: "STORY"
         });

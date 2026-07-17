@@ -51,37 +51,15 @@ export const mediaQueue = createQueue("media-processing", {
   removeOnFail: { age: 3600, count: 100 },       // Keep failures 1h
 });
 
-/**
- * Search Feedback Queue
- * Weekly job — recalibrates search rankings from click-through data.
- * Low priority: runs Sunday night during low traffic.
- */
-export const searchFeedbackQueue = createQueue("search-feedback", {
-  attempts: 2,
-  backoff: { type: "fixed", delay: 60000 },      // Retry after 1 minute if failed
-  removeOnComplete: { age: 86400, count: 10 },   // Keep last 10 completions (weekly = ~10 records)
-  removeOnFail: { age: 604800, count: 5 },       // Keep failures 1 week for debugging
-});
 
-/**
- * Search Analytics Queue
- * Flushes Redis buffered clicks/searches to MongoDB in batches.
- * High frequency: runs every 2-5 minutes to keep analytics fresh.
- */
-export const searchAnalyticsQueue = createQueue("search-analytics", {
-  attempts: 3,
-  backoff: { type: "exponential", delay: 5000 },
-  removeOnComplete: { age: 3600, count: 100 },   // Keep last hour of flush history
-  removeOnFail: { age: 86400, count: 50 },       // Keep failures 24h
-});
 
 /**
  * Like Sync Queue
  * Periodically flushes likes from Redis to DB.
  */
 export const likeSyncQueue = createQueue("like-sync", {
-  attempts: 2,
-  backoff: { type: "fixed", delay: 10000 },
+  attempts: Number(process.env.LIKE_SYNC_ATTEMPTS || 5),
+  backoff: { type: process.env.LIKE_SYNC_BACKOFF || "exponential", delay: 5000 },
   removeOnComplete: { age: 3600, count: 50 },
   removeOnFail: { age: 86400, count: 50 },
 });
