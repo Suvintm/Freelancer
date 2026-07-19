@@ -78,18 +78,19 @@ const startServer = async () => {
   //      - Notifications & messaging
   //      - Real-time socket events
   if (process.env.ENABLE_WORKERS === "true") {
-  logger.info("🚀 [WORKERS] ENABLE_WORKERS=true — Starting BullMQ Background Workers...");
-  // Load workers only when the flag is true. This prevents the module from being parsed/evaluated otherwise.
-  const startWorkers = async () => {
-    try {
-      await import("./infrastructure/queue/workers/index.js");
-      logger.info("✅ [WORKERS] Background workers module loaded");
-    } catch (err) {
-      logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
-    }
-  };
-
-
+    logger.info("🚀 [WORKERS] ENABLE_WORKERS=true — Starting BullMQ Background Workers...");
+    const startWorkers = async () => {
+      try {
+        await import("./infrastructure/queue/workers/index.js");
+        logger.info("✅ [WORKERS] Background workers module loaded");
+      } catch (err) {
+        logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
+      }
+    };
+    startWorkers();
+  } else {
+    logger.warn("⚠️ [WORKERS] Background workers are disabled. Set ENABLE_WORKERS=true to enable.");
+  }
   // 7. Start HTTP & WebSocket Server
   initSocket(server);
 

@@ -24,6 +24,7 @@ import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import { authService } from '../api/services/auth.service';
 import { api } from '../api/client';
+import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -51,6 +52,7 @@ export default function CompleteProfile() {
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -168,8 +170,14 @@ export default function CompleteProfile() {
       if (res.data.success) {
         // Mark onboarding as complete before clearing (for any analytics/logging)
         dispatch(setAuth({ user: res.data.user, token: res.data.token, refreshToken: res.data.refreshToken }));
-        dispatch(clearTempSignupData());
-        navigate('/onboarding/preferences');
+        
+        // Show blocking overlay if foreground sync is requested
+        if (res.data.ytSyncMode === 'foreground' && (tempSignupData?.youtubeChannels?.length ?? 0) > 0) {
+          setShowSyncOverlay(true);
+        } else {
+          dispatch(clearTempSignupData());
+          navigate('/onboarding/preferences');
+        }
       }
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
@@ -183,6 +191,7 @@ export default function CompleteProfile() {
 
   return (
     <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center px-4 py-12 font-sans relative overflow-hidden">
+      {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/onboarding/preferences" />}
       {/* Ambient glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[40vh] bg-white/[0.03] blur-[120px] rounded-full" />

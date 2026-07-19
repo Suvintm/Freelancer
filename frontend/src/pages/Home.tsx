@@ -24,6 +24,8 @@ import type { Story } from '../data/storyData';
 import { StoryViewer } from '../components/home/StoryViewer';
 import { FeedPostSkeleton } from '../components/temp-feed/FeedPostSkeleton';
 import type { RealPost } from '../components/feed/types';
+import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
+import { AlertCircle } from 'lucide-react';
 
 type TabType = 'all' | 'posts' | 'reels' | 'youtube';
 
@@ -46,6 +48,12 @@ export default function Home() {
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [visibleCount, setVisibleCount] = useState(5);
+
+  const needsSync = user?.youtubeProfile && 
+                    user.youtubeProfile.length > 0 && 
+                    user.youtubeProfile.some(channel => !channel.last_synced_at);
+  
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
 
   const { data: feedPosts = [], isLoading } = useQuery<RealPost[]>({
     queryKey: ['real-feed', activeTab],
@@ -326,18 +334,53 @@ export default function Home() {
   }
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto pb-20 pt-1 lg:pt-4">
-      <div className={`transition-all duration-300 ${storyId ? 'blur-md pointer-events-none select-none' : ''}`}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes soundwave-bar {
-          0%, 100% { transform: scaleY(0.2); }
-          50% { transform: scaleY(1); }
-        }
-        .visualizer-bar {
-          transform-origin: bottom;
-          animation: soundwave-bar 0.8s ease-in-out infinite;
-        }
-      ` }} />
+    <Fragment>
+      {showSyncOverlay && (
+        <div className="fixed inset-0 z-[9999]">
+          <OnboardingSyncOverlay nextRoute="/" />
+        </div>
+      )}
+
+      <div className="relative w-full max-w-3xl mx-auto pb-20 pt-1 lg:pt-4">
+        {needsSync && !showSyncOverlay && (
+          <div className="w-full mb-4 px-2">
+            <div className={`p-4 rounded-2xl border border-orange-500/30 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-lg ${
+              isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-500/20 flex flex-shrink-0 items-center justify-center text-orange-500">
+                  <AlertCircle size={20} />
+                </div>
+                <div className="flex flex-col">
+                  <span className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+                    YouTube Sync Incomplete
+                  </span>
+                  <span className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                    While onboarding, your YouTube sync was not completed due to some issue. Please make sure to continue it.
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSyncOverlay(true)}
+                className="whitespace-nowrap px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors w-full sm:w-auto flex-shrink-0 shadow-md"
+              >
+                Finish Sync
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className={`transition-all duration-300 ${storyId ? 'blur-md pointer-events-none select-none' : ''}`}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes soundwave-bar {
+            0%, 100% { transform: scaleY(0.2); }
+            50% { transform: scaleY(1); }
+          }
+          .visualizer-bar {
+            transform-origin: bottom;
+            animation: soundwave-bar 0.8s ease-in-out infinite;
+          }
+        ` }} />
       
       {/* ─── DESKTOP TOP VIEW LAYOUT ─── */}
       <div className="hidden lg:flex flex-col gap-8 pb-4">
@@ -538,6 +581,7 @@ export default function Home() {
         )}
       </AnimatePresence>
     </div>
+    </Fragment>
   );
 }
 

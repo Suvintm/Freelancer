@@ -33,6 +33,7 @@ export interface AuthUser {
     description?: string;
     avg_views_per_video?: number;
     engagement_rate?: number;
+    last_synced_at?: string | null;
   }>;
   bio?: string;
   website?: string;

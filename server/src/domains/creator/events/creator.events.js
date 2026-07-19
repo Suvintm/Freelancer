@@ -20,8 +20,13 @@ export function bootstrapCreatorEvents() {
         });
         
         if (channels.length > 0) {
-            logger.info(`✨ [CREATOR-EVENTS] Found ${channels.length} channels for new user ${userId}, scheduling sync.`);
-            await scheduleYouTubeSync(userId, channels, "onboarding");
+            // Check if we are running in foreground/manual sync mode
+            if (process.env.YT_SYNC_MODE === 'foreground' || process.env.YT_SYNC_MODE === 'manual') {
+                logger.info(`✨ [CREATOR-EVENTS] Found ${channels.length} channels for new user ${userId}, but skipping BullMQ because YT_SYNC_MODE=${process.env.YT_SYNC_MODE}. Sync will be triggered manually by the frontend.`);
+            } else {
+                logger.info(`✨ [CREATOR-EVENTS] Found ${channels.length} channels for new user ${userId}, scheduling sync in BullMQ.`);
+                await scheduleYouTubeSync(userId, channels, "onboarding");
+            }
         }
     } catch (err) {
         logger.error(`❌ [CREATOR-EVENTS] Failed to process user.registered: ${err.message}`);

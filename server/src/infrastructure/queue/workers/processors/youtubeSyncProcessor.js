@@ -1,7 +1,7 @@
 import { validateYouTubePayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { persistYouTubeContent } from '../../../../domains/creator/services/youtubeSyncService.js';
-import { getIO } from '../../../../platform/socket/socket.gateway.js';
+import { emitToUser } from '../../../../platform/socket/socket.gateway.js';
 import quotaManager from '../../../../domains/creator/services/youtubeQuotaManager.js';
 
 /**
@@ -53,23 +53,20 @@ export default async function youtubeSyncProcessor(job) {
     let channelName = "YouTube Channel";
 
     const emitProgress = (stepPercent, step, message) => {
-      const io = getIO();
-      if (io) {
-        const baseProgress = Math.round((i / totalChannels) * 100);
-        const stepContribution = Math.round((stepPercent / 100) * (100 / totalChannels));
-        const progress = Math.min(baseProgress + stepContribution, 99);
-        io.to(userId).emit("notification:new", {
-          type: "SYNC_PROGRESS",
-          metadata: {
-            userId,
-            progress,
-            channelId,
-            channelName,
-            step,
-            message
-          }
-        });
-      }
+      const baseProgress = Math.round((i / totalChannels) * 100);
+      const stepContribution = Math.round((stepPercent / 100) * (100 / totalChannels));
+      const progress = Math.min(baseProgress + stepContribution, 99);
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_PROGRESS",
+        metadata: {
+          userId,
+          progress,
+          channelId,
+          channelName,
+          step,
+          message
+        }
+      });
     };
 
     try {
