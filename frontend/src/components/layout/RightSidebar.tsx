@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../api/client';
 import LottieComponent from 'lottie-react';
 import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
+import { OnboardingSyncOverlay } from '../onboarding/OnboardingSyncOverlay';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
@@ -61,6 +62,7 @@ export const RightSidebar = () => {
   const [conversations, setConversations] = useState<SidebarConversation[]>([]);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [likedConvs, setLikedConvs] = useState<Record<string, boolean>>({});
+  const [showTestSync, setShowTestSync] = useState(false);
 
   useEffect(() => {
     const fetchConvs = async () => {
@@ -100,6 +102,16 @@ export const RightSidebar = () => {
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
       <div className="flex flex-col flex-1 px-4 py-6 gap-4">
+
+        {/* ── Test Sync Button ── */}
+        <button
+          onClick={() => setShowTestSync(true)}
+          className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-colors"
+        >
+          <Youtube size={14} />
+          Test Sync UI
+        </button>
+        {showTestSync && <OnboardingSyncOverlay nextRoute="/home" />}
 
         {/* ── Creator Tools Promotion Widget ── */}
         <div 

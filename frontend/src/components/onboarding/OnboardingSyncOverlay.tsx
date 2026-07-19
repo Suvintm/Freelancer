@@ -4,10 +4,16 @@ import { selectToken, updateUser } from '../../store/slices/authSlice';
 import type { AuthUser } from '../../store/slices/authSlice';
 import { connectSocket } from '../../services/socketService';
 import { motion } from 'framer-motion';
-import { Youtube, Check, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { clearTempSignupData } from '../../store/slices/onboardingSlice';
 import { api } from '../../api/client';
+import LottieComponent from 'lottie-react';
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
+
+import planeAnimation from '../../assets/lottie/plane.json';
+import progressAnimation from '../../assets/lottie/progress.json';
+import { FaLink, FaDatabase, FaVideo, FaCog, FaCheckCircle } from 'react-icons/fa';
+import logo from '../../assets/blackbglogo.png';
 
 interface SyncStep {
   id: 'connection' | 'metadata' | 'videos' | 'finalize';
@@ -46,7 +52,7 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
   const token = useSelector(selectToken);
 
   const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState('Initializing sync...');
+  const [, setMessage] = useState('Initializing sync...');
   const [steps, setSteps] = useState<SyncStep[]>(DEFAULT_STEPS);
   const [channelName, setChannelName] = useState('your channel');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -183,100 +189,97 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
     };
   }, [token, dispatch, navigate]);
 
+  const activeStep = steps.find(s => s.status === 'running') || steps[steps.length - 1];
+
+  const getStepIcon = (stepId: string) => {
+    switch (stepId) {
+      case 'connection': return <FaLink size={24} className="text-black" />;
+      case 'metadata': return <FaDatabase size={24} className="text-black" />;
+      case 'videos': return <FaVideo size={24} className="text-black" />;
+      case 'finalize': return <FaCog size={24} className="text-black animate-spin" />;
+      case 'complete': return <FaCheckCircle size={24} className="text-green-500" />;
+      default: return <FaLink size={24} className="text-black" />;
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-6 selection:bg-red-500 selection:text-white">
-      {/* Background glow effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[70vh] bg-gradient-to-b from-red-600/[0.12] to-transparent blur-[120px]" />
-        <div
-          className="absolute inset-0 opacity-[0.12]"
-          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)', backgroundSize: '32px 32px' }}
-        />
-      </div>
+    <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 selection:bg-red-500 selection:text-white">
+      {/* Top Left Logo */}
+      <img src={logo} alt="SuviX" className="absolute top-10 left-10 h-8 md:h-25 z-50 opacity-90" />
 
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 w-full max-w-lg bg-zinc-950/80 backdrop-blur-2xl border border-zinc-800 rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+        className="relative z-10 w-full max-w-2xl flex flex-col items-center mt-[-10vh]"
       >
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 border shadow-xl ${
-            isSuccess 
-              ? 'bg-green-500/10 border-green-500/30 text-green-500'
-              : 'bg-red-500/10 border-red-500/30 text-red-500'
-          }`}>
-            {isSuccess ? <Check size={32} /> : <Youtube size={32} />}
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
-            {isSuccess ? "You're all set!" : `Syncing ${channelName}...`}
-          </h2>
-          <p className="text-sm font-medium text-zinc-400">
-            {message}
-          </p>
+        {/* Top Plane Lottie (You may have accidentally swapped the JSON files, please make sure plane.json is the plane) */}
+        <div className="w-64 h-64 -mb-10 z-10 pointer-events-none">
+          <Lottie animationData={planeAnimation} loop={true} style={{ width: '100%', height: '100%' }} />
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between text-xs font-bold mb-2">
-            <span className="text-zinc-500 uppercase tracking-widest">Progress</span>
-            <span className={isSuccess ? 'text-green-400' : 'text-red-400'}>{progress}%</span>
-          </div>
-          <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
+        {/* Title */}
+        <div className="text-center mb-16 relative z-20">
+          <h2 className="text-3xl font-bold text-black mb-2 tracking-tight">
+            {isSuccess ? "You're all set!" : `Syncing ${channelName}...`}
+          </h2>
+        </div>
+
+        {/* Custom Progress Area */}
+        <div className="w-full max-w-md flex flex-col items-center">
+          
+          {/* Second Lottie (Progress Concept) stacked cleanly above the black progress bar */}
+          {!isSuccess && (
+            <div className="w-full h-32 -mt-6 mb-2 pointer-events-none z-30 flex items-center justify-center mix-blend-multiply">
+              <Lottie animationData={progressAnimation} loop={true} style={{ width: '120%', height: '120%', objectFit: 'contain' }} />
+            </div>
+          )}
+
+          {/* Original Custom Progress Bar (Black track, White fill) */}
+          <div className="w-full mb-8 relative">
+            <div className="flex justify-between text-xs font-bold mb-3 relative z-10">
+              <span className="text-black uppercase tracking-widest">Progress</span>
+              <span className="text-black">{progress}%</span>
+            </div>
+            <div className="h-4 w-full bg-black rounded-full overflow-hidden p-[2px] border border-black shadow-inner relative z-10">
             <motion.div 
-              className={`h-full ${isSuccess ? 'bg-green-500' : 'bg-red-500'}`}
+              className="h-full bg-white rounded-full relative overflow-hidden"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ ease: "easeOut", duration: 0.3 }}
-            />
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-zinc-100 to-transparent opacity-50 w-full animate-[shimmer_2s_infinite]" />
+            </motion.div>
+          </div>
+        </div>
+        </div>
+
+        {/* Active Step Indicator */}
+        <div className="w-full max-w-md bg-zinc-50 rounded-2xl p-6 border border-zinc-100 flex items-center gap-5 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center shrink-0">
+            {getStepIcon(activeStep.id)}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+              Current Process
+            </span>
+            <span className="text-sm font-bold text-black">
+              {activeStep.label}
+            </span>
           </div>
         </div>
 
-        {/* Steps Timeline */}
-        <div className="space-y-4 relative pl-2">
-          <div className="absolute left-[13px] top-2 bottom-2 w-px bg-zinc-800" />
-          
-          {steps.map((step) => (
-            <div key={step.id} className="flex items-center gap-4 relative">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center z-10 shrink-0 border ${
-                step.status === 'success' 
-                  ? 'bg-green-500/20 border-green-500/30 text-green-500'
-                  : step.status === 'running'
-                    ? 'bg-black border-red-500 text-red-500'
-                    : 'bg-black border-zinc-800 text-zinc-700'
-              }`}>
-                {step.status === 'success' ? (
-                  <Check size={10} strokeWidth={3} />
-                ) : step.status === 'running' ? (
-                  <Loader2 size={10} className="animate-spin" />
-                ) : (
-                  <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
-                )}
-              </div>
-              <span className={`text-sm font-medium ${
-                step.status === 'running' 
-                  ? 'text-white'
-                  : step.status === 'success'
-                    ? 'text-zinc-400'
-                    : 'text-zinc-600'
-              }`}>
-                {step.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 pt-6 border-t border-zinc-800/50 text-center">
+        <div className="mt-12 text-center">
           {isSuccess ? (
             <button 
               onClick={() => {
                 setCountdown(0);
               }}
-              className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm w-full transition-colors flex items-center justify-center gap-2"
+              className="px-8 py-4 rounded-xl bg-black hover:bg-zinc-800 text-white font-bold text-sm w-full transition-colors flex items-center justify-center gap-2 shadow-lg cursor-pointer"
             >
               Continue to Dashboard ({countdown}s)
             </button>
           ) : (
-            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               Please do not close this page
             </p>
           )}

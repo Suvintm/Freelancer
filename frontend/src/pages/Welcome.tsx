@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '../assets/whitebglogo.png';
+import LottieComponent from 'lottie-react';
+import welcomeAnimation from '../assets/lottie/welcome_lottie.json';
+
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUVIX WELCOME — Production Onboarding
@@ -96,18 +100,35 @@ export default function Welcome() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, ...EASE }}
-        className="absolute top-0 left-0 right-0 z-30 px-6 pt-12 md:px-10 md:pt-14"
+        className="absolute top-0 left-0 right-0 z-30 px-6 pt-12 md:px-10 md:pt-14 flex items-start pointer-events-none"
       >
-        <img src={logo} alt="SuviX" className="h-10 md:h-12 lg:h-16 w-auto" />
+        <img src={logo} alt="SuviX" className="h-10 md:h-12 lg:h-16 w-auto pointer-events-auto" />
       </motion.header>
 
       {/* ── MAIN CONTENT CARD ────────────────────────────────────────────── */}
-      <div className="absolute inset-x-0 bottom-0 z-20 px-4 pb-10 md:px-6 md:pb-14">
+      <div className="absolute inset-x-0 bottom-0 z-20 px-4 pb-10 md:px-6 md:pb-14 flex flex-col items-center">
+        
+        {/* Floating Lottie Component Above the Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, ...EASE }}
+          className="mb-4 md:mb-6 pointer-events-auto"
+        >
+          <div className="flex items-center justify-center bg-white/90 backdrop-blur-lg rounded-[20px] md:rounded-[24px] px-5 py-2 md:px-8 md:py-4 shadow-2xl">
+             <Lottie 
+               animationData={welcomeAnimation} 
+               loop 
+               className="w-24 h-8 md:w-36 md:h-14" 
+             />
+          </div>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, ...EASE }}
-          className="glass-heavy rounded-[32px] p-7 md:p-10 max-w-4xl mx-auto lg:max-w-2xl"
+          className="glass-heavy w-full rounded-[32px] p-7 md:p-10 max-w-4xl lg:max-w-2xl"
         >
           {/* Progress Indicators */}
           <div className="flex gap-2.5 mb-7">
@@ -162,39 +183,53 @@ export default function Welcome() {
                   Already have an account? <span className="text-white ml-1.5 hover:underline">Sign In</span>
                 </Link>
 
-                {/* Continue */}
-                <button
-                  onClick={goNext}
-                  className="order-1 sm:order-2 sm:ml-auto flex items-center justify-between gap-3 h-14 pl-7 pr-2 bg-white text-black rounded-2xl font-sans font-black text-[15px] hover:opacity-90 active:scale-[0.97] transition-all"
-                >
-                  <span>Continue</span>
-                  <span className="flex items-center justify-center w-10 h-10 bg-black text-white rounded-xl">
-                    <ChevronRight size={20} strokeWidth={2.5} />
+                {/* Continue Wrapper */}
+                <div className="order-1 sm:order-2 sm:ml-auto flex flex-col sm:items-end gap-2">
+                  <span className="text-[10px] sm:text-[11px] text-white/50 font-bold uppercase tracking-widest pl-2 sm:pl-0">
+                    To Register or Signup
                   </span>
-                </button>
+                  <button
+                    onClick={goNext}
+                    className="flex w-full sm:w-auto items-center justify-between gap-3 h-14 pl-7 pr-2 bg-white text-black rounded-2xl font-sans font-black text-[15px] hover:opacity-90 active:scale-[0.97] transition-all"
+                  >
+                    <span>Continue</span>
+                    <span className="flex items-center justify-center w-10 h-10 bg-black text-white rounded-xl">
+                      <ChevronRight size={20} strokeWidth={2.5} />
+                    </span>
+                  </button>
+                </div>
               </>
             ) : (
               <>
-                {/* Get Started */}
-                <Link
-                  to="/role-selection"
-                  className="flex items-center justify-between gap-3 h-14 pl-7 pr-2 bg-white text-black rounded-2xl font-sans font-black text-[15px] hover:opacity-90 active:scale-[0.97] transition-all"
-                  style={{ flex: 1 }}
-                >
-                  <span>Get Started</span>
-                  <span className="flex items-center justify-center w-10 h-10 bg-black text-white rounded-xl">
-                    <ChevronRight size={20} strokeWidth={2.5} />
+                {/* Get Started Wrapper */}
+                <div className="flex flex-col flex-1 gap-2">
+                  <span className="text-[10px] sm:text-[11px] text-white/50 font-bold uppercase tracking-widest pl-2">
+                    To Register or Signup
                   </span>
-                </Link>
+                  <Link
+                    to="/role-selection"
+                    className="flex items-center justify-between gap-3 h-14 pl-7 pr-2 bg-white text-black rounded-2xl font-sans font-black text-[15px] hover:opacity-90 active:scale-[0.97] transition-all"
+                  >
+                    <span>Get Started</span>
+                    <span className="flex items-center justify-center w-10 h-10 bg-black text-white rounded-xl">
+                      <ChevronRight size={20} strokeWidth={2.5} />
+                    </span>
+                  </Link>
+                </div>
 
-                {/* Sign In */}
-                <Link
-                  to="/login"
-                  className="flex items-center justify-center h-14 px-7 border border-white/15 rounded-2xl font-sans font-bold text-[15px] text-white hover:bg-white/10 transition-all"
-                  style={{ flex: 1 }}
-                >
-                  Sign In
-                </Link>
+                {/* Sign In Wrapper */}
+                <div className="flex flex-col flex-1 gap-2 justify-end">
+                  {/* Invisible spacer to match the height of the label above */}
+                  <span className="hidden sm:block text-[10px] sm:text-[11px] text-transparent font-bold uppercase tracking-widest select-none" aria-hidden="true">
+                    Spacer
+                  </span>
+                  <Link
+                    to="/login"
+                    className="flex items-center justify-center h-14 px-7 border border-white/15 rounded-2xl font-sans font-bold text-[15px] text-white hover:bg-white/10 transition-all"
+                  >
+                    Sign In
+                  </Link>
+                </div>
               </>
             )}
           </div>
