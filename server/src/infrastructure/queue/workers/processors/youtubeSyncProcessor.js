@@ -102,20 +102,17 @@ export default async function youtubeSyncProcessor(job) {
       await job.updateProgress(progress);
 
       // 📡 Emit final channel progress via Socket.io
-      const io = getIO();
-      if (io) {
-        io.to(userId).emit("notification:new", {
-          type: "SYNC_PROGRESS",
-          metadata: {
-            userId,
-            progress,
-            channelId,
-            channelName,
-            step: 'complete',
-            message: `Completed sync for ${channelName}!`
-          }
-        });
-      }
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_PROGRESS",
+        metadata: {
+          userId,
+          progress,
+          channelId,
+          channelName,
+          step: 'complete',
+          message: `Completed sync for ${channelName}!`
+        }
+      });
     } catch (error) {
       sampledLogger.error(
         "YT Sync channel failed",
@@ -123,18 +120,15 @@ export default async function youtubeSyncProcessor(job) {
         { jobId: job.id, userId, channelId: channelId || "unknown" }
       );
       // 📡 Emit real-time failure via Socket.io
-      const io = getIO();
-      if (io) {
-        io.to(userId).emit("notification:new", {
-          type: "SYNC_FAILED",
-          metadata: {
-            userId,
-            channelId,
-            channelName,
-            message: `Failed to sync channel: ${error.message}`
-          }
-        });
-      }
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_FAILED",
+        metadata: {
+          userId,
+          channelId,
+          channelName,
+          message: `Failed to sync channel: ${error.message}`
+        }
+      });
       // Throw so BullMQ triggers retry for the whole job
       throw new Error(`Channel sync failed for ${channelId}: ${error.message}`);
     }
