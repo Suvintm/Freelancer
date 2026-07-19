@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactLenis } from 'lenis/react';
 import { motion } from 'framer-motion';
 import { 
   User, 
@@ -19,7 +20,7 @@ import {
   Check,
   ChevronLeft
 } from 'lucide-react';
-import logo from '../assets/darklogo.png';
+import logo from '../assets/blackbglogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearTempSignupData } from '../store/slices/onboardingSlice';
@@ -50,31 +51,31 @@ function StepBar({ categorySlug }: StepBarProps) {
   const activeIndex = steps.length - 1; // Always on last step (Details) in this page
 
   return (
-    <div className="flex items-center gap-2 mb-8">
+    <div className="flex items-center justify-center gap-3 mb-2">
       {steps.map((step, i) => (
         <React.Fragment key={step}>
           <div className="flex items-center gap-1.5">
             <div
               className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all ${
                 i < activeIndex
-                  ? 'bg-emerald-500 text-black'
+                  ? 'bg-emerald-500 text-white'
                   : i === activeIndex
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-800 text-zinc-600'
+                  ? 'bg-black text-white shadow-md'
+                  : 'bg-zinc-200 text-zinc-500'
               }`}
             >
               {i < activeIndex ? <Check size={10} strokeWidth={3} /> : i + 1}
             </div>
             <span
               className={`text-[10px] font-bold uppercase tracking-wider ${
-                i === activeIndex ? 'text-white' : i < activeIndex ? 'text-emerald-500' : 'text-zinc-600'
+                i === activeIndex ? 'text-black' : i < activeIndex ? 'text-emerald-500' : 'text-zinc-400'
               }`}
             >
               {step}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div className={`flex-1 h-px ${i < activeIndex ? 'bg-emerald-500/40' : 'bg-zinc-800'}`} />
+            <div className={`w-10 sm:w-16 lg:w-20 h-px ${i < activeIndex ? 'bg-emerald-500/40' : 'bg-zinc-200'}`} />
           )}
         </React.Fragment>
       ))}
@@ -109,7 +110,7 @@ export default function Signup() {
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
 
   const navigate = useNavigate();
-  const isClient = tempSignupData?.roleGroup === 'CLIENT';
+  const isBrandClient = tempSignupData?.roleGroup === 'CLIENT' && tempSignupData?.categorySlug !== 'direct_client';
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
   // If tempSignupData has no categoryId, the user navigated here without going
@@ -145,6 +146,16 @@ export default function Signup() {
   };
 
   const selectedChannels = tempSignupData?.youtubeChannels ?? [];
+
+  const isFormValid = Boolean(
+    form.fullName.trim() &&
+    form.username.trim() &&
+    form.email.trim() &&
+    form.phone.trim() &&
+    (socialProfile || form.password.trim()) &&
+    (!isBrandClient || form.website.trim()) &&
+    userStatus === 'available'
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,90 +221,114 @@ export default function Signup() {
   };
 
   return (
-    <div className="h-screen w-full bg-black flex flex-col lg:flex-row overflow-hidden font-sans">
+    <div className="relative h-screen w-full bg-white lg:bg-black flex flex-col overflow-hidden font-sans">
       {showSyncOverlay && <OnboardingSyncOverlay />}
-      {/* Visual Side (Left) */}
-      <div className="hidden lg:flex lg:w-[40%] relative overflow-hidden bg-zinc-950 border-r border-zinc-800">
+      
+      {/* Full Screen Background (Laptop only) */}
+      <div className="hidden lg:block absolute inset-0 z-0">
         <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950 to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
       </div>
 
-      {/* Form Side (Right) */}
-      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-black">
-        {/* Desktop Header */}
-        <motion.header 
-          initial={{ opacity: 0, y: -20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.6, ease: EASE }} 
-          className="flex-none flex items-center justify-between px-6 py-6 lg:px-12 lg:py-10 border-b border-zinc-900/60"
-        >
-          {/* Back button */}
-          <button
+      {/* Foreground Container */}
+      <div className="relative z-10 flex-1 flex flex-col lg:flex-row h-full w-full">
+        
+        {/* Top Left Global Back Button */}
+        <div className="absolute top-6 left-6 lg:top-10 lg:left-10 z-50">
+          <button 
             onClick={handleBack}
-            className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all"
+            className="flex items-center gap-2.5 px-5 py-2.5 bg-black/30 hover:bg-black/50 backdrop-blur-md rounded-full text-white text-xs lg:text-sm font-bold transition-all border border-white/10 shadow-2xl"
           >
-            <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span className="font-semibold text-[10px] uppercase tracking-wider">Back</span>
+            <ChevronLeft size={16} />
+            <span>Back</span>
           </button>
+        </div>
 
-          <img src={logo} alt="SuviX" className="h-8 lg:h-10" />
+        {/* Left Side (30% approx) - Invisible, just lets the AuthBackground text show through */}
+        <div className="hidden lg:block lg:w-[40%] xl:w-[30%] h-full pointer-events-none"></div>
 
-          <div className="flex items-center gap-2 text-sm text-zinc-500">
-            <span className="hidden sm:inline text-xs font-medium">Member?</span>
-            <Link to="/login" className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 text-white text-[11px] font-semibold hover:bg-zinc-800 transition-colors">
-              Sign In
-            </Link>
-          </div>
-        </motion.header>
-
-        {/* Form Area */}
-        <div className="flex-1 flex items-start justify-center px-6 pb-12 lg:px-16 pt-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 24 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.8, ease: EASE, delay: 0.1 }} 
-            className="w-full max-w-[440px]"
-          >
-            {/* Step Progress Bar */}
-            <StepBar categorySlug={tempSignupData?.categorySlug} />
-
-            {/* Page Title */}
-            <div className="mb-6">
-              <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight leading-tight">
-                Create your <span className="text-zinc-500">account.</span>
-              </h1>
-              <p className="text-zinc-500 text-sm font-medium mt-1">
-                As <span className="text-zinc-300 font-semibold">{tempSignupData?.roleName || 'Creator'}</span> — enter your details below.
-              </p>
+        {/* Right Side Form Container (70%) */}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 h-full lg:w-[60%] xl:w-[70%]">
+          
+          {/* Floating Rounded Form Card (Laptop) / Flat (Mobile) */}
+          <div className="w-full max-w-[600px] bg-white lg:rounded-[2rem] lg:shadow-2xl flex flex-col relative shrink-0 max-h-full overflow-hidden">
+            
+            {/* Fixed Header Container */}
+            <div className="w-full shrink-0 px-4 pt-4 lg:px-5 lg:pt-5 z-10 bg-white">
+              
+              {/* Desktop Header */}
+              <motion.header 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="hidden lg:flex w-full flex-col pb-2 border-b border-zinc-100 mb-4 shrink-0"
+              >
+                {/* Logo Top Left */}
+                <img src={logo} alt="SuviX" className="h-20 self-start mb-0" />
+                
+                {/* Title Centered */}
+                <div className="text-center space-y-0.5 w-full -mt-6">
+                  <h1 className="text-xl lg:text-2xl font-bold text-black leading-[1.1] tracking-tight">
+                    Create your account.
+                  </h1>
+                  <p className="text-zinc-500 text-[13px] font-medium">
+                    As <span className="text-black font-bold">{tempSignupData?.roleName || 'Creator'}</span> — enter your details.
+                  </p>
+                </div>
+              </motion.header>
             </div>
 
-            <div className="space-y-6">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-xs font-semibold">
-                  {error}
-                </div>
-              )}
+            {/* Content Area (Animation Wrapper) */}
+            <motion.form 
+              onSubmit={handleSubmit}
+              initial={{ opacity: 0, y: 24 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ duration: 0.8, ease: EASE, delay: 0.1 }} 
+              className="w-full flex-1 flex flex-col min-h-0"
+            >
+              
+              {/* Fixed Step Bar / Mobile Title */}
+              <div className="w-full px-4 lg:px-5 shrink-0 bg-white z-10">
+                <StepBar categorySlug={tempSignupData?.categorySlug} />
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Mobile Title */}
+                <div className="lg:hidden text-center mt-2">
+                  <h1 className="text-2xl font-bold text-black tracking-tight leading-tight">
+                    Create your account.
+                  </h1>
+                  <p className="text-zinc-500 text-sm font-medium mt-1">
+                    As <span className="text-black font-bold">{tempSignupData?.roleName || 'Creator'}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Scrollable Form Content */}
+              <ReactLenis className="w-full flex-1 overflow-y-auto custom-scrollbar px-6 lg:px-10 pb-12 lg:pb-16">
+                <div className="space-y-6 mt-4 lg:mt-6">
+                  {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-xs font-semibold">
+                      {error}
+                    </div>
+                  )}
+
+              <div className="space-y-6">
                 {/* Profile Picture Upload */}
                 <div className="flex items-center gap-4 mb-2">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center overflow-hidden">
                       {profilePicturePreview ? (
                         <img src={profilePicturePreview} alt="Profile" className="w-full h-full object-cover" />
                       ) : (
-                        <User size={24} className="text-zinc-600" />
+                        <User size={24} className="text-zinc-400" />
                       )}
                     </div>
-                    <label className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-white flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-transform">
-                      <Camera size={14} className="text-black" />
+                    <label className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-black flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-transform">
+                      <Camera size={14} className="text-white" />
                       <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                     </label>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-white tracking-tight">
-                      {isClient ? "Brand Logo" : "Profile Picture"}
+                    <p className="text-sm font-bold text-black tracking-tight">
+                      {isBrandClient ? "Brand Logo" : "Profile Picture"}
                     </p>
                     <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Recommended: Square, under 5MB</p>
                   </div>
@@ -302,9 +337,9 @@ export default function Signup() {
                 {/* Name + Handle */}
                 <div className="grid grid-cols-2 gap-4">
                   <InputField 
-                    label={isClient ? "Company / Brand Name" : "Full Name"} 
+                    label={isBrandClient ? "Company / Brand Name" : "Full Name"} 
                     name="fullName" 
-                    placeholder={isClient ? "e.g. Nike" : "John Doe"} 
+                    placeholder={isBrandClient ? "e.g. Nike" : "John Doe"} 
                     icon={<User size={16} />} 
                     value={form.fullName} 
                     onChange={handleChange} 
@@ -313,20 +348,20 @@ export default function Signup() {
 
                   <div className="space-y-1.5">
                     <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
-                      {isClient ? "Brand Handle" : "Handle"}
+                      {isBrandClient ? "Brand Handle" : "Handle"}
                     </label>
                     <div className="relative">
                       <AtSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input
                         name="username"
-                        placeholder={isClient ? "brandhandle" : "handle"}
+                        placeholder={isBrandClient ? "brandhandle" : "handle"}
                         value={form.username}
                         onChange={handleChange}
                         onBlur={handleUsernameBlur}
                         required
-                        className={`suvix-input !pl-12 pr-4 bg-zinc-900 border-zinc-800 focus:border-white text-sm ${
-                          userStatus === 'available' ? 'border-green-500/50' :
-                          userStatus === 'taken'     ? 'border-red-500/50'   : ''
+                        className={`suvix-input !pl-12 pr-4 bg-white border-2 border-black text-black placeholder:text-zinc-400 ${
+                          userStatus === 'available' ? '!border-green-500' :
+                          userStatus === 'taken'     ? '!border-red-500'   : ''
                         }`}
                       />
                       {userStatus !== 'idle' && (
@@ -344,10 +379,10 @@ export default function Signup() {
 
                 {/* Email */}
                 <InputField 
-                  label={isClient ? "Work Email Address" : "Email Address"} 
+                  label={isBrandClient ? "Work Email Address" : "Email Address"} 
                   name="email" 
                   type="email" 
-                  placeholder={isClient ? "partnerships@company.com" : "name@example.com"} 
+                  placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"} 
                   icon={<Mail size={16} />} 
                   value={form.email} 
                   onChange={handleChange} 
@@ -358,7 +393,7 @@ export default function Signup() {
                 <div className="grid grid-cols-2 gap-4">
                   <InputField label="Phone" name="phone" placeholder="+91..." icon={<Phone size={16} />} value={form.phone} onChange={handleChange} required />
 
-                  {isClient ? (
+                  {isBrandClient ? (
                     <InputField 
                       label="Website / URL" 
                       name="website" 
@@ -377,7 +412,7 @@ export default function Signup() {
                           name="motherTongue"
                           value={form.motherTongue}
                           onChange={handleChange}
-                          className="suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm appearance-none"
+                          className="suvix-input !pl-12 bg-white border-2 border-black text-black placeholder:text-zinc-400 appearance-none"
                         >
                           {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
                         </select>
@@ -395,7 +430,7 @@ export default function Signup() {
                       name="country"
                       value={form.country}
                       onChange={handleChange}
-                      className="suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm appearance-none"
+                      className="suvix-input !pl-12 bg-white border-2 border-black text-black placeholder:text-zinc-400 appearance-none"
                     >
                       {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -408,12 +443,12 @@ export default function Signup() {
                     <h3 className="text-[10px] font-bold tracking-[0.15em] text-zinc-500 uppercase ml-1">Linked Identity</h3>
                     <div className="space-y-2">
                       {selectedChannels.map((ch) => (
-                        <div key={ch?.channelId} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800/50 bg-zinc-900/30 backdrop-blur-sm">
+                        <div key={ch?.channelId} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-200 bg-zinc-50 backdrop-blur-sm">
                           {ch?.thumbnailUrl && (
-                            <img src={ch.thumbnailUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-zinc-800" />
+                            <img src={ch.thumbnailUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-white" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-white truncate">{ch?.channelName}</h4>
+                            <h4 className="text-sm font-bold text-black truncate">{ch?.channelName}</h4>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <Youtube size={12} className="text-[#FF0000]" />
                               <span className="text-[11px] font-semibold text-zinc-400">
@@ -442,72 +477,86 @@ export default function Signup() {
                         value={form.password}
                         onChange={handleChange}
                         required={!socialProfile}
-                        className="suvix-input !pl-12 pr-12 bg-zinc-900 border-zinc-800 focus:border-white"
+                        className="suvix-input !pl-12 pr-12 bg-white border-2 border-black text-black placeholder:text-zinc-400"
                       />
-                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors">
+                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors">
                         {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 flex items-center gap-3">
+                  <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                       <Lock size={16} className="text-emerald-500" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-white uppercase tracking-wider">Secured via Google</p>
-                      <p className="text-[11px] text-zinc-400 font-medium">No password needed — Google handles your login.</p>
+                      <p className="text-[10px] font-bold text-black uppercase tracking-wider">Secured via Google</p>
+                      <p className="text-[11px] text-zinc-500 font-medium">No password needed — Google handles your login.</p>
                     </div>
                   </div>
                 )}
 
                 {/* Notifications Toggle */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-800/50 bg-zinc-900/30">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 bg-zinc-50">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-800/50 flex items-center justify-center">
-                      <Bell size={16} className="text-zinc-400" />
+                    <div className="w-8 h-8 rounded-lg bg-zinc-200 flex items-center justify-center">
+                      <Bell size={16} className="text-zinc-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-white">Enable Notifications</p>
+                      <p className="text-xs font-bold text-black">Enable Notifications</p>
                       <p className="text-[10px] text-zinc-500 font-medium">Get updates on your creator journey</p>
                     </div>
                   </div>
                   <button 
                     type="button" 
                     onClick={() => setEnableNotifications(!enableNotifications)}
-                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center ${enableNotifications ? 'bg-green-500' : 'bg-zinc-800'}`}
+                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center ${enableNotifications ? 'bg-green-500' : 'bg-zinc-300'}`}
                   >
-                    <div className={`w-4 h-4 bg-white rounded-full absolute transition-transform ${enableNotifications ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <div className={`w-4 h-4 bg-white rounded-full absolute transition-transform shadow-sm ${enableNotifications ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
 
+                </div>
+              </div>
+            </ReactLenis>
+              {/* Fixed Bottom Action Area */}
+              <div className="w-full shrink-0 bg-white border-t border-zinc-100 px-6 lg:px-10 py-4 lg:py-6 mt-auto">
                 {/* Submit */}
                 <button 
                   type="submit" 
-                  disabled={isLoading || userStatus === 'taken'} 
-                  className="suvix-btn-primary w-full h-12 mt-2 !bg-white !text-black hover:opacity-90 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-zinc-900/20 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={isLoading || !isFormValid} 
+                  className={`suvix-btn-primary w-full h-12 !text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-[0.98] ${
+                    isFormValid ? '!bg-black hover:opacity-90 shadow-black/10' : '!bg-zinc-900 shadow-none cursor-not-allowed text-zinc-500'
+                  }`}
                 >
                   {isLoading
                     ? <Loader2 className="w-5 h-5 animate-spin" />
                     : <><span>Create Account</span><ArrowRight size={18} strokeWidth={2.5} /></>
                   }
                 </button>
-              </form>
-            </div>
 
-            <p className="mt-6 text-center text-sm text-zinc-400 font-medium">
-              Already a member?{' '}
-              <Link to="/login" className="font-semibold text-white hover:opacity-80 transition-opacity">Sign In</Link>
-            </p>
-          </motion.div>
+                <p className="mt-4 text-center text-[13px] text-zinc-500 font-medium">
+                  Already a member?{' '}
+                  <Link to="/login" className="font-bold text-black hover:opacity-70 transition-opacity">Sign In</Link>
+                </p>
+              </div>
+            </motion.form> {/* Closes Content Area Animation Wrapper */}
+        </div> {/* Closes Floating Card */}
+          
+        {/* Legal Footer (Laptop only, sits below the floating card) */}
+        <div className="hidden lg:block mt-8 text-center text-[11px] text-zinc-400/80 font-bold backdrop-blur-sm px-4 py-1 rounded-full">
+          © 2026 SuviX Inc. All rights reserved.
+        </div>
+        
+        {/* Legal Footer (Mobile) */}
+        <div className="lg:hidden mt-auto pt-8 pb-4 text-center text-[11px] text-zinc-400 font-bold">
+          © 2026 SuviX Inc. All rights reserved.
         </div>
 
-        <p className="text-center lg:px-16 text-[10px] text-zinc-600 font-medium pb-8">
-          © 2026 SuviX Inc. All rights reserved.
-        </p>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 // ── Shared Input Field Component ──────────────────────────────────────────────
@@ -524,7 +573,7 @@ function InputField({ label, icon, ...props }: InputFieldProps) {
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">{icon}</span>
         <input
           {...props}
-          className={`suvix-input !pl-12 bg-zinc-900 border-zinc-800 focus:border-white text-sm ${props.className ?? ''}`}
+          className={`suvix-input !pl-12 bg-white border-2 border-black text-black placeholder:text-zinc-400 ${props.className ?? ''}`}
         />
       </div>
     </div>
