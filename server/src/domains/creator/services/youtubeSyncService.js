@@ -341,6 +341,83 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
   }
 };
 
+/**
+ * Execute a manual, synchronous YouTube sync for a user's channels.
+ * This runs directly in the HTTP request thread, bypassing BullMQ.
+ * It fetches metadata, mirrors thumbnails, saves to DB, and emits socket events.
+ */
+export const executeManualSync = async (userId, channelIds, triggerReason = "manual") => {
+  if (!channelIds || channelIds.length === 0) return { processed: 0, total: 0 };
+  
+  const { default: youtubeApiService } = await import("./youtubeApiService.js");
+  
+  const totalChannels = channelIds.length;
+  let processedCount = 0;
+
+  for (let i = 0; i < totalChannels; i++) {
+    const channelId = channelIds[i];
+    let channelName = "YouTube Channel";
+
+    const emitProgress = (stepPercent, step, message) => {
+      const baseProgress = Math.round((i / totalChannels) * 100);
+      const stepContribution = Math.round((stepPercent / 100) * (100 / totalChannels));
+      const progress = Math.min(baseProgress + stepContribution, 99);
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_PROGRESS",
+        metadata: { userId, progress, channelId, channelName, step, message }
+      });
+    };
+
+    try {
+      emitProgress(10, 'connection', 'Connecting to YouTube API...');
+      
+      const channelMetadata = await youtubeApiService.getChannelPublicData({
+        identifier: channelId,
+        type: 'id'
+      });
+      channelName = channelMetadata.title || channelName;
+
+      emitProgress(45, 'metadata', 'Fetching channel profile & stats...');
+
+      if (channelMetadata.uploadsPlaylistId) {
+        channelMetadata.videos = await youtubeApiService.getPlaylistVideos(channelMetadata.uploadsPlaylistId, 50);
+      }
+
+      emitProgress(75, 'videos', 'Syncing video library (up to 50 videos)...');
+
+      await persistYouTubeContent(userId, channelMetadata, triggerReason);
+      
+      emitProgress(95, 'finalize', 'Saving analytics & generating dashboard...');
+
+      processedCount++;
+      const progress = Math.round((processedCount / totalChannels) * 100);
+
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_PROGRESS",
+        metadata: {
+          userId, progress, channelId, channelName, step: 'complete',
+          message: `Completed sync for ${channelName}!`
+        }
+      });
+      // Also emit SYNC_COMPLETE for good measure
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_COMPLETE",
+        metadata: { userId, channelId }
+      });
+    } catch (error) {
+      logger.error(`❌ [YT-SYNC-MANUAL] Channel failed`, error, { userId, channelId });
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_FAILED",
+        metadata: { userId, channelId, channelName, message: `Failed to sync channel: ${error.message}` }
+      });
+      throw new Error(`Channel sync failed for ${channelId}: ${error.message}`);
+    }
+  }
+
+  return { processed: processedCount, total: totalChannels };
+};
+
 export default {
   persistYouTubeContent,
+  executeManualSync,
 };

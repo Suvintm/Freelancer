@@ -1,7 +1,7 @@
 import { validateYouTubePayload } from "../jobValidator.js";
 import { sampledLogger } from "../sampledLogger.js";
 import { persistYouTubeContent } from '../../../../domains/creator/services/youtubeSyncService.js';
-import { getIO } from '../../../../platform/socket/socket.gateway.js';
+import { emitToUser } from '../../../../platform/socket/socket.gateway.js';
 import quotaManager from '../../../../domains/creator/services/youtubeQuotaManager.js';
 
 /**
@@ -53,23 +53,20 @@ export default async function youtubeSyncProcessor(job) {
     let channelName = "YouTube Channel";
 
     const emitProgress = (stepPercent, step, message) => {
-      const io = getIO();
-      if (io) {
-        const baseProgress = Math.round((i / totalChannels) * 100);
-        const stepContribution = Math.round((stepPercent / 100) * (100 / totalChannels));
-        const progress = Math.min(baseProgress + stepContribution, 99);
-        io.to(userId).emit("notification:new", {
-          type: "SYNC_PROGRESS",
-          metadata: {
-            userId,
-            progress,
-            channelId,
-            channelName,
-            step,
-            message
-          }
-        });
-      }
+      const baseProgress = Math.round((i / totalChannels) * 100);
+      const stepContribution = Math.round((stepPercent / 100) * (100 / totalChannels));
+      const progress = Math.min(baseProgress + stepContribution, 99);
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_PROGRESS",
+        metadata: {
+          userId,
+          progress,
+          channelId,
+          channelName,
+          step,
+          message
+        }
+      });
     };
 
     try {
@@ -105,20 +102,17 @@ export default async function youtubeSyncProcessor(job) {
       await job.updateProgress(progress);
 
       // 📡 Emit final channel progress via Socket.io
-      const io = getIO();
-      if (io) {
-        io.to(userId).emit("notification:new", {
-          type: "SYNC_PROGRESS",
-          metadata: {
-            userId,
-            progress,
-            channelId,
-            channelName,
-            step: 'complete',
-            message: `Completed sync for ${channelName}!`
-          }
-        });
-      }
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_PROGRESS",
+        metadata: {
+          userId,
+          progress,
+          channelId,
+          channelName,
+          step: 'complete',
+          message: `Completed sync for ${channelName}!`
+        }
+      });
     } catch (error) {
       sampledLogger.error(
         "YT Sync channel failed",
@@ -126,18 +120,15 @@ export default async function youtubeSyncProcessor(job) {
         { jobId: job.id, userId, channelId: channelId || "unknown" }
       );
       // 📡 Emit real-time failure via Socket.io
-      const io = getIO();
-      if (io) {
-        io.to(userId).emit("notification:new", {
-          type: "SYNC_FAILED",
-          metadata: {
-            userId,
-            channelId,
-            channelName,
-            message: `Failed to sync channel: ${error.message}`
-          }
-        });
-      }
+      emitToUser(userId, "notification:new", {
+        type: "SYNC_FAILED",
+        metadata: {
+          userId,
+          channelId,
+          channelName,
+          message: `Failed to sync channel: ${error.message}`
+        }
+      });
       // Throw so BullMQ triggers retry for the whole job
       throw new Error(`Channel sync failed for ${channelId}: ${error.message}`);
     }

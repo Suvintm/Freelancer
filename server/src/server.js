@@ -79,14 +79,18 @@ const startServer = async () => {
   //      - Real-time socket events
   if (process.env.ENABLE_WORKERS === "true") {
     logger.info("🚀 [WORKERS] ENABLE_WORKERS=true — Starting BullMQ Background Workers...");
-    import("./infrastructure/queue/workers/index.js").catch((err) => {
-      logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
-    });
+    const startWorkers = async () => {
+      try {
+        await import("./infrastructure/queue/workers/index.js");
+        logger.info("✅ [WORKERS] Background workers module loaded");
+      } catch (err) {
+        logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
+      }
+    };
+    startWorkers();
   } else {
-    logger.warn("⚠️ [WORKERS] ENABLE_WORKERS is not set to 'true' — Background workers are OFF.");
-    logger.warn("   Set ENABLE_WORKERS=true in .env to enable: YT Sync, Media Processing, Story Cleanup, Search Analytics.");
+    logger.warn("⚠️ [WORKERS] Background workers are disabled. Set ENABLE_WORKERS=true to enable.");
   }
-
   // 7. Start HTTP & WebSocket Server
   initSocket(server);
 

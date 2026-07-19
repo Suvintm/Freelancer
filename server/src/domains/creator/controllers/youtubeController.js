@@ -471,3 +471,36 @@ export const getUserVideos = async (req, res, next) => {
   }
 };
 
+/**
+ * Trigger a manual inline sync from the frontend (bypassing BullMQ)
+ */
+export const manualSyncChannels = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    
+    // Find channels seeded by auth registration
+    const ytModel = prisma.youtubeProfile || prisma.youTubeProfile || prisma.youtubeProfiles;
+    const channels = await ytModel.findMany({ where: { userId } });
+    
+    if (!channels || channels.length === 0) {
+      return res.status(200).json({ success: true, message: "No channels to sync.", data: { processed: 0, total: 0 } });
+    }
+
+    const channelIds = channels.map(c => c.channel_id || c.channelId);
+    logger.info(`✨ [CONTROLLER] Starting manual foreground sync for ${channelIds.length} channels for user ${userId}`);
+
+    const syncService = await import("../services/youtubeSyncService.js");
+    const result = await syncService.executeManualSync(userId, channelIds, "manual_foreground");
+
+    logger.info(`✅ [CONTROLLER] Manual foreground sync completed successfully for user ${userId}. Processed ${result.processed}/${result.total} channels.`);
+
+    res.status(200).json({
+      success: true,
+      message: "Foreground sync completed successfully",
+      data: result
+    });
+  } catch (error) {
+    logger.error(`❌ [CONTROLLER] Manual sync failed: ${error.message}`);
+    next(error);
+  }
+};

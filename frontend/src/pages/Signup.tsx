@@ -26,6 +26,7 @@ import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useSignup } from '../mutations/useSignup';
 import type { RootState } from '../store';
 import { authService } from '../api/services/auth.service';
+import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -105,6 +106,7 @@ export default function Signup() {
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [enableNotifications, setEnableNotifications] = useState(false);
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
 
   const navigate = useNavigate();
   const isClient = tempSignupData?.roleGroup === 'CLIENT';
@@ -173,7 +175,7 @@ export default function Signup() {
       );
 
       // Build complete registration payload from tempSignupData + form data
-      await signupMutation({
+      const response = await signupMutation({
         ...form,
         categoryId: tempSignupData?.categoryId,
         roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
@@ -184,9 +186,14 @@ export default function Signup() {
         pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined
       });
 
-      // Clear ALL onboarding state after successful registration
-      dispatch(clearTempSignupData());
-      navigate('/home');
+      // Show blocking overlay if foreground sync is requested
+      if (response?.ytSyncMode === 'foreground' && selectedChannels.length > 0) {
+        setShowSyncOverlay(true);
+      } else {
+        // Clear ALL onboarding state after successful registration
+        dispatch(clearTempSignupData());
+        navigate('/home');
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -204,6 +211,7 @@ export default function Signup() {
 
   return (
     <div className="h-screen w-full bg-black flex flex-col lg:flex-row overflow-hidden font-sans">
+      {showSyncOverlay && <OnboardingSyncOverlay />}
       {/* Visual Side (Left) */}
       <div className="hidden lg:flex lg:w-[40%] relative overflow-hidden bg-zinc-950 border-r border-zinc-800">
         <AuthBackground />
