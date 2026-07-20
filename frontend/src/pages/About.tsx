@@ -10,7 +10,7 @@ export default function About() {
   return (
     <div className={`min-h-[80vh] py-8 px-4 sm:px-6 lg:px-8 font-sans ${isDarkMode ? 'text-zinc-100' : 'text-zinc-950'}`}>
       <div className="max-w-3xl mx-auto space-y-12">
-        {/* Navigation & Header */}
+        {/* Navigationn & Header */}
         <div className="flex flex-col space-y-4">
           <button 
             onClick={() => navigate(-1)}
