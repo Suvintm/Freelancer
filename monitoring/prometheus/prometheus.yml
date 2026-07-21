@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  - job_name: 'core-server'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['core-server:5000']
+
+  - job_name: 'admin-server'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['admin-server:10000']

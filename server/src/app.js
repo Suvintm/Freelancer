@@ -18,6 +18,8 @@ import passport from "./infrastructure/config/passport.js";
 import v1Router from "./platform/gateway/v1.router.js";
 
 import { healthRouter } from "./platform/health/health.controller.js";
+import { metricsMiddleware } from "./shared/middleware/metrics.middleware.js";
+import { getMetrics } from "./platform/metrics/metrics.controller.js";
 
 export function createApp() {
   // Initialize Sentry
@@ -30,6 +32,9 @@ export function createApp() {
   BigInt.prototype.toJSON = function () {
       return this.toString();
   };
+
+  // ============ MONITORING & METRICS ============
+  app.use(metricsMiddleware);
 
   // 🔍 DIAGNOSTIC: Global Request Logger
   app.use((req, res, next) => {
@@ -103,6 +108,7 @@ export function createApp() {
 
   // Platform Routes
   app.use("/api", healthRouter);
+  app.get("/metrics", getMetrics);
 
   // ============ API GATEWAY ============
   app.use("/api/v1", v1Router);
