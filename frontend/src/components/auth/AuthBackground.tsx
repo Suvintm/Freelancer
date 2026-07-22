@@ -91,7 +91,7 @@ export const AuthBackground = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Slide Indicators */}
+      {/* Slide Indicatorss */}
       <div className="absolute bottom-12 left-12 lg:left-16 flex items-center gap-2 z-20">
         {ONBOARDING_DATA.map((_, i) => (
           <div
