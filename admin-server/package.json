@@ -28,7 +28,7 @@
     "@types/crypto-js": "^4.2.2",
     "@types/qrcode": "^1.5.6",
     "@upstash/redis": "^1.36.2",
-    "axios": "^1.13.5",
+    "axios": "^1.18.0",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -66,7 +66,7 @@
     "passport-oauth2": "^1.8.0",
     "pg": "^8.20.0",
     "prisma": "^7.6.0",
-    "protobufjs": "^8.0.1",
+    "protobufjs": "^8.6.6",
     "qrcode": "^1.5.4",
     "rate-limit-redis": "^4.3.1",
     "razorpay": "^2.9.6",
@@ -93,7 +93,7 @@
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.2.0",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.10",
     "supertest": "^7.2.2",
@@ -113,6 +113,29 @@
   "overrides": {
     "@nestjs/platform-express": {
       "multer": "1.4.5-lts.1"
-    }
+    },
+    "minimatch": ">=10.2.1",
+    "axios": "^1.18.0",
+    "hono": "^4.12.27",
+    "@hono/node-server": "^2.0.5",
+    "uuid": "^11.1.1",
+    "@grpc/grpc-js": "^1.14.4",
+    "@opentelemetry/core": "^2.8.0",
+    "@protobufjs/utf8": "^1.1.1",
+    "protobufjs": "^8.6.6",
+    "nodemailer": "^9.0.1",
+    "vite": "^8.0.16",
+    "ws": "^8.21.0",
+    "js-yaml": "^4.2.0",
+    "fast-uri": "^3.1.4",
+    "fast-xml-builder": "^1.1.7",
+    "qs": "^6.15.2",
+    "brace-expansion": "^5.0.7",
+    "form-data": "^4.0.6",
+    "@babel/core": "^7.29.6",
+    "react-router": "^7.18.0",
+    "react-router-dom": "^7.18.0",
+    "body-parser": "^1.20.6",
+    "esbuild": "^0.28.1"
   }
 }

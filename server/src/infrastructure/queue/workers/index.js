@@ -73,6 +73,8 @@ if (connection) {
   });
 
 
+  
+
   // ─── 7. LIKE SYNC WORKER ────────────────────────────────────────────────────
   // CONCURRENCY WARNING: This is intentionally set to 1. The current design processes 
   // a single shared `feed:likes:dirty` queue. Increasing this without sharding the queue 
@@ -81,7 +83,13 @@ if (connection) {
     connection,
     concurrency: Number(process.env.LIKE_SYNC_CONCURRENCY || 1),
     drainDelay: 30000,   // Wait 30s before checking queue again when empty
-    lockDuration: 60000, // Sync shouldn't take long
+    // Lock duration must comfortably exceed worst-case processing time:
+    // LIKE_BATCH_SIZE items ÷ LIKE_SYNC_DB_CONCURRENCY parallel workers × avg tx time.
+    // At batch=500, concurrency=10, ~150ms/tx → ~7.5s realistic, but give headroom
+    // for slow DB moments so BullMQ doesn't falsely mark a healthy job as stalled.
+    lockDuration: Number(process.env.LIKE_SYNC_LOCK_DURATION_MS || 120000),
+    stalledInterval: 300000, // Check for stalled like-sync jobs every 5 min (matches its own cadence)
+    maxStalledCount: 2,
   });
 
   // ─── 8. COMMENT PROCESSING WORKER ───────────────────────────────────────────
@@ -176,13 +184,15 @@ if (connection) {
 
 
   // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 5 minutes (configurable)
+  // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL — cron-based, single source of truth.
+  // Do NOT also call startLikeSyncScheduler() from likeSync.scheduler.js if you added it —
+  // that would register a SECOND repeatable job on the same queue and double your sync frequency.
   const likeSyncCron = process.env.LIKE_SYNC_CRON || "*/5 * * * *";
   likeSyncQueue.add("flush-likes", {}, {
     jobId: "like-sync-flush",
     repeat: { pattern: likeSyncCron }
   }).then(() => logger.info(`❤️ [SCHEDULED] Like Sync Flusher active (Cron: ${likeSyncCron}).`))
     .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
-
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
   logger.info(`   📊 YT Sync:       drainDelay=60s  | concurrency=2 | stall-check=10m`);
   logger.info(`   📊 Media:          drainDelay=30s  | concurrency=3 | stall-check=5m`);

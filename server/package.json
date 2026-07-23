@@ -64,7 +64,7 @@
     "rate-limit-redis": "^4.3.1",
     "razorpay": "^2.9.6",
     "resend": "^6.6.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "slugify": "^1.6.9",
     "socket.io": "^4.8.1",
     "winston": "^3.18.3"
@@ -94,24 +94,25 @@
   "overrides": {
     "minimatch": ">=10.2.1",
     "axios": "^1.18.0",
-    "hono": "^4.12.25",
-    "@hono/node-server": "^1.19.13",
+    "hono": "^4.12.27",
+    "@hono/node-server": "^2.0.5",
     "uuid": "^11.1.1",
     "@grpc/grpc-js": "^1.14.4",
     "@opentelemetry/core": "^2.8.0",
     "@protobufjs/utf8": "^1.1.1",
-    "protobufjs": "^7.6.3",
+    "protobufjs": "^7.6.5",
     "nodemailer": "^9.0.1",
     "vite": "^8.0.16",
     "ws": "^8.21.0",
     "js-yaml": "^4.2.0",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.4",
     "fast-xml-builder": "^1.1.7",
     "qs": "^6.15.2",
-    "brace-expansion": "^5.0.6",
+    "brace-expansion": "^5.0.7",
     "form-data": "^4.0.6",
     "@babel/core": "^7.29.6",
     "react-router": "^7.18.0",
-    "react-router-dom": "^7.18.0"
+    "react-router-dom": "^7.18.0",
+    "body-parser": "^1.20.6"
   }
 }
