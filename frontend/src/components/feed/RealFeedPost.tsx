@@ -29,7 +29,7 @@ export function RealFeedPost({ post, isDarkMode }: { post: RealPost; isDarkMode:
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   
   // Extract images and dimensions from media
-  const images = post.media?.filter(m => m.urls.post || m.urls.full).map(m => resolveMediaUrl(m.urls.post || m.urls.full)) || [];
+  const images = post.media?.filter(m => m?.urls && (m.urls.post || m.urls.full)).map(m => resolveMediaUrl(m.urls!.post || m.urls!.full)) || [];
   const mediaDims = post.media?.[0]?.metadata || { width: 0, height: 0 };
   const [dimensions, setDimensions] = useState({ width: mediaDims.width, height: mediaDims.height });
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
