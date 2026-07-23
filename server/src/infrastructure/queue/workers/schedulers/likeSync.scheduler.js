@@ -1,4 +1,4 @@
-import logger from "../../monitoring/logger.js";
+import logger from "../../../monitoring/logger.js";
 import { likeSyncQueue } from "../queues.js";
 
 /**
