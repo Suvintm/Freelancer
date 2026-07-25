@@ -131,3 +131,7 @@ database_schemas_overview.md
 *.txt
 *.sql
 *.log
+
+guide
+./guide
+.guide
