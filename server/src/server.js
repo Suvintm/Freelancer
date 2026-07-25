@@ -9,7 +9,6 @@ import { connectPostgres } from "./infrastructure/database/postgres.js";
 import prisma from "./infrastructure/database/postgres.js";
 import { initSocket } from "./platform/socket/socket.gateway.js";
 import { initFirebaseAdmin } from "./infrastructure/push/fcm.admin.js";
-import { startLikeSyncScheduler } from "./infrastructure/queue/workers/schedulers/likeSync.scheduler.js";
 import { startQuotaResetScheduler } from "./infrastructure/queue/workers/schedulers/quotaReset.scheduler.js";
 import { startSubscriptionSyncScheduler } from "./infrastructure/queue/workers/schedulers/subscriptionSync.scheduler.js";
 // Domain entrypoints
@@ -58,7 +57,6 @@ const startServer = async () => {
 
   // 5. Scheduled Jobs (cron-based, zero-cost — only fires at specific times)
   //    Includes: YouTube quota reset at midnight Pacific (YouTube's actual reset time)
-  startLikeSyncScheduler();
   startQuotaResetScheduler();
   startSubscriptionSyncScheduler();
 

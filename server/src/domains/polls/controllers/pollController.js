@@ -149,12 +149,18 @@ export const getPollPosts = async (req, res) => {
         if (cachedCount !== null) {
           likesCount = parseInt(cachedCount, 10);
         }
-        if (userId) {
-          const isMember = await redis.sismember(`feed:likes:users:POLL:${poll.id}`, userId);
-          isLiked = !!isMember;
+      }
+
+      if (userId) {
+        let delta = null;
+        if (redisAvailable) {
+          delta = await redis.hget(`feed:likes:delta:POLL:${poll.id}`, userId);
         }
-      } else {
-        if (userId) {
+        if (delta === "1") {
+          isLiked = true;
+        } else if (delta === "0") {
+          isLiked = false;
+        } else {
           const likedInDb = await prisma.pollLike.findUnique({
             where: { pollId_userId: { pollId: poll.id, userId } }
           });
@@ -212,13 +218,23 @@ export const getMyPolls = async (req, res) => {
         if (cachedCount !== null) {
           likesCount = parseInt(cachedCount, 10);
         }
-        const isMember = await redis.sismember(`feed:likes:users:POLL:${poll.id}`, userId);
-        isLiked = !!isMember;
-      } else {
-        const likedInDb = await prisma.pollLike.findUnique({
-          where: { pollId_userId: { pollId: poll.id, userId } }
-        });
-        isLiked = !!likedInDb;
+      }
+
+      if (userId) {
+        let delta = null;
+        if (redisAvailable) {
+          delta = await redis.hget(`feed:likes:delta:POLL:${poll.id}`, userId);
+        }
+        if (delta === "1") {
+          isLiked = true;
+        } else if (delta === "0") {
+          isLiked = false;
+        } else {
+          const likedInDb = await prisma.pollLike.findUnique({
+            where: { pollId_userId: { pollId: poll.id, userId } }
+          });
+          isLiked = !!likedInDb;
+        }
       }
 
       return {

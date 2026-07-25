@@ -8,12 +8,9 @@ import prisma from "../../../database/postgres.js";
  *
  * Consumes jobs from the `like-sync` queue.
  *
- * Redis commands per tick ≈ 1 (ZRANGE) + [ZCARD, only if items found]
- *                            + 2D (pipelined SMEMBERS + GET for D dirty items)
- *                            + 1 (single variadic ZREM, not D separate ZREMs)
- *
- * Postgres transactions per tick: up to D, run with bounded concurrency
- * (LIKE_SYNC_DB_CONCURRENCY) instead of one-at-a-time sequential awaits.
+ * Uses Delta Model (Hash + Counter) instead of replacing the full user set.
+ * Incremental changes are flushed to Postgres, and Redis cache keys are deleted
+ * (or updated) immediately after.
  */
 export default async function likeSyncProcessor(job) {
   const dirtyKey = `feed:likes:dirty`;
@@ -23,13 +20,18 @@ export default async function likeSyncProcessor(job) {
 
   try {
     // 1. Get oldest dirty keys up to batch size
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+      logger.debug(`[TRACE:LIKE-WORKER] Running Redis command: ZRANGE ${dirtyKey} 0 ${batchSize - 1}`);
+    }
     const dirtyItems = await redisProxy.zrange(dirtyKey, 0, batchSize - 1);
 
     if (!dirtyItems || dirtyItems.length === 0) {
-      return; // Nothing to sync — no further Redis commands spent
+      return; // Nothing to sync
     }
 
-    // ZCARD only runs when there's actually something to log/act on
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+      logger.debug(`[TRACE:LIKE-WORKER] Running Redis command: ZCARD ${dirtyKey}`);
+    }
     const totalDirtyInitial = await redisProxy.zcard(dirtyKey);
 
     logger.info(`⚙️  [WORKER] LikeSyncProcessor started | Job ID: ${job.id}`);
@@ -39,12 +41,14 @@ export default async function likeSyncProcessor(job) {
       logger.warn(`🚨 [WORKER] Dirty queue backlog (${totalDirtyInitial}) exceeds alert threshold (${alertThreshold}) — sync is falling behind write volume.`);
     }
 
-    // 2. Pipeline Read: Get all sets (SMEMBERS) and counts (GET) in one go
+    // 2. Pipeline Read: Get deltas for all dirty items in one go
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+      logger.debug(`[TRACE:LIKE-WORKER] Running Redis Pipeline: HGETALL on ${dirtyItems.length} items`);
+    }
     const pipeline = redisProxy.pipeline();
     for (const item of dirtyItems) {
       const [type, id] = item.split(":");
-      pipeline.smembers(`feed:likes:users:${type}:${id}`);
-      pipeline.get(`feed:likes:count:${type}:${id}`);
+      pipeline.hgetall(`feed:likes:delta:${type}:${id}`);
     }
 
     const pipelineResults = await pipeline.exec();
@@ -54,83 +58,116 @@ export default async function likeSyncProcessor(job) {
     let processedCount = 0;
     const successfullyProcessedItems = [];
 
-    // 3. Process each dirty item with bounded concurrency instead of a
-    //    fully sequential for-loop — this is the main latency win.
+    // 3. Process each dirty item with bounded concurrency
     const limit = pLimit(dbConcurrency);
 
     const results = await Promise.allSettled(
       dirtyItems.map((item, i) =>
         limit(async () => {
           const [type, id] = item.split(":");
-          const setIdx = i * 2;
-          const countIdx = i * 2 + 1;
-
-          const setRes = pipelineResults[setIdx];
-          const countRes = pipelineResults[countIdx];
+          const deltaRes = pipelineResults[i];
 
           // If there was a redis error fetching this specific item, skip it
-          // (leave it dirty — it'll be retried next tick)
-          if (setRes[0] || countRes[0]) {
+          if (deltaRes[0]) {
             return { item, status: "skip-error" };
           }
 
-          // Safety Circuit Breaker:
-          // If the count is missing from Redis entirely (expired/evicted), DO NOT sync.
-          // Syncing now would assume 0 likes and wipe Postgres. Drop it from the dirty queue.
-          if (countRes[1] === null) {
-            logger.warn(`⚠️ [WORKER] Cache expired for ${type}:${id} before sync! Skipping to prevent Postgres data wipe.`);
-            return { item, status: "drop-expired" };
+          const deltaHash = deltaRes[1] || {};
+          const userIds = Object.keys(deltaHash);
+
+          if (userIds.length === 0) {
+            // Delta is empty, nothing to sync. Clean up keys and drop from dirty queue.
+            const cleanPipeline = redisProxy.pipeline();
+            cleanPipeline.del(`feed:likes:delta:${type}:${id}`);
+            cleanPipeline.del(`feed:likes:count:${type}:${id}`);
+            await cleanPipeline.exec();
+            return { item, status: "drop-empty" };
           }
 
-          const likedUserIds = setRes[1] || [];
-          const likeCount = parseInt(countRes[1], 10);
+          const toAdd = [];
+          const toRemove = [];
 
-          let LikeModel, ContentModel, parentIdField;
-          if (type === "POST") { LikeModel = prisma.postLike; ContentModel = prisma.post; parentIdField = "postId"; }
-          else if (type === "REEL") { LikeModel = prisma.reelLike; ContentModel = prisma.reel; parentIdField = "reelId"; }
-          else if (type === "YOUTUBE_POST") { LikeModel = prisma.youtubePostLike; ContentModel = prisma.youtubePost; parentIdField = "youtubePostId"; }
-          else if (type === "POLL") { LikeModel = prisma.pollLike; ContentModel = prisma.poll; parentIdField = "pollId"; }
+          for (const uid of userIds) {
+            if (deltaHash[uid] === "1") {
+              toAdd.push(uid);
+            } else if (deltaHash[uid] === "0") {
+              toRemove.push(uid);
+            }
+          }
+
+          let parentIdField;
+          if (type === "POST") { parentIdField = "postId"; }
+          else if (type === "REEL") { parentIdField = "reelId"; }
+          else if (type === "YOUTUBE_POST") { parentIdField = "youtubePostId"; }
+          else if (type === "POLL") { parentIdField = "pollId"; }
           else {
             // Unknown type, just mark for removal from dirty queue
             return { item, status: "drop-unknown-type" };
           }
 
           let adds = 0, removes = 0;
+          let finalCount = 0;
 
           await prisma.$transaction(async (tx) => {
-            const dbLikes = await LikeModel.findMany({
-              where: { [parentIdField]: id },
-              select: { userId: true },
-            });
-            const dbUserIds = new Set(dbLikes.map(l => l.userId));
-            const redisUserSet = new Set(likedUserIds);
+            // Get model references bound to the transaction
+            let TxLikeModel, TxContentModel;
+            if (type === "POST") { TxLikeModel = tx.postLike; TxContentModel = tx.post; }
+            else if (type === "REEL") { TxLikeModel = tx.reelLike; TxContentModel = tx.reel; }
+            else if (type === "YOUTUBE_POST") { TxLikeModel = tx.youtubePostLike; TxContentModel = tx.youtubePost; }
+            else if (type === "POLL") { TxLikeModel = tx.pollLike; TxContentModel = tx.poll; }
 
-            const toAdd = likedUserIds.filter(uid => !dbUserIds.has(uid));
-            const toRemove = [...dbUserIds].filter(uid => !redisUserSet.has(uid));
+            // 1. Fetch current database count for the post
+            const dbContent = await TxContentModel.findUnique({
+              where: { id },
+              select: { like_count: true },
+            });
+            const currentDbCount = dbContent ? dbContent.like_count : 0;
+
+            // 2. Perform DB writes
+            let insertedCount = 0;
+            let deletedCount = 0;
 
             if (toAdd.length > 0) {
-              await LikeModel.createMany({
+              const res = await TxLikeModel.createMany({
                 data: toAdd.map(userId => ({ userId, [parentIdField]: id })),
                 skipDuplicates: true,
               });
-              adds = toAdd.length;
+              insertedCount = res.count;
             }
 
             if (toRemove.length > 0) {
-              await LikeModel.deleteMany({
+              const res = await TxLikeModel.deleteMany({
                 where: { [parentIdField]: id, userId: { in: toRemove } },
               });
-              removes = toRemove.length;
+              deletedCount = res.count;
             }
 
-            await ContentModel.update({
+            // 3. Compute final count and update DB
+            finalCount = Math.max(0, currentDbCount + insertedCount - deletedCount);
+            await TxContentModel.update({
               where: { id },
-              data: { like_count: likeCount },
+              data: { like_count: finalCount },
             });
+
+            adds = insertedCount;
+            removes = deletedCount;
+            
+            if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+              logger.debug(`[TRACE:LIKE-WORKER] Postgres Transaction Complete: ${item}. Inserted: ${insertedCount}, Deleted: ${deletedCount}, Final Count: ${finalCount}`);
+            }
           });
 
           totalDbAdds += adds;
           totalDbRemoves += removes;
+
+          // 4. Safe Redis Cleanup: Delete delta, keep count warmed with fresh TTL
+          if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+            logger.debug(`[TRACE:LIKE-WORKER] Running Redis Pipeline: DEL feed:likes:delta:${type}:${id} & SET feed:likes:count:${type}:${id} EX 86400`);
+          }
+          const cleanPipeline = redisProxy.pipeline();
+          cleanPipeline.del(`feed:likes:delta:${type}:${id}`);
+          cleanPipeline.set(`feed:likes:count:${type}:${id}`, finalCount, "EX", 86400); // warm count for 24h
+          await cleanPipeline.exec();
 
           return { item, status: "synced" };
         })
@@ -150,11 +187,11 @@ export default async function likeSyncProcessor(job) {
       }
     }
 
-    // 4. Safe Commit: Remove from dirty queue only for items we actually
-    //    resolved (synced, dropped-expired, dropped-unknown). Failed items
-    //    are left in the dirty set to be retried next tick.
+    // 5. Commit ZREM: Remove successfully processed items from the dirty queue
     if (successfullyProcessedItems.length > 0) {
-      // Single variadic ZREM instead of N pipelined ZREM calls
+      if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE-WORKER] Running Redis command: ZREM ${dirtyKey} for ${successfullyProcessedItems.length} items`);
+      }
       await redisProxy.zrem(dirtyKey, ...successfullyProcessedItems);
     }
 

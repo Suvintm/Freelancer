@@ -247,7 +247,7 @@ import redisProxy from "../../../infrastructure/cache/redis.client.js";
 const populateIsLiked = async (items, userId) => {
   if (!userId || !items || items.length === 0) return items;
 
-  // 1. Pipeline check for cache existence AND membership
+  // 1. Pipeline check for active deltas in Redis (Hash lookup)
   const pipeline = redisProxy.pipeline();
   
   items.forEach(item => {
@@ -262,9 +262,8 @@ const populateIsLiked = async (items, userId) => {
     // Temporarily store resolved type for DB fallback
     item._resolvedType = type;
     
-    // If the count key exists, the cache is warm. SISMEMBER is then 100% accurate.
-    pipeline.exists(`feed:likes:count:${type}:${item.id}`);
-    pipeline.sismember(`feed:likes:users:${type}:${item.id}`, userId);
+    // Check if the user has an active, unsynced delta in Redis
+    pipeline.hget(`feed:likes:delta:${type}:${item.id}`, userId);
   });
 
   const results = await pipeline.exec();
@@ -273,20 +272,20 @@ const populateIsLiked = async (items, userId) => {
 
   // 2. Process Redis results
   items.forEach((item, index) => {
-    const existsResult = results[index * 2][1];
-    const sismemberResult = results[index * 2 + 1][1];
+    const deltaVal = results[index][1]; // result of hget
 
-    if (existsResult === 1) {
-      // Cache is warm
-      item.isLiked = (sismemberResult === 1);
+    if (deltaVal === "1") {
+      item.isLiked = true;
+    } else if (deltaVal === "0") {
+      item.isLiked = false;
     } else {
-      // Cache is cold (expired). We must ask Postgres.
+      // No active delta buffer for this user. Fall back to Postgres.
       item.isLiked = false; // Default until DB check
       coldItems[item._resolvedType].push(item.id);
     }
   });
 
-  // 3. Fallback to DB ONLY for items that were missing from Redis
+  // 3. Fallback to DB ONLY for items that were missing from active Redis delta
   const dbQueries = [];
   
   if (coldItems.POST.length > 0) {

@@ -3,8 +3,10 @@ import logger from '../../../infrastructure/monitoring/logger.js';
 import redisProxy from '../../../infrastructure/cache/redis.client.js';
 import { likeSyncQueue } from '../../../infrastructure/queue/workers/queues.js';
 
+let zcardCheckCounter = 0;
+
 /**
- * Handle a like/unlike via Redis buffer
+ * Handle a like/unlike via Redis delta buffer
  * @param {string} type - 'POST', 'REEL', 'YOUTUBE_POST', 'POLL'
  * @param {string} id - The content ID
  * @param {string} userId - The user ID
@@ -16,23 +18,50 @@ export const toggleLike = async (type, id, userId, action = "") => {
       throw new Error(`Unsupported content type: ${type}`);
     }
 
-    const setKey = `feed:likes:users:${type}:${id}`;
+    const deltaKey = `feed:likes:delta:${type}:${id}`;
     const countKey = `feed:likes:count:${type}:${id}`;
     const dirtyKey = `feed:likes:dirty`;
     const itemKey = `${type}:${id}`;
 
-    // Ensure cache is hydrated before modifying
+    // Ensure count cache is hydrated before modifying
     const countExists = await redisProxy.exists(countKey);
     if (!countExists) {
         await hydrateCache(type, id);
     }
 
     // Ensure we know the desired action if it's a toggle.
-    // If not specified, we check if the user is in the set.
+    // Check the Redis delta hash first, falling back to PostgreSQL if not present.
     let isCurrentlyLiked = false;
     if (action === "") {
-        const isMember = await redisProxy.sismember(setKey, userId);
-        isCurrentlyLiked = !!isMember;
+        if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+            logger.debug(`[TRACE:LIKE] Running Redis command: HGET ${deltaKey} ${userId}`);
+        }
+        const deltaVal = await redisProxy.hget(deltaKey, userId);
+        if (deltaVal === "1") {
+            isCurrentlyLiked = true;
+        } else if (deltaVal === "0") {
+            isCurrentlyLiked = false;
+        } else {
+            if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+                logger.debug(`[TRACE:LIKE] Cache miss for HGET. Falling back to Postgres findUnique.`);
+            }
+            // Not in active delta buffer, query Postgres
+            let LikeModel, parentIdField;
+            if (type === "POST") { LikeModel = prisma.postLike; parentIdField = "postId"; }
+            else if (type === "REEL") { LikeModel = prisma.reelLike; parentIdField = "reelId"; }
+            else if (type === "YOUTUBE_POST") { LikeModel = prisma.youtubePostLike; parentIdField = "youtubePostId"; }
+            else if (type === "POLL") { LikeModel = prisma.pollLike; parentIdField = "pollId"; }
+
+            const likedInDb = await LikeModel.findUnique({
+                where: {
+                    [`${parentIdField}_userId`]: {
+                        [parentIdField]: id,
+                        userId
+                    }
+                }
+            });
+            isCurrentlyLiked = !!likedInDb;
+        }
     }
 
     const shouldLike = action === "like" ? true : (action === "unlike" ? false : !isCurrentlyLiked);
@@ -80,71 +109,89 @@ export const toggleLike = async (type, id, userId, action = "") => {
     }
 
     try {
-        const ttl = Number(process.env.LIKE_CACHE_TTL || 86400);
-
-        // Lua script for atomic operations
-        // ARGV[1] = shouldLike (1 or 0), ARGV[2] = userId, ARGV[3] = itemKey, ARGV[4] = timestamp, ARGV[5] = ttl
+        // Lua script for atomic operations using Delta Model (Hash + Counter)
+        // ARGV[1] = shouldLike (1 or 0), ARGV[2] = userId, ARGV[3] = itemKey, ARGV[4] = timestamp
+        // Expiration is managed upon worker completion (DEL) rather than reset per action.
         const luaScript = `
-            local setKey = KEYS[1]
+            local deltaKey = KEYS[1]
             local countKey = KEYS[2]
             local dirtyKey = KEYS[3]
             local shouldLike = tonumber(ARGV[1])
             local userId = ARGV[2]
             local itemKey = ARGV[3]
             local timestamp = ARGV[4]
-            local ttl = tonumber(ARGV[5])
+            
+            -- Read current state from delta hash to check for modifications
+            local existingDelta = redis.call('HGET', deltaKey, userId)
             local modified = 0
             
             if shouldLike == 1 then
-                modified = redis.call('SADD', setKey, userId)
-                if modified == 1 then
+                if not existingDelta or existingDelta == "0" then
+                    redis.call('HSET', deltaKey, userId, "1")
                     redis.call('INCR', countKey)
+                    modified = 1
                 end
             else
-                modified = redis.call('SREM', setKey, userId)
-                if modified == 1 then
+                if not existingDelta or existingDelta == "1" then
+                    redis.call('HSET', deltaKey, userId, "0")
                     redis.call('DECR', countKey)
+                    modified = 1
                 end
             end
             
             if modified == 1 then
                 redis.call('ZADD', dirtyKey, timestamp, itemKey)
-                redis.call('EXPIRE', setKey, ttl)
-                redis.call('EXPIRE', countKey, ttl)
             end
             
             return redis.call('GET', countKey)
         `;
 
+        if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+            logger.debug(`[TRACE:LIKE] Running Redis command: EVAL (Lua Script) for ${itemKey} by ${userId}. ShouldLike: ${shouldLike}`);
+            logger.debug(`[TRACE:LIKE] Inside Lua, this executes HSET, INCR/DECR, and ZADD atomically.`);
+        }
+
         const newCountStr = await redisProxy.eval(
             luaScript,
             3, // numkeys
-            setKey,
+            deltaKey,
             countKey,
             dirtyKey,
             shouldLike ? 1 : 0,
             userId,
             itemKey,
-            Date.now(),
-            ttl
+            Date.now()
         );
 
-        // Check threshold and debounce
-        const dirtySize = await redisProxy.zcard(dirtyKey);
-        const threshold = Number(process.env.LIKE_SYNC_THRESHOLD || 500);
-
-        if (dirtySize >= threshold) {
-            logger.info(`🚨 [LIKE_SYNC] Threshold reached! Dirty Queue Size: ${dirtySize}/${threshold}. Triggering BullMQ sync worker...`);
-            if (likeSyncQueue) {
-                // Trigger worker immediately, but debounce with a fixed jobId
-                await likeSyncQueue.add(
-                    "sync-likes-threshold",
-                    { triggerReason: "threshold", dirtySize },
-                    { jobId: "like-sync" }
-                );
+        // Check threshold and debounce (Sampled to avoid calling ZCARD on every single like write)
+        zcardCheckCounter++;
+        const sampleRate = Number(process.env.LIKE_ZCARD_SAMPLE_RATE || 10);
+        if (zcardCheckCounter % sampleRate === 0) {
+            if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+                logger.debug(`[TRACE:LIKE] Running Redis command: ZCARD ${dirtyKey} (Sampled 1 in ${sampleRate})`);
             }
-        } else {
-            logger.info(`✨ [LIKE_SYNC] Buffered in Redis. Dirty Queue Size: ${dirtySize}/${threshold}. Action: ${shouldLike ? 'LIKE' : 'UNLIKE'}`);
+            const dirtySize = await redisProxy.zcard(dirtyKey);
+            const threshold = Number(process.env.LIKE_SYNC_THRESHOLD || 500);
+
+            if (dirtySize >= threshold) {
+                logger.info(`🚨 [LIKE_SYNC] Threshold reached! Dirty Queue Size: ${dirtySize}/${threshold}. Triggering BullMQ sync worker...`);
+                if (likeSyncQueue && process.env.ENABLE_LIKE_SYNC_WORKER === 'true') {
+                    // Trigger worker immediately, but debounce with a fixed jobId
+                    await likeSyncQueue.add(
+                        "sync-likes-threshold",
+                        { triggerReason: "threshold", dirtySize },
+                        { jobId: "like-sync" }
+                    );
+                }
+            } else {
+                logger.info(`✨ [LIKE_SYNC] Buffered in Redis. Dirty Queue Size: ${dirtySize}/${threshold}. Action: ${shouldLike ? 'LIKE' : 'UNLIKE'}`);
+            }
+        } else if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+            logger.debug(`[TRACE:LIKE] Skipped ZCARD check (Check counter: ${zcardCheckCounter}/${sampleRate})`);
+        }
+
+        if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+            logger.debug(`[TRACE:LIKE] Process completed. Total Redis Commands consumed: ~4 (1 EVAL script + optional HGET/ZCARD)`);
         }
 
         return { isLiked: shouldLike, count: parseInt(newCountStr || "0", 10) };
@@ -171,35 +218,23 @@ export const getLikeCount = async (type, id) => {
 };
 
 /**
- * Hydrates Redis cache from PostgreSQL
+ * Hydrates ONLY the count cache from PostgreSQL (no users list!)
  */
 export const hydrateCache = async (type, id) => {
-    let LikeModel;
     let ContentModel;
-    let parentIdField;
-    
-    if (type === "POST") { LikeModel = prisma.postLike; ContentModel = prisma.post; parentIdField = "postId"; }
-    else if (type === "REEL") { LikeModel = prisma.reelLike; ContentModel = prisma.reel; parentIdField = "reelId"; }
-    else if (type === "YOUTUBE_POST") { LikeModel = prisma.youtubePostLike; ContentModel = prisma.youtubePost; parentIdField = "youtubePostId"; }
-    else if (type === "POLL") { LikeModel = prisma.pollLike; ContentModel = prisma.poll; parentIdField = "pollId"; }
+    if (type === "POST") ContentModel = prisma.post;
+    else if (type === "REEL") ContentModel = prisma.reel;
+    else if (type === "YOUTUBE_POST") ContentModel = prisma.youtubePost;
+    else if (type === "POLL") ContentModel = prisma.poll;
     else return;
 
-    const [likes, content] = await Promise.all([
-        LikeModel.findMany({ where: { [parentIdField]: id }, select: { userId: true } }),
-        ContentModel.findUnique({ where: { id }, select: { like_count: true } })
-    ]);
-
-    const setKey = `feed:likes:users:${type}:${id}`;
+    const content = await ContentModel.findUnique({ where: { id }, select: { like_count: true } });
     const countKey = `feed:likes:count:${type}:${id}`;
-    const userIds = likes.map(l => l.userId);
     const count = content ? content.like_count : 0;
     const ttl = Number(process.env.LIKE_CACHE_TTL || 86400); // Default 24h
 
-    const pipeline = redisProxy.pipeline();
-    pipeline.set(countKey, count, "EX", ttl);
-    if (userIds.length > 0) {
-        pipeline.sadd(setKey, ...userIds);
-        pipeline.expire(setKey, ttl);
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE] Running Redis command: SET ${countKey} ${count} EX ${ttl}`);
     }
-    await pipeline.exec();
+    await redisProxy.set(countKey, count, "EX", ttl);
 };

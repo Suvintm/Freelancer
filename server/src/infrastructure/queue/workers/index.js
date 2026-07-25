@@ -79,18 +79,21 @@ if (connection) {
   // CONCURRENCY WARNING: This is intentionally set to 1. The current design processes 
   // a single shared `feed:likes:dirty` queue. Increasing this without sharding the queue 
   // will cause race conditions and duplicate writes.
-  const likeSyncWorker = new Worker("like-sync", likeSyncProcessor, {
-    connection,
-    concurrency: Number(process.env.LIKE_SYNC_CONCURRENCY || 1),
-    drainDelay: 30000,   // Wait 30s before checking queue again when empty
-    // Lock duration must comfortably exceed worst-case processing time:
-    // LIKE_BATCH_SIZE items ÷ LIKE_SYNC_DB_CONCURRENCY parallel workers × avg tx time.
-    // At batch=500, concurrency=10, ~150ms/tx → ~7.5s realistic, but give headroom
-    // for slow DB moments so BullMQ doesn't falsely mark a healthy job as stalled.
-    lockDuration: Number(process.env.LIKE_SYNC_LOCK_DURATION_MS || 120000),
-    stalledInterval: 300000, // Check for stalled like-sync jobs every 5 min (matches its own cadence)
-    maxStalledCount: 2,
-  });
+  let likeSyncWorker = null;
+  if (process.env.ENABLE_LIKE_SYNC_WORKER === "true") {
+    likeSyncWorker = new Worker("like-sync", likeSyncProcessor, {
+      connection,
+      concurrency: Number(process.env.LIKE_SYNC_CONCURRENCY || 1),
+      drainDelay: 30000,   // Wait 30s before checking queue again when empty
+      // Lock duration must comfortably exceed worst-case processing time:
+      // LIKE_BATCH_SIZE items ÷ LIKE_SYNC_DB_CONCURRENCY parallel workers × avg tx time.
+      // At batch=500, concurrency=10, ~150ms/tx → ~7.5s realistic, but give headroom
+      // for slow DB moments so BullMQ doesn't falsely mark a healthy job as stalled.
+      lockDuration: Number(process.env.LIKE_SYNC_LOCK_DURATION_MS || 120000),
+      stalledInterval: 300000, // Check for stalled like-sync jobs every 5 min (matches its own cadence)
+      maxStalledCount: 2,
+    });
+  }
 
   // ─── 8. COMMENT PROCESSING WORKER ───────────────────────────────────────────
   const commentWorker = new Worker("comment-processing", commentProcessor, {
@@ -159,12 +162,23 @@ if (connection) {
     logger.error(`🧹 [CLEANUP] Worker failed job ${job?.id}:`, err)
   );
   
-  likeSyncWorker.on("failed", (job, err) => 
-    sampledLogger.error("[Workers] Like Sync job failed", err, {
-      jobId: job?.id,
-      attempt: job?.attemptsMade,
-    })
-  );
+  if (likeSyncWorker) {
+    likeSyncWorker.on("failed", (job, err) => {
+      sampledLogger.error(`❌ [Workers] Like Sync job failed. Moving to Retry Mode. Attempt: ${job?.attemptsMade}`, err, {
+        jobId: job?.id,
+      });
+      if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE-WORKER] Job ${job?.id} failed. Reason: ${err.message}. Data: ${JSON.stringify(job?.data)}`);
+      }
+    });
+
+    likeSyncWorker.on("stalled", (jobId) => {
+      logger.warn(`⚠️ [Workers] Like Sync job stalled — Worker was unresponsive. Job ${jobId} reclaimed by BullMQ.`);
+      if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE-WORKER] Job ${jobId} stalled. This usually means the Postgres transaction took longer than LIKE_SYNC_LOCK_DURATION_MS.`);
+      }
+    });
+  }
 
   commentWorker.on("failed", (job, err) =>
     sampledLogger.error("[Workers] Comment job failed", err, {
@@ -173,7 +187,10 @@ if (connection) {
     })
   );
 
-  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, likeSyncWorker, commentWorker);
+  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, commentWorker);
+  if (likeSyncWorker) {
+    workers.push(likeSyncWorker);
+  }
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
   // 🧹 [STORY SWEEPER] Run cleanup every 1 hour
@@ -185,14 +202,14 @@ if (connection) {
 
   // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL every 5 minutes (configurable)
   // ❤️ [LIKE SYNC] Flush Redis like states to PostgreSQL — cron-based, single source of truth.
-  // Do NOT also call startLikeSyncScheduler() from likeSync.scheduler.js if you added it —
-  // that would register a SECOND repeatable job on the same queue and double your sync frequency.
-  const likeSyncCron = process.env.LIKE_SYNC_CRON || "*/5 * * * *";
-  likeSyncQueue.add("flush-likes", {}, {
-    jobId: "like-sync-flush",
-    repeat: { pattern: likeSyncCron }
-  }).then(() => logger.info(`❤️ [SCHEDULED] Like Sync Flusher active (Cron: ${likeSyncCron}).`))
-    .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
+  if (process.env.ENABLE_LIKE_SYNC_WORKER === "true") {
+    const likeSyncCron = process.env.LIKE_SYNC_CRON || "*/5 * * * *";
+    likeSyncQueue.add("flush-likes", {}, {
+      jobId: "like-sync-flush",
+      repeat: { pattern: likeSyncCron }
+    }).then(() => logger.info(`❤️ [SCHEDULED] Like Sync Flusher active (Cron: ${likeSyncCron}).`))
+      .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
+  }
   logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
   logger.info(`   📊 YT Sync:       drainDelay=60s  | concurrency=2 | stall-check=10m`);
   logger.info(`   📊 Media:          drainDelay=30s  | concurrency=3 | stall-check=5m`);
