@@ -36,41 +36,53 @@ if (connection) {
   logger.info("🚀 [WORKERS] Initializing BullMQ Background Workers Hub...");
 
   // ─── 1. YOUTUBE SYNC WORKER ─────────────────────────────────────────────────
-  const syncWorker = new Worker("youtube-sync", youtubeSyncProcessor, {
-    connection,
-    concurrency: 2,           // YouTube API has rate limits — keep it low
-    drainDelay: 60000,        // ✅ 60s idle wait (saves ~82,000 Redis cmds/day vs default)
-    stalledInterval: 600000,  // ✅ Check stalled jobs every 10 minutes
-    lockDuration: 60000,      // Job must complete within 60s or considered stalled
-    maxStalledCount: 2,       // Stalls 2x → mark as FAILED, stop retrying
-  });
+  let syncWorker = null;
+  if (process.env.ENABLE_YOUTUBE_WORKER === "true") {
+    syncWorker = new Worker("youtube-sync", youtubeSyncProcessor, {
+      connection,
+      concurrency: 2,           // YouTube API has rate limits — keep it low
+      drainDelay: 60000,        // ✅ 60s idle wait (saves ~82,000 Redis cmds/day vs default)
+      stalledInterval: 600000,  // ✅ Check stalled jobs every 10 minutes
+      lockDuration: 60000,      // Job must complete within 60s or considered stalled
+      maxStalledCount: 2,       // Stalls 2x → mark as FAILED, stop retrying
+    });
+  }
 
   // ─── 2. MEDIA PROCESSING WORKER ─────────────────────────────────────────────
-  const mediaWorker = new Worker("media-processing", mediaProcessor, {
-    connection,
-    concurrency: 3,           // 3 uploads processed in parallel
-    drainDelay: 30000,        // ✅ 30s idle wait (saves ~83,000 Redis cmds/day vs default)
-    stalledInterval: 300000,  // ✅ Check stalled jobs every 5 minutes
-    lockDuration: 120000,     // Video processing can take up to 2 min
-    maxStalledCount: 2,
-  });
+  let mediaWorker = null;
+  if (process.env.ENABLE_MEDIA_WORKER === "true") {
+    mediaWorker = new Worker("media-processing", mediaProcessor, {
+      connection,
+      concurrency: 3,           // 3 uploads processed in parallel
+      drainDelay: 30000,        // ✅ 30s idle wait (saves ~83,000 Redis cmds/day vs default)
+      stalledInterval: 300000,  // ✅ Check stalled jobs every 5 minutes
+      lockDuration: 120000,     // Video processing can take up to 2 min
+      maxStalledCount: 2,
+    });
+  }
 
   // ─── 3. STORY PROCESSING WORKER ─────────────────────────────────────────────
-  const storyWorker = new Worker("story-processing", storyProcessor, {
-    connection,
-    concurrency: 2,           // Stories are lighter but urgent
-    drainDelay: 15000,        // 15s wait (faster response for stories)
-    stalledInterval: 60000,   // Check every minute
-    lockDuration: 60000,      // Stories should process within 60s
-    maxStalledCount: 2,
-  });
+  let storyWorker = null;
+  if (process.env.ENABLE_STORY_WORKER === "true") {
+    storyWorker = new Worker("story-processing", storyProcessor, {
+      connection,
+      concurrency: 2,           // Stories are lighter but urgent
+      drainDelay: 15000,        // 15s wait (faster response for stories)
+      stalledInterval: 60000,   // Check every minute
+      lockDuration: 60000,      // Stories should process within 60s
+      maxStalledCount: 2,
+    });
+  }
 
   // ─── 4. STORY CLEANUP WORKER (MAINTENANCE) ──────────────────────────────────
-  const cleanupWorker = new Worker("story-cleanup", storyCleanupProcessor, {
-    connection,
-    concurrency: 1,
-    drainDelay: 300000,
-  });
+  let cleanupWorker = null;
+  if (process.env.ENABLE_STORY_CLEANUP_WORKER === "true") {
+    cleanupWorker = new Worker("story-cleanup", storyCleanupProcessor, {
+      connection,
+      concurrency: 1,
+      drainDelay: 300000,
+    });
+  }
 
 
   
@@ -96,71 +108,75 @@ if (connection) {
   }
 
   // ─── 8. COMMENT PROCESSING WORKER ───────────────────────────────────────────
-  const commentWorker = new Worker("comment-processing", commentProcessor, {
-    connection,
-    concurrency: 2,
-    drainDelay: 30000,
-    lockDuration: 30000,
-  });
+  let commentWorker = null;
+  if (process.env.ENABLE_COMMENT_WORKER === "true") {
+    commentWorker = new Worker("comment-processing", commentProcessor, {
+      connection,
+      concurrency: 2,
+      drainDelay: 30000,
+      lockDuration: 30000,
+    });
+  }
 
   // ─── EVENT HANDLERS ─────────────────────────────────────────────────────────
   // SUCCESS: sampled at 5% — prevents log flooding
-  syncWorker.on("completed", (job) =>
-    sampledLogger.success("[Workers] YT Sync job done", { jobId: job.id })
-  );
-  mediaWorker.on("completed", (job) =>
-    sampledLogger.success("[Workers] Media job done", { jobId: job.id })
-  );
-  storyWorker.on("completed", (job) =>
-    sampledLogger.success("[Workers] Story job done", { jobId: job.id })
-  );
-  commentWorker.on("completed", (job) =>
-    sampledLogger.success("[Workers] Comment job done", { jobId: job.id })
-  );
+  if (syncWorker) {
+    syncWorker.on("completed", (job) =>
+      sampledLogger.success("[Workers] YT Sync job done", { jobId: job.id })
+    );
+    syncWorker.on("failed", (job, err) =>
+      sampledLogger.error("[Workers] YT Sync job failed", err, {
+        jobId: job?.id,
+        attempt: job?.attemptsMade,
+      })
+    );
+    syncWorker.on("stalled", (jobId) =>
+      sampledLogger.warn("[Workers] YT Sync job stalled — will retry", { jobId })
+    );
+    syncWorker.on("error", (err) => {
+      if (err.code !== "ECONNREFUSED") {
+        sampledLogger.error("[Workers] YT Sync worker error", err);
+      }
+    });
+  }
 
-  // FAILURES: always log — never sample errors
-  syncWorker.on("failed", (job, err) =>
-    sampledLogger.error("[Workers] YT Sync job failed", err, {
-      jobId: job?.id,
-      attempt: job?.attemptsMade,
-    })
-  );
-  mediaWorker.on("failed", (job, err) =>
-    sampledLogger.error("[Workers] Media job failed", err, {
-      jobId: job?.id,
-      attempt: job?.attemptsMade,
-    })
-  );
-  storyWorker.on("failed", (job, err) =>
-    sampledLogger.error("[Workers] Story job failed", err, {
-      jobId: job?.id,
-      attempt: job?.attemptsMade,
-    })
-  );
+  if (mediaWorker) {
+    mediaWorker.on("completed", (job) =>
+      sampledLogger.success("[Workers] Media job done", { jobId: job.id })
+    );
+    mediaWorker.on("failed", (job, err) =>
+      sampledLogger.error("[Workers] Media job failed", err, {
+        jobId: job?.id,
+        attempt: job?.attemptsMade,
+      })
+    );
+    mediaWorker.on("stalled", (jobId) =>
+      sampledLogger.warn("[Workers] Media job stalled — will retry", { jobId })
+    );
+    mediaWorker.on("error", (err) => {
+      if (err.code !== "ECONNREFUSED") {
+        sampledLogger.error("[Workers] Media worker error", err);
+      }
+    });
+  }
 
-  // STALLED: always warn
-  syncWorker.on("stalled", (jobId) =>
-    sampledLogger.warn("[Workers] YT Sync job stalled — will retry", { jobId })
-  );
-  mediaWorker.on("stalled", (jobId) =>
-    sampledLogger.warn("[Workers] Media job stalled — will retry", { jobId })
-  );
+  if (storyWorker) {
+    storyWorker.on("completed", (job) =>
+      sampledLogger.success("[Workers] Story job done", { jobId: job.id })
+    );
+    storyWorker.on("failed", (job, err) =>
+      sampledLogger.error("[Workers] Story job failed", err, {
+        jobId: job?.id,
+        attempt: job?.attemptsMade,
+      })
+    );
+  }
 
-  // WORKER-LEVEL ERRORS (connection drops, etc.)
-  syncWorker.on("error", (err) => {
-    if (err.code !== "ECONNREFUSED") {
-      sampledLogger.error("[Workers] YT Sync worker error", err);
-    }
-  });
-  mediaWorker.on("error", (err) => {
-    if (err.code !== "ECONNREFUSED") {
-      sampledLogger.error("[Workers] Media worker error", err);
-    }
-  });
-
-  cleanupWorker.on("failed", (job, err) => 
-    logger.error(`🧹 [CLEANUP] Worker failed job ${job?.id}:`, err)
-  );
+  if (cleanupWorker) {
+    cleanupWorker.on("failed", (job, err) => 
+      logger.error(`🧹 [CLEANUP] Worker failed job ${job?.id}:`, err)
+    );
+  }
   
   if (likeSyncWorker) {
     likeSyncWorker.on("failed", (job, err) => {
@@ -180,17 +196,24 @@ if (connection) {
     });
   }
 
-  commentWorker.on("failed", (job, err) =>
-    sampledLogger.error("[Workers] Comment job failed", err, {
-      jobId: job?.id,
-      attempt: job?.attemptsMade,
-    })
-  );
-
-  workers.push(syncWorker, mediaWorker, storyWorker, cleanupWorker, commentWorker);
-  if (likeSyncWorker) {
-    workers.push(likeSyncWorker);
+  if (commentWorker) {
+    commentWorker.on("completed", (job) =>
+      sampledLogger.success("[Workers] Comment job done", { jobId: job.id })
+    );
+    commentWorker.on("failed", (job, err) =>
+      sampledLogger.error("[Workers] Comment job failed", err, {
+        jobId: job?.id,
+        attempt: job?.attemptsMade,
+      })
+    );
   }
+
+  if (syncWorker) workers.push(syncWorker);
+  if (mediaWorker) workers.push(mediaWorker);
+  if (storyWorker) workers.push(storyWorker);
+  if (cleanupWorker) workers.push(cleanupWorker);
+  if (commentWorker) workers.push(commentWorker);
+  if (likeSyncWorker) workers.push(likeSyncWorker);
 
   // ─── ⏰ SCHEDULED JOBS ─────────────────────────────────────────────────────
   // 🧹 [STORY SWEEPER] Run cleanup every 1 hour
@@ -210,9 +233,17 @@ if (connection) {
     }).then(() => logger.info(`❤️ [SCHEDULED] Like Sync Flusher active (Cron: ${likeSyncCron}).`))
       .catch((err) => logger.warn(`[SCHEDULED] Failed to schedule Like Sync: ${err.message}`));
   }
-  logger.info("✅ [WORKERS] All Background Workers Active (YouTube Sync + Media Processing).");
-  logger.info(`   📊 YT Sync:       drainDelay=60s  | concurrency=2 | stall-check=10m`);
-  logger.info(`   📊 Media:          drainDelay=30s  | concurrency=3 | stall-check=5m`);
+  // ─── DASHBOARD SUMMARY ──────────────────────────────────────────────────────
+  const getStatus = (worker) => worker ? "🟢 ACTIVE" : "🔴 DISABLED";
+  logger.info("=========================================================");
+  logger.info("🚀 [WORKERS] INDIVIDUAL STATUS DASHBOARD:");
+  logger.info(`   ${getStatus(syncWorker).padEnd(12)} | YouTube Sync `);
+  logger.info(`   ${getStatus(mediaWorker).padEnd(12)} | Media Processing `);
+  logger.info(`   ${getStatus(storyWorker).padEnd(12)} | Story Processing `);
+  logger.info(`   ${getStatus(cleanupWorker).padEnd(12)} | Story Cleanup `);
+  logger.info(`   ${getStatus(likeSyncWorker).padEnd(12)} | Like Sync `);
+  logger.info(`   ${getStatus(commentWorker).padEnd(12)} | Comment Processing `);
+  logger.info("=========================================================");
 
 } else {
   logger.warn("⚠️ [WORKERS] Redis connection missing. Background Workers will NOT start.");

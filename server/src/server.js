@@ -76,18 +76,22 @@ const startServer = async () => {
   //      - Notifications & messaging
   //      - Real-time socket events
   if (process.env.ENABLE_WORKERS === "true") {
-    logger.info("🚀 [WORKERS] ENABLE_WORKERS=true — Starting BullMQ Background Workers...");
+    logger.info("=========================================================");
+    logger.info("🚀 [WORKERS] MAIN GATE: OPEN (ENABLE_WORKERS=true)");
+    logger.info("=========================================================");
     const startWorkers = async () => {
       try {
         await import("./infrastructure/queue/workers/index.js");
-        logger.info("✅ [WORKERS] Background workers module loaded");
       } catch (err) {
         logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
       }
     };
     startWorkers();
   } else {
-    logger.warn("⚠️ [WORKERS] Background workers are disabled. Set ENABLE_WORKERS=true to enable.");
+    logger.warn("=========================================================");
+    logger.warn("⚠️ [WORKERS] MAIN GATE: CLOSED (ENABLE_WORKERS=false)");
+    logger.warn("   All background processing is completely disabled.");
+    logger.warn("=========================================================");
   }
   // 7. Start HTTP & WebSocket Server
   initSocket(server);
