@@ -20,12 +20,18 @@ export default async function likeSyncProcessor(job) {
 
   try {
     // 1. Get oldest dirty keys up to batch size
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+      logger.debug(`[TRACE:LIKE-WORKER] Running Redis command: ZRANGE ${dirtyKey} 0 ${batchSize - 1}`);
+    }
     const dirtyItems = await redisProxy.zrange(dirtyKey, 0, batchSize - 1);
 
     if (!dirtyItems || dirtyItems.length === 0) {
       return; // Nothing to sync
     }
 
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+      logger.debug(`[TRACE:LIKE-WORKER] Running Redis command: ZCARD ${dirtyKey}`);
+    }
     const totalDirtyInitial = await redisProxy.zcard(dirtyKey);
 
     logger.info(`⚙️  [WORKER] LikeSyncProcessor started | Job ID: ${job.id}`);
@@ -36,6 +42,9 @@ export default async function likeSyncProcessor(job) {
     }
 
     // 2. Pipeline Read: Get deltas for all dirty items in one go
+    if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+      logger.debug(`[TRACE:LIKE-WORKER] Running Redis Pipeline: HGETALL on ${dirtyItems.length} items`);
+    }
     const pipeline = redisProxy.pipeline();
     for (const item of dirtyItems) {
       const [type, id] = item.split(":");
@@ -142,12 +151,19 @@ export default async function likeSyncProcessor(job) {
 
             adds = insertedCount;
             removes = deletedCount;
+            
+            if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+              logger.debug(`[TRACE:LIKE-WORKER] Postgres Transaction Complete: ${item}. Inserted: ${insertedCount}, Deleted: ${deletedCount}, Final Count: ${finalCount}`);
+            }
           });
 
           totalDbAdds += adds;
           totalDbRemoves += removes;
 
           // 4. Safe Redis Cleanup: Delete delta, keep count warmed with fresh TTL
+          if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+            logger.debug(`[TRACE:LIKE-WORKER] Running Redis Pipeline: DEL feed:likes:delta:${type}:${id} & SET feed:likes:count:${type}:${id} EX 86400`);
+          }
           const cleanPipeline = redisProxy.pipeline();
           cleanPipeline.del(`feed:likes:delta:${type}:${id}`);
           cleanPipeline.set(`feed:likes:count:${type}:${id}`, finalCount, "EX", 86400); // warm count for 24h
@@ -173,6 +189,9 @@ export default async function likeSyncProcessor(job) {
 
     // 5. Commit ZREM: Remove successfully processed items from the dirty queue
     if (successfullyProcessedItems.length > 0) {
+      if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE-WORKER] Running Redis command: ZREM ${dirtyKey} for ${successfullyProcessedItems.length} items`);
+      }
       await redisProxy.zrem(dirtyKey, ...successfullyProcessedItems);
     }
 

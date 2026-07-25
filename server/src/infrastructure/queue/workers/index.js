@@ -163,12 +163,21 @@ if (connection) {
   );
   
   if (likeSyncWorker) {
-    likeSyncWorker.on("failed", (job, err) => 
-      sampledLogger.error("[Workers] Like Sync job failed", err, {
+    likeSyncWorker.on("failed", (job, err) => {
+      sampledLogger.error(`❌ [Workers] Like Sync job failed. Moving to Retry Mode. Attempt: ${job?.attemptsMade}`, err, {
         jobId: job?.id,
-        attempt: job?.attemptsMade,
-      })
-    );
+      });
+      if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE-WORKER] Job ${job?.id} failed. Reason: ${err.message}. Data: ${JSON.stringify(job?.data)}`);
+      }
+    });
+
+    likeSyncWorker.on("stalled", (jobId) => {
+      logger.warn(`⚠️ [Workers] Like Sync job stalled — Worker was unresponsive. Job ${jobId} reclaimed by BullMQ.`);
+      if (process.env.LIKE_SYNC_VERBOSE_LOGS === 'true') {
+        logger.debug(`[TRACE:LIKE-WORKER] Job ${jobId} stalled. This usually means the Postgres transaction took longer than LIKE_SYNC_LOCK_DURATION_MS.`);
+      }
+    });
   }
 
   commentWorker.on("failed", (job, err) =>
