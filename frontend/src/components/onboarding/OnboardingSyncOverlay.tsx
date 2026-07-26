@@ -187,7 +187,7 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
       socket.off('notification:new');
       socket.off('user:profile_updated');
     };
-  }, [token, dispatch, navigate]);
+  }, [token, dispatch, navigate, nextRoute]);
 
   const activeStep = steps.find(s => s.status === 'running') || steps[steps.length - 1];
 

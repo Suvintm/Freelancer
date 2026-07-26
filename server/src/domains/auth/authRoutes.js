@@ -13,7 +13,9 @@ import {
   validateSignup,
   getActiveSessions,
   revokeSession,
-  validateVault
+  validateVault,
+  verifyEmail,
+  resendVerificationCode
 } from "./controllers/auth.controller.js";
 import { authenticate } from "../../shared/middleware/auth.middleware.js";
 
@@ -34,6 +36,8 @@ router.post("/youtube/channels", getYouTubeChannels);
 router.get("/check-username/:username", checkUsername);
 router.post("/validate-signup", validateSignup);
 router.post("/validate-vault", validateVault); // Sanitizer for mobile app
+router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationCode);
 
 // ============ PRIVATE ROUTES ============
 router.get("/me", authenticate, getMe);

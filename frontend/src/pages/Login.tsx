@@ -70,7 +70,13 @@ export default function Login() {
       await login({ email: form.email, password: form.password, turnstileToken });
       navigate('/home');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      const axiosError = err as { response?: { data?: { requiresVerification?: boolean; email?: string; message?: string }; status?: number }; message?: string };
+      const responseData = axiosError?.response?.data;
+      if (axiosError?.response?.status === 403 && responseData?.requiresVerification) {
+        navigate(`/verify-email?email=${encodeURIComponent(responseData.email || form.email)}`);
+        return;
+      }
+      setError(responseData?.message || axiosError.message || String(err));
     }
   };
 

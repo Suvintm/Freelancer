@@ -5,6 +5,8 @@ import { ApiError } from "../../../shared/kernel/errors.js";
 import { eventBus } from "../../../shared/kernel/events.js";
 import storageService from "../../../infrastructure/storage/storage-client.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
+import { redis } from "../../../infrastructure/cache/redis.client.js";
+import { sendOTPEmail } from "../../../infrastructure/email/email.client.js";
 
 /**
  * PRODUCTION-GRADE ATOMIC REGISTRATION (Split Schema)
@@ -216,6 +218,7 @@ export const registerFullUser = async (userData) => {
           google_id: googleId,
           role: 'suvix_user', // Standardized Professional Role
           is_onboarded: !!resolvedCategoryId || normalizedRoleSubCategoryIds.length > 0,
+          is_email_verified: authProvider === "google",
         },
       });
 
@@ -340,12 +343,24 @@ export const registerFullUser = async (userData) => {
 
     logger.info(`Production Registration Success: ${hydratedUser.email} (${hydratedUser.id})`);
     
-    // ── TRIGGER WELCOME NOTIFICATION (Elite Quality via Event Bus) ────────────────────────
-    // VIP Token is inserted in the main registration transaction, so this is instant!
-    eventBus.publish('user.registered', {
-      userId: hydratedUser.id,
-      email: hydratedUser.email,
-    });
+    if (authProvider === "local") {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const redisKey = `email_otp:${normalizedEmail}`;
+      try {
+        await redis.set(redisKey, otp, "EX", 15 * 60); // 15 minutes TTL
+        await sendOTPEmail(normalizedEmail, fullName, otp);
+        logger.info(`📧 [REG-OTP] Sent email verification code to ${normalizedEmail}`);
+      } catch (emailError) {
+        logger.error(`❌ [REG-OTP] Failed to generate/send email OTP: ${emailError.message}`);
+      }
+    } else {
+      // ── TRIGGER WELCOME NOTIFICATION (Elite Quality via Event Bus) ────────────────────────
+      // Only for verified users (e.g. Google auth)
+      eventBus.publish('user.registered', {
+        userId: hydratedUser.id,
+        email: hydratedUser.email,
+      });
+    }
     
     return hydratedUser;
 

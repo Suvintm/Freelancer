@@ -57,6 +57,8 @@ import {
   isValidUsername,
 } from "../../../shared/utils/validation.js";
 import { verifyTurnstileToken } from "../utils/turnstile.js";
+import { sendOTPEmail } from "../../../infrastructure/email/email.client.js";
+import { eventBus } from "../../../shared/kernel/events.js";
 
 // ─── Cookie Options ────────────────────────────────────────────────────────
 const cookieOptions = {
@@ -265,6 +267,24 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   await resetFailedLogin(email);
+
+  if (!user.is_email_verified) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const redisKey = `email_otp:${user.email.toLowerCase()}`;
+    try {
+      await redis.set(redisKey, otp, "EX", 15 * 60); // 15 minutes TTL
+      await sendOTPEmail(user.email, user.profile?.name || user.username || "User", otp);
+      logger.info(`📧 [LOGIN-OTP] Sent email verification code to ${user.email}`);
+    } catch (emailError) {
+      logger.error(`❌ [LOGIN-OTP] Failed to send email OTP: ${emailError.message}`);
+    }
+    throw new ApiError(
+      403,
+      "Email verification required. We sent a verification code to your email.",
+      true,
+      { requiresVerification: true, email: user.email }
+    );
+  }
 
   const deviceId = req.headers["x-device-id"] || null;
   const deviceName = req.headers["x-device-name"] || "Unknown Device";
@@ -491,6 +511,16 @@ export const registerFull = asyncHandler(async (req, res) => {
   };
 
   const userWithProfile = await registerService(userData);
+  
+  const isGoogle = userData.authProvider === "google";
+  if (!isGoogle) {
+    return res.status(201).json({
+      success: true,
+      requiresVerification: true,
+      email: userWithProfile.email,
+      message: "Verification code sent to your email."
+    });
+  }
 
   const familyId = crypto.randomUUID();
   const deviceId = req.headers["x-device-id"] || null;
@@ -614,6 +644,7 @@ export const checkUsername = asyncHandler(async (req, res) => {
   const { username } = req.params;
   const exists = await prisma.userProfile.findUnique({
     where: { username: username.toLowerCase().trim() },
+    select: { id: true },
   });
   res.status(200).json({ success: true, available: !exists });
 });
@@ -770,4 +801,141 @@ export const validateVault = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, validIds: existingUsers.map((u) => u.id) });
+});
+
+// ─── Verify Email ─────────────────────────────────────────────────────────
+
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new ApiError(400, "Email and OTP verification code are required.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const redisKey = `email_otp:${normalizedEmail}`;
+  const storedOtp = await redis.get(redisKey);
+
+  if (!storedOtp || storedOtp !== String(otp).trim()) {
+    throw new ApiError(400, "Invalid or expired verification code.");
+  }
+
+  // OTP verified, remove it
+  await redis.del(redisKey);
+
+  // Update user verified state
+  const updatedUser = await prisma.user.update({
+    where: { email: normalizedEmail },
+    data: { is_email_verified: true },
+    include: USER_INCLUDE,
+  });
+
+  // Trigger welcome email since they are verified now!
+  eventBus.publish('user.registered', {
+    userId: updatedUser.id,
+    email: updatedUser.email,
+  });
+
+  // Create session for them so they are logged in immediately after verification
+  const familyId = crypto.randomUUID();
+  const deviceId = req.headers["x-device-id"] || null;
+  const deviceName = req.headers["x-device-name"] || "Unknown Device";
+  const { accessToken, refreshToken } = generateUserTokens(
+    updatedUser,
+    familyId,
+    deviceId
+  );
+  const hashedToken = hashToken(refreshToken);
+
+  const sessionData = JSON.stringify({
+    userId: updatedUser.id,
+    familyId,
+    deviceId,
+    metadata: {
+      userAgent: req.headers["user-agent"] || "Mobile App",
+      ip: req.ip || req.connection.remoteAddress,
+      deviceName,
+      lastActive: new Date().toISOString(),
+    },
+  });
+
+  await redis
+    .pipeline()
+    .set(
+      `refresh_token:${hashedToken}`,
+      sessionData,
+      "EX",
+      REFRESH_TOKEN_TTL_SECONDS
+    )
+    .sadd(`user_sessions:${updatedUser.id}`, hashedToken)
+    .expire(`user_sessions:${updatedUser.id}`, REFRESH_TOKEN_TTL_SECONDS)
+    .exec();
+
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+  res.status(200).json({
+    success: true,
+    message: "Email verified successfully!",
+    user: formatAuthResponse(updatedUser),
+    token: accessToken,
+    refreshToken,
+    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+  });
+});
+
+// ─── Resend Verification Code ─────────────────────────────────────────────
+
+export const resendVerificationCode = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || !isValidEmail(email)) {
+    throw new ApiError(400, "A valid email address is required.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Find user first to ensure they exist and are not already verified
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: { profile: true },
+  });
+
+  if (!user) {
+    throw new ApiError(404, "No account found with this email.");
+  }
+
+  if (user.is_email_verified) {
+    return res.status(200).json({
+      success: true,
+      message: "Email is already verified.",
+    });
+  }
+
+  // Rate limit resend requests per email using Redis (limit: 1 resend per 60 seconds)
+  const resendLimitKey = `resend_limit:${normalizedEmail}`;
+  const isRateLimited = await redis.get(resendLimitKey);
+  if (isRateLimited) {
+    throw new ApiError(429, "Please wait 60 seconds before requesting a new verification code.");
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const redisKey = `email_otp:${normalizedEmail}`;
+
+  await redis
+    .pipeline()
+    .set(redisKey, otp, "EX", 15 * 60) // 15 mins expiry
+    .set(resendLimitKey, "1", "EX", 60) // 60s cooldown limit
+    .exec();
+
+  try {
+    await sendOTPEmail(user.email, user.profile?.name || user.username || "User", otp);
+    logger.info(`📧 [RESEND-OTP] Sent email verification code to ${user.email}`);
+  } catch (emailError) {
+    logger.error(`❌ [RESEND-OTP] Failed to send email OTP: ${emailError.message}`);
+    throw new ApiError(500, "Failed to send email verification code. Please try again later.");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "A new verification code has been sent to your email.",
+  });
 });
