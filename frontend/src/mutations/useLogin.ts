@@ -9,8 +9,8 @@ export const useLogin = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      authService.login(email, password),
+    mutationFn: ({ email, password, turnstileToken }: { email: string; password: string; turnstileToken: string }) =>
+      authService.login(email, password, turnstileToken),
     onSuccess: (data) => {
       if (data.success && data.user) {
         dispatch(

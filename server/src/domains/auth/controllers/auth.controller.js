@@ -56,6 +56,7 @@ import {
   isValidEmail,
   isValidUsername,
 } from "../../../shared/utils/validation.js";
+import { verifyTurnstileToken } from "../utils/turnstile.js";
 
 // ─── Cookie Options ────────────────────────────────────────────────────────
 const cookieOptions = {
@@ -213,7 +214,7 @@ export const refresh = asyncHandler(async (req, res) => {
 // ─── Login ─────────────────────────────────────────────────────────────────
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
 
   if (!email || !password || !isValidEmail(email)) {
     logger.debug(
@@ -223,6 +224,11 @@ export const login = asyncHandler(async (req, res) => {
       400,
       "A valid email address and password are required."
     );
+  }
+
+  const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
+  if (!isHuman) {
+    throw new ApiError(403, "Security check failed. Please refresh and try again.");
   }
 
   const user = await prisma.user.findUnique({
@@ -421,7 +427,13 @@ export const registerFull = asyncHandler(async (req, res) => {
     pushToken,
     platform,
     website,
+    turnstileToken,
   } = req.body;
+
+  const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
+  if (!isHuman) {
+    throw new ApiError(403, "Security check failed. Please refresh and try again.");
+  }
 
   let parsedSubIds = roleSubCategoryIds;
   if (typeof roleSubCategoryIds === "string" && roleSubCategoryIds) {

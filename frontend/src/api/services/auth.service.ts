@@ -2,8 +2,8 @@ import { api } from '../client';
 import type { SignupPayload } from '../../store/slices/authSlice';
 
 export const authService = {
-  login: async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
+  login: async (email: string, password: string, turnstileToken: string) => {
+    const res = await api.post('/auth/login', { email, password, turnstileToken });
     return res.data; // { success, user, token, refreshToken, message }
   },
 

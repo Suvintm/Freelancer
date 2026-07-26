@@ -13,7 +13,7 @@ import { useDispatch } from 'react-redux';
 import { clearTempSignupData, setTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RoleCategory } from '../api/services/category.service';
-import logo from '../assets/darklogo.png';
+import logo from '../assets/lightlogo.png';
 import LottieComponent from "lottie-react";
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
@@ -154,88 +154,107 @@ export default function RoleSelection() {
   const finalDisplayCategories = [...sortedCategories, ...remainingCategories];
 
   console.log("Lottie:", Lottie);
-console.log("Loader:", loaderAnimation);
+  console.log("Loader:", loaderAnimation);
 
   return (
-    <div className="flex h-screen w-full bg-black font-sans overflow-hidden relative text-white">
+    <div className="flex h-[100dvh] w-full bg-gray-50 font-sans overflow-hidden relative text-gray-900">
       {/* Visual Side (Left) */}
-      <div className="hidden lg:flex lg:w-[40%] p-8 bg-zinc-950 overflow-hidden relative border-r border-zinc-900">
+      <div className="hidden lg:flex lg:w-[40%] p-8 bg-white overflow-hidden relative">
         <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950 to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-zinc-950 to-transparent z-10" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent z-10" />
+        <div className="absolute inset-y-0 right-0 w-48 bg-gradient-to-l from-gray-50 to-transparent z-10" />
       </div>
 
       {/* Mobile Background */}
-      <div className="lg:hidden absolute inset-0 z-0 bg-black">
+      <div className="lg:hidden absolute inset-0 z-0 bg-gray-50">
         <AuthBackground />
-        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-black z-10" />
-        <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-black to-transparent z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gray-50 z-10" />
+        <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-gray-50 to-transparent z-10" />
       </div>
 
       {/* Content Side (Right) */}
       <div 
-        className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-hidden z-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 50% 50%, #0e0e11 0%, #000000 100%)'
-        }}
+        className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-hidden z-20 bg-gray-50 relative"
       >
         {/* Header */}
-        <div className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-zinc-900/80">
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between px-6 py-6 md:px-12 lg:px-16 lg:py-8">
-            <div className="space-y-3">
+        <div className="sticky top-0 z-50 pt-6 pb-8 md:pt-8 md:pb-12 px-6 md:px-12 lg:px-16 flex flex-col lg:flex-row lg:items-start justify-between pointer-events-none">
+          {/* Blurred Background with Fade-out Mask */}
+          <div 
+             className="absolute inset-0 bg-white/60 backdrop-blur-md -z-10 pointer-events-none"
+             style={{ 
+               maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)', 
+               WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)' 
+             }}
+          />
+          
+          <div className="space-y-3 pointer-events-auto w-full">
+            {/* Top Row: Logo & Mobile Sign In */}
+            <div className="flex justify-between items-start w-full">
               <img src={logo} alt="SuviX" className="h-8 md:h-9 lg:h-10 w-auto opacity-95" />
-              <div className="space-y-1">
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight">
-                  Start your <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 via-zinc-400 to-zinc-600">new chapter.</span>
-                </h1>
-                <p className="text-zinc-400 text-xs md:text-sm max-w-lg leading-relaxed font-medium">
-                  Choose your role first. Everything else follows.
-                </p>
+              
+              {/* Mobile Sign In (Top Right) */}
+              <div className="flex lg:hidden flex-col items-end gap-1">
+                <span className="text-[10px] text-gray-500 font-medium leading-none">Already a member?</span>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-4 py-1.5 rounded-lg bg-black text-white text-[11px] font-bold shadow-sm"
+                >
+                  Sign In
+                </button>
               </div>
             </div>
-            {/* Link to Login for returning users */}
-            <div className="hidden lg:flex items-center gap-2 mt-2 lg:mt-0">
-              <span className="text-xs text-zinc-500 font-medium">Already a member?</span>
-              <button
-                onClick={() => navigate('/login')}
-                className="px-4 py-2 rounded-xl border border-zinc-800 bg-zinc-900 text-white text-[11px] font-semibold hover:bg-zinc-800 transition-colors"
-              >
-                Sign In
-              </button>
+            <div className="space-y-1">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight tracking-tight">
+                Start your <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-400">new chapter.</span>
+              </h1>
+              <p className="text-gray-500 text-xs md:text-sm max-w-lg leading-relaxed font-medium">
+                Choose your role first. Everything else follows.
+              </p>
             </div>
+          </div>
+          {/* Link to Login for returning users */}
+          <div className="hidden lg:flex items-center gap-2 mt-2 lg:mt-0 pointer-events-auto">
+            <span className="text-xs text-gray-500 font-medium">Already a member?</span>
+            <button
+              onClick={() => navigate('/login')}
+              className="px-4 py-2 rounded-xl bg-black text-white text-[11px] font-bold hover:bg-gray-900 transition-colors shadow-sm"
+            >
+              Sign In
+            </button>
           </div>
         </div>
 
         {/* Categories Grid */}
-        <div className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 pb-12 scroll-smooth custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 pb-48 lg:pb-40 scroll-smooth custom-scrollbar">
           <div className="max-w-6xl mx-auto py-8">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24">
                <Lottie
-    animationData={loaderAnimation}
-    loop
-    className="w-44 h-44"
-/>
-                <p className="text-zinc-500 font-bold tracking-widest uppercase text-[10px]">Loading Roles...</p>
+                animationData={loaderAnimation}
+                loop
+                className="w-44 h-44"
+              />
+                <p className="text-gray-500 font-bold tracking-widest uppercase text-[10px]">Loading Roles...</p>
               </div>
             ) : error || finalDisplayCategories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 px-6 max-w-md mx-auto text-center bg-zinc-950/40 border border-white/5 rounded-[32px] p-8 lg:p-10 shadow-2xl">
-                <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-6">
+              <div className="flex flex-col items-center justify-center py-20 px-6 max-w-md mx-auto text-center bg-white border border-gray-200 rounded-[32px] p-8 lg:p-10 shadow-xl">
+                <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-6">
                   <Info className="w-7 h-7 text-rose-500" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">Connection Delayed</h3>
-                <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Connection Delayed</h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
                   We are having trouble loading the workspace roles from the server. Please check your network connection or try reloading.
                 </p>
                 <button 
                   onClick={() => refetch()}
-                  className="px-6 py-2.5 rounded-xl bg-white text-black text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
+                  className="px-6 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
                 >
                   Retry Connection
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 px-3 md:px-0 md:gap-6 lg:gap-8">
                 {finalDisplayCategories.map((item) => {
                   const isSelected = selected === item.id;
                   const assets = getCategoryAssets(item.slug);
@@ -248,8 +267,8 @@ console.log("Loader:", loaderAnimation);
                       onClick={() => setSelected(item.id)}
                       className={`relative group cursor-pointer aspect-[1/1.1] rounded-2xl overflow-hidden border transition-all duration-300 ${
                         isSelected 
-                          ? 'border-white ring-4 ring-white/10 shadow-2xl' 
-                          : 'border-zinc-800 hover:border-zinc-600 bg-zinc-900'
+                          ? 'border-black ring-4 ring-black/5 shadow-xl' 
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
                     >
                       {/* Background Image */}
@@ -257,16 +276,16 @@ console.log("Loader:", loaderAnimation);
                         src={assets.thumb} 
                         alt={item.name} 
                         className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
-                          isSelected ? 'grayscale-0 scale-105' : 'grayscale-[0.6] group-hover:grayscale-0 group-hover:scale-105 opacity-60 group-hover:opacity-100'
+                          isSelected ? 'scale-105' : 'group-hover:scale-105'
                         }`} 
                       />
 
                       {/* Info Icon - Top Right */}
                       <button 
-                        className="absolute top-3 right-3 z-20 bg-black/60 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-zinc-800 hover:bg-zinc-900 transition-colors"
+                        className="absolute top-3 right-3 z-20 bg-white/60 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-white hover:bg-white transition-colors"
                         onClick={(e) => { e.stopPropagation(); setInfoCategory(item); }}
                       >
-                        <Info size={16} className="text-zinc-400" />
+                        <Info size={16} className="text-gray-700" />
                       </button>
 
                       {/* Absolute Icon Overlay */}
@@ -279,7 +298,7 @@ console.log("Loader:", loaderAnimation);
                       )}
 
                       {/* Gradient Overlay */}
-                      <div className={`absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-0 transition-opacity ${isSelected ? 'opacity-60' : 'opacity-30 group-hover:opacity-50'}`} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 z-0 pointer-events-none" />
 
                       {/* Label */}
                       <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-5 flex items-center justify-between z-20">
@@ -295,7 +314,7 @@ console.log("Loader:", loaderAnimation);
 
                       {/* Selection State Tint */}
                       {isSelected && (
-                        <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+                        <div className="absolute inset-0 bg-black/5 pointer-events-none" />
                       )}
                     </motion.div>
                   );
@@ -306,8 +325,15 @@ console.log("Loader:", loaderAnimation);
         </div>
 
         {/* Bottom Action Bar — PRODUCTION: Dual CTA (Email + Google) */}
-        <div className="flex-none py-5 px-6 lg:px-12 bg-zinc-950/90 backdrop-blur-3xl border-t border-zinc-900 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] z-50">
-          <div className="max-w-4xl mx-auto">
+        <div className="absolute bottom-0 left-0 right-0 pt-20 pb-8 px-6 lg:px-12 z-50 pointer-events-none">
+          <div 
+             className="absolute inset-0 bg-white/70 backdrop-blur-md -z-10 pointer-events-none"
+             style={{ 
+               maskImage: 'linear-gradient(to top, black 50%, transparent 100%)', 
+               WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' 
+             }}
+          />
+          <div className="max-w-4xl mx-auto pointer-events-auto relative">
             {/* Status indicator */}
             <div className="flex items-center justify-center mb-4">
               {selectedCategory ? (
@@ -317,14 +343,14 @@ console.log("Loader:", loaderAnimation);
                   className="flex items-center gap-2"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-zinc-400">
-                    Ready to proceed as <span className="text-white font-extrabold">{selectedCategory.name}</span>
+                  <span className="text-xs font-semibold text-gray-500">
+                    Ready to proceed as <span className="text-gray-900 font-extrabold">{selectedCategory.name}</span>
                   </span>
                 </motion.div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                  <span className="text-xs font-semibold text-zinc-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                  <span className="text-xs font-semibold text-gray-400">
                     Select a role above to continue
                   </span>
                 </div>
@@ -340,12 +366,12 @@ console.log("Loader:", loaderAnimation);
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ duration: 0.25 }}
-                  className="flex flex-col sm:flex-row gap-3"
+                  className="flex flex-col sm:flex-row gap-4 sm:gap-5"
                 >
                   {/* Google Signup */}
                   <Button
                     onClick={handleGoogleSignup}
-                    className="flex-1 h-13 rounded-2xl bg-zinc-900 border border-zinc-700 text-white font-semibold text-sm flex items-center justify-center gap-3 hover:bg-zinc-800 hover:border-zinc-600 transition-all active:scale-[0.98] cursor-pointer"
+                    className="flex-1 h-12 rounded-xl bg-white border border-gray-300 text-gray-900 font-semibold text-[13px] flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-400 transition-all active:scale-[0.98] cursor-pointer shadow-sm"
                   >
                     <img src="https://www.google.com/favicon.ico" alt="" className="w-4 h-4" />
                     Continue with Google
@@ -354,10 +380,10 @@ console.log("Loader:", loaderAnimation);
                   {/* Email Signup — Primary CTA */}
                   <Button
                     onClick={handleEmailSignup}
-                    className="flex-1 h-13 rounded-2xl bg-white text-black font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-2xl shadow-white/10 cursor-pointer group"
+                    className="flex-1 h-12 rounded-xl bg-black text-white font-bold text-[13px] flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-[0.98] transition-all shadow-xl shadow-black/10 cursor-pointer group"
                   >
                     Continue with Email
-                    <ArrowRight size={18} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1 duration-200" />
+                    <ArrowRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1 duration-200" />
                   </Button>
                 </motion.div>
               ) : (
@@ -369,7 +395,7 @@ console.log("Loader:", loaderAnimation);
                 >
                   <Button
                     disabled
-                    className="w-full h-13 rounded-2xl bg-zinc-900/50 text-zinc-600 font-bold text-sm cursor-not-allowed opacity-50 border border-zinc-800"
+                    className="w-full h-13 rounded-2xl bg-gray-100 text-gray-400 font-bold text-sm cursor-not-allowed opacity-70 border border-gray-200"
                   >
                     Select a Role to Continue
                   </Button>
@@ -377,13 +403,7 @@ console.log("Loader:", loaderAnimation);
               )}
             </AnimatePresence>
 
-            {/* Mobile: Sign In link */}
-            <p className="text-center text-xs text-zinc-600 font-medium mt-4 lg:hidden">
-              Already a member?{' '}
-              <button onClick={() => navigate('/login')} className="text-zinc-400 font-semibold hover:text-white transition-colors">
-                Sign In
-              </button>
-            </p>
+
           </div>
         </div>
       </div>
@@ -397,34 +417,34 @@ console.log("Loader:", loaderAnimation);
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setInfoCategory(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md" 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-md bg-zinc-950 border border-white/10 rounded-[32px] p-8 lg:p-10 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-white border border-gray-100 rounded-[32px] p-8 lg:p-10 shadow-2xl overflow-hidden"
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="space-y-1">
-                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">About Role</span>
-                  <h2 className="text-xl font-bold text-white leading-tight">{infoCategory.name}</h2>
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Role</span>
+                  <h2 className="text-xl font-bold text-gray-900 leading-tight">{infoCategory.name}</h2>
                 </div>
                 <button 
                   onClick={() => setInfoCategory(null)}
-                  className="bg-white/5 hover:bg-white/10 p-2 rounded-full border border-white/5 text-zinc-400 hover:text-white transition-all"
+                  className="bg-gray-100 hover:bg-gray-200 p-2 rounded-full text-gray-500 hover:text-gray-900 transition-all"
                 >
                   <X size={16} />
                 </button>
               </div>
 
-              <p className="text-zinc-400 text-sm lg:text-base leading-relaxed mb-8">
+              <p className="text-gray-600 text-sm lg:text-base leading-relaxed mb-8">
                 {infoCategory.description || infoCategory.info || "Discover opportunities tailored for your professional growth."}
               </p>
 
               <Button 
                 onClick={() => setInfoCategory(null)}
-                className="w-full h-12 bg-white text-black font-extrabold text-sm rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all"
+                className="w-full h-12 bg-black text-white font-extrabold text-sm rounded-2xl hover:bg-gray-900 active:scale-[0.98] transition-all"
               >
                 Got it
               </Button>
