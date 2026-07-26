@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import logo from '../assets/lightlogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
-import { MobileAuthHeader } from '../components/auth/MobileAuthHeader';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useDispatch } from 'react-redux';
 import { clearTempSignupData, resetYoutubeDiscovery, setTempSignupData } from '../store/slices/onboardingSlice';
 import { useLogin } from '../mutations/useLogin';
@@ -32,6 +32,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const dispatch = useDispatch();
   const { mutateAsync: login, isPending: isLoading } = useLogin();
   const [error, setError] = useState<string | null>(() => {
@@ -60,8 +61,13 @@ export default function Login() {
       return;
     }
 
+    if (!turnstileToken) {
+      setError('Please complete the security check.');
+      return;
+    }
+
     try {
-      await login({ email: form.email, password: form.password });
+      await login({ email: form.email, password: form.password, turnstileToken });
       navigate('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -88,10 +94,10 @@ export default function Login() {
   };
 
   return (
-    <div className="relative h-screen w-full bg-white lg:bg-black flex flex-col overflow-hidden font-sans">
+    <div className="relative h-[100dvh] w-full bg-black flex flex-col overflow-hidden font-sans">
       
-      {/* Full Screen Background (Laptop only) */}
-      <div className="hidden lg:block absolute inset-0 z-0">
+      {/* Full Screen Background */}
+      <div className="absolute inset-0 z-0">
         <AuthBackground />
       </div>
 
@@ -102,48 +108,38 @@ export default function Login() {
         <div className="absolute top-6 left-6 lg:top-10 lg:left-10 z-50">
           <Link 
             to="/"
-            className="flex items-center gap-2.5 px-5 py-2.5 bg-white border border-black rounded-full text-black text-xs lg:text-sm font-bold transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 lg:px-5 lg:py-2.5 bg-white border border-gray-200 lg:border-black rounded-full text-black text-[11px] lg:text-sm font-bold transition-all shadow-md hover:scale-105"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={14} className="lg:w-4 lg:h-4" />
             <span>Create Account</span>
           </Link>
-        </div>
-
-        {/* Mobile Visual Header */}
-        <div className="lg:hidden flex-none">
-          <MobileAuthHeader 
-            title="Welcome Back" 
-            subtitle="Please enter your details below to login."
-            actionLabel="Join Now"
-            actionLink="/"
-          />
         </div>
 
         {/* Left Side (30% approx) - Invisible, just lets the AuthBackground text show through */}
         <div className="hidden lg:block lg:w-[40%] xl:w-[30%] h-full pointer-events-none"></div>
 
         {/* Right Side Form Container (70%) */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 h-full lg:w-[60%] xl:w-[70%]">
+        <div className="flex-1 flex flex-col items-center justify-center p-4 pt-20 sm:p-6 lg:p-12 h-full lg:w-[60%] xl:w-[70%]">
           
-          {/* Floating Rounded Form Card (Laptop) / Flat (Mobile) */}
-          <div className="w-full max-w-[600px] bg-white lg:rounded-[2rem] lg:shadow-2xl flex flex-col relative shrink-0 max-h-full overflow-hidden">
+          {/* Floating Rounded Form Card */}
+          <div className="w-full max-w-[600px] bg-white rounded-3xl lg:rounded-[2rem] shadow-2xl flex flex-col relative shrink-0 max-h-full overflow-hidden mt-2 lg:mt-0">
             
             {/* Scrollable Inner Content Container */}
-            <div className="w-full overflow-y-auto custom-scrollbar p-6 lg:p-12">
+            <div className="w-full overflow-y-auto custom-scrollbar p-5 sm:p-6 lg:p-12">
               
-              {/* Desktop Header */}
+              {/* Header */}
               <motion.header 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: EASE }}
-                className="hidden lg:flex relative w-full flex-col items-center pb-8 border-b border-zinc-100 mb-8 shrink-0"
+                className="flex relative w-full flex-col items-center pb-4 lg:pb-6 border-b border-zinc-100 mb-4 lg:mb-6 shrink-0 space-y-2 lg:space-y-0"
               >
-                <img src={logo} alt="SuviX" className="absolute left-0 top-1 h-8 shrink-0" />
+                <img src={logo} alt="SuviX" className="lg:absolute lg:left-0 lg:top-1 h-6 lg:h-8 shrink-0" />
                 <div className="text-center space-y-1">
                   <h1 className="text-2xl lg:text-3xl font-bold text-black leading-[1.1] tracking-tight">
                     Welcome Back.
                   </h1>
-                  <p className="text-zinc-500 text-sm font-medium">Log in to continue your creator journey.</p>
+                  <p className="text-zinc-500 text-[11px] lg:text-sm font-medium">Log in to continue your creator journey.</p>
                 </div>
               </motion.header>
 
@@ -154,12 +150,12 @@ export default function Login() {
                 transition={{ duration: 0.8, ease: EASE, delay: 0.1 }}
                 className="w-full shrink-0"
               >
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* Google Login — LOGIN ONLY */}
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full h-12 flex items-center justify-center gap-3 bg-white border-2 border-black rounded-xl hover:bg-zinc-50 transition-all text-black text-sm font-bold shadow-sm"
+                  className="w-full h-10 flex items-center justify-center gap-2 bg-white border-2 border-black rounded-xl hover:bg-zinc-50 transition-all text-black text-[13px] font-bold shadow-sm"
                 >
                   <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
                   Continue with Google
@@ -183,19 +179,19 @@ export default function Login() {
                 )}
 
                 {/* Email + Password Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3.5">
                   {/* Email */}
-                  <div className="space-y-1.5">
-                    <label className="font-label text-[11px] font-bold tracking-wider text-zinc-500 uppercase">
+                  <div className="space-y-1">
+                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input
                         type="email"
                         required
                         placeholder="name@example.com"
-                        className="suvix-input !pl-12 pr-4 bg-white border-2 border-black transition-all text-black placeholder:text-zinc-400"
+                        className="suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white border-2 border-black transition-all text-black placeholder:text-zinc-400"
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                       />
@@ -203,43 +199,56 @@ export default function Login() {
                   </div>
 
                   {/* Password */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <label className="font-label text-[11px] font-bold tracking-wider text-zinc-500 uppercase">
+                      <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
                         Password
                       </label>
                       <Link
                         to="/forgot-password"
-                        className="text-xs font-bold text-zinc-500 hover:text-black transition-colors"
+                        className="text-[11px] font-bold text-zinc-500 hover:text-black transition-colors"
                       >
                         Forgot?
                       </Link>
                     </div>
                     <div className="relative">
-                      <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input
                         type={showPass ? 'text' : 'password'}
                         required
                         placeholder="••••••••"
-                        className="suvix-input !pl-12 pr-12 bg-white border-2 border-black transition-all text-black placeholder:text-zinc-400"
+                        className="suvix-input !h-10 !pl-11 pr-11 !text-[13px] bg-white border-2 border-black transition-all text-black placeholder:text-zinc-400"
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPass(!showPass)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors"
                       >
                         {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
 
+                  {/* Turnstile Widget */}
+                  <div className="flex justify-center mt-2 mb-2">
+                    <Turnstile
+                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+                      onSuccess={(token) => setTurnstileToken(token)}
+                      onError={() => setError('Security check failed. Please refresh and try again.')}
+                    />
+                  </div>
+
                   {/* Submit */}
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="suvix-btn-primary w-full h-12 mt-2 !bg-black !text-white hover:opacity-90 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-black/10 active:scale-[0.98]"
+                    disabled={isLoading || !turnstileToken}
+                    className={`suvix-btn-primary w-full h-11 mt-2 !text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-[0.98] text-[13px] ${
+                      !isLoading && turnstileToken
+                        ? '!bg-black hover:opacity-90 shadow-black/10'
+                        : '!bg-zinc-200 !text-zinc-400 shadow-none cursor-not-allowed'
+                    }`}
                   >
                     {isLoading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -254,7 +263,7 @@ export default function Login() {
               </div>
 
               {/* Footer */}
-              <p className="mt-8 text-center text-sm text-zinc-500 font-medium pb-2">
+              <p className="mt-5 text-center text-[13px] text-zinc-500 font-medium pb-1">
                 Don't have an account?{' '}
                 <Link to="/" className="font-bold text-black hover:opacity-70 transition-opacity">
                   Join SuviX

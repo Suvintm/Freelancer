@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import logo from '../assets/blackbglogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useSignup } from '../mutations/useSignup';
@@ -108,6 +109,7 @@ export default function Signup() {
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [enableNotifications, setEnableNotifications] = useState(false);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   const navigate = useNavigate();
   const isBrandClient = tempSignupData?.roleGroup === 'CLIENT' && tempSignupData?.categorySlug !== 'direct_client';
@@ -154,7 +156,8 @@ export default function Signup() {
     form.phone.trim() &&
     (socialProfile || form.password.trim()) &&
     (!isBrandClient || form.website.trim()) &&
-    userStatus === 'available'
+    userStatus === 'available' &&
+    turnstileToken
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,7 +197,8 @@ export default function Signup() {
         googleId: socialProfile?.googleId,
         authProvider: socialProfile ? 'google' : 'local',
         profilePicture,
-        pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined
+        pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined,
+        turnstileToken
       });
 
       // Show blocking overlay if foreground sync is requested
@@ -521,12 +525,21 @@ export default function Signup() {
             </ReactLenis>
               {/* Fixed Bottom Action Area */}
               <div className="w-full shrink-0 bg-white border-t border-zinc-100 px-6 lg:px-10 py-4 lg:py-6 mt-auto">
+                <div className="flex justify-center mb-4">
+                  <Turnstile
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setError('Security check failed. Please refresh and try again.')}
+                  />
+                </div>
                 {/* Submit */}
                 <button 
                   type="submit" 
                   disabled={isLoading || !isFormValid} 
                   className={`suvix-btn-primary w-full h-12 !text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-[0.98] ${
-                    isFormValid ? '!bg-black hover:opacity-90 shadow-black/10' : '!bg-zinc-900 shadow-none cursor-not-allowed text-zinc-500'
+                    isFormValid 
+                      ? '!bg-black hover:opacity-90 shadow-black/10' 
+                      : '!bg-zinc-200 shadow-none cursor-not-allowed !text-zinc-400'
                   }`}
                 >
                   {isLoading

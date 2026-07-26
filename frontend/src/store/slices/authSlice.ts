@@ -81,6 +81,7 @@ export interface SignupPayload {
   authProvider?: string;
   profilePicture?: File | string | null;
   pushToken?: string;
+  turnstileToken?: string;
 }
 
 export interface AuthSession {
