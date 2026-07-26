@@ -7,101 +7,96 @@ datasource db {
 }
 
 model User {
-  id                     String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username               String?           @unique @db.VarChar(100)
-  email                  String            @unique @db.VarChar(255)
-  password_hash          String?           @map("password_hash")
-  role                   UserRole          @default(suvix_user)
-  auth_provider          AuthProvider?     @default(local) @map("auth_provider")
-  google_id              String?           @unique @map("google_id") @db.VarChar(255)
-  is_verified            Boolean           @default(false) @map("is_verified")
-  is_banned              Boolean           @default(false) @map("is_banned")
-  ban_reason             String?           @map("ban_reason")
-  is_onboarded           Boolean           @default(false) @map("is_onboarded")
-  token_version          Int               @default(0) @map("token_version")
-  created_at             DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at             DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
-  received_messages      Message[]         @relation("MessageReceiver")
-  sent_messages          Message[]         @relation("MessageSender")
-  triggeredNotifications Notification[]    @relation("TriggeredNotifications")
-  notifications          Notification[]    @relation("UserNotifications")
-  pushTokens             PushToken[]
-  follows                UserFollow[]      @relation("Follower")
-  following              UserFollow[]      @relation("Following")
-  profile                UserProfile?
-  stats                  UserStats?
-  youtubeProfiles        YouTubeProfile[]
-  youtube_videos         YouTubeVideo[]
-  posts                  Post[]
-  reels                  Reel[]
-  youtube_posts          YoutubePost[]
-  polls                  Poll[]
-  media                  Media[]
-  stories                Story[]
-  story_views            StoryView[]
-  poll_responses         PollResponse[]
-  post_likes             PostLike[]
-  reel_likes             ReelLike[]
-  youtube_post_likes     YoutubePostLike[]
-  poll_likes             PollLike[]
-
-  // Community Relations
+  id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username                  String?                    @unique @db.VarChar(100)
+  email                     String                     @unique @db.VarChar(255)
+  password_hash             String?                    @map("password_hash")
+  role                      UserRole                   @default(suvix_user)
+  auth_provider             AuthProvider?              @default(local) @map("auth_provider")
+  google_id                 String?                    @unique @map("google_id") @db.VarChar(255)
+  is_verified               Boolean                    @default(false) @map("is_verified")
+  is_email_verified         Boolean                    @default(false) @map("is_email_verified")
+  is_banned                 Boolean                    @default(false) @map("is_banned")
+  ban_reason                String?                    @map("ban_reason")
+  is_onboarded              Boolean                    @default(false) @map("is_onboarded")
+  created_at                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at                DateTime                   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  token_version             Int                        @default(0) @map("token_version")
+  comment_likes             CommentLike[]
+  comments                  Comment[]                  @relation("UserComments")
   communities_owned         Community[]                @relation("CommunityOwner")
   memberships               CommunityMember[]
-  community_messages        CommunityMessage[]
   communityMessageReactions CommunityMessageReaction[]
-  subscriptions             Subscription[]
+  community_messages        CommunityMessage[]
+  media                     Media[]
+  media_user_tags           MediaUserTag[]
+  received_messages         Message[]                  @relation("MessageReceiver")
+  sent_messages             Message[]                  @relation("MessageSender")
+  triggeredNotifications    Notification[]             @relation("TriggeredNotifications")
+  notifications             Notification[]             @relation("UserNotifications")
   paymentsAsClient          Payment[]                  @relation("ClientPayments")
   paymentsAsEditor          Payment[]                  @relation("EditorPayments")
+  poll_likes                PollLike[]
+  poll_responses            PollResponse[]
+  polls                     Poll[]
+  post_collaborations       PostCollaborator[]
+  post_likes                PostLike[]
+  post_mentions             PostMention[]
+  posts                     Post[]
+  pushTokens                PushToken[]
+  recommendation_logs       RecommendationLog[]
+  reel_likes                ReelLike[]
+  reels                     Reel[]
   refundsAsClient           Refund[]                   @relation("ClientRefunds")
   refundsAsEditor           Refund[]                   @relation("EditorRefunds")
-  withdrawalRequests        WithdrawalRequest[]
+  stories                   Story[]
+  story_views               StoryView[]
+  subscriptions             Subscription[]
+  content_affinities        UserContentAffinity[]
+  follows                   UserFollow[]               @relation("Follower")
+  following                 UserFollow[]               @relation("Following")
+  profile                   UserProfile?
+  stats                     UserStats?
   walletTransactions        WalletTransaction[]
-
-  post_collaborations PostCollaborator[]
-  post_mentions       PostMention[]
-  media_user_tags     MediaUserTag[]
-  comments            Comment[]          @relation("UserComments")
-  comment_likes       CommentLike[]
+  withdrawalRequests        WithdrawalRequest[]
+  youtube_post_likes        YoutubePostLike[]
+  youtube_posts             YoutubePost[]
+  youtubeProfiles           YouTubeProfile[]
+  youtube_videos            YouTubeVideo[]
 
   @@index([role])
   @@index([is_onboarded])
   @@map("users")
-  content_affinities UserContentAffinity[]
-  recommendation_logs RecommendationLog[]
 }
 
 model UserProfile {
-  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String             @unique @map("user_id") @db.Uuid
-  username          String             @unique @db.VarChar(100)
-  name              String             @db.VarChar(100)
-  profile_picture   String?            @map("profile_picture")
-  cover_banner      String?            @map("cover_banner")
-  bio               String?
-  website           String?            @db.VarChar(255)
-  mother_tongue     String?            @map("mother_tongue") @db.VarChar(50)
-  auth_provider     AuthProvider?      @default(local) @map("auth_provider")
-  location_city     String?            @map("location_city") @db.VarChar(100)
-  location_state    String?            @map("location_state") @db.VarChar(100)
-  location_country  String?            @default("India") @map("location_country") @db.VarChar(100)
-  phone             String?            @db.VarChar(20)
-  is_phone_verified Boolean            @default(false) @map("is_phone_verified")
-  availability      AvailabilityStatus @default(available)
-  categoryId        String?            @map("role_category_id") @db.Uuid
-  created_at        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at        DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
-  
-  // Recommendation Engine Preferences
-  preferences_completed Boolean        @default(false)
-  preferred_language    String?        @db.VarChar(50)
-  preferred_region      String?        @db.VarChar(100)
-  preferred_vibe        String?        @db.VarChar(50)
-  content_interests     String[]       @default([])
-
-  category          RoleCategory?      @relation(fields: [categoryId], references: [id])
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roles             UserRoleMapping[]
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String             @unique @map("user_id") @db.Uuid
+  username              String             @unique @db.VarChar(100)
+  name                  String             @db.VarChar(100)
+  profile_picture       String?            @map("profile_picture")
+  bio                   String?
+  mother_tongue         String?            @map("mother_tongue") @db.VarChar(50)
+  auth_provider         AuthProvider?      @default(local) @map("auth_provider")
+  location_city         String?            @map("location_city") @db.VarChar(100)
+  location_state        String?            @map("location_state") @db.VarChar(100)
+  location_country      String?            @default("India") @map("location_country") @db.VarChar(100)
+  phone                 String?            @db.VarChar(20)
+  is_phone_verified     Boolean            @default(false) @map("is_phone_verified")
+  availability          AvailabilityStatus @default(available)
+  categoryId            String?            @map("role_category_id") @db.Uuid
+  created_at            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  cover_banner          String?            @map("cover_banner")
+  website               String?            @db.VarChar(255)
+  content_interests     String[]           @default([])
+  preferences_completed Boolean            @default(false)
+  preferred_language    String?            @db.VarChar(50)
+  preferred_region      String?            @db.VarChar(100)
+  preferred_vibe        String?            @db.VarChar(50)
+  category              RoleCategory?      @relation(fields: [categoryId], references: [id])
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles                 UserRoleMapping[]
 
   @@index([categoryId])
   @@map("user_profiles")
@@ -187,27 +182,25 @@ model YouTubeProfile {
   video_cache_count       Int                      @default(0) @map("video_cache_count")
   subCategoryId           String?                  @map("sub_category_id") @db.Uuid
   language                String?                  @db.VarChar(50)
-  custom_url              String?                  @db.VarChar(255)
-  description             String?                  @db.Text
-  published_at            DateTime?                @db.Timestamptz(6)
-  view_count              BigInt?                  @default(0)
+  authority_score         Float                    @default(0.0)
+  avg_views_per_video     Float                    @default(0.0) @map("avg_views_per_video")
   banner_url              String?
   country                 String?                  @db.VarChar(10)
-  keywords                String?                  @db.Text
-  search_vector           Unsupported("tsvector")?
-  authority_score         Float                    @default(0.0)
-  // ── NEW: sponsor-critical fields ───────────────────────────────
-  hidden_subscriber_count Boolean                  @default(false) @map("hidden_subscriber_count")
-  made_for_kids           Boolean                  @default(false) @map("made_for_kids")
-  topic_categories        String[]                 @default([]) @map("topic_categories")
+  custom_url              String?                  @db.VarChar(255)
+  description             String?
   engagement_rate         Float                    @default(0.0) @map("engagement_rate")
-  avg_views_per_video     Float                    @default(0.0) @map("avg_views_per_video")
-
-  subCategory   RoleSubCategory? @relation(fields: [subCategoryId], references: [id])
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sync_logs     YouTubeSyncLog[]
-  videos        YouTubeVideo[]
-  youtube_posts YoutubePost[]
+  hidden_subscriber_count Boolean                  @default(false) @map("hidden_subscriber_count")
+  keywords                String?
+  made_for_kids           Boolean                  @default(false) @map("made_for_kids")
+  published_at            DateTime?                @db.Timestamptz(6)
+  search_vector           Unsupported("tsvector")?
+  topic_categories        String[]                 @default([]) @map("topic_categories")
+  view_count              BigInt?                  @default(0)
+  youtube_posts           YoutubePost[]
+  subCategory             RoleSubCategory?         @relation(fields: [subCategoryId], references: [id])
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sync_logs               YouTubeSyncLog[]
+  videos                  YouTubeVideo[]
 
   @@map("youtube_profiles")
 }
@@ -218,24 +211,23 @@ model YouTubeVideo {
   channel_id       String                   @db.VarChar(255)
   video_id         String                   @unique @db.VarChar(100)
   title            String                   @db.VarChar(500)
-  description      String?                  @db.Text
-  tags             String?                  @db.Text
   thumbnail        String?
-  duration_secs    Int?
-  view_count       BigInt?                  @default(0)
   published_at     DateTime?                @map("published_at") @db.Timestamptz(6)
   created_at       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at       DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
   is_latest        Boolean                  @default(true)
   position         Int?                     @default(0)
   youtubeProfileId String                   @map("youtube_profile_id") @db.Uuid
-  search_vector    Unsupported("tsvector")?
-  rank_score       Float                    @default(0.0)
-  // ── NEW: sponsor-critical video metrics ──────────────────────────
-  like_count       BigInt?                  @default(0) @map("like_count")
-  comment_count    BigInt?                  @default(0) @map("comment_count")
   category_id      String?                  @map("category_id") @db.VarChar(10)
+  comment_count    BigInt?                  @default(0) @map("comment_count")
+  description      String?
+  duration_secs    Int?
+  like_count       BigInt?                  @default(0) @map("like_count")
   made_for_kids    Boolean                  @default(false) @map("made_for_kids")
+  rank_score       Float                    @default(0.0)
+  search_vector    Unsupported("tsvector")?
+  tags             String?
+  view_count       BigInt?                  @default(0)
   user             User?                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   youtubeProfile   YouTubeProfile           @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
 
@@ -243,8 +235,6 @@ model YouTubeVideo {
   @@index([youtubeProfileId, published_at])
   @@map("youtube_videos")
 }
-
-// End of YouTube Schema
 
 model YouTubeSyncLog {
   id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -329,6 +319,740 @@ model Message {
   @@map("messages")
 }
 
+model Post {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String             @map("user_id") @db.Uuid
+  caption         String?
+  visibility      Visibility         @default(PUBLIC)
+  created_at      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  allow_comments  Boolean            @default(true)
+  audio_track_id  String?            @db.Uuid
+  comment_count   Int                @default(0) @map("comment_count")
+  hide_like_count Boolean            @default(false)
+  is_ready        Boolean            @default(false)
+  is_scheduled    Boolean            @default(false)
+  like_count      Int                @default(0) @map("like_count")
+  location_lat    Float?
+  location_lng    Float?
+  location_name   String?
+  scheduled_at    DateTime?          @db.Timestamptz(6)
+  comments        Comment[]
+  media           Media[]
+  collaborators   PostCollaborator[]
+  likes           PostLike[]
+  mentions        PostMention[]
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, created_at])
+  @@map("posts")
+}
+
+model PostCollaborator {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String       @map("post_id") @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  status     CollabStatus @default(PENDING)
+  created_at DateTime     @default(now()) @db.Timestamptz(6)
+  post       Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_collaborators")
+}
+
+model PostMention {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId String @map("post_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_mentions")
+}
+
+model Reel {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String     @map("user_id") @db.Uuid
+  caption       String?
+  visibility    Visibility @default(PUBLIC)
+  is_ready      Boolean    @default(false)
+  like_count    Int        @default(0) @map("like_count")
+  comment_count Int        @default(0) @map("comment_count")
+  view_count    Int        @default(0) @map("view_count")
+  created_at    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at    DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  comments      Comment[]
+  media         Media[]
+  likes         ReelLike[]
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, created_at])
+  @@map("reels")
+}
+
+model YoutubePost {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  youtube_channel_id String?           @map("youtube_channel_id") @db.Uuid
+  caption            String?
+  youtube_link       String
+  visibility         Visibility        @default(PUBLIC)
+  is_ready           Boolean           @default(false)
+  like_count         Int               @default(0) @map("like_count")
+  comment_count      Int               @default(0) @map("comment_count")
+  created_at         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  comments           Comment[]
+  media              Media[]
+  likes              YoutubePostLike[]
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  youtube_channel    YouTubeProfile?   @relation(fields: [youtube_channel_id], references: [id])
+
+  @@index([userId, created_at])
+  @@index([youtube_channel_id])
+  @@map("youtube_posts")
+}
+
+model Media {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId            String?            @map("post_id") @db.Uuid
+  userId            String             @map("user_id") @db.Uuid
+  type              MediaType          @default(IMAGE)
+  storageKey        String             @map("storage_key")
+  mimeType          String?            @map("mime_type")
+  size              Int?
+  width             Int?
+  height            Int?
+  duration          Int?
+  variants          Json?
+  blurhash          String?
+  status            MediaStatus        @default(PENDING)
+  created_at        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  alt_text          String?
+  hash              String?            @db.VarChar(64)
+  order_index       Int                @default(0)
+  reelId            String?            @map("reel_id") @db.Uuid
+  storage_provider  String             @default("S3") @map("storage_provider")
+  youtubePostId     String?            @map("youtube_post_id") @db.Uuid
+  communityMessages CommunityMessage[]
+  post              Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reel              Reel?              @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  youtubePost       YoutubePost?       @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
+  user_tags         MediaUserTag[]
+  poll_option       PollOption?
+  story             Story?
+
+  @@index([postId])
+  @@index([reelId])
+  @@index([youtubePostId])
+  @@index([userId])
+  @@map("media")
+}
+
+model MediaUserTag {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId String @map("media_id") @db.Uuid
+  userId  String @map("user_id") @db.Uuid
+  pos_x   Float
+  pos_y   Float
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("media_user_tags")
+}
+
+model Story {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  mediaId          String      @unique @map("media_id") @db.Uuid
+  caption          String?
+  expires_at       DateTime    @map("expires_at") @db.Timestamptz(6)
+  is_archived      Boolean     @default(false) @map("is_archived")
+  view_count       Int         @default(0) @map("view_count")
+  visibility       Visibility  @default(PUBLIC)
+  metadata         Json?       @default("{}")
+  canvas_width     Float?      @map("canvas_width")
+  canvas_height    Float?      @map("canvas_height")
+  bg_media_type    String?     @map("bg_media_type")
+  bg_media_url     String?     @map("bg_media_url")
+  bg_thumb_url     String?     @map("bg_thumb_url")
+  bg_blurhash      String?     @map("bg_blurhash")
+  display_duration Int         @default(10) @map("display_duration")
+  created_at       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  media            Media       @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  views            StoryView[]
+
+  @@index([userId, expires_at])
+  @@index([expires_at])
+  @@map("stories")
+}
+
+model StoryView {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storyId   String   @map("story_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  viewed_at DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@map("story_views")
+}
+
+model AdminRole {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String        @db.VarChar(100)
+  value        String        @unique @db.VarChar(50)
+  description  String?       @default("")
+  color        String?       @default("#1d4ed8") @db.VarChar(20)
+  permissions  Json          @default("{}")
+  is_active    Boolean?      @default(true) @map("is_active")
+  is_system    Boolean?      @default(false) @map("is_system")
+  member_count Int?          @default(0) @map("member_count")
+  created_at   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  members      AdminMember[]
+
+  @@map("admin_roles")
+}
+
+model AdminMember {
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                  String             @unique @db.VarChar(255)
+  password_hash          String             @map("password_hash")
+  password               String?            @db.VarChar(255)
+  name                   String             @db.VarChar(100)
+  role_id                String?            @map("role_id") @db.Uuid
+  role_value             String?            @default("admin") @map("role_value") @db.VarChar(50)
+  profile_image          String?            @map("profile_image")
+  permissions            Json?              @default("{}")
+  is_active              Boolean?           @default(true) @map("is_active")
+  last_login             DateTime?          @map("last_login") @db.Timestamptz(6)
+  last_login_ip          String?            @map("last_login_ip") @db.Inet
+  login_attempts         Int?               @default(0) @map("login_attempts") @db.SmallInt
+  locked_until           DateTime?          @map("locked_until") @db.Timestamptz(6)
+  current_session_token  String?            @map("current_session_token")
+  password_reset_token   String?            @map("password_reset_token")
+  password_reset_expires DateTime?          @map("password_reset_expires") @db.Timestamptz(6)
+  password_changed_at    DateTime?          @map("password_changed_at") @db.Timestamptz(6)
+  notification_prefs     Json?              @default("{\"push\": {\"newMessages\": true, \"orderUpdates\": true}, \"email\": {\"disputes\": true, \"newOrders\": true, \"systemAlerts\": true, \"kycSubmissions\": true, \"payoutRequests\": true}}") @map("notification_prefs")
+  created_at             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at             DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  mfa_secret             String?            @map("mfa_secret") @db.VarChar(255)
+  mfa_enabled            Boolean            @default(false) @map("mfa_enabled")
+  backup_codes           Json?              @map("backup_codes")
+  activity_logs          AdminActivityLog[]
+  role                   AdminRole?         @relation(fields: [role_id], references: [id])
+
+  @@map("admin_members")
+}
+
+model AdminActivityLog {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId       String?      @map("admin_id") @db.Uuid
+  adminEmail    String?      @map("admin_email") @db.VarChar(255)
+  action        String       @db.VarChar(100)
+  resourceType  String?      @map("resource_type") @db.VarChar(50)
+  resourceId    String?      @map("resource_id") @db.VarChar(255)
+  oldValue      Json?        @map("old_value")
+  newValue      Json?        @map("new_value")
+  ipAddress     String?      @map("ip_address") @db.Inet
+  userAgent     String?      @map("user_agent")
+  status        String       @default("SUCCESS") @db.VarChar(20)
+  failureReason String?      @map("failure_reason")
+  durationMs    Int?         @map("duration_ms")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  admin         AdminMember? @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
+}
+
+model SuperAdmin {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                 String    @unique @db.VarChar(255)
+  password_hash         String    @map("password_hash")
+  name                  String    @db.VarChar(100)
+  role                  String?   @default("superadmin") @db.VarChar(30)
+  profile_image         String?   @map("profile_image")
+  is_active             Boolean?  @default(true) @map("is_active")
+  last_login            DateTime? @map("last_login") @db.Timestamptz(6)
+  last_login_ip         String?   @map("last_login_ip") @db.Inet
+  login_attempts        Int?      @default(0) @map("login_attempts") @db.SmallInt
+  locked_until          DateTime? @map("locked_until") @db.Timestamptz(6)
+  current_session_token String?   @map("current_session_token")
+  created_at            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  mfa_secret            String?   @map("mfa_secret") @db.VarChar(255)
+  mfa_enabled           Boolean   @default(false) @map("mfa_enabled")
+  backup_codes          Json?     @map("backup_codes")
+
+  @@map("super_admins")
+}
+
+model AdminSession {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId          String    @map("admin_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash") @db.VarChar(255)
+  deviceInfo       Json      @default("{}") @map("device_info")
+  ipAddress        String    @map("ip_address") @db.Inet
+  country          String?   @db.VarChar(3)
+  city             String?   @db.VarChar(100)
+  isMfaVerified    Boolean   @default(false) @map("is_mfa_verified")
+  lastActivityAt   DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason     String?   @map("revoke_reason") @db.VarChar(100)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([adminId])
+  @@index([refreshTokenHash])
+  @@map("admin_sessions")
+}
+
+model Community {
+  id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId        String                   @map("owner_id") @db.Uuid
+  name           String                   @db.VarChar(100)
+  slug           String                   @unique @db.VarChar(100)
+  description    String?
+  thumbnail      String?
+  category       CommunityCategory        @default(CUSTOM)
+  isPrivate      Boolean                  @default(false) @map("is_private")
+  metadata       Json?                    @default("{}")
+  created_at     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at     DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner          User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  linkedAccounts CommunityLinkedAccount[]
+  members        CommunityMember[]
+  messages       CommunityMessage[]
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("communities")
+}
+
+model CommunityMember {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String        @map("community_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  role        CommunityRole @default(MEMBER)
+  joined_at   DateTime      @default(now()) @map("joined_at") @db.Timestamptz(6)
+  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@map("community_members")
+}
+
+model CommunityMessage {
+  id          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String                     @map("community_id") @db.Uuid
+  senderId    String                     @map("sender_id") @db.Uuid
+  type        String                     @default("text") @db.VarChar(20)
+  content     String?
+  mediaId     String?                    @map("media_id") @db.Uuid
+  metadata    Json?                      @default("{}")
+  created_at  DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  reactions   CommunityMessageReaction[]
+  community   Community                  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  media       Media?                     @relation(fields: [mediaId], references: [id])
+  sender      User                       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, created_at])
+  @@map("community_messages")
+}
+
+model CommunityMessageReaction {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId  String           @map("message_id") @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  emoji      String           @db.VarChar(10)
+  created_at DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  message    CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("community_message_reactions")
+}
+
+model CommunityLinkedAccount {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String            @map("community_id") @db.Uuid
+  platform    CommunityPlatform
+  externalId  String            @map("external_id") @db.VarChar(255)
+  displayName String?           @map("display_name") @db.VarChar(255)
+  url         String?           @db.VarChar(500)
+  isVerified  Boolean           @default(false) @map("is_verified")
+  created_at  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  community   Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@map("community_linked_accounts")
+}
+
+model SubscriptionPlan {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String         @db.VarChar(100)
+  slug               String         @unique @db.VarChar(100)
+  feature            String         @db.VarChar(100)
+  planTier           String         @default("free") @map("plan_tier") @db.VarChar(50)
+  duration           String         @db.VarChar(50)
+  durationDays       Int            @map("duration_days")
+  price              Float
+  originalPrice      Float          @default(0) @map("original_price")
+  currency           String         @default("INR") @db.VarChar(10)
+  discountPercent    Float          @default(0) @map("discount_percent")
+  trialDays          Int            @default(3) @map("trial_days")
+  features           String[]
+  description        String?
+  badge              String?        @db.VarChar(50)
+  isActive           Boolean        @default(true) @map("is_active")
+  sortOrder          Int            @default(0) @map("sort_order")
+  totalSubscriptions Int            @default(0) @map("total_subscriptions")
+  created_at         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  subscriptions      Subscription[]
+
+  @@index([feature, isActive, sortOrder])
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  planName           String             @map("plan_name") @db.VarChar(100)
+  planType           String             @map("plan_type") @db.VarChar(50)
+  feature            String             @db.VarChar(100)
+  planTier           String             @default("free") @map("plan_tier") @db.VarChar(50)
+  status             SubscriptionStatus @default(payment_pending)
+  startDate          DateTime           @default(now()) @map("start_date") @db.Timestamptz(6)
+  endDate            DateTime           @map("end_date") @db.Timestamptz(6)
+  isTrial            Boolean            @default(false) @map("is_trial")
+  trialEndDate       DateTime?          @map("trial_end_date") @db.Timestamptz(6)
+  amount             Float
+  currency           String             @default("INR") @db.VarChar(10)
+  razorpayOrderId    String?            @map("razorpay_order_id") @db.VarChar(255)
+  razorpayPaymentId  String?            @map("razorpay_payment_id") @db.VarChar(255)
+  razorpaySignature  String?            @map("razorpay_signature") @db.VarChar(255)
+  autoRenew          Boolean            @default(true) @map("auto_renew")
+  cancelledAt        DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?            @map("cancellation_reason")
+  renewalCount       Int                @default(0) @map("renewal_count")
+  lastRenewalDate    DateTime?          @map("last_renewal_date") @db.Timestamptz(6)
+  created_at         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, feature, status])
+  @@index([userId, endDate])
+  @@index([status, endDate])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order                 String              @db.VarChar(255)
+  clientId              String              @map("client_id") @db.Uuid
+  editorId              String              @map("editor_id") @db.Uuid
+  gig                   String?             @db.VarChar(255)
+  amount                Float
+  platformFee           Float               @map("platform_fee")
+  editorEarning         Float               @map("editor_earning")
+  type                  PaymentType
+  status                PaymentStatus       @default(pending)
+  transactionId         String?             @unique @map("transaction_id") @db.VarChar(255)
+  stripePaymentIntentId String?             @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeTransferId      String?             @map("stripe_transfer_id") @db.VarChar(255)
+  initiatedAt           DateTime            @default(now()) @map("initiated_at") @db.Timestamptz(6)
+  completedAt           DateTime?           @map("completed_at") @db.Timestamptz(6)
+  receiptNumber         String?             @unique @map("receipt_number") @db.VarChar(255)
+  receiptDownloadedAt   DateTime?           @map("receipt_downloaded_at") @db.Timestamptz(6)
+  notes                 String?
+  created_at            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  client                User                @relation("ClientPayments", fields: [clientId], references: [id], onDelete: Cascade)
+  editor                User                @relation("EditorPayments", fields: [editorId], references: [id], onDelete: Cascade)
+  refunds               Refund[]
+  walletTransactions    WalletTransaction[]
+
+  @@index([order])
+  @@index([clientId])
+  @@index([editorId])
+  @@map("payments")
+}
+
+model Refund {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId          String              @map("payment_id") @db.Uuid
+  clientId           String              @map("client_id") @db.Uuid
+  editorId           String              @map("editor_id") @db.Uuid
+  order              String?             @db.VarChar(255)
+  amount             Float
+  reason             String
+  status             RefundStatus        @default(requested)
+  stripeRefundId     String?             @map("stripe_refund_id") @db.VarChar(255)
+  resolutionNotes    String?             @map("resolution_notes")
+  requestedAt        DateTime            @default(now()) @map("requested_at") @db.Timestamptz(6)
+  processedAt        DateTime?           @map("processed_at") @db.Timestamptz(6)
+  created_at         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  client             User                @relation("ClientRefunds", fields: [clientId], references: [id], onDelete: Cascade)
+  editor             User                @relation("EditorRefunds", fields: [editorId], references: [id], onDelete: Cascade)
+  payment            Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  walletTransactions WalletTransaction[]
+
+  @@index([paymentId])
+  @@index([clientId])
+  @@index([status])
+  @@map("refunds")
+}
+
+model WithdrawalRequest {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  amount             Float
+  status             WithdrawalStatus    @default(pending)
+  paymentMethod      String              @map("payment_method") @db.VarChar(50)
+  transactionId      String?             @map("transaction_id") @db.VarChar(255)
+  adminNotes         String?             @map("admin_notes")
+  requestedAt        DateTime            @default(now()) @map("requested_at") @db.Timestamptz(6)
+  processedAt        DateTime?           @map("processed_at") @db.Timestamptz(6)
+  created_at         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  walletTransactions WalletTransaction[]
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("withdrawal_requests")
+}
+
+model WalletTransaction {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String             @map("user_id") @db.Uuid
+  amount       Float
+  type         WalletTxType
+  purpose      WalletPurpose
+  status       WalletTxStatus     @default(completed)
+  reference    String?            @db.VarChar(255)
+  description  String             @db.VarChar(255)
+  paymentId    String?            @map("payment_id") @db.Uuid
+  order        String?            @db.VarChar(255)
+  withdrawalId String?            @map("withdrawal_id") @db.Uuid
+  refundId     String?            @map("refund_id") @db.Uuid
+  created_at   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at   DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  payment      Payment?           @relation(fields: [paymentId], references: [id])
+  refund       Refund?            @relation(fields: [refundId], references: [id])
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawal   WithdrawalRequest? @relation(fields: [withdrawalId], references: [id])
+
+  @@index([userId])
+  @@index([paymentId])
+  @@map("wallet_transactions")
+}
+
+model Poll {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String         @map("user_id") @db.Uuid
+  question            String
+  caption             String?
+  type                PollType       @default(MULTIPLE_CHOICE)
+  layout              PollLayout     @default(STANDARD)
+  show_response_count Boolean        @default(true)
+  visibility          Visibility     @default(PUBLIC)
+  like_count          Int            @default(0) @map("like_count")
+  created_at          DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime       @default(now()) @db.Timestamptz(6)
+  likes               PollLike[]
+  options             PollOption[]
+  responses           PollResponse[]
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, created_at])
+  @@map("polls")
+}
+
+model PollOption {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pollId      String         @map("poll_id") @db.Uuid
+  mediaId     String?        @unique @map("media_id") @db.Uuid
+  text        String
+  order_index Int
+  media       Media?         @relation(fields: [mediaId], references: [id])
+  poll        Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  responses   PollResponse[]
+
+  @@map("poll_options")
+}
+
+model PollResponse {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pollId        String      @map("poll_id") @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  optionId      String?     @map("option_id") @db.Uuid
+  text_response String?
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  option        PollOption? @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll          Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@map("poll_responses")
+}
+
+model PostLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String   @map("post_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+model ReelLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reelId     String   @map("reel_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  reel       Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, userId])
+  @@map("reel_likes")
+}
+
+model YoutubePostLike {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  youtubePostId String      @map("youtube_post_id") @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  youtubePost   YoutubePost @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
+
+  @@unique([youtubePostId, userId])
+  @@map("youtube_post_likes")
+}
+
+model PollLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pollId     String   @map("poll_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  poll       Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@map("poll_likes")
+}
+
+model Comment {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  postId        String?       @map("post_id") @db.Uuid
+  reelId        String?       @map("reel_id") @db.Uuid
+  youtubePostId String?       @map("youtube_post_id") @db.Uuid
+  parentId      String?       @map("parent_id") @db.Uuid
+  content       String
+  like_count    Int           @default(0) @map("like_count")
+  reply_count   Int           @default(0) @map("reply_count")
+  is_deleted    Boolean       @default(false) @map("is_deleted")
+  status        String        @default("active") @db.VarChar(20)
+  created_at    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at    DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  likes         CommentLike[]
+  parent        Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       Comment[]     @relation("CommentReplies")
+  post          Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reel          Reel?         @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user          User          @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
+  youtubePost   YoutubePost?  @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
+
+  @@index([postId, created_at])
+  @@index([reelId, created_at])
+  @@index([youtubePostId, created_at])
+  @@index([parentId, created_at])
+  @@map("comments")
+}
+
+model CommentLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commentId  String   @map("comment_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  comment    Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@map("comment_likes")
+}
+
+model ContentMeta {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentId   String      @db.Uuid
+  contentType ContentType
+  language    String?     @db.VarChar(50)
+  region      String?     @db.VarChar(100)
+  tags        String[]    @default([])
+  vibe        String?     @db.VarChar(50)
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([contentType, language])
+  @@index([contentId, contentType])
+  @@map("content_meta")
+}
+
+model UserContentAffinity {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  contentId        String      @db.Uuid
+  contentType      ContentType
+  affinityScore    Float       @default(0)
+  last_interaction DateTime    @default(now()) @db.Timestamptz(6)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId, contentType])
+  @@index([userId, affinityScore])
+  @@map("user_content_affinity")
+}
+
+model RecommendationLog {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String      @map("user_id") @db.Uuid
+  contentId   String      @db.Uuid
+  contentType ContentType
+  served_at   DateTime    @default(now()) @db.Timestamptz(6)
+  algorithm   String?     @db.VarChar(100)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, served_at])
+  @@map("recommendation_log")
+}
+
+model youtube_search_dictionary {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term             String   @unique @db.VarChar(500)
+  type             String   @default("VIDEO_TITLE")
+  popularity_score Int      @default(0)
+  click_score      Float    @default(0.0)
+  is_trending      Boolean  @default(false)
+  last_used_at     DateTime @default(now()) @db.Timestamptz(6)
+  created_at       DateTime @default(now())
+
+  @@index([popularity_score])
+  @@index([term])
+}
+
 enum NotificationType {
   SYSTEM
   SYNC_COMPLETE
@@ -378,229 +1102,11 @@ enum AvailabilityStatus {
   away
 }
 
-// ── Image Posts ──────────────────────────────────────────────────────────────
-model Post {
-  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String     @map("user_id") @db.Uuid
-  caption       String?    @db.Text
-  visibility    Visibility @default(PUBLIC)
-  like_count    Int        @default(0) @map("like_count")
-  comment_count Int        @default(0) @map("comment_count")
-
-  // ── NEW: Advanced Settings ──────────────────────────────────────
-  is_ready        Boolean   @default(false)
-  allow_comments  Boolean   @default(true)
-  hide_like_count Boolean   @default(false)
-  is_scheduled    Boolean   @default(false)
-  scheduled_at    DateTime? @db.Timestamptz(6)
-
-  // ── NEW: Location (Optional) ────────────────────────────────────
-  location_name String?
-  location_lat  Float?
-  location_lng  Float?
-
-  // ── NEW: Audio/Music (For future functionality) ─────────────────
-  audio_track_id String? @db.Uuid
-
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media         Media[]
-  likes         PostLike[]
-  comments      Comment[]
-  collaborators PostCollaborator[]
-  mentions      PostMention[]
-
-  @@index([userId, created_at])
-  @@map("posts")
-}
-
-model PostCollaborator {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId     String       @map("post_id") @db.Uuid
-  userId     String       @map("user_id") @db.Uuid
-  status     CollabStatus @default(PENDING)
-  created_at DateTime     @default(now()) @db.Timestamptz(6)
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("post_collaborators")
-}
-
-model PostMention {
-  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId String @map("post_id") @db.Uuid
-  userId String @map("user_id") @db.Uuid
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("post_mentions")
-}
-
 enum CollabStatus {
   PENDING
   ACCEPTED
   REJECTED
 }
-
-// ── Short-form Video Reels ────────────────────────────────────────────────────
-model Reel {
-  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String     @map("user_id") @db.Uuid
-  caption       String?    @db.Text
-  visibility    Visibility @default(PUBLIC)
-  is_ready      Boolean    @default(false)
-  like_count    Int        @default(0) @map("like_count")
-  comment_count Int        @default(0) @map("comment_count")
-  view_count    Int        @default(0) @map("view_count")
-  created_at    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at    DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media    Media[]
-  likes    ReelLike[]
-  comments Comment[]
-
-  @@index([userId, created_at])
-  @@map("reels")
-}
-
-// ── YouTube Link Share Posts ──────────────────────────────────────────────────
-model YoutubePost {
-  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String     @map("user_id") @db.Uuid
-  youtube_channel_id String?    @map("youtube_channel_id") @db.Uuid
-  caption            String?    @db.Text
-  youtube_link       String
-  visibility         Visibility @default(PUBLIC)
-  is_ready           Boolean    @default(false)
-  like_count         Int        @default(0) @map("like_count")
-  comment_count      Int        @default(0) @map("comment_count")
-  created_at         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  youtube_channel YouTubeProfile?   @relation(fields: [youtube_channel_id], references: [id], onDelete: SetNull)
-  media           Media[]
-  likes           YoutubePostLike[]
-  comments        Comment[]
-
-  @@index([userId, created_at])
-  @@index([youtube_channel_id])
-  @@map("youtube_posts")
-}
-
-// ── Central Media Store (linked to any content entity) ───────────────────────
-model Media {
-  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String      @map("user_id") @db.Uuid
-  type             MediaType   @default(IMAGE)
-  storageKey       String      @map("storage_key")
-  mimeType         String?     @map("mime_type")
-  size             Int?
-  width            Int?
-  height           Int?
-  duration         Int?
-  variants         Json?
-  blurhash         String?
-  hash             String?     @db.VarChar(64)
-  status           MediaStatus @default(PENDING)
-  storage_provider String      @default("S3") @map("storage_provider")
-
-  // ── NEW: Pro Media Features ─────────────────────────────────────
-  order_index Int     @default(0) // Crucial for multi-image carousel order
-  alt_text    String? @db.Text // Accessibility
-
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // ── Content entity FKs (exactly one will be set per media row) ─────────────
-  postId        String? @map("post_id") @db.Uuid
-  reelId        String? @map("reel_id") @db.Uuid
-  youtubePostId String? @map("youtube_post_id") @db.Uuid
-
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post              Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
-  reel              Reel?              @relation(fields: [reelId], references: [id], onDelete: Cascade)
-  youtubePost       YoutubePost?       @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
-  story             Story?
-  poll_option       PollOption?
-  communityMessages CommunityMessage[]
-  user_tags         MediaUserTag[]
-
-  @@index([postId])
-  @@index([reelId])
-  @@index([youtubePostId])
-  @@index([userId])
-  @@map("media")
-}
-
-model MediaUserTag {
-  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mediaId String @map("media_id") @db.Uuid
-  userId  String @map("user_id") @db.Uuid
-
-  // Coordinates where the tag should hover on the image (0.0 to 1.0 representing percentage)
-  pos_x Float
-  pos_y Float
-
-  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("media_user_tags")
-}
-
-model Story {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String     @map("user_id") @db.Uuid
-  mediaId     String     @unique @map("media_id") @db.Uuid
-  caption     String?    @db.Text
-  expires_at  DateTime   @map("expires_at") @db.Timestamptz(6)
-  is_archived Boolean    @default(false) @map("is_archived")
-  view_count  Int        @default(0) @map("view_count")
-  visibility  Visibility @default(PUBLIC)
-  metadata    Json?      @default("{}")
-
-  // ── NEW: Canvas dimensions (stored for correct position de-normalization) ──
-  canvas_width  Float? @map("canvas_width")
-  canvas_height Float? @map("canvas_height")
-
-  // ── NEW: Background media (the full-screen bg image/video if any) ─────────
-  bg_media_type    String? @map("bg_media_type") // "IMAGE" | "VIDEO" | null
-  bg_media_url     String? @map("bg_media_url") // CDN URL served to client
-  bg_thumb_url     String? @map("bg_thumb_url") // 320px thumbnail CDN URL
-  bg_blurhash      String? @map("bg_blurhash") // for placeholder while loading
-  display_duration Int     @default(10) @map("display_duration") // seconds
-
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media Media       @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  views StoryView[]
-
-  @@index([userId, expires_at])
-  @@index([expires_at])
-  @@map("stories")
-}
-
-model StoryView {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storyId   String   @map("story_id") @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  viewed_at DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
-
-  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([storyId, userId])
-  @@map("story_views")
-}
-
-// PostType enum removed — content type is determined by which table the record is in
 
 enum MediaType {
   IMAGE
@@ -611,223 +1117,14 @@ enum MediaStatus {
   PENDING
   PROCESSING
   READY
-  RETRYING
   FAILED
+  RETRYING
 }
 
 enum Visibility {
   PUBLIC
   PRIVATE
   FOLLOWERS
-}
-
-// ADMIN MODELS (Restored)
-
-// ==========================================
-
-model AdminRole {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String   @db.VarChar(100)
-  value        String   @unique @db.VarChar(50)
-  description  String?  @default("")
-  color        String?  @default("#1d4ed8") @db.VarChar(20)
-  permissions  Json     @default("{}")
-  is_active    Boolean? @default(true) @map("is_active")
-  is_system    Boolean? @default(false) @map("is_system")
-  member_count Int?     @default(0) @map("member_count")
-  created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  members AdminMember[]
-
-  @@map("admin_roles")
-}
-
-model AdminMember {
-  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                  String    @unique @db.VarChar(255)
-  password_hash          String    @map("password_hash")
-  password               String?   @db.VarChar(255) // Migration field or alias
-  name                   String    @db.VarChar(100)
-  role_id                String?   @map("role_id") @db.Uuid
-  role_value             String?   @default("admin") @map("role_value") @db.VarChar(50)
-  profile_image          String?   @map("profile_image")
-  permissions            Json?     @default("{}")
-  is_active              Boolean?  @default(true) @map("is_active")
-  last_login             DateTime? @map("last_login") @db.Timestamptz(6)
-  last_login_ip          String?   @map("last_login_ip") @db.Inet
-  login_attempts         Int?      @default(0) @map("login_attempts") @db.SmallInt
-  locked_until           DateTime? @map("locked_until") @db.Timestamptz(6)
-  current_session_token  String?   @map("current_session_token")
-  password_reset_token   String?   @map("password_reset_token")
-  password_reset_expires DateTime? @map("password_reset_expires") @db.Timestamptz(6)
-  password_changed_at    DateTime? @map("password_changed_at") @db.Timestamptz(6)
-  notification_prefs     Json?     @default("{\"email\":{\"newOrders\":true,\"disputes\":true,\"kycSubmissions\":true,\"payoutRequests\":true,\"systemAlerts\":true},\"push\":{\"newMessages\":true,\"orderUpdates\":true}}") @map("notification_prefs")
-  created_at             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  mfa_secret   String? @map("mfa_secret") @db.VarChar(255)
-  mfa_enabled  Boolean @default(false) @map("mfa_enabled")
-  backup_codes Json?   @map("backup_codes")
-
-  role          AdminRole?         @relation(fields: [role_id], references: [id])
-  activity_logs AdminActivityLog[]
-
-  @@map("admin_members")
-}
-
-model AdminActivityLog {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  adminId       String?  @map("admin_id") @db.Uuid
-  adminEmail    String?  @map("admin_email") @db.VarChar(255)
-  action        String   @db.VarChar(100)
-  resourceType  String?  @map("resource_type") @db.VarChar(50)
-  resourceId    String?  @map("resource_id") @db.VarChar(255)
-  oldValue      Json?    @map("old_value")
-  newValue      Json?    @map("new_value")
-  ipAddress     String?  @map("ip_address") @db.Inet
-  userAgent     String?  @map("user_agent")
-  status        String   @default("SUCCESS") @db.VarChar(20)
-  failureReason String?  @map("failure_reason")
-  durationMs    Int?     @map("duration_ms")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  admin AdminMember? @relation(fields: [adminId], references: [id], onDelete: SetNull)
-
-  @@index([adminId])
-  @@index([action])
-  @@index([createdAt(sort: Desc)])
-  @@map("admin_audit_logs")
-}
-
-model SuperAdmin {
-  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                 String    @unique @db.VarChar(255)
-  password_hash         String    @map("password_hash")
-  name                  String    @db.VarChar(100)
-  role                  String?   @default("superadmin") @db.VarChar(30)
-  profile_image         String?   @map("profile_image")
-  is_active             Boolean?  @default(true) @map("is_active")
-  last_login            DateTime? @map("last_login") @db.Timestamptz(6)
-  last_login_ip         String?   @map("last_login_ip") @db.Inet
-  login_attempts        Int?      @default(0) @map("login_attempts") @db.SmallInt
-  locked_until          DateTime? @map("locked_until") @db.Timestamptz(6)
-  current_session_token String?   @map("current_session_token")
-  created_at            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  mfa_secret            String?   @map("mfa_secret") @db.VarChar(255)
-  mfa_enabled           Boolean   @default(false) @map("mfa_enabled")
-  backup_codes          Json?     @map("backup_codes")
-
-  @@map("super_admins")
-}
-
-model AdminSession {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  adminId          String    @map("admin_id") @db.Uuid
-  refreshTokenHash String    @map("refresh_token_hash") @db.VarChar(255)
-  deviceInfo       Json      @default("{}") @map("device_info")
-  ipAddress        String    @map("ip_address") @db.Inet
-  country          String?   @db.VarChar(3)
-  city             String?   @db.VarChar(100)
-  isMfaVerified    Boolean   @default(false) @map("is_mfa_verified")
-  lastActivityAt   DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz(6)
-  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
-  revokeReason     String?   @map("revoke_reason") @db.VarChar(100)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@index([adminId])
-  @@index([refreshTokenHash])
-  @@map("admin_sessions")
-}
-
-// ==========================================
-// Community Models
-// ==========================================
-
-model Community {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerId     String            @map("owner_id") @db.Uuid
-  name        String            @db.VarChar(100)
-  slug        String            @unique @db.VarChar(100)
-  description String?           @db.Text
-  thumbnail   String?
-  category    CommunityCategory @default(CUSTOM)
-  isPrivate   Boolean           @default(false) @map("is_private")
-  metadata    Json?             @default("{}")
-  created_at  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at  DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  owner          User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members        CommunityMember[]
-  messages       CommunityMessage[]
-  linkedAccounts CommunityLinkedAccount[]
-
-  @@index([ownerId])
-  @@index([slug])
-  @@map("communities")
-}
-
-model CommunityMember {
-  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  communityId String        @map("community_id") @db.Uuid
-  userId      String        @map("user_id") @db.Uuid
-  role        CommunityRole @default(MEMBER)
-  joined_at   DateTime      @default(now()) @map("joined_at") @db.Timestamptz(6)
-
-  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([communityId, userId])
-  @@map("community_members")
-}
-
-model CommunityMessage {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  communityId String   @map("community_id") @db.Uuid
-  senderId    String   @map("sender_id") @db.Uuid
-  type        String   @default("text") @db.VarChar(20)
-  content     String?  @db.Text
-  mediaId     String?  @map("media_id") @db.Uuid
-  metadata    Json?    @default("{}")
-  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  community Community                  @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  sender    User                       @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  media     Media?                     @relation(fields: [mediaId], references: [id])
-  reactions CommunityMessageReaction[]
-
-  @@index([communityId, created_at])
-  @@map("community_messages")
-}
-
-model CommunityMessageReaction {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  messageId  String   @map("message_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  emoji      String   @db.VarChar(10)
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  message CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId, emoji])
-  @@map("community_message_reactions")
-}
-
-model CommunityLinkedAccount {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  communityId String            @map("community_id") @db.Uuid
-  platform    CommunityPlatform
-  externalId  String            @map("external_id") @db.VarChar(255)
-  displayName String?           @map("display_name") @db.VarChar(255)
-  url         String?           @db.VarChar(500)
-  isVerified  Boolean           @default(false) @map("is_verified")
-  created_at  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-
-  @@index([communityId])
-  @@map("community_linked_accounts")
 }
 
 enum CommunityRole {
@@ -859,68 +1156,6 @@ enum SubscriptionStatus {
   payment_pending
 }
 
-model SubscriptionPlan {
-  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name               String         @db.VarChar(100)
-  slug               String         @unique @db.VarChar(100)
-  feature            String         @db.VarChar(100)
-  planTier           String         @default("free") @map("plan_tier") @db.VarChar(50)
-  duration           String         @db.VarChar(50)
-  durationDays       Int            @map("duration_days")
-  price              Float
-  originalPrice      Float          @default(0) @map("original_price")
-  currency           String         @default("INR") @db.VarChar(10)
-  discountPercent    Float          @default(0) @map("discount_percent")
-  trialDays          Int            @default(3) @map("trial_days")
-  features           String[]
-  description        String?        @db.Text
-  badge              String?        @db.VarChar(50)
-  isActive           Boolean        @default(true) @map("is_active")
-  sortOrder          Int            @default(0) @map("sort_order")
-  totalSubscriptions Int            @default(0) @map("total_subscriptions")
-  created_at         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  subscriptions      Subscription[]
-
-  @@index([feature, isActive, sortOrder])
-  @@map("subscription_plans")
-}
-
-model Subscription {
-  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String             @map("user_id") @db.Uuid
-  planId             String             @map("plan_id") @db.Uuid
-  planName           String             @map("plan_name") @db.VarChar(100)
-  planType           String             @map("plan_type") @db.VarChar(50)
-  feature            String             @db.VarChar(100)
-  planTier           String             @default("free") @map("plan_tier") @db.VarChar(50)
-  status             SubscriptionStatus @default(payment_pending)
-  startDate          DateTime           @default(now()) @map("start_date") @db.Timestamptz(6)
-  endDate            DateTime           @map("end_date") @db.Timestamptz(6)
-  isTrial            Boolean            @default(false) @map("is_trial")
-  trialEndDate       DateTime?          @map("trial_end_date") @db.Timestamptz(6)
-  amount             Float
-  currency           String             @default("INR") @db.VarChar(10)
-  razorpayOrderId    String?            @map("razorpay_order_id") @db.VarChar(255)
-  razorpayPaymentId  String?            @map("razorpay_payment_id") @db.VarChar(255)
-  razorpaySignature  String?            @map("razorpay_signature") @db.VarChar(255)
-  autoRenew          Boolean            @default(true) @map("auto_renew")
-  cancelledAt        DateTime?          @map("cancelled_at") @db.Timestamptz(6)
-  cancellationReason String?            @map("cancellation_reason") @db.Text
-  renewalCount       Int                @default(0) @map("renewal_count")
-  lastRenewalDate    DateTime?          @map("last_renewal_date") @db.Timestamptz(6)
-  created_at         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-
-  @@index([userId, feature, status])
-  @@index([userId, endDate])
-  @@index([status, endDate])
-  @@map("subscriptions")
-}
-
 enum PaymentType {
   escrow_deposit
   escrow_release
@@ -936,39 +1171,6 @@ enum PaymentStatus {
   refunded
 }
 
-model Payment {
-  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order                 String        @db.VarChar(255) // Reference to legacy Order ID
-  clientId              String        @map("client_id") @db.Uuid
-  editorId              String        @map("editor_id") @db.Uuid
-  gig                   String?       @db.VarChar(255) // Reference to legacy Gig ID
-  amount                Float
-  platformFee           Float         @map("platform_fee")
-  editorEarning         Float         @map("editor_earning")
-  type                  PaymentType
-  status                PaymentStatus @default(pending)
-  transactionId         String?       @unique @map("transaction_id") @db.VarChar(255)
-  stripePaymentIntentId String?       @map("stripe_payment_intent_id") @db.VarChar(255)
-  stripeTransferId      String?       @map("stripe_transfer_id") @db.VarChar(255)
-  initiatedAt           DateTime      @default(now()) @map("initiated_at") @db.Timestamptz(6)
-  completedAt           DateTime?     @map("completed_at") @db.Timestamptz(6)
-  receiptNumber         String?       @unique @map("receipt_number") @db.VarChar(255)
-  receiptDownloadedAt   DateTime?     @map("receipt_downloaded_at") @db.Timestamptz(6)
-  notes                 String?       @db.Text
-  created_at            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at            DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  client             User                @relation("ClientPayments", fields: [clientId], references: [id], onDelete: Cascade)
-  editor             User                @relation("EditorPayments", fields: [editorId], references: [id], onDelete: Cascade)
-  refunds            Refund[]
-  walletTransactions WalletTransaction[]
-
-  @@index([order])
-  @@index([clientId])
-  @@index([editorId])
-  @@map("payments")
-}
-
 enum RefundStatus {
   requested
   approved
@@ -977,59 +1179,11 @@ enum RefundStatus {
   failed
 }
 
-model Refund {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId       String       @map("payment_id") @db.Uuid
-  clientId        String       @map("client_id") @db.Uuid
-  editorId        String       @map("editor_id") @db.Uuid
-  order           String?      @db.VarChar(255)
-  amount          Float
-  reason          String       @db.Text
-  status          RefundStatus @default(requested)
-  stripeRefundId  String?      @map("stripe_refund_id") @db.VarChar(255)
-  resolutionNotes String?      @map("resolution_notes") @db.Text
-  requestedAt     DateTime     @default(now()) @map("requested_at") @db.Timestamptz(6)
-  processedAt     DateTime?    @map("processed_at") @db.Timestamptz(6)
-  created_at      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  payment            Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  client             User                @relation("ClientRefunds", fields: [clientId], references: [id], onDelete: Cascade)
-  editor             User                @relation("EditorRefunds", fields: [editorId], references: [id], onDelete: Cascade)
-  walletTransactions WalletTransaction[]
-
-  @@index([paymentId])
-  @@index([clientId])
-  @@index([status])
-  @@map("refunds")
-}
-
 enum WithdrawalStatus {
   pending
   processing
   completed
   rejected
-}
-
-model WithdrawalRequest {
-  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String           @map("user_id") @db.Uuid
-  amount        Float
-  status        WithdrawalStatus @default(pending)
-  paymentMethod String           @map("payment_method") @db.VarChar(50)
-  transactionId String?          @map("transaction_id") @db.VarChar(255)
-  adminNotes    String?          @map("admin_notes") @db.Text
-  requestedAt   DateTime         @default(now()) @map("requested_at") @db.Timestamptz(6)
-  processedAt   DateTime?        @map("processed_at") @db.Timestamptz(6)
-  created_at    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at    DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  walletTransactions WalletTransaction[]
-
-  @@index([userId])
-  @@index([status])
-  @@map("withdrawal_requests")
 }
 
 enum WalletTxType {
@@ -1052,34 +1206,6 @@ enum WalletTxStatus {
   failed
 }
 
-model WalletTransaction {
-  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String         @map("user_id") @db.Uuid
-  amount       Float
-  type         WalletTxType
-  purpose      WalletPurpose
-  status       WalletTxStatus @default(completed)
-  reference    String?        @db.VarChar(255)
-  description  String         @db.VarChar(255)
-  paymentId    String?        @map("payment_id") @db.Uuid
-  order        String?        @db.VarChar(255)
-  withdrawalId String?        @map("withdrawal_id") @db.Uuid
-  refundId     String?        @map("refund_id") @db.Uuid
-  created_at   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at   DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payment    Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
-  withdrawal WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
-  refund     Refund?            @relation(fields: [refundId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([paymentId])
-  @@map("wallet_transactions")
-}
-
-// ── NEW: Polls Feature Models ───────────────────────────────────────────────
-
 enum PollType {
   MULTIPLE_CHOICE
   OPEN_ENDED
@@ -1093,202 +1219,9 @@ enum PollLayout {
   IMAGE_CAROUSEL
 }
 
-model Poll {
-  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId              String     @map("user_id") @db.Uuid
-  question            String     @db.Text
-  caption             String?    @db.Text
-  type                PollType   @default(MULTIPLE_CHOICE)
-  layout              PollLayout @default(STANDARD)
-  show_response_count Boolean    @default(true)
-  visibility          Visibility @default(PUBLIC)
-  like_count          Int        @default(0) @map("like_count")
-  created_at          DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime   @default(now()) @db.Timestamptz(6)
-
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  options   PollOption[]
-  responses PollResponse[]
-  likes     PollLike[]
-
-  @@index([userId, created_at])
-  @@map("polls")
-}
-
-model PollOption {
-  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pollId      String  @map("poll_id") @db.Uuid
-  mediaId     String? @unique @map("media_id") @db.Uuid
-  text        String
-  order_index Int
-
-  poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  media     Media?         @relation(fields: [mediaId], references: [id], onDelete: SetNull)
-  responses PollResponse[]
-
-  @@map("poll_options")
-}
-
-model PollResponse {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pollId        String   @map("poll_id") @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  optionId      String?  @map("option_id") @db.Uuid
-  text_response String?  @db.Text
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-
-  poll   Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  option PollOption? @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([pollId, userId])
-  @@map("poll_responses")
-}
-
-model PostLike {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId     String   @map("post_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("post_likes")
-}
-
-model ReelLike {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reelId     String   @map("reel_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  reel Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([reelId, userId])
-  @@map("reel_likes")
-}
-
-model YoutubePostLike {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  youtubePostId String   @map("youtube_post_id") @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-
-  youtubePost YoutubePost @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([youtubePostId, userId])
-  @@map("youtube_post_likes")
-}
-
-model PollLike {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pollId     String   @map("poll_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([pollId, userId])
-  @@map("poll_likes")
-}
-
-model Comment {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  postId        String?  @map("post_id") @db.Uuid
-  reelId        String?  @map("reel_id") @db.Uuid
-  youtubePostId String?  @map("youtube_post_id") @db.Uuid
-  parentId      String?  @map("parent_id") @db.Uuid
-  content       String   @db.Text
-  like_count    Int      @default(0) @map("like_count")
-  reply_count   Int      @default(0) @map("reply_count")
-  is_deleted    Boolean  @default(false) @map("is_deleted")
-  status        String   @default("active") @db.VarChar(20)
-  created_at    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  user        User          @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
-  post        Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  reel        Reel?         @relation(fields: [reelId], references: [id], onDelete: Cascade)
-  youtubePost YoutubePost?  @relation(fields: [youtubePostId], references: [id], onDelete: Cascade)
-  parent      Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies     Comment[]     @relation("CommentReplies")
-  likes       CommentLike[]
-
-  @@index([postId, created_at])
-  @@index([reelId, created_at])
-  @@index([youtubePostId, created_at])
-  @@index([parentId, created_at])
-  @@map("comments")
-}
-
-model CommentLike {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commentId  String   @map("comment_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([commentId, userId])
-  @@map("comment_likes")
-}
-
-// ── Recommendation Engine Tables ────────────────────────────────────────
-model ContentMeta {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  contentId   String   @db.Uuid
-  contentType ContentType
-  language    String?  @db.VarChar(50)
-  region      String?  @db.VarChar(100)
-  tags        String[] @default([])
-  vibe        String?  @db.VarChar(50)
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-
-  @@index([contentType, language])
-  @@index([contentId, contentType])
-  @@map("content_meta")
-}
-
 enum ContentType {
   POST
   REEL
   YOUTUBE_POST
   POLL
 }
-
-model UserContentAffinity {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  contentId       String   @db.Uuid
-  contentType     ContentType
-  affinityScore   Float    @default(0)
-  last_interaction DateTime @default(now()) @db.Timestamptz(6)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, contentId, contentType])
-  @@index([userId, affinityScore])
-  @@map("user_content_affinity")
-}
-
-model RecommendationLog {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  contentId   String   @db.Uuid
-  contentType ContentType
-  served_at   DateTime @default(now()) @db.Timestamptz(6)
-  algorithm   String?  @db.VarChar(100)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, served_at])
-  @@map("recommendation_log")
-}
-

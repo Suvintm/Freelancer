@@ -69,7 +69,12 @@ export default function Login() {
     try {
       await login({ email: form.email, password: form.password, turnstileToken });
       navigate('/home');
-    } catch (err: unknown) {
+    } catch (err: any) {
+      const responseData = err?.response?.data;
+      if (err?.response?.status === 403 && responseData?.requiresVerification) {
+        navigate(`/verify-email?email=${encodeURIComponent(responseData.email || form.email)}`);
+        return;
+      }
       setError(err instanceof Error ? err.message : String(err));
     }
   };

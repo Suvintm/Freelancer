@@ -47,4 +47,14 @@ export const authService = {
     const res = await api.get(`/auth/check-username/${username}`);
     return res.data.available as boolean;
   },
+
+  verifyEmail: async (email: string, otp: string) => {
+    const res = await api.post('/auth/verify-email', { email, otp });
+    return res.data;
+  },
+
+  resendVerificationCode: async (email: string) => {
+    const res = await api.post('/auth/resend-verification', { email });
+    return res.data;
+  },
 };

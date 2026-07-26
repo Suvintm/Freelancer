@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import VerifyEmail from './pages/VerifyEmail';
 import RoleSelection from './pages/RoleSelection';
 import SubcategorySelection from './pages/SubcategorySelection';
 import YouTubeConnect from './pages/YouTubeConnect';
@@ -120,6 +121,7 @@ function App() {
         
         {/* Auth pages — publicly accessible */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
         
         {/* Onboarding Routes — protected by OnboardingGuard for step sequencing */}
         {/* role-selection is always accessible (it clears state on mount) */}
