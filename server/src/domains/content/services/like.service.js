@@ -1,7 +1,6 @@
 import prisma from '../../../infrastructure/database/postgres.js';
 import logger from '../../../infrastructure/monitoring/logger.js';
 import redisProxy from '../../../infrastructure/cache/redis.client.js';
-import { likeSyncQueue } from '../../../infrastructure/queue/workers/queues.js';
 
 let zcardCheckCounter = 0;
 
@@ -174,14 +173,10 @@ export const toggleLike = async (type, id, userId, action = "") => {
             const threshold = Number(process.env.LIKE_SYNC_THRESHOLD || 500);
 
             if (dirtySize >= threshold) {
-                logger.info(`🚨 [LIKE_SYNC] Threshold reached! Dirty Queue Size: ${dirtySize}/${threshold}. Triggering BullMQ sync worker...`);
-                if (likeSyncQueue && process.env.ENABLE_LIKE_SYNC_WORKER === 'true') {
-                    // Trigger worker immediately, but debounce with a fixed jobId
-                    await likeSyncQueue.add(
-                        "sync-likes-threshold",
-                        { triggerReason: "threshold", dirtySize },
-                        { jobId: "like-sync" }
-                    );
+                logger.info(`🚨 [LIKE_SYNC] Threshold reached! Dirty Queue Size: ${dirtySize}/${threshold}. Triggering instant Node-Cron flush via Pub/Sub...`);
+                if (process.env.ENABLE_LIKE_SYNC_WORKER === 'true') {
+                    // Trigger node-cron worker immediately via Redis Pub/Sub instead of BullMQ
+                    await redisProxy.publish("urgent-flush:like-sync", "flush");
                 }
             } else {
                 logger.info(`✨ [LIKE_SYNC] Buffered in Redis. Dirty Queue Size: ${dirtySize}/${threshold}. Action: ${shouldLike ? 'LIKE' : 'UNLIKE'}`);

@@ -356,5 +356,15 @@ export const subscribe = async (channel, callback) => {
   }
 };
 
+export const unsubscribe = async (channel) => {
+  if (!subClient) return;
+  try {
+    await subClient.unsubscribe(channel);
+    logger.info(`[Redis] Unsubscribed from ${channel} ✅`);
+  } catch (err) {
+    logger.warn(`[Redis] Unsubscribe failed from ${channel}: ${err.message}`);
+  }
+};
+
 export const redis = redisProxy;
 export default redisProxy;

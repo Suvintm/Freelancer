@@ -54,25 +54,41 @@ export const mediaQueue = createQueue("media-processing", {
 
 
 /**
- * Like Sync Queue
- * Periodically flushes likes from Redis to DB.
+ * Like Sync Queue has been removed.
+ * It is now handled by Node-Cron in cronManager.js to avoid BullMQ idle polling costs.
  */
 
 /**
- * Like Sync Queue
- * Periodically flushes likes from Redis to DB.
+ * videoProcessingQueue
+ * Used for async HLS transcoding failsafes and media cleanup.
  */
-export const likeSyncQueue = createQueue("like-sync", {
-  attempts: Number(process.env.LIKE_SYNC_ATTEMPTS || 5),
-  backoff: {
-    type: process.env.LIKE_SYNC_BACKOFF || "exponential",
-    delay: Number(process.env.LIKE_SYNC_BACKOFF_DELAY_MS || 5000),
-  },
-  removeOnComplete: { age: 3600, count: 50 },
-  removeOnFail: { age: 86400, count: 50 },
+export const videoProcessingQueue = createQueue("video-processing", {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: { age: 3600, count: 500 }, // Keep for an hour
+    removeOnFail: { age: 86400, count: 100 },
 });
 
+/**
+ * analyticsQueue
+ * Used for non-blocking high-volume event processing (Views, Skips, etc.)
+ */
+export const analyticsQueue = createQueue("analytics", {
+    attempts: 1, // Analytical data is fire-and-forget
+    removeOnComplete: true,
+    removeOnFail: true,
+});
 
+/**
+ * commentProcessingQueue
+ * Used for syncing comment counts and dispatching notifications asynchronously.
+ */
+export const commentProcessingQueue = createQueue("comment-processing", {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: true,
+    removeOnFail: true,
+});
 
 // ─── HELPER: YOUTUBE SYNC ENQUEUER ────────────────────────────────────────────
 
@@ -120,30 +136,7 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
   return job;
 }
 
-/**
- * Schedule a daily maintenance job for the YouTube Quota Manager.
- * Resets the quota at exactly Midnight Pacific Time (00:00:00).
- */
-export async function scheduleQuotaMaintenance() {
-  if (!youtubeSyncQueue) return;
 
-  // Add a repeatable job
-  await youtubeSyncQueue.add(
-    "quota-maintenance",
-    { type: "DAILY_RESET" },
-    {
-      repeat: {
-        pattern: "0 0 * * *", // Every day at Midnight
-        tz: "America/Los_Angeles"
-      },
-      priority: PRIORITY.HIGH, // Quota reset is important
-      removeOnComplete: true,
-      removeOnFail: true,
-    }
-  );
-
-  logger.info("⏱️ [Queue] Daily YouTube Quota Reset scheduled (Midnight Pacific Time).");
-}
 
 // ─── HELPER: MEDIA JOB ENQUEUER ───────────────────────────────────────────────
 
@@ -211,16 +204,7 @@ export const storyQueue = createQueue("story-processing", {
   removeOnFail: { age: 3600, count: 100 },
 });
 
-/**
- * Story Cleanup Queue
- * Handles deletion of expired stories.
- */
-export const storyCleanupQueue = createQueue("story-cleanup", {
-  attempts: 3,
-  backoff: { type: "exponential", delay: 2000 },
-  removeOnComplete: { age: 60, count: 500 },
-  removeOnFail: { age: 3600, count: 100 },
-});
+
 
 /**
  * Add a story processing job.
