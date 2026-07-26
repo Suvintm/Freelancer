@@ -128,8 +128,9 @@ export default function VerifyEmail() {
           navigate('/onboarding/preferences');
         }, 1500);
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Verification failed. Please check the code.');
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(axiosError?.response?.data?.message || axiosError.message || 'Verification failed. Please check the code.');
     } finally {
       setIsLoading(false);
     }
@@ -150,8 +151,9 @@ export default function VerifyEmail() {
       // Clear inputs
       setOtp(Array(6).fill(''));
       inputRefs.current[0]?.focus();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to resend code.');
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(axiosError?.response?.data?.message || axiosError.message || 'Failed to resend code.');
     } finally {
       setIsLoading(false);
     }

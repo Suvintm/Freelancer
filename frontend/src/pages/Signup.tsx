@@ -141,8 +141,10 @@ export default function Signup() {
   // Auto-validates username/handle while typing, debounced to 2000ms (2 seconds) to protect DB costs
   useEffect(() => {
     if (!form.username || form.username.trim().length < 3) {
-      setUserStatus('idle');
-      return;
+      const resetTimer = setTimeout(() => {
+        setUserStatus('idle');
+      }, 0);
+      return () => clearTimeout(resetTimer);
     }
 
     const timer = setTimeout(async () => {

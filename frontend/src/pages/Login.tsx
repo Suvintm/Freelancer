@@ -69,13 +69,14 @@ export default function Login() {
     try {
       await login({ email: form.email, password: form.password, turnstileToken });
       navigate('/home');
-    } catch (err: any) {
-      const responseData = err?.response?.data;
-      if (err?.response?.status === 403 && responseData?.requiresVerification) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { requiresVerification?: boolean; email?: string; message?: string }; status?: number }; message?: string };
+      const responseData = axiosError?.response?.data;
+      if (axiosError?.response?.status === 403 && responseData?.requiresVerification) {
         navigate(`/verify-email?email=${encodeURIComponent(responseData.email || form.email)}`);
         return;
       }
-      setError(err instanceof Error ? err.message : String(err));
+      setError(responseData?.message || axiosError.message || String(err));
     }
   };
 
