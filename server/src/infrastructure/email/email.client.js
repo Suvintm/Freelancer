@@ -358,7 +358,7 @@ export const sendOTPEmail = async (email, name, otp) => {
   const text = `Hi ${name}, your SuviX verification code is ${otp}. This code expires in 10 minutes.`;
   
   const templateId = process.env.RESEND_OTP_TEMPLATE_ID;
-  const templateData = { name, otp };
+  const templateData = { name, otp, privacy_policy_url: process.env.PRIVACY_POLICY_URL || '' };
   return sendEmail({
     to: email,
     subject,
