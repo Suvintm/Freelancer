@@ -314,7 +314,8 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
                     data: { 
                         google_id: googleId,
                         // is_verified = true is safe: Google confirmed they own this email
-                        is_verified: true
+                        is_verified: true,
+                        is_email_verified: true
                         // auth_provider intentionally NOT changed — preserve local/google/etc.
                     },
                     include: USER_INCLUDE
@@ -420,7 +421,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             if (!existing.google_id) {
                 finalUser = await prisma.user.update({
                     where: { id: existing.id },
-                    data: { google_id: googleId, is_verified: true },
+                    data: { google_id: googleId, is_verified: true, is_email_verified: true },
                     include: USER_INCLUDE
                 });
             }
@@ -472,6 +473,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                     google_id: googleId,
                     auth_provider: "google",
                     is_verified: true,
+                    is_email_verified: true,
                     role: "suvix_user",
                     is_onboarded: true, // Atomic!
                     password_hash: `OAUTH_ATOMIC_${crypto.randomBytes(8).toString("hex")}`,

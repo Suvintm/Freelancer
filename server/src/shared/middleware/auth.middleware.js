@@ -213,6 +213,15 @@ export const authenticate = async (req, res, next) => {
 
     if (!user) throw new ApiError(401, "User not found during hydration.");
 
+    if (!user.is_email_verified) {
+      throw new ApiError(
+        403,
+        "Email verification required.",
+        true,
+        { requiresVerification: true, email: user.email }
+      );
+    }
+
     // ── 5. Attach req.user with correct role derivation ───────────────────
     //
     // ✅ FIX: Preserve systemRole correctly for both raw and cached users.

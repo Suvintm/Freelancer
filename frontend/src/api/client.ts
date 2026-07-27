@@ -46,6 +46,22 @@ api.interceptors.response.use(
     const { config, response } = error;
     const originalRequest = config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    const responseData = response?.data as { requiresVerification?: boolean; email?: string } | undefined;
+
+    if (response?.status === 403 && responseData?.requiresVerification) {
+      try {
+        const { store } = await import('../store');
+        const { clearAuth } = await import('../store/slices/authSlice');
+        store.dispatch(clearAuth());
+      } catch {
+        // Fallback if import fails
+      }
+      setTimeout(() => {
+        window.location.href = `/verify-email?email=${encodeURIComponent(responseData.email || '')}`;
+      }, 50);
+      return Promise.reject(error);
+    }
+
     if (response?.status === 401 && !originalRequest._retry) {
       // 🛡️ SKIP REFRESH for auth endpoints
       if (

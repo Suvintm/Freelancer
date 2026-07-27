@@ -24,8 +24,9 @@ export default function VerifyEmail() {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>('Your mail has arrived, check and paste here.');
-  const [resendCooldown, setResendCooldown] = useState(60);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [hasSentOnce, setHasSentOnce] = useState(false);
   
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
@@ -123,9 +124,15 @@ export default function VerifyEmail() {
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
         dispatch(clearTempSignupData());
 
-        // Redirect to onboarding preferences after successful registration verification
+        // Redirect dynamically based on onboarding and preferences state
         setTimeout(() => {
-          navigate('/onboarding/preferences');
+          if (data.user.isOnboarded && data.user.preferencesCompleted) {
+            navigate('/home');
+          } else if (data.user.isOnboarded && !data.user.preferencesCompleted) {
+            navigate('/onboarding/preferences');
+          } else {
+            navigate('/role-selection');
+          }
         }, 1500);
       }
     } catch (err: unknown) {
@@ -148,6 +155,7 @@ export default function VerifyEmail() {
       await authService.resendVerificationCode(email);
       setSuccess('Your mail has arrived, check and paste here.');
       setResendCooldown(60); // 60s cooldown limit
+      setHasSentOnce(true);
       // Clear inputs
       setOtp(Array(6).fill(''));
       inputRefs.current[0]?.focus();
@@ -233,6 +241,28 @@ export default function VerifyEmail() {
               {/* Verification Code inputs */}
               <form onSubmit={handleSubmit} className="space-y-6">
                 
+                {/* Send / Cooldown Timer link */}
+                <div className="text-center pb-2">
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={isLoading || resendCooldown > 0}
+                    className={`text-sm font-bold transition-all underline outline-none ${
+                      (isLoading || resendCooldown > 0)
+                        ? 'text-zinc-400 cursor-not-allowed no-underline' 
+                        : 'text-black hover:opacity-75'
+                    }`}
+                  >
+                    {isLoading 
+                      ? 'Sending...' 
+                      : resendCooldown > 0 
+                        ? `Resend code in ${resendCooldown}s` 
+                        : !hasSentOnce 
+                          ? 'Click here to send verification code'
+                          : 'Resend Verification Code'}
+                  </button>
+                </div>
+
                 <div className="flex justify-between gap-2.5 sm:gap-3 py-2">
                   {otp.map((digit, index) => (
                     <input
@@ -269,26 +299,6 @@ export default function VerifyEmail() {
                     <span>Verify Code</span>
                   )}
                 </button>
-
-                {/* Cooldown Timer link */}
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={isLoading || resendCooldown > 0}
-                    className={`text-xs font-bold transition-all underline outline-none ${
-                      (isLoading || resendCooldown > 0)
-                        ? 'text-zinc-400 cursor-not-allowed no-underline' 
-                        : 'text-black hover:opacity-75'
-                    }`}
-                  >
-                    {isLoading 
-                      ? 'Sending...' 
-                      : resendCooldown > 0 
-                        ? `Resend code in ${resendCooldown}s` 
-                        : 'Resend Verification Code'}
-                  </button>
-                </div>
               </form>
 
               {/* Legal Footer Info */}

@@ -830,6 +830,9 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     include: USER_INCLUDE,
   });
 
+  // Bust the cache so subsequent requests don't think they are still unverified
+  await deleteCache(CacheKey.userProfile(updatedUser.id));
+
   // Trigger welcome email since they are verified now!
   eventBus.publish('user.registered', {
     userId: updatedUser.id,
@@ -904,10 +907,7 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
   }
 
   if (user.is_email_verified) {
-    return res.status(200).json({
-      success: true,
-      message: "Email is already verified.",
-    });
+    throw new ApiError(400, "Email is already verified.");
   }
 
   // Rate limit resend requests per email using Redis (limit: 1 resend per 60 seconds)
