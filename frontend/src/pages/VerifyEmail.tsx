@@ -24,8 +24,8 @@ export default function VerifyEmail() {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [success, setSuccess] = useState<string | null>('Your mail has arrived, check and paste here.');
+  const [resendCooldown, setResendCooldown] = useState(60);
   
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
@@ -146,7 +146,7 @@ export default function VerifyEmail() {
 
     try {
       await authService.resendVerificationCode(email);
-      setSuccess('A new verification code has been sent to your email.');
+      setSuccess('Your mail has arrived, check and paste here.');
       setResendCooldown(60); // 60s cooldown limit
       // Clear inputs
       setOtp(Array(6).fill(''));
@@ -277,14 +277,16 @@ export default function VerifyEmail() {
                     onClick={handleResend}
                     disabled={isLoading || resendCooldown > 0}
                     className={`text-xs font-bold transition-all underline outline-none ${
-                      resendCooldown > 0 
+                      (isLoading || resendCooldown > 0)
                         ? 'text-zinc-400 cursor-not-allowed no-underline' 
                         : 'text-black hover:opacity-75'
                     }`}
                   >
-                    {resendCooldown > 0 
-                      ? `Resend code in ${resendCooldown}s` 
-                      : 'Resend Verification Code'}
+                    {isLoading 
+                      ? 'Sending...' 
+                      : resendCooldown > 0 
+                        ? `Resend code in ${resendCooldown}s` 
+                        : 'Resend Verification Code'}
                   </button>
                 </div>
               </form>
