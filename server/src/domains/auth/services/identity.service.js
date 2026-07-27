@@ -165,6 +165,7 @@ export const formatAuthResponse = (user, subscription = null) => {
     displayName: user.profile?.display_name || name,
     username,
     email: user.email,
+    is_email_verified: !!user.is_email_verified,
 
     // ── App-level role (editor | client | admin) ────────────────────────────
     role: identity.appRole,
