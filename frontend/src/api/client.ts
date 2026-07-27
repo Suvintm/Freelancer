@@ -46,7 +46,9 @@ api.interceptors.response.use(
     const { config, response } = error;
     const originalRequest = config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (response?.status === 403 && response?.data?.requiresVerification) {
+    const responseData = response?.data as { requiresVerification?: boolean; email?: string } | undefined;
+
+    if (response?.status === 403 && responseData?.requiresVerification) {
       try {
         const { store } = await import('../store');
         const { clearAuth } = await import('../store/slices/authSlice');
@@ -55,7 +57,7 @@ api.interceptors.response.use(
         // Fallback if import fails
       }
       setTimeout(() => {
-        window.location.href = `/verify-email?email=${encodeURIComponent(response.data.email)}`;
+        window.location.href = `/verify-email?email=${encodeURIComponent(responseData.email || '')}`;
       }, 50);
       return Promise.reject(error);
     }
