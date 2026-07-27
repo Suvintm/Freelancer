@@ -51,7 +51,7 @@ api.interceptors.response.use(
         const { store } = await import('../store');
         const { clearAuth } = await import('../store/slices/authSlice');
         store.dispatch(clearAuth());
-      } catch (e) {
+      } catch {
         // Fallback if import fails
       }
       setTimeout(() => {
