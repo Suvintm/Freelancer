@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
  
-import React from 'react';
-import { PlaySquare, Heart, MessageCircle, Trash2, MessageSquare, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { PlaySquare, Heart, MessageCircle, Trash2, MessageSquare, Play, X } from 'lucide-react';
 import { api } from '../../../../../api/client';
 
 const formatCount = (num?: number | string) => {
@@ -44,6 +44,15 @@ interface FeedGridProps {
 }
 
 export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, allVideos }: FeedGridProps) => {
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+
+  const extractVideoId = (video: any): string => {
+    if (video.youtube_id) return video.youtube_id;
+    if (video.id && typeof video.id === 'object' && video.id.videoId) return video.id.videoId;
+    if (typeof video.id === 'string') return video.id;
+    if (video._id) return video._id;
+    return '';
+  };
 
   const handleDeleteItem = async (id: string, type: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -197,8 +206,9 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
                 const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
                 const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
                 
+                const videoId = extractVideoId(video);
                 return (
-                  <div key={video.id || video._id} className="group flex flex-col gap-3 cursor-pointer">
+                  <div key={video.id || video._id} className="group flex flex-col gap-3 cursor-pointer" onClick={() => videoId && setPlayingVideoId(videoId)}>
                     <div className="relative aspect-[16/9] rounded-[20px] overflow-hidden bg-container border border-border-main">
                       <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
@@ -233,8 +243,9 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
                 const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
                 const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
                 
+                const videoId = extractVideoId(video);
                 return (
-                  <div key={video.id || video._id} className="shrink-0 w-[280px] group flex flex-col gap-3 cursor-pointer snap-start">
+                  <div key={video.id || video._id} className="shrink-0 w-[280px] group flex flex-col gap-3 cursor-pointer snap-start" onClick={() => videoId && setPlayingVideoId(videoId)}>
                     <div className="relative aspect-[16/9] rounded-[20px] overflow-hidden bg-container border border-border-main">
                       <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
@@ -267,8 +278,9 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
                 const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
                 const description = video.description || video.snippet?.description || 'Watch this amazing video to learn more.';
 
+                const videoId = extractVideoId(video);
                 return (
-                  <div key={video.id || video._id} className="group flex items-start gap-4 cursor-pointer">
+                  <div key={video.id || video._id} className="group flex items-start gap-4 cursor-pointer" onClick={() => videoId && setPlayingVideoId(videoId)}>
                     <div className="relative w-[180px] shrink-0 aspect-[16/9] rounded-[12px] overflow-hidden bg-container border border-border-main">
                       <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
@@ -287,6 +299,37 @@ export const FeedGrid = ({ activeTab, reels, posts, ytVideos, isLoadingFeed, all
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Video Player Modal */}
+        {playingVideoId && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300" 
+            onClick={() => setPlayingVideoId(null)}
+          >
+            <div 
+              className="relative w-full max-w-5xl flex flex-col items-end gap-4 animate-in zoom-in-95 duration-300" 
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setPlayingVideoId(null)} 
+                className="p-2.5 rounded-full bg-black/50 hover:bg-[#FF3040] text-white backdrop-blur-md transition-all hover:scale-110 shadow-lg border border-white/20"
+              >
+                <X size={24} />
+              </button>
+              <div className="w-full aspect-video bg-black rounded-[24px] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1`}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              </div>
             </div>
           </div>
         )}

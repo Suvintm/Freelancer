@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
  
 import { useState } from 'react';
-import { Grid, PlaySquare, Film, MessageSquare, Play, Heart } from 'lucide-react';
+import { Grid, PlaySquare, Film, MessageSquare, Play, Heart, X } from 'lucide-react';
 
 const formatCount = (num?: number | string) => {
   if (!num) return '0';
@@ -34,6 +34,15 @@ const timeAgo = (dateStr?: string | Date) => {
 
 export const MobileContentTabs = ({ allVideos = [], ytVideos = [], reels = [], posts = [] }: { allVideos?: any[], ytVideos?: any[], reels?: any[], posts?: any[] }) => {
   const [activeTab, setActiveTab] = useState('yt_videos');
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+
+  const extractVideoId = (video: any): string => {
+    if (video.youtube_id) return video.youtube_id;
+    if (video.id && typeof video.id === 'object' && video.id.videoId) return video.id.videoId;
+    if (typeof video.id === 'string') return video.id;
+    if (video._id) return video._id;
+    return '';
+  };
 
   const tabs = [
     { id: 'yt_videos', icon: PlaySquare, label: 'YT Videos' },
@@ -71,9 +80,10 @@ export const MobileContentTabs = ({ allVideos = [], ytVideos = [], reels = [], p
                   const title = video.title || video.snippet?.title || 'YouTube Video';
                   const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
                   const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
+                  const videoId = extractVideoId(video);
                   
                   return (
-                    <div key={video.id || video._id || idx} className="shrink-0 w-[260px] flex flex-col gap-2 snap-center">
+                    <div key={video.id || video._id || idx} className="shrink-0 w-[260px] flex flex-col gap-2 snap-center cursor-pointer" onClick={() => videoId && setPlayingVideoId(videoId)}>
                       <div className="aspect-[16/9] bg-container rounded-xl overflow-hidden border border-border-main relative group">
                         <img src={thumbnail} alt={title} className="w-full h-full object-cover" />
                         <div className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full backdrop-blur-md">
@@ -107,9 +117,10 @@ export const MobileContentTabs = ({ allVideos = [], ytVideos = [], reels = [], p
                   const title = video.title || video.snippet?.title || 'YouTube Video';
                   const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
                   const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
+                  const videoId = extractVideoId(video);
                   
                   return (
-                    <div key={video.id || video._id || idx} className="shrink-0 w-[160px] flex flex-col gap-2 snap-center">
+                    <div key={video.id || video._id || idx} className="shrink-0 w-[160px] flex flex-col gap-2 snap-center cursor-pointer" onClick={() => videoId && setPlayingVideoId(videoId)}>
                       <div className="aspect-[16/9] bg-container rounded-xl overflow-hidden border border-border-main relative group">
                         <img src={thumbnail} alt={title} className="w-full h-full object-cover" />
                       </div>
@@ -137,9 +148,10 @@ export const MobileContentTabs = ({ allVideos = [], ytVideos = [], reels = [], p
                   const title = video.title || video.snippet?.title || 'YouTube Video';
                   const thumbnail = video.thumbnail || video.thumbnail_url || video.img || video.videoUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80';
                   const publishedAt = video.publishedAt || video.published_at || video.createdAt || video.created_at;
+                  const videoId = extractVideoId(video);
                   
                   return (
-                    <div key={video.id || video._id || idx} className="flex items-start gap-3 w-full">
+                    <div key={video.id || video._id || idx} className="flex items-start gap-3 w-full cursor-pointer" onClick={() => videoId && setPlayingVideoId(videoId)}>
                       <div className="relative w-[130px] shrink-0 aspect-[16/9] rounded-xl overflow-hidden bg-container border border-border-main">
                         <img src={thumbnail} alt={title} className="w-full h-full object-cover" />
                       </div>
@@ -154,6 +166,37 @@ export const MobileContentTabs = ({ allVideos = [], ytVideos = [], reels = [], p
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Video Player Modal */}
+          {playingVideoId && (
+            <div 
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300" 
+              onClick={() => setPlayingVideoId(null)}
+            >
+              <div 
+                className="relative w-full flex flex-col items-end gap-3 animate-in zoom-in-95 duration-300" 
+                onClick={e => e.stopPropagation()}
+              >
+                <button 
+                  onClick={() => setPlayingVideoId(null)} 
+                  className="p-1.5 rounded-full bg-black/50 hover:bg-[#FF3040] text-white backdrop-blur-md transition-all hover:scale-110 shadow-lg border border-white/20"
+                >
+                  <X size={20} />
+                </button>
+                <div className="w-full aspect-video max-h-[80vh] bg-black rounded-[16px] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1`}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
             </div>
           )}

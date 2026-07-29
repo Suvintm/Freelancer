@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
 import Hls from 'hls.js';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play, Lock } from 'lucide-react';
+import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play, Lock, UserCircle } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
-import { useLottie } from 'lottie-react';
-import youtubeLottieData from '../../assets/lottie/youtube_animation.json';
-import watchFullVideoLottieData from '../../assets/lottie/WatchFullVideoCTA.json';
 import type { RealPost } from './types';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
 import { formatTimeAgo } from '../../utils/dateFormatter';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { useLike } from '../../hooks/useLike';
 import { AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useCurrentUser } from '../../queries/useCurrentUser';
 
 export function RealFeedYoutube({ 
   post, 
@@ -26,9 +25,20 @@ export function RealFeedYoutube({
   isMuted?: boolean;
   onToggleMute?: (e: React.MouseEvent) => void;
 }) {
+  const navigate = useNavigate();
+  const { data: currentUser } = useCurrentUser();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(false);
+  const articleRef = useRef<HTMLElement>(null);
+  const isArticleInView = useInView(articleRef, { margin: "-20%" });
+
+  useEffect(() => {
+    if (!isArticleInView && showEmbed) {
+      setShowEmbed(false);
+    }
+  }, [isArticleInView, showEmbed]);
 
   const mediaUrls = post.media?.[0]?.urls;
   const hlsUrl = resolveMediaUrl(mediaUrls?.hls);
@@ -60,30 +70,6 @@ export function RealFeedYoutube({
       setIsPlaying(false);
     }
   }, []);
-
-  const lottieContainerRef = useRef(null);
-  const isInView = useInView(lottieContainerRef, { margin: "50px" });
-  const { View: LottieView, play, pause } = useLottie({
-    animationData: youtubeLottieData,
-    loop: true,
-    autoplay: true,
-  });
-
-  useEffect(() => {
-    if (isInView) play(); else pause();
-  }, [isInView, play, pause]);
-
-  const ctaContainerRef = useRef(null);
-  const isCtaInView = useInView(ctaContainerRef, { margin: "50px" });
-  const { View: CtaLottieView, play: playCta, pause: pauseCta } = useLottie({
-    animationData: watchFullVideoLottieData,
-    loop: true,
-    autoplay: true,
-  });
-
-  useEffect(() => {
-    if (isCtaInView) playCta(); else pauseCta();
-  }, [isCtaInView, playCta, pauseCta]);
 
   useEffect(() => {
     if (isActive) playMedia(); else pauseMedia();
@@ -139,20 +125,28 @@ export function RealFeedYoutube({
 
   return (
     <motion.article 
+      ref={articleRef}
       data-post-id={post.id}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      onClick={() => { if (post.youtube_link) window.open(post.youtube_link, '_blank'); }}
-      className={`relative w-full rounded-[28px] overflow-hidden group transition-all duration-500 mb-8 border cursor-pointer ${
+      onClick={() => {
+        if (!showEmbed && post.youtube_link) {
+          setShowEmbed(true);
+        }
+      }}
+      className={`relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border cursor-pointer ${
         isDarkMode 
-          ? 'bg-zinc-950/80 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
-          : 'bg-white border-zinc-200 shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
+          ? 'bg-zinc-950/80 border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
+          : 'bg-white border-zinc-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
       }`}
     >
       {/* Video Container (16:9 Aspect Ratio) */}
       <div 
-        className="w-full relative overflow-hidden flex items-center justify-center bg-black cursor-pointer aspect-video rounded-t-[40px] lg:rounded-t-[40px]"
-        onClick={isPlaying ? pauseMedia : playMedia}
+        className="w-full relative overflow-hidden flex items-center justify-center bg-black cursor-pointer aspect-video rounded-t-[20px] lg:rounded-t-[28px]"
+        onClick={(e) => {
+          if (showEmbed) return;
+          isPlaying ? pauseMedia() : playMedia();
+        }}
         onDoubleClick={(e) => {
           e.stopPropagation();
           triggerLike();
@@ -185,6 +179,16 @@ export function RealFeedYoutube({
             <div className="w-8 h-8 border-4 border-white/20 border-t-red-500 rounded-full animate-spin mb-3" />
             <p className="text-white text-sm font-medium tracking-wide">Processing Video...</p>
           </div>
+        ) : showEmbed && getYoutubeVideoId(post.youtube_link) ? (
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${getYoutubeVideoId(post.youtube_link)}?autoplay=1`}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full object-cover z-30 relative"
+          />
         ) : (
           <video 
             ref={videoRef}
@@ -199,10 +203,10 @@ export function RealFeedYoutube({
         )}
 
         {/* Top Gradient Overlay */}
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
+        {!showEmbed && <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />}
 
         {/* Video Header: User Info & YT Lottie */}
-        <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-20 pointer-events-none">
+        {!showEmbed && <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-20 pointer-events-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full border-2 border-white/30 p-[1.5px] bg-black/40 backdrop-blur-md overflow-hidden shadow-lg pointer-events-auto">
               <img src={avatarSrc} alt={userName} className="w-full h-full rounded-full object-cover" />
@@ -217,9 +221,6 @@ export function RealFeedYoutube({
                     <span className="text-white/70 font-medium text-[13px]">{formatTimeAgo(post.created_at)}</span>
                   </>
                 )}
-                <div ref={lottieContainerRef} className="w-12 h-6 flex items-center justify-center -ml-1 scale-[1.75] transform origin-left">
-                  {LottieView}
-                </div>
               </h4>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-[11px] text-white/90 font-medium tracking-wide">{location}</p>
@@ -234,53 +235,66 @@ export function RealFeedYoutube({
             </div>
           </div>
           
-          {/* Top Right Controls */}
-          <div className="flex items-center gap-2 pointer-events-auto">
-            <button 
-              onClick={handleMuteClick}
-              className="p-2 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/20 hover:scale-105 active:scale-95 shadow-lg"
-            >
-              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} className="text-red-400 animate-pulse" />}
-            </button>
-            <button className="p-2 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md transition-all border border-white/20 hover:scale-105 active:scale-95 shadow-lg">
-              <MoreHorizontal size={16} />
-            </button>
-          </div>
-        </div>
+        </div>}
 
         {/* Play/Pause Center Indicator (Fades out) */}
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300 z-10 ${isPlaying ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
+        {!showEmbed && <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300 z-10 ${isPlaying ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
           <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl pl-1">
             <Play size={28} className="fill-white" />
           </div>
-        </div>
+        </div>}
 
         {/* Bottom Gradient Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
+        {!showEmbed && <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />}
       </div>
 
       {/* Content Section Below Video */}
-      <div className="p-5 lg:p-6 flex flex-col gap-5">
-        <div className="flex items-start justify-between gap-4">
+      <div className="p-4 lg:p-6 flex flex-col gap-4 lg:gap-5">
+        <div className="flex items-start justify-between gap-3 lg:gap-4">
           <div className="flex-1 space-y-2">
             {/* Title / Comment */}
-            <h3 className={`text-base font-semibold leading-snug line-clamp-2 ${isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
-              {post.caption}
-            </h3>
+            {showEmbed ? (
+              <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center gap-3">
+                  <img src={avatarSrc} alt={userName} className={`w-8 h-8 rounded-full object-cover border ${isDarkMode ? 'border-zinc-800' : 'border-zinc-200'}`} />
+                  <span className={`font-semibold text-sm flex items-center gap-1.5 ${isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                    {userName} <VerifiedBadge isVerified={post.user?.is_verified} role={post.user?.role} />
+                  </span>
+                </div>
+                <p className={`text-xs leading-relaxed line-clamp-2 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                  {post.caption}
+                </p>
+              </div>
+            ) : (
+              <h3 className={`text-base font-semibold leading-snug line-clamp-2 ${isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                {post.caption}
+              </h3>
+            )}
             
             {/* Tags could be extracted from caption if needed */}
           </div>
 
-          {/* YT CTA Lottie (Watch Full Video) */}
-          {post.youtube_link && (
-            <div 
-              ref={ctaContainerRef}
-              onClick={(e) => { e.stopPropagation(); window.open(post.youtube_link, '_blank'); }}
-              className="cursor-pointer hover:scale-105 active:scale-95 transition-transform w-[120px] flex-shrink-0 flex items-center justify-center drop-shadow-md bg-white/5 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-xl overflow-hidden p-1"
-            >
-              {CtaLottieView}
-            </div>
-          )}
+          {/* Profile Redirect Button */}
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              const postUserId = typeof post.user === 'string' ? post.user : post.user?.id;
+              
+              if (currentUser && currentUser.id === postUserId) {
+                navigate('/profile');
+              } else {
+                navigate(`/creator/${postUserId || ''}`);
+              }
+            }}
+            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95 ${
+              isDarkMode 
+                ? 'bg-white/10 text-white hover:bg-white/20' 
+                : 'bg-black/5 text-black hover:bg-black/10'
+            }`}
+          >
+            <UserCircle size={16} />
+            View Profile
+          </button>
         </div>
 
         {/* Bottom Interaction Bar */}
@@ -326,4 +340,11 @@ function resolveMediaUrl(url: string | null | undefined): string {
   const apiBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5051';
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
   return `${apiBase}${cleanUrl}`;
+}
+
+function getYoutubeVideoId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
 }
