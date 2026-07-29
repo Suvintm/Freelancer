@@ -538,7 +538,7 @@ export default function Home() {
               if (post.contentType === 'REEL') {
                 postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
               } else if (post.contentType === 'YOUTUBE_POST') {
-                postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+                postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} />;
               } else if (post.contentType === 'POLL') {
                 postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
               } else {
