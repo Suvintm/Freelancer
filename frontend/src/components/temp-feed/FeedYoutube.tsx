@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play, UserCircle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Play, UserCircle } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../../queries/useCurrentUser';
@@ -46,6 +46,7 @@ export function FeedYoutube({
 
   useEffect(() => {
     if (!isArticleInView && showEmbed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowEmbed(false);
     }
   }, [isArticleInView, showEmbed]);
@@ -74,20 +75,6 @@ export function FeedYoutube({
     if (!isMuted) video.volume = 1;
   }, [isMuted]);
 
-  const handleMuteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const video = videoRef.current;
-    if (video) {
-      const newMuted = !video.muted;
-      video.muted = newMuted;
-      video.volume = 1;
-      if (!newMuted) {
-        video.pause();
-        video.play().catch(() => {});
-      }
-    }
-    onToggleMute?.(e);
-  };
 
   const avatarSrc = post.userAvatar || (typeof post.id === 'string' ? defaultProfile : post.img);
 
@@ -221,7 +208,7 @@ export function FeedYoutube({
           <button 
             onClick={(e) => { 
               e.stopPropagation(); 
-              const postUserId = typeof post.user === 'string' ? post.user : (post.user as any)?.id;
+              const postUserId = typeof post.user === 'string' ? post.user : (post.user as { id?: string })?.id;
               
               if (currentUser && currentUser.id === postUserId) {
                 navigate('/profile');
@@ -280,7 +267,7 @@ export function FeedYoutube({
 
 function getYoutubeVideoId(url: string | null | undefined): string | null {
   if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
 }

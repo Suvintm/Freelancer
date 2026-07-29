@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useInView } from 'framer-motion';
 import Hls from 'hls.js';
-import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Play, Lock, UserCircle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Play, Lock, UserCircle } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
 import type { RealPost } from './types';
 import { CommentsModal } from '../../features/comments/components/CommentsModal';
@@ -36,6 +36,7 @@ export function RealFeedYoutube({
 
   useEffect(() => {
     if (!isArticleInView && showEmbed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowEmbed(false);
     }
   }, [isArticleInView, showEmbed]);
@@ -108,21 +109,6 @@ export function RealFeedYoutube({
     };
   }, [hlsUrl, mp4Url]);
 
-  const handleMuteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const video = videoRef.current;
-    if (video) {
-      const newMuted = !video.muted;
-      video.muted = newMuted;
-      video.volume = 1;
-      if (!newMuted) {
-        video.pause();
-        video.play().catch(() => {});
-      }
-    }
-    onToggleMute?.(e);
-  };
-
   return (
     <motion.article 
       ref={articleRef}
@@ -143,9 +129,13 @@ export function RealFeedYoutube({
       {/* Video Container (16:9 Aspect Ratio) */}
       <div 
         className="w-full relative overflow-hidden flex items-center justify-center bg-black cursor-pointer aspect-video rounded-t-[20px] lg:rounded-t-[28px]"
-        onClick={(e) => {
+        onClick={() => {
           if (showEmbed) return;
-          isPlaying ? pauseMedia() : playMedia();
+          if (isPlaying) {
+            pauseMedia();
+          } else {
+            playMedia();
+          }
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
@@ -344,7 +334,7 @@ function resolveMediaUrl(url: string | null | undefined): string {
 
 function getYoutubeVideoId(url: string | null | undefined): string | null {
   if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
 }
