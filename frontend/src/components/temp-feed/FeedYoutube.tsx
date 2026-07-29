@@ -27,14 +27,12 @@ export function FeedYoutube({
   post, 
   isDarkMode, 
   isActive, 
-  isMuted = true, 
-  onToggleMute 
+  isMuted = true
 }: { 
   post: Post; 
   isDarkMode: boolean;
   isActive?: boolean;
   isMuted?: boolean;
-  onToggleMute?: (e: React.MouseEvent) => void;
 }) {
   const navigate = useNavigate();
   const { data: currentUser } = useCurrentUser();

@@ -12,18 +12,16 @@ import { AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../../queries/useCurrentUser';
 
-export function RealFeedYoutube({ 
-  post, 
-  isDarkMode, 
-  isActive, 
-  isMuted = true, 
-  onToggleMute 
-}: { 
-  post: RealPost; 
+export function RealFeedYoutube({
+  post,
+  isDarkMode,
+  isActive,
+  isMuted = true
+}: {
+  post: RealPost;
   isDarkMode: boolean;
   isActive?: boolean;
   isMuted?: boolean;
-  onToggleMute?: (e: React.MouseEvent) => void;
 }) {
   const navigate = useNavigate();
   const { data: currentUser } = useCurrentUser();
