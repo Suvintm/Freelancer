@@ -4,6 +4,13 @@ import { Heart, MessageCircle, Share2, Bookmark, Play, UserCircle } from 'lucide
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../../queries/useCurrentUser';
+import { AnimatePresence } from 'framer-motion';
+import LottieComponent from 'lottie-react';
+import audioWaveLottie from '../../assets/lottie/audio_wave.json';
+import { CommentsModal } from '../../features/comments/components/CommentsModal';
+
+// Handle ESM/CJS interop for lottie-react
+const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 interface Post {
   id: string | number;
@@ -36,9 +43,11 @@ export function FeedYoutube({
 }) {
   const navigate = useNavigate();
   const { data: currentUser } = useCurrentUser();
+  
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
   const isArticleInView = useInView(articleRef, { margin: "-20%" });
 
@@ -202,27 +211,49 @@ export function FeedYoutube({
             )}
           </div>
 
-          {/* Profile Redirect Button */}
-          <button 
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              const postUserId = typeof post.user === 'string' ? post.user : (post.user as { id?: string })?.id;
-              
-              if (currentUser && currentUser.id === postUserId) {
-                navigate('/profile');
-              } else {
-                navigate(`/creator/${postUserId || ''}`);
-              }
-            }}
-            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95 ${
-              isDarkMode 
-                ? 'bg-white/10 text-white hover:bg-white/20' 
-                : 'bg-black/5 text-black hover:bg-black/10'
-            }`}
-          >
-            <UserCircle size={16} />
-            View Profile
-          </button>
+          <div className="flex flex-col items-stretch gap-2 shrink-0">
+            {/* Profile Redirect Button */}
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                const postUserId = typeof post.user === 'string' ? post.user : (post.user as { id?: string })?.id;
+                
+                if (currentUser && currentUser.id === postUserId) {
+                  navigate('/profile');
+                } else {
+                  navigate(`/creator/${postUserId || ''}`);
+                }
+              }}
+              className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[11px] lg:text-xs font-semibold whitespace-nowrap flex items-center gap-1 lg:gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95 ${
+                isDarkMode 
+                  ? 'bg-white/10 text-white hover:bg-white/20' 
+                  : 'bg-black/5 text-black hover:bg-black/10'
+              }`}
+            >
+              <UserCircle size={14} className={isDarkMode ? 'text-white' : 'text-black'} />
+              View Profile
+            </button>
+
+            {/* Audio Visualizer Lottie */}
+            <AnimatePresence>
+              {(isPlaying || showEmbed) && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                  exit={{ opacity: 0, height: 0, scale: 0.8 }}
+                  className="w-full mt-0.5"
+                >
+                  <div className="w-full h-[28px] lg:h-[32px] bg-white rounded-full flex items-center justify-center shadow-sm border border-black/5 relative overflow-hidden">
+                    <Lottie 
+                      animationData={audioWaveLottie} 
+                      loop={true} 
+                      className="absolute w-10 h-10 lg:w-12 lg:h-12 opacity-90 scale-[1.7]"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Bottom Interaction Bar */}
@@ -235,7 +266,10 @@ export function FeedYoutube({
               <Heart size={20} className="hover:text-red-500 transition-colors" />
               <span className="text-[13px] font-semibold">{typeof post.likes === 'number' ? post.likes.toLocaleString() : post.likes}</span>
             </button>
-            <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}>
+            <button 
+              onClick={() => setIsCommentsOpen(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-600'}`}
+            >
               <MessageCircle size={20} />
               <span className="text-[13px] font-semibold">{post.commentsCount}</span>
             </button>
@@ -259,6 +293,13 @@ export function FeedYoutube({
           </div>
         </div>
       </div>
+      
+      <CommentsModal 
+        isOpen={isCommentsOpen} 
+        onClose={() => setIsCommentsOpen(false)} 
+        entityType="YOUTUBE_POST" 
+        entityId={String(post.id)} 
+      />
     </motion.article>
   );
 }
