@@ -22,6 +22,17 @@ export const CommentsSheet: React.FC<CommentsSheetProps> = ({ entityType, entity
     isFetchingNextPage 
   } = useComments(entityType, entityId);
 
+  // Lock body scroll when the comments sheet is open
+  React.useEffect(() => {
+    // Only lock on desktop if this sheet is used as a side panel overlay
+    // but locking body scroll is generally good when any modal/sheet is open.
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
+
   const handleReplyClick = (comment: Comment) => {
     // If it's a top level comment, we reply to it directly.
     // If it's a nested reply, the item passes up its own ID, but since our backend is 1-level deep,
@@ -40,10 +51,10 @@ export const CommentsSheet: React.FC<CommentsSheetProps> = ({ entityType, entity
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-black overflow-hidden relative">
+    <div className="flex flex-col h-full bg-white dark:bg-black overflow-hidden relative overscroll-contain">
       
       {/* Comments List */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 custom-scrollbar">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
