@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
-import { MdStar, MdChevronRight, MdCheckCircle } from 'react-icons/md';
+import { MdChevronRight } from 'react-icons/md';
 import defaultProfile from '../assets/defaultprofile.png';
 import { VerifiedBadge } from '../components/ui/VerifiedBadge';
 import { FeatureGallery } from '../components/home/FeatureGallery';

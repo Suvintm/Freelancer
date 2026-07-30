@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { Users, Plus, Globe, Gamepad2, Code, Search, SlidersHorizontal, Bell } from 'lucide-react';
+import { Users, Plus, Search, SlidersHorizontal, Bell } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import defaultProfile from '../assets/defaultprofile.png';
