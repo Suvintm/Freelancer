@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { Users, Plus, Search, SlidersHorizontal, Bell } from 'lucide-react';
 import { useSelector } from 'react-redux';
