@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMemo, useState, useEffect } from 'react';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, Plus, Heart, ArrowRight
+  Settings, LogOut, Compass, User, Users, MapPin, PlusSquare, Youtube, MessageSquare, Plus, Heart, ArrowRight
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -102,6 +102,19 @@ export const RightSidebar = () => {
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
       <div className="flex flex-col flex-1 px-4 py-6 gap-4">
+
+        {/* ── Community Link ── */}
+        <div
+          onClick={() => navigate('/community')}
+          className={`w-full py-2 rounded-xl text-xs font-community font-bold shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer border ${
+            isDarkMode 
+              ? 'bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800' 
+              : 'bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50'
+          }`}
+        >
+          <Users size={14} />
+          Community
+        </div>
 
         {/* ── Test Sync Button ── */}
         <button

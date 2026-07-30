@@ -242,7 +242,7 @@ export default function Home() {
               </div>
 
               {/* Heading */}
-              <h1 className={`text-4xl lg:text-5xl font-black tracking-tight leading-tight ${
+              <h1 className={`font-banner text-4xl lg:text-5xl font-normal tracking-tight leading-tight ${
                 isDarkMode 
                   ? 'text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]' 
                   : 'text-zinc-950'

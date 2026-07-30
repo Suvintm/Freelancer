@@ -21,7 +21,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isChatPage = location.pathname === '/communication-hub';
   const hasActiveChat = searchParams.has('userId');
   const isCreatorToolsPage = location.pathname === '/creator-tools';
-  const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage;
+  const isCommunityPage = location.pathname === '/community';
+  const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage || isCommunityPage;
   const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage || isHomePage;
   const { isDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
