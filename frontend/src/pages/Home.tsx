@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
-import { MdStar, MdChevronRight, MdCheckCircle } from 'react-icons/md';
+import { MdChevronRight } from 'react-icons/md';
 import defaultProfile from '../assets/defaultprofile.png';
+import { VerifiedBadge } from '../components/ui/VerifiedBadge';
 import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
@@ -242,7 +243,7 @@ export default function Home() {
               </div>
 
               {/* Heading */}
-              <h1 className={`text-4xl lg:text-5xl font-black tracking-tight leading-tight ${
+              <h1 className={`font-banner text-4xl lg:text-5xl font-normal tracking-tight leading-tight ${
                 isDarkMode 
                   ? 'text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]' 
                   : 'text-zinc-950'
@@ -603,7 +604,8 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'VFX Specialist',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
     rating: '4.9',
-    reviews: '82'
+    reviews: '82',
+    isVerified: true
   },
   {
     id: 'ed-2',
@@ -611,7 +613,8 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'Cinematic Colorist',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
     rating: '5.0',
-    reviews: '120'
+    reviews: '120',
+    isVerified: false
   },
   {
     id: 'ed-3',
@@ -619,15 +622,17 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'Shorts Specialist',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
     rating: '4.8',
-    reviews: '95'
+    reviews: '95',
+    isVerified: true
   },
   {
     id: 'ed-4',
     name: 'Sarah Jenkins',
     role: 'Documentary Editor',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
-    rating: '5.0',
-    reviews: '43'
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
+    rating: '4.9',
+    reviews: '150',
+    isVerified: true
   },
   {
     id: 'ed-5',
@@ -635,15 +640,17 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'Gaming Video Editor',
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150',
     rating: '4.7',
-    reviews: '74'
+    reviews: '74',
+    isVerified: false
   },
   {
     id: 'ed-6',
     name: 'Chloe Miller',
-    role: 'Motion Graphics Designer',
+    role: 'Educational Creator',
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150',
     rating: '4.9',
-    reviews: '56'
+    reviews: '4.1K',
+    isVerified: true
   }
 ];
 
@@ -651,18 +658,20 @@ const MOCK_SUGGESTED_CREATORS = [
   {
     id: 'cr-1',
     name: 'Naveen Kumar',
-    role: 'Tech Reviews',
-    avatar: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=150',
-    rating: '4.9',
-    reviews: '124'
+    role: 'Tech Reviewer',
+    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=150',
+    rating: '5.0',
+    reviews: '856',
+    isVerified: true
   },
   {
     id: 'cr-2',
     name: 'Sneha Gowda',
-    role: 'Cooking & Lifestyle Vlog',
-    avatar: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=150',
+    role: 'Lifestyle Vlogger',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=150',
     rating: '4.8',
-    reviews: '92'
+    reviews: '1.2K',
+    isVerified: false
   },
   {
     id: 'cr-3',
@@ -670,15 +679,17 @@ const MOCK_SUGGESTED_CREATORS = [
     role: 'Travel Vlog',
     avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=150',
     rating: '5.0',
-    reviews: '215'
+    reviews: '215',
+    isVerified: true
   },
   {
     id: 'cr-4',
     name: 'Puneeth Raj',
-    role: 'Gaming Streamer',
-    avatar: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=150',
-    rating: '4.7',
-    reviews: '88'
+    role: 'Gaming Creator',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=150',
+    rating: '4.9',
+    reviews: '2.4K',
+    isVerified: true
   },
   {
     id: 'cr-5',
@@ -686,7 +697,8 @@ const MOCK_SUGGESTED_CREATORS = [
     role: 'Educational Content',
     avatar: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=150',
     rating: '4.9',
-    reviews: '106'
+    reviews: '106',
+    isVerified: false
   }
 ];
 
@@ -740,7 +752,8 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
             role: (p.roles && p.roles[0]) || p.category || (isEditor ? 'YouTube Creator' : 'Video Editor'),
             avatar: p.profilePicture || defaultProfile,
             rating: (4.6 + (idx % 5) * 0.1).toFixed(1),
-            reviews: String(45 + (idx % 10) * 12)
+            reviews: String(45 + (idx % 10) * 12),
+            isVerified: p.isVerified || false
           }));
           setProfiles(mapped);
         } else {
@@ -774,84 +787,79 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
   if (shiftedProfiles.length === 0) return null;
 
   return (
-    <div className={`w-full lg:-mx-8 lg:w-[calc(100%+4rem)] rounded-[32px] border p-6 space-y-5 my-4 transition-all duration-300 ${
-      isDarkMode 
-        ? 'bg-[#0d0d10] border-zinc-850 text-zinc-300' 
-        : 'bg-white border-zinc-200/60 shadow-[0_2px_16px_rgba(0,0,0,0.03)] text-zinc-800'
-    }`}>
+    <div className="w-full lg:-mx-8 lg:w-[calc(100%+4rem)] py-2 my-2 sm:my-4">
       {/* Title Header */}
-      <div className="flex items-center justify-between px-1">
-        <div>
-          <h4 className="text-[10.5px] font-bold uppercase tracking-[0.14em] opacity-95 text-text-main">
-            {isEditor ? '✨ Suggested Creators for you' : '✨ Suggested Editors for you'}
-          </h4>
-          <p className="text-[10px] text-text-muted mt-0.5">
-            {isEditor ? 'Top-rated YouTube creators ready to collaborate' : 'Top-rated video editors ready to collaborate'}
-          </p>
-        </div>
+      <div className="flex items-center justify-between px-2 mb-2 sm:mb-4">
+        <h4 className="text-sm sm:text-base font-bold text-text-main tracking-tight">
+          {isEditor ? 'Suggested Creators for you' : 'Suggested Editors for you'}
+        </h4>
         <button 
           onClick={() => navigate('/explore')}
-          className={`flex items-center gap-0.5 text-[10.5px] font-bold cursor-pointer transition-colors ${
+          className={`flex items-center gap-0.5 text-xs font-bold cursor-pointer transition-colors ${
             isDarkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-zinc-950'
           }`}
         >
           <span>See All</span>
-          <MdChevronRight size={15} />
+          <MdChevronRight size={16} />
         </button>
       </div>
 
+      <style>{`
+        @keyframes floatBubbleHorizontal {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+      `}</style>
+
       {/* Horizontal List Scrollable container */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-2.5 pt-1 scrollbar-hide snap-x px-1">
-        {shiftedProfiles.map((profileItem) => (
+      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto py-6 scrollbar-hide snap-x px-2">
+        {shiftedProfiles.map((profileItem, idx) => (
           <div
             key={profileItem.id}
-            className={`w-[155px] shrink-0 rounded-[22px] border p-4 flex flex-col items-center justify-between snap-center transition-all ${
-              isDarkMode 
-                ? 'bg-[#15151a]/40 border-zinc-800/80 hover:border-zinc-700 hover:bg-[#15151a]/60' 
-                : 'bg-zinc-50 border-zinc-150 hover:bg-white hover:shadow-md'
-            }`}
+            className="flex flex-col items-center group w-[80px] sm:w-[90px] shrink-0 snap-center"
+            style={{ 
+              animation: 'floatBubbleHorizontal 4s ease-in-out infinite',
+              animationDelay: `${idx * 0.4}s` 
+            }}
           >
             {/* Creator Avatar with mini verification tick */}
-            <div className="relative">
-              <img
-                src={profileItem.avatar || defaultProfile}
-                alt={profileItem.name}
-                className={`w-14 h-14 rounded-full object-cover border-2 ${
-                  isDarkMode ? 'border-zinc-800' : 'border-white shadow-sm'
-                }`}
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#7c42f8] rounded-full flex items-center justify-center border-2 border-container text-white">
-                <MdCheckCircle size={11} className="text-white fill-white" />
-              </span>
+            <div className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-[3px] shadow-lg mb-3 cursor-pointer transition-transform duration-300 group-hover:scale-110 ${
+              isDarkMode ? 'border-zinc-800 hover:border-white bg-zinc-900' : 'border-zinc-200 hover:border-black bg-white'
+            }`}>
+              <div className="w-full h-full rounded-full overflow-hidden">
+                <img
+                  src={profileItem.avatar || defaultProfile}
+                  alt={profileItem.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {profileItem.isVerified && (
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 z-10 overflow-hidden ${isDarkMode ? 'border-zinc-900 bg-zinc-900' : 'border-white bg-white'}`}>
+                  <VerifiedBadge isVerified={profileItem.isVerified} role={isEditor ? 'yt_influencer' : 'video_editor'} className="w-full h-full object-cover scale-110" />
+                </div>
+              )}
             </div>
 
             {/* Profile Info */}
-            <div className="text-center mt-3.5 w-full min-w-0">
-              <p className="text-[12.5px] font-bold text-text-main leading-tight truncate">
+            <div className="flex flex-col items-center w-full mb-2.5">
+              <h3 className="font-bold text-[11px] sm:text-xs text-center truncate w-full leading-tight">
                 {profileItem.name}
+              </h3>
+              <p className={`text-[9px] sm:text-[10px] text-center truncate w-full mt-0.5 leading-none ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                @{profileItem.name.toLowerCase().replace(/\s/g, '')}
               </p>
-              <p className="text-[9.5px] text-text-muted mt-1 leading-tight truncate">
-                {profileItem.role}
-              </p>
-            </div>
-
-            {/* Ratings */}
-            <div className="flex items-center justify-center gap-0.5 mt-2.5">
-              <MdStar size={12} className="text-amber-500 fill-amber-500" />
-              <span className="text-[10px] font-bold text-text-main leading-none">{profileItem.rating}</span>
-              <span className="text-[9px] text-text-muted leading-none">({profileItem.reviews})</span>
             </div>
 
             <button
               onClick={() => handleFollowToggle(profileItem.id)}
-              className={`w-full h-8 rounded-xl text-[10px] font-bold mt-4 active:scale-[0.98] transition-all cursor-pointer ${
+              className={`w-full py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-1.5 ${
                 user?.followingIds?.includes(profileItem.id)
                   ? isDarkMode
-                    ? 'bg-zinc-800/80 border border-zinc-700/80 text-zinc-400 hover:bg-zinc-850'
-                    : 'bg-zinc-200 border border-zinc-300 text-zinc-650 hover:bg-zinc-250'
+                    ? 'bg-zinc-800 text-zinc-400'
+                    : 'bg-zinc-200 text-zinc-600'
                   : isDarkMode 
-                    ? 'bg-white text-black hover:bg-zinc-100' 
-                    : 'bg-zinc-950 text-white hover:bg-zinc-900'
+                    ? 'bg-white text-black hover:bg-zinc-200' 
+                    : 'bg-black text-white hover:bg-zinc-800'
               }`}
             >
               {user?.followingIds?.includes(profileItem.id) ? 'Following' : 'Follow'}

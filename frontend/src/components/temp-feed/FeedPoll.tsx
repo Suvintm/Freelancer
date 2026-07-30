@@ -163,8 +163,10 @@ export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean
   if (!isMultipleChoice) {
     return (
       <motion.article 
-        className={`w-[calc(100%-24px)] max-w-[600px] mx-auto border overflow-hidden group shadow-2xl rounded-3xl ${
-          isDarkMode ? 'bg-black border-zinc-900' : 'bg-white border-zinc-200'
+        className={`relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border ${
+          isDarkMode 
+            ? 'bg-zinc-950/80 border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
+            : 'bg-white border-zinc-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
         }`}
       >
         {/* Author Header */}
@@ -349,8 +351,10 @@ export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean
   return (
     <motion.article 
       onDoubleClick={handleLike}
-      className={`w-[calc(100%-24px)] max-w-[600px] mx-auto lg:border lg:rounded-[40px] overflow-hidden rounded-3xl group lg:shadow-xl mb-6 lg:mb-0 relative ${
-        isDarkMode ? 'bg-black border-zinc-800/50' : 'bg-white border-zinc-200 shadow-sm'
+      className={`relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border ${
+        isDarkMode 
+          ? 'bg-zinc-950/80 border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
+          : 'bg-white border-zinc-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
       }`}
     >
       <AnimatePresence>
@@ -437,45 +441,54 @@ export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean
                         key={index}
                         onClick={() => handleVote(opt.id, index)}
                         disabled={hasVoted}
-                        className="relative w-full overflow-hidden rounded-2xl group transition-all duration-300 active:scale-[0.99] disabled:opacity-100 disabled:cursor-default"
+                        className={`relative w-full overflow-hidden rounded-xl transition-all duration-300 disabled:opacity-100 disabled:cursor-default flex items-center justify-between min-h-[44px] px-4 py-2 ${
+                          !hasVoted 
+                            ? (isDarkMode ? 'border border-zinc-800 hover:bg-zinc-900/50' : 'border border-zinc-300 hover:bg-zinc-50')
+                            : 'border border-transparent'
+                        }`}
                       >
-                        <div className={`absolute inset-0 border-2 transition-colors duration-300 ${
-                          isSelected 
-                            ? (isDarkMode ? 'border-white bg-zinc-900' : 'border-zinc-900 bg-zinc-100')
-                            : (isDarkMode ? 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100')
-                        } rounded-2xl`} />
-
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: showResults ? `${percentage}%` : '0%' }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
-                          className={`absolute inset-y-0 left-0 ${isSelected ? (isDarkMode ? 'bg-zinc-800' : 'bg-zinc-200') : (isDarkMode ? 'bg-zinc-900' : 'bg-zinc-100')} rounded-2xl`}
-                        />
-
-                        <div className="relative z-10 flex items-center justify-between p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        {/* Progress Bar Background */}
+                        {hasVoted && (
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: showResults ? `${percentage}%` : '0%' }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className={`absolute inset-y-0 left-0 rounded-xl ${
                               isSelected 
-                                ? (isDarkMode ? 'border-white bg-white text-black' : 'border-zinc-900 bg-zinc-900 text-white')
-                                : (isDarkMode ? 'border-zinc-700 bg-transparent' : 'border-zinc-300 bg-transparent')
-                            }`}>
-                              {isSelected && <CheckCircle2 size={12} strokeWidth={4} />}
-                            </div>
-                            <span className={`text-[14px] font-bold ${isSelected ? (isDarkMode ? 'text-white' : 'text-zinc-900') : (isDarkMode ? 'text-zinc-400' : 'text-zinc-600')}`}>
-                              {opt.text}
-                            </span>
-                          </div>
-                          
-                          {showResults && (
-                            <motion.span 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className={`text-[13px] font-black ${isSelected ? (isDarkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500'}`}
-                            >
-                              {percentage}%
-                            </motion.span>
+                                ? (isDarkMode ? 'bg-blue-500/30' : 'bg-blue-100') 
+                                : (isDarkMode ? 'bg-zinc-800/60' : 'bg-zinc-100')
+                            }`}
+                          />
+                        )}
+
+                        {/* Content */}
+                        <div className="relative z-10 flex items-center gap-2">
+                          <span className={`text-[15px] ${
+                            hasVoted && isSelected 
+                              ? (isDarkMode ? 'font-bold text-white' : 'font-bold text-zinc-900')
+                              : (isDarkMode ? 'font-medium text-zinc-200' : 'font-medium text-zinc-800')
+                          }`}>
+                            {opt.text}
+                          </span>
+                          {hasVoted && isSelected && (
+                            <CheckCircle2 size={14} className={isDarkMode ? 'text-white' : 'text-zinc-900'} />
                           )}
                         </div>
+                        
+                        {/* Percentage */}
+                        {hasVoted && showResults && (
+                          <motion.span 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className={`relative z-10 text-[14px] ${
+                              isSelected 
+                                ? (isDarkMode ? 'font-bold text-white' : 'font-bold text-zinc-900') 
+                                : (isDarkMode ? 'font-medium text-zinc-400' : 'font-medium text-zinc-600')
+                            }`}
+                          >
+                            {percentage}%
+                          </motion.span>
+                        )}
                       </button>
                     );
                   })}

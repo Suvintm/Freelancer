@@ -129,7 +129,7 @@ export function RealFeedYoutube({
       }`}
     >
       <div 
-        className="w-full relative overflow-hidden flex items-center justify-center bg-black cursor-pointer aspect-video rounded-t-[20px] lg:rounded-t-[28px]"
+        className="w-full relative overflow-hidden flex items-center justify-center bg-black cursor-pointer aspect-video rounded-[20px] lg:rounded-[28px]"
         onClick={() => {
           if (showEmbed) return;
           if (isPlaying) {

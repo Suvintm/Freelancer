@@ -4,7 +4,7 @@
    Matches the SuviX mobile app's Colors.ts aesthetic exactly.
 ───────────────────────────────────────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Skranji:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -16,6 +16,8 @@
   --font-body:    "Inter",          ui-sans-serif, system-ui, sans-serif;
   --font-label:   "Inter",          ui-sans-serif, system-ui, sans-serif;
   --font-mono:    "JetBrains Mono", "Fira Code",   ui-monospace, monospace;
+  --font-banner:  "Bubblegum Sans",        cursive, system-ui, sans-serif;
+  --font-community: "Caveat Brush",        ui-sans-serif, system-ui, sans-serif;
 
   /* Color Mappings for Tailwind Utilities */
   --color-page:            var(--bg-page);

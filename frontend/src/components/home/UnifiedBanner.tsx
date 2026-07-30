@@ -107,7 +107,7 @@ export const UnifiedBanner = ({ className }: { className?: string }) => {
                 <span className="inline-block text-[10px] font-bold text-white/90 uppercase tracking-widest border border-white/30 rounded-md px-2 py-0.5 bg-white/20 backdrop-blur-md">
                   {banner.tag}
                 </span>
-                <h2 className="text-lg sm:text-2xl font-semibold text-white leading-tight tracking-tight drop-shadow-md">
+                <h2 className="font-banner text-lg sm:text-2xl font-normal text-white leading-tight tracking-tight drop-shadow-md">
                   {banner.title}
                 </h2>
                 <p className="text-[12px] sm:text-[13px] text-zinc-300 font-medium max-w-sm leading-relaxed hidden sm:block drop-shadow-sm">

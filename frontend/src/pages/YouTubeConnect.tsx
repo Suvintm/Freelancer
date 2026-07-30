@@ -27,7 +27,7 @@ import type { RootState } from '../store';
 import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SuccessOverlay } from '../components/shared/SuccessOverlay';
-import logo from '../assets/darklogo.png';
+import logo from '../assets/lightlogo.png';
 
 const formatCount = (n: number | string): string => {
   const num = Number(n);
@@ -135,7 +135,7 @@ export default function YouTubeConnect() {
 
   if (categoriesLoading) {
     return (
-      <div className="h-screen w-full bg-black flex items-center justify-center">
+      <div className="h-screen w-full bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-40 h-40 flex items-center justify-center">
             <Lottie 
@@ -144,14 +144,14 @@ export default function YouTubeConnect() {
               style={{ width: '100%', height: '100%' }} 
             />
           </div>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-2">Initializing Sync...</p>
+          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-2">Initializing Sync...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-black flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen w-full bg-white flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-zinc-900">
 
       {/* ── BACKGROUND ─────────────────────────────────────────────────────── */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none h-full w-full">
@@ -169,8 +169,8 @@ export default function YouTubeConnect() {
             className="absolute w-1 h-1 bg-red-500 rounded-full blur-[1px]"
           />
         ))}
-        <motion.div animate={{ scale: [1, 1.15, 1], x: ['-4%', '4%', '-4%'], rotate: [0, 45, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute -top-[10%] -left-[10%] w-[90%] h-[60%] bg-zinc-900/15 rounded-full blur-[140px]" />
-        <motion.div animate={{ scale: [1.15, 1, 1.15], x: ['4%', '-4%', '4%'], rotate: [0, -45, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} className="absolute -top-[5%] -right-[10%] w-[90%] h-[60%] bg-red-900/[0.08] rounded-full blur-[140px]" />
+        <motion.div animate={{ scale: [1, 1.15, 1], x: ['-4%', '4%', '-4%'], rotate: [0, 45, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute -top-[10%] -left-[10%] w-[90%] h-[60%] bg-zinc-100/60 rounded-full blur-[140px]" />
+        <motion.div animate={{ scale: [1.15, 1, 1.15], x: ['4%', '-4%', '4%'], rotate: [0, -45, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} className="absolute -top-[5%] -right-[10%] w-[90%] h-[60%] bg-red-500/[0.05] rounded-full blur-[140px]" />
       </div>
 
       <LoadingOverlay isVisible={isLoading} theme="youtube" message="Verifying..." />
@@ -183,9 +183,9 @@ export default function YouTubeConnect() {
         </div>
         <button 
           onClick={() => navigate('/role-selection')}
-          className="w-8 h-8 md:w-11 md:h-11 rounded-lg border border-zinc-800 flex items-center justify-center bg-black/40 backdrop-blur-md pointer-events-auto group active:scale-95"
+          className="w-8 h-8 md:w-11 md:h-11 rounded-lg border border-zinc-200 flex items-center justify-center bg-white/40 backdrop-blur-md pointer-events-auto group active:scale-95"
         >
-          <ChevronLeft size={16} className="text-zinc-400 group-hover:text-white" />
+          <ChevronLeft size={16} className="text-zinc-600 group-hover:text-zinc-900" />
         </button>
       </div>
 
@@ -200,9 +200,9 @@ export default function YouTubeConnect() {
             className="flex flex-col items-center lg:items-start text-center lg:text-left w-full lg:w-[40%] max-w-[48rem] py-4 md:py-8 lg:sticky lg:top-24"
           >
             <div className="space-y-2 mb-6 w-full">
-              <h1 className="text-[clamp(1.75rem,7vw,4rem)] lg:text-[4rem] font-bold text-white tracking-tight leading-[1.1]">
+              <h1 className="text-[clamp(1.75rem,7vw,4rem)] lg:text-[4rem] font-bold text-zinc-900 tracking-tight leading-[1.1]">
                 Connect your <br />
-                <span className="text-zinc-600">digital identity.</span>
+                <span className="text-zinc-500">digital identity.</span>
               </h1>
               <p className="text-xs md:text-lg text-zinc-500 font-medium max-w-[24rem] mx-auto lg:mx-0">
                 Synchronize your professional presence.
@@ -216,8 +216,8 @@ export default function YouTubeConnect() {
                 disabled={isLoading}
                 className={`w-full h-12 md:h-16 rounded-xl font-bold text-sm md:text-lg flex items-center justify-center gap-3 border-none active:scale-[0.98] transition-all duration-500 ${
                   connected 
-                    ? '!bg-zinc-900 !text-zinc-400 border border-zinc-800 hover:!bg-zinc-800 shadow-xl' 
-                    : '!bg-red-600 !text-white shadow-lg shadow-red-900/20'
+                    ? '!bg-zinc-100 !text-zinc-600 border border-zinc-200 hover:!bg-zinc-200 shadow-xl' 
+                    : '!bg-red-600 !text-zinc-900 shadow-lg shadow-red-900/20'
                 }`}
               >
                 {connected ? (
@@ -233,10 +233,10 @@ export default function YouTubeConnect() {
                   <Mail size={9} className="text-zinc-600" />
                   Choose the email linked to your channel
                 </p>
-                <div className="flex items-start gap-2 bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-3 text-left">
+                <div className="flex items-start gap-2 bg-zinc-50 border border-zinc-200/60 rounded-xl p-3 text-left">
                   <Info size={12} className="text-zinc-500 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-zinc-500 leading-relaxed">
-                    Google lets us read only the <span className="text-zinc-400 font-semibold">primary channel</span> of the account you sign in with. You can link more channels after signup.
+                  <p className="text-[10px] text-zinc-600 leading-relaxed">
+                    Google lets us read only the <span className="text-zinc-600 font-semibold">primary channel</span> of the account you sign in with. You can link more channels after signup.
                   </p>
                 </div>
                 {fetchError && (
@@ -249,7 +249,7 @@ export default function YouTubeConnect() {
             </div>
 
             {/* Benefits Card (Desktop) */}
-            <div className="hidden lg:block w-full max-w-xl bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 text-left relative overflow-hidden group">
+            <div className="hidden lg:block w-full max-w-xl bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-left relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Video size={80} className="text-zinc-500" />
               </div>
@@ -257,8 +257,8 @@ export default function YouTubeConnect() {
                 <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-[9px] font-bold uppercase tracking-widest">
                   Creator Benefits
                 </div>
-                <h3 className="text-xl font-bold text-white tracking-tight leading-tight">Unlock Your Creator Identity</h3>
-                <p className="text-zinc-400 text-xs leading-relaxed max-w-sm">
+                <h3 className="text-xl font-bold text-zinc-900 tracking-tight leading-tight">Unlock Your Creator Identity</h3>
+                <p className="text-zinc-600 text-xs leading-relaxed max-w-sm">
                   Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.
                 </p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
@@ -268,8 +268,8 @@ export default function YouTubeConnect() {
                     { icon: <Check size={14} />, text: "Search Priority" },
                     { icon: <Video size={14} />, text: "Brand Verified" }
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 text-zinc-300 text-[10px] font-bold uppercase tracking-tight">
-                      <div className="p-1 rounded-lg bg-white/5 border border-white/10 text-red-500">{item.icon}</div>
+                    <div key={i} className="flex items-center gap-2 text-zinc-700 text-[10px] font-bold uppercase tracking-tight">
+                      <div className="p-1 rounded-lg bg-white border border-zinc-200 shadow-sm text-red-500">{item.icon}</div>
                       {item.text}
                     </div>
                   ))}
@@ -292,30 +292,30 @@ export default function YouTubeConnect() {
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.4)]" />
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
                       {youtubeDiscovery.channels.length === 1 ? 'Channel Discovered' : `${youtubeDiscovery.channels.length} Channels Discovered`}
                     </span>
                   </div>
-                  <div className="max-w-md bg-zinc-900/50 border border-zinc-800/50 rounded-2xl p-4 text-center">
-                    <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
+                  <div className="max-w-md bg-zinc-50 border border-zinc-200/50 rounded-2xl p-4 text-center">
+                    <p className="text-[11px] font-medium text-zinc-600 leading-relaxed">
                       Only see one channel? That's normal — Google returns the channel tied to the account you signed in with.{' '}
-                      <span className="text-zinc-400">You can link more after signup.</span>
+                      <span className="text-zinc-600">You can link more after signup.</span>
                     </p>
                   </div>
                 </div>
 
                 {/* All claimed warning */}
                 {!hasUnclaimedChannel && (
-                  <div className="bg-zinc-900/60 border border-orange-500/20 rounded-2xl p-6 text-center space-y-4">
+                  <div className="bg-white shadow-sm border border-orange-500/20 rounded-2xl p-6 text-center space-y-4">
                     <AlertCircle size={32} className="text-orange-400 mx-auto" />
                     <div>
-                      <p className="text-sm font-bold text-white mb-1">All found channels are already on SuviX</p>
-                      <p className="text-[11px] text-zinc-500 leading-relaxed max-w-sm mx-auto">
+                      <p className="text-sm font-bold text-zinc-900 mb-1">All found channels are already on SuviX</p>
+                      <p className="text-[11px] text-zinc-600 leading-relaxed max-w-sm mx-auto">
                         Try connecting with a different Google account or contact support.
                       </p>
                     </div>
                     <div className="flex justify-center gap-3">
-                      <button onClick={handleConnect} className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-[10px] font-bold hover:bg-zinc-700 transition-colors uppercase tracking-wider">
+                      <button onClick={handleConnect} className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-700 text-[10px] font-bold hover:bg-zinc-700 transition-colors uppercase tracking-wider">
                         Try Different Account
                       </button>
                       <a href="mailto:support@suvix.com" className="px-4 py-2 rounded-xl bg-red-600/10 border border-red-600/20 text-red-400 text-[10px] font-bold hover:bg-red-600/15 transition-colors uppercase tracking-wider flex items-center gap-1.5">
@@ -336,8 +336,8 @@ export default function YouTubeConnect() {
                         animate={{ opacity: 1, x: 0 }}
                         className={`relative rounded-3xl border transition-all duration-500 overflow-hidden ${
                           isClaimed
-                            ? 'border-orange-500/30 bg-zinc-900/40'
-                            : 'border-zinc-700 bg-zinc-900/80 shadow-[0_8px_30px_rgba(0,0,0,0.3)]'
+                            ? 'border-orange-500/30 bg-zinc-50'
+                            : 'border-zinc-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.3)]'
                         }`}
                       >
                         <div className="p-5 md:p-8">
@@ -348,12 +348,12 @@ export default function YouTubeConnect() {
                                 src={channel.thumbnailUrl} 
                                 alt={channel.channelName}
                                 className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover border-2 ${
-                                  isClaimed ? 'border-orange-500/30 grayscale' : 'border-zinc-700'
+                                  isClaimed ? 'border-orange-500/30 grayscale' : 'border-zinc-200'
                                 }`} 
                               />
                               {!isClaimed && (
-                                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-red-600 flex items-center justify-center border-2 border-zinc-900">
-                                  <svg viewBox="0 0 24 24" className="w-3 h-3 fill-white"><path d="M8 5v14l11-7z" /></svg>
+                                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-red-600 flex items-center justify-center border-2 border-white">
+                                  <svg viewBox="0 0 24 24" className="w-3 h-3 fill-zinc-900"><path d="M8 5v14l11-7z" /></svg>
                                 </div>
                               )}
                             </div>
@@ -361,7 +361,7 @@ export default function YouTubeConnect() {
                             {/* Info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                <h4 className="text-lg md:text-xl font-bold text-white truncate tracking-tight">{channel.channelName}</h4>
+                                <h4 className="text-lg md:text-xl font-bold text-zinc-900 truncate tracking-tight">{channel.channelName}</h4>
                                 {isClaimed ? (
                                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
                                     <AlertCircle size={10} className="text-orange-400" />
@@ -403,9 +403,9 @@ export default function YouTubeConnect() {
 
                           {/* Claimed explanation */}
                           {isClaimed && (
-                            <div className="mt-5 p-4 rounded-2xl bg-orange-950/20 border border-orange-500/15 space-y-2">
+                            <div className="mt-5 p-4 rounded-2xl bg-orange-50 border border-orange-500/15 space-y-2">
                               <p className="text-xs font-bold text-orange-300">This channel is already registered on SuviX</p>
-                              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                              <p className="text-[11px] text-zinc-600 leading-relaxed">
                                 If this is your channel and you believe this is an error, please contact our support team.
                               </p>
                               <div className="flex items-center gap-2 pt-1">
@@ -423,7 +423,7 @@ export default function YouTubeConnect() {
 
                 <p className="text-center text-[11px] text-zinc-600">
                   Channel not showing?{' '}
-                  <button onClick={handleConnect} className="text-zinc-400 font-semibold hover:text-white transition-colors underline underline-offset-2">
+                  <button onClick={handleConnect} className="text-zinc-600 font-semibold hover:text-zinc-900 transition-colors underline underline-offset-2">
                     Try a different Google account
                   </button>
                 </p>
@@ -432,9 +432,9 @@ export default function YouTubeConnect() {
 
             {/* ── PRE-CONNECT: Marquee ──── */}
             {!connected && (
-              <div className="w-full relative py-8 bg-black/80 backdrop-blur-xl border-y border-zinc-900 mb-16">
-                <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent z-10" />
-                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent z-10" />
+              <div className="w-full relative py-8 bg-white/80 backdrop-blur-xl border-y border-zinc-200 mb-16">
+                <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
+                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
                 <div className="overflow-hidden">
                   <motion.div 
                     className="flex gap-4 w-max px-4"
@@ -451,9 +451,9 @@ export default function YouTubeConnect() {
                           { name: "Ali Abdaal",    sub: "5.2M",  img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop" },
                           { name: "Lofi Girl",     sub: "14.1M", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop" }
                         ].map((creator, idx) => (
-                          <div key={idx} className="relative flex flex-col items-center p-4 rounded-[1.5rem] bg-zinc-950/60 border border-zinc-800/50 backdrop-blur-md w-36">
+                          <div key={idx} className="relative flex flex-col items-center p-4 rounded-[1.5rem] bg-white/60 border border-zinc-200/50 backdrop-blur-md w-36">
                             <div className="relative mb-3">
-                              <img src={creator.img} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-zinc-800" />
+                              <img src={creator.img} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200" />
                               <div className="absolute -bottom-1 -right-1 z-20">
                                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-red-600">
                                   <path d="M22.5 12.5c0-1.58-.811-3.029-2.126-3.882l.144-1.618a2.5 2.5 0 00-2.483-2.722l-1.614.076a4.522 4.522 0 00-3.321-2.13L12.5 1.5l-.6-.05c-1.58 0-3.029.811-3.882 2.126l-1.618-.144a2.5 2.5 0 00-2.722 2.483l.076 1.614a4.522 4.522 0 00-2.13 3.321L1.5 11.5l-.05.6c0 1.58.811 3.029 2.126 3.882l-.144 1.618a2.5 2.5 0 002.483 2.722l1.614-.076a4.522 4.522 0 003.321 2.13L11.5 22.5l.6.05c1.58 0 3.029-.811 3.882-2.126l1.618.144a2.5 2.5 0 002.722-2.483l-.076-1.614a4.522 4.522 0 002.13-3.321L22.5 12.5l.05-.6z" />
@@ -462,7 +462,7 @@ export default function YouTubeConnect() {
                               </div>
                             </div>
                             <div className="text-center space-y-1">
-                              <h4 className="text-sm font-bold text-white truncate">{creator.name}</h4>
+                              <h4 className="text-sm font-bold text-zinc-900 truncate">{creator.name}</h4>
                               <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest bg-red-600/10 px-2 py-0.5 rounded-md">{creator.sub}</span>
                             </div>
                           </div>
@@ -475,14 +475,14 @@ export default function YouTubeConnect() {
             )}
 
             {/* Benefits Card (Mobile) */}
-            <div className="lg:hidden w-full max-w-xl bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 text-left relative overflow-hidden group">
+            <div className="lg:hidden w-full max-w-xl bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-left relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Video size={80} className="text-zinc-500" />
               </div>
               <div className="relative z-10 space-y-4">
                 <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-[9px] font-bold uppercase tracking-widest">Creator Benefits</div>
-                <h3 className="text-xl font-bold text-white tracking-tight leading-tight">Unlock Your Creator Identity</h3>
-                <p className="text-zinc-400 text-xs leading-relaxed max-w-sm">Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.</p>
+                <h3 className="text-xl font-bold text-zinc-900 tracking-tight leading-tight">Unlock Your Creator Identity</h3>
+                <p className="text-zinc-600 text-xs leading-relaxed max-w-sm">Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
                   {[
                     { icon: <Users size={14} />, text: "Verified Stats" },
@@ -490,8 +490,8 @@ export default function YouTubeConnect() {
                     { icon: <Check size={14} />, text: "Search Priority" },
                     { icon: <Video size={14} />, text: "Brand Verified" }
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 text-zinc-300 text-[10px] font-bold uppercase tracking-tight">
-                      <div className="p-1 rounded-lg bg-white/5 border border-white/10 text-red-500">{item.icon}</div>
+                    <div key={i} className="flex items-center gap-2 text-zinc-700 text-[10px] font-bold uppercase tracking-tight">
+                      <div className="p-1 rounded-lg bg-white border border-zinc-200 shadow-sm text-red-500">{item.icon}</div>
                       {item.text}
                     </div>
                   ))}
@@ -505,14 +505,14 @@ export default function YouTubeConnect() {
       {/* ── STICKY BOTTOM HUD ──────────────────────────────────────────────── */}
       {connected && (
         <div className="fixed bottom-6 inset-x-4 md:bottom-10 z-[100] flex justify-center pointer-events-none">
-          <div className="w-full max-w-[42rem] bg-zinc-950/80 backdrop-blur-2xl border border-zinc-800 p-3 md:p-4 rounded-[2rem] flex items-center justify-between gap-6 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+          <div className="w-full max-w-[42rem] bg-white/80 backdrop-blur-2xl border border-zinc-200 p-3 md:p-4 rounded-[2rem] flex items-center justify-between gap-6 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-4 pl-3">
-              <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-200 flex items-center justify-center">
                 <div className={`w-2.5 h-2.5 rounded-full ${hasUnclaimedChannel ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-orange-500'}`} />
               </div>
               <div className="hidden sm:block">
                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">Channel Status</p>
-                <p className="text-sm font-bold text-white leading-none">
+                <p className="text-sm font-bold text-zinc-900 leading-none">
                   {hasUnclaimedChannel
                     ? `${youtubeDiscovery.channels.filter((c) => !c.isClaimed).length} ready · click Next to choose your niche`
                     : 'All channels already registered'
