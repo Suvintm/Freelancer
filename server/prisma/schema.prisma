@@ -28,6 +28,8 @@ model User {
   memberships               CommunityMember[]
   communityMessageReactions CommunityMessageReaction[]
   community_messages        CommunityMessage[]
+  communityPostsAuthored    CommunityPost[]            @relation("CommunityPostAuthor")
+  communityPostReactions    CommunityPostReaction[]    @relation("CommunityPostReactionUser")
   media                     Media[]
   media_user_tags           MediaUserTag[]
   received_messages         Message[]                  @relation("MessageReceiver")
@@ -201,6 +203,7 @@ model YouTubeProfile {
   user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sync_logs               YouTubeSyncLog[]
   videos                  YouTubeVideo[]
+  community               Community?
 
   @@map("youtube_profiles")
 }
@@ -437,6 +440,7 @@ model Media {
   storage_provider  String             @default("S3") @map("storage_provider")
   youtubePostId     String?            @map("youtube_post_id") @db.Uuid
   communityMessages CommunityMessage[]
+  communityPosts    CommunityPost[]
   post              Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
   reel              Reel?              @relation(fields: [reelId], references: [id], onDelete: Cascade)
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -617,22 +621,30 @@ model AdminSession {
 model Community {
   id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerId        String                   @map("owner_id") @db.Uuid
+  ytProfileId    String?                  @unique @map("yt_profile_id") @db.Uuid
   name           String                   @db.VarChar(100)
   slug           String                   @unique @db.VarChar(100)
   description    String?
   thumbnail      String?
+  bannerUrl      String?                  @map("banner_url")
+  rules          String?                  @db.Text
   category       CommunityCategory        @default(CUSTOM)
   isPrivate      Boolean                  @default(false) @map("is_private")
+  memberCount    Int                      @default(0) @map("member_count")
   metadata       Json?                    @default("{}")
   created_at     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at     DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
   owner          User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ytProfile      YouTubeProfile?          @relation(fields: [ytProfileId], references: [id])
   linkedAccounts CommunityLinkedAccount[]
   members        CommunityMember[]
   messages       CommunityMessage[]
+  posts          CommunityPost[]
+  inviteLinks    CommunityInviteLink[]
 
   @@index([ownerId])
   @@index([slug])
+  @@index([isPrivate])
   @@map("communities")
 }
 
@@ -642,10 +654,16 @@ model CommunityMember {
   userId      String        @map("user_id") @db.Uuid
   role        CommunityRole @default(MEMBER)
   joined_at   DateTime      @default(now()) @map("joined_at") @db.Timestamptz(6)
+  lastReadAt  DateTime?     @map("last_read_at") @db.Timestamptz(6)
+  isBanned    Boolean       @default(false) @map("is_banned")
+  bannedAt    DateTime?     @map("banned_at") @db.Timestamptz(6)
+  banReason   String?       @map("ban_reason")
+  mutedUntil  DateTime?     @map("muted_until") @db.Timestamptz(6)
   community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([communityId, userId])
+  @@index([userId])
   @@map("community_members")
 }
 
@@ -693,6 +711,63 @@ model CommunityLinkedAccount {
 
   @@index([communityId])
   @@map("community_linked_accounts")
+}
+
+model CommunityPost {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String            @map("community_id") @db.Uuid
+  authorId    String            @map("author_id") @db.Uuid
+  type        CommunityPostType @default(NATIVE)
+  content     String?           @db.Text
+  mediaId     String?           @map("media_id") @db.Uuid
+  sourceId    String?           @map("source_id") @db.Uuid
+  metadata    Json?             @default("{}")
+  isPinned    Boolean           @default(false) @map("is_pinned")
+  isDeleted   Boolean           @default(false) @map("is_deleted")
+  viewCount   Int               @default(0) @map("view_count")
+  created_at  DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime          @default(now()) @db.Timestamptz(6)
+
+  community Community               @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author    User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id])
+  media     Media?                  @relation(fields: [mediaId], references: [id])
+  reactions CommunityPostReaction[]
+
+  @@index([communityId, created_at])
+  @@index([communityId, isPinned])
+  @@map("community_posts")
+}
+
+model CommunityPostReaction {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String   @map("post_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  emoji      String   @db.VarChar(10)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User          @relation("CommunityPostReactionUser", fields: [userId], references: [id])
+
+  @@unique([postId, userId, emoji])
+  @@index([postId])
+  @@map("community_post_reactions")
+}
+
+model CommunityInviteLink {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String    @map("community_id") @db.Uuid
+  code        String    @unique @db.VarChar(20)
+  createdBy   String    @map("created_by") @db.Uuid
+  maxUses     Int?      @map("max_uses")
+  useCount    Int       @default(0) @map("use_count")
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  isActive    Boolean   @default(true) @map("is_active")
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@map("community_invite_links")
 }
 
 model SubscriptionPlan {
@@ -1138,6 +1213,14 @@ enum CommunityCategory {
   EDITOR
   TALENT
   CUSTOM
+}
+
+enum CommunityPostType {
+  NATIVE
+  SHARE_POST
+  SHARE_REEL
+  SHARE_YT_POST
+  SHARE_POLL
 }
 
 enum CommunityPlatform {

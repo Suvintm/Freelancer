@@ -4,6 +4,7 @@ import prisma from "../../infrastructure/database/postgres.js";
 import { subscribe, publish } from "../../infrastructure/cache/redis.client.js";
 import logger from "../../infrastructure/monitoring/logger.js";
 import dotenv from "dotenv";
+import { registerCommunitySocket } from "../../domains/community/community.socket.js";
 
 dotenv.config();
 
@@ -139,6 +140,9 @@ const setupSocketHandlers = () => {
         emitToUser(receiverId, "typing:stop", { senderId: socket.userId });
       }
     });
+
+    // Register Community socket handlers
+    registerCommunitySocket(io, socket);
 
     socket.on("disconnect", () => {
       if (userId && userSocketMap[userId]) {
