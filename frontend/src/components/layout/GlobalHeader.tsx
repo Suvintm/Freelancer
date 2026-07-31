@@ -86,7 +86,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   };
 
   return (
-    <header className={`h-14 w-full shrink-0 border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative ${isDarkMode ? 'bg-black' : 'bg-nav'}`}>
+    <header className={`h-14 w-full shrink-0 border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative ${isDarkMode ? 'bg-[#000000]' : 'bg-nav'}`}>
 
       {/* ── Mobile layout ─────────────────────────────────────────── */}
       <div className="lg:hidden flex items-center justify-between w-full gap-3">
@@ -133,7 +133,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
                 setIsMobileSearchExpanded(false);
                 setQuery('');
               }}
-              className="text-xs font-bold text-zinc-500"
+              className={`text-xs font-bold hover:opacity-80 ${isDarkMode ? 'text-zinc-400' : 'text-[#213130]'}`}
             >
               Cancel
             </button>
@@ -308,7 +308,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               {tier === 'pro' && <Zap size={12} className="text-white fill-white/10" />}
               {tier === 'elite' && <Gem size={12} className="text-white fill-white/10" />}
               
-              <span className="text-[10.5px] font-black uppercase tracking-wider leading-none">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-white">
                 {tier === 'free' ? 'Upgrade' : `${tier}`}
               </span>
               
@@ -327,11 +327,11 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
 
             <button
               onClick={() => navigate('/communication-hub')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#213130] hover:bg-border-secondary hover:opacity-80 transition-colors relative"
               aria-label="Messages"
             >
               <MessageSquare size={16} />
-              <span className="text-[11.5px] font-bold uppercase tracking-wider hidden xl:inline">Chat</span>
+              <span className={`text-[15.5px] font-semibold uppercase hidden xl:inline ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>Chat</span>
             </button>
 
             <button
@@ -356,7 +356,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               <Sparkles size={10} className="text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[12px] font-black leading-none text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-400 dark:to-purple-400">
+              <span className="text-[15.5px] font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-400 dark:to-purple-400">
                 1,250
               </span>
             </div>
@@ -405,9 +405,9 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
                 }, 1000);
               }}
               className="
-                inline-flex items-center gap-1.5 h-8 px-3 mr-2 rounded-full
+                inline-flex items-center justify-center gap-1.5 h-8 px-3 mr-2 rounded-full
                 bg-zinc-800 hover:bg-zinc-700
-                text-white text-[12px] font-semibold cursor-pointer
+                text-[13.5px] font-semibold text-white cursor-pointer
                 shadow-sm active:scale-[0.98] transition-all shrink-0
               "
             >
@@ -417,10 +417,10 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             <button 
               onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
               className="
-                inline-flex items-center gap-1.5 h-8 px-4 rounded-full
+                inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full
                 bg-gradient-to-r from-orange-500 to-rose-500
                 hover:from-orange-600 hover:to-rose-600
-                text-white text-[12px] font-semibold cursor-pointer
+                text-[13.5px] font-semibold text-white cursor-pointer
                 shadow-sm active:scale-[0.98] transition-all shrink-0
               "
             >
@@ -503,8 +503,8 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
           {/* Profile Details */}
 
           <div className="text-right hidden xl:block">
-            <p className="text-[12px] font-semibold text-text-main leading-tight">{userData.name}</p>
-            <p className="text-[11px] text-text-muted leading-tight">@{userData.username}</p>
+            <p className={`text-[15.5px] font-semibold leading-tight ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>{userData.name}</p>
+            <p className={`text-[13px] font-medium opacity-70 leading-tight ${isDarkMode ? 'text-zinc-400' : 'text-[#213130]'}`}>@{userData.username}</p>
           </div>
           <div className="w-8 h-8 rounded-full border border-border-main overflow-hidden cursor-pointer hover:ring-2 hover:ring-border-main transition-all relative">
             <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />

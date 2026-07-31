@@ -7,6 +7,8 @@ import defaultProfile from '../assets/defaultprofile.png';
 import CreateCommunityModal from '../components/community/CreateCommunityModal';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
+import { useNavigate } from 'react-router-dom';
+import { VerifiedBadge } from '../components/ui/VerifiedBadge';
 
 const BUBBLE_COMMUNITIES = [
   { id: 1, name: 'Web Devs', img: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=150', delay: '0s' },
@@ -20,6 +22,7 @@ const BUBBLE_COMMUNITIES = [
 ];
 
 const Community = () => {
+  const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
   const isCreator = user?.primaryRole?.category === 'yt_influencer';
@@ -140,6 +143,7 @@ const Community = () => {
               {myCommunities.map((community: any, index: number) => (
                 <div 
                   key={community.id} 
+                  onClick={() => navigate(`/community/${community.id}`)}
                   className={`group relative flex items-center gap-4 py-4 px-2 sm:px-4 cursor-pointer transition-colors ${
                     isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
                   } ${index !== myCommunities.length - 1 ? (isDarkMode ? 'border-b border-white/5' : 'border-b border-black/5') : ''}`}
@@ -157,7 +161,12 @@ const Community = () => {
                   {/* Content */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-bold text-base sm:text-lg truncate pr-4">{community.name}</h3>
+                      <div className="flex items-center gap-1 min-w-0 pr-4">
+                        <h3 className="font-bold text-base sm:text-lg truncate">{community.name}</h3>
+                        {community.ytProfileId && (
+                          <VerifiedBadge isVerified={true} role="yt_influencer" className="w-4 h-4 shrink-0" />
+                        )}
+                      </div>
                       {/* Fake timestamp for now, but looks authentic */}
                       <span className={`text-xs whitespace-nowrap shrink-0 font-medium ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
                         Just now

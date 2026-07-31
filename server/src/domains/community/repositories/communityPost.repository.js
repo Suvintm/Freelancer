@@ -9,7 +9,7 @@ export const communityPostRepository = {
           select: {
             id: true,
             username: true,
-            profile: { select: { avatar_url: true } },
+            profile: { select: { profile_picture: true } },
           },
         },
         media: true,
@@ -25,7 +25,7 @@ export const communityPostRepository = {
           select: {
             id: true,
             username: true,
-            profile: { select: { avatar_url: true } },
+            profile: { select: { profile_picture: true } },
           },
         },
         media: true,
@@ -51,7 +51,7 @@ export const communityPostRepository = {
           select: {
             id: true,
             username: true,
-            profile: { select: { avatar_url: true } },
+            profile: { select: { profile_picture: true } },
           },
         },
         media: true,

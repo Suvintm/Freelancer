@@ -3,21 +3,21 @@
    Fonts: Inter (body) · Outfit (display/headings) · Space Grotesk (labels/caps)
    Matches the SuviX mobile app's Colors.ts aesthetic exactly.
 ───────────────────────────────────────────────────────────────────────────── */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Skranji:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Madimi+One&family=Bungee&family=Figtree:ital,wght@0,300..900;1,300..900&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Skranji:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
 @theme {
-  --font-sans:    "Inter",          ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Inter",          ui-sans-serif, system-ui, sans-serif;
-  --font-body:    "Inter",          ui-sans-serif, system-ui, sans-serif;
-  --font-label:   "Inter",          ui-sans-serif, system-ui, sans-serif;
-  --font-mono:    "JetBrains Mono", "Fira Code",   ui-monospace, monospace;
-  --font-banner:  "Bubblegum Sans",        cursive, system-ui, sans-serif;
-  --font-community: "Caveat Brush",        ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    "Figtree", ui-sans-serif, system-ui, -apple-system, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-body:    "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-label:   "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono:    "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-banner:  "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-community: "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-welcome:   "Madimi One", Roboto, sans-serif;
 
   /* Color Mappings for Tailwind Utilities */
   --color-page:            var(--bg-page);
@@ -56,11 +56,11 @@
 
 /* DARK MODE (Activated via .dark class) */
 .dark {
-  --bg-page:          #09090B;
-  --bg-container:     #0B0B0D;
+  --bg-page:          #000000;
+  --bg-container:     #213130;
   --bg-card:          #111114;
   --bg-input:         #0F0F12;
-  --bg-sidebar:       #0A0A0D;
+  --bg-sidebar:       #213130;
   --text-primary:     #FAFAFA;
   --text-secondary:   #A1A1AA;
   --text-muted:       #52525B;
@@ -84,7 +84,7 @@
   }
 
   body {
-    font-family: var(--font-sans);
+    font-family: var(--font-sans) !important;
     background-color: var(--bg-page);
     color: var(--text-primary);
     line-height: 1.6;
@@ -93,6 +93,8 @@
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
   }
+
+
 
   /* ── Typography Scale ──────────────────────────────────────────────────── */
   /* Display headings — Inter, Bold, Clean */
