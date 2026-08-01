@@ -267,7 +267,7 @@ function FloatingThoughts() {
     
     const interval = setInterval(() => {
       const text = THOUGHTS[Math.floor(Math.random() * THOUGHTS.length)];
-      const side = Math.random() > 0.5 ? 'left' : 'right';
+      const side = (Math.random() > 0.5 ? 'left' : 'right') as 'left' | 'right';
       // Keep mostly in the upper half so it doesn't get covered by the mobile card
       const top = 5 + Math.random() * 40;
       
