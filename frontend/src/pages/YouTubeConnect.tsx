@@ -65,6 +65,8 @@ export default function YouTubeConnect() {
   const hasUnclaimedChannel = youtubeDiscovery.channels.some((c) => !c.isClaimed);
 
   const handleConnect = () => {
+    // Flag so OAuthSuccess knows we are ONLY fetching channels, not logging in
+    sessionStorage.setItem('oauth_intent', 'connect_youtube');
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
     window.location.href = `${apiUrl}/auth/google/youtube`;
   };

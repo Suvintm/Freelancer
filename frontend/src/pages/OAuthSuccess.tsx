@@ -68,6 +68,25 @@ export default function OAuthSuccess() {
         const intent = onboardingStore.tempSignupData?.intent ?? 'login';
         const categorySlug = onboardingStore.tempSignupData?.categorySlug;
 
+        // ── CHANNEL FETCH OVERRIDE ───────────────────────────────────────────
+        // If the user clicked "Try a different Google account" from YouTubeConnect,
+        // we ONLY want to fetch the token to get their channels. We DO NOT want to
+        // overwrite their ongoing signup identity, and we definitely do NOT want 
+        // to log them in (even if they picked an existing account).
+        const oauthIntent = sessionStorage.getItem('oauth_intent');
+        if (oauthIntent === 'connect_youtube') {
+          sessionStorage.removeItem('oauth_intent');
+          const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
+          
+          if (tokenToUse) {
+            navigate('/youtube-connect', { state: { googleAccessToken: tokenToUse } });
+          } else {
+            navigate('/youtube-connect?error=no_token');
+          }
+          return; // Early return prevents ALL login / profile mutation logic!
+        }
+
+
         if (response.data.isNewUser) {
           // ── NEW USER ────────────────────────────────────────────────────────
 
@@ -129,13 +148,6 @@ export default function OAuthSuccess() {
         dispatch(setAuth({ user, token, refreshToken }));
         dispatch(setIsAddingAccount(false));
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
-
-        const oauthIntent = sessionStorage.getItem('oauth_intent');
-        if (oauthIntent === 'connect_youtube' && googleAccessToken) {
-          sessionStorage.removeItem('oauth_intent');
-          navigate('/youtube-connect', { state: { googleAccessToken } });
-          return;
-        }
 
         if (intent === 'register' && categorySlug === 'yt_influencer' && googleAccessToken) {
           // Edge case: existing user who is trying to re-link YouTube during onboarding
