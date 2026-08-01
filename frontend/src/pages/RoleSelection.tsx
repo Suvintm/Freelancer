@@ -205,7 +205,7 @@ export default function RoleSelection() {
               </div>
             </div>
             <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight tracking-tight">
+              <h1 className="font-welcome text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight tracking-tight">
                 Start your <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-400">new chapter.</span>
               </h1>
               <p className="text-gray-500 text-xs md:text-sm max-w-lg leading-relaxed font-medium">

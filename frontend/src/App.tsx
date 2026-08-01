@@ -31,6 +31,7 @@ import TermsAndConditions from './pages/TermsAndConditions';
 import CreatePoll from './pages/CreatePoll';
 import CreatorTools from './pages/CreatorTools';
 import Community from './pages/Community';
+import CommunityRoom from './pages/CommunityRoom';
 import { AppLayout } from './components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -212,6 +213,16 @@ function App() {
             <AuthGuard>
               <AppLayout>
                 <Community />
+              </AppLayout>
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path="/community/:communityId" 
+          element={
+            <AuthGuard>
+              <AppLayout>
+                <CommunityRoom />
               </AppLayout>
             </AuthGuard>
           } 

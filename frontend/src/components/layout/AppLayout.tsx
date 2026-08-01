@@ -21,7 +21,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isChatPage = location.pathname === '/communication-hub';
   const hasActiveChat = searchParams.has('userId');
   const isCreatorToolsPage = location.pathname === '/creator-tools';
-  const isCommunityPage = location.pathname === '/community';
+  const isCommunityPage = location.pathname.startsWith('/community');
   const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage || isCommunityPage;
   const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage || isHomePage;
   const { isDarkMode } = useTheme();
@@ -51,7 +51,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
           {/* Floating Canvas with Rounded Corners */}
           <div className={`w-full h-full lg:rounded-[48px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300 ${isFullPage || location.pathname === '/home' ? (isDarkMode ? 'bg-[#000000]' : 'bg-white') : 'bg-container'}`}>
-            {location.pathname === '/nearby' || location.pathname === '/communication-hub' ? (
+            {location.pathname === '/nearby' || location.pathname === '/communication-hub' || location.pathname.startsWith('/community/') ? (
               <div className="w-full h-full relative overflow-hidden">
                 {children}
               </div>

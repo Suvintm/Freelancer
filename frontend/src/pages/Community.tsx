@@ -4,6 +4,11 @@ import { Users, Plus, Search, SlidersHorizontal, Bell } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
 import defaultProfile from '../assets/defaultprofile.png';
+import CreateCommunityModal from '../components/community/CreateCommunityModal';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api/client';
+import { useNavigate } from 'react-router-dom';
+import { VerifiedBadge } from '../components/ui/VerifiedBadge';
 
 const BUBBLE_COMMUNITIES = [
   { id: 1, name: 'Web Devs', img: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=150', delay: '0s' },
@@ -17,11 +22,23 @@ const BUBBLE_COMMUNITIES = [
 ];
 
 const Community = () => {
+  const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
   const isCreator = user?.primaryRole?.category === 'yt_influencer';
   const [activeTab, setActiveTab] = useState('Discover');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const { data: communitiesResponse, refetch } = useQuery({
+    queryKey: ['my_communities'],
+    queryFn: async () => {
+      const res = await api.get('/communities/me');
+      return res.data;
+    },
+    enabled: !!user,
+  });
+
+  const myCommunities = communitiesResponse?.communities || [];
   const youtubeChannels = user?.youtubeProfile || [];
   
   // We want exactly two avatars to peek out behind the main icon
@@ -42,25 +59,50 @@ const Community = () => {
       isDarkMode ? 'bg-black text-white' : 'bg-white text-zinc-950'
     }`}>
       
-      {/* ── PROFESSIONAL HEADER ── */}
+      {/* ── HEADER ── */}
       <div className={`sticky top-0 z-30 w-full px-4 sm:px-8 pt-5 pb-3 flex flex-col gap-4 border-b ${
         isDarkMode ? 'bg-black/80 border-white/10 backdrop-blur-xl' : 'bg-white/80 border-black/5 backdrop-blur-xl'
       }`}>
-        {/* Top Row: Title & Actions */}
         <div className="flex items-center justify-between">
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight">
-            Communities
-          </h1>
-          <div className="flex items-center gap-2">
-            <button className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors ${
-              isDarkMode ? 'bg-zinc-900 hover:bg-zinc-800' : 'bg-zinc-100 hover:bg-zinc-200'
+          <h1 className="font-display text-2xl font-bold tracking-tight">Communities</h1>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {isCreator && (
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className={`hidden sm:flex px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-[0.98] items-center gap-2 mr-2 ${
+                  isDarkMode 
+                    ? 'bg-white text-black hover:bg-zinc-200 shadow-white/10' 
+                    : 'bg-black text-white hover:bg-zinc-800 shadow-black/10'
+                }`}
+              >
+                <Plus className="w-4 h-4" />
+                Create
+              </button>
+            )}
+            
+            {/* Mobile Create Button (Icon only) */}
+            {isCreator && (
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className={`sm:hidden p-2 rounded-full transition-colors ${
+                  isDarkMode 
+                    ? 'bg-white text-black hover:bg-zinc-200' 
+                    : 'bg-black text-white hover:bg-zinc-800'
+                }`}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+
+            <button className={`p-2 sm:p-2.5 rounded-full transition-colors ${
+              isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'
             }`}>
-              <Search className="w-4 h-4" />
+              <Search className="w-5 h-5" />
             </button>
-            <button className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors ${
-              isDarkMode ? 'bg-zinc-900 hover:bg-zinc-800' : 'bg-zinc-100 hover:bg-zinc-200'
+            <button className={`p-2 sm:p-2.5 rounded-full transition-colors ${
+              isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'
             }`}>
-              <Bell className="w-4 h-4" />
+              <Bell className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -92,9 +134,63 @@ const Community = () => {
       </div>
 
       {/* ── CONTENT AREA (Empty States) ── */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-        {isCreator ? (
-          /* ── CREATOR UI ── */
+      <div className={`flex-1 flex flex-col p-4 sm:p-8 ${myCommunities.length === 0 ? 'items-center justify-center' : ''}`}>
+        
+        {myCommunities.length > 0 ? (
+          /* ── MY COMMUNITIES UI ── */
+          <div className="w-full animate-in fade-in duration-500 pt-2">
+            <div className="flex flex-col w-full max-w-3xl mx-auto">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {myCommunities.map((community: any, index: number) => (
+                <div 
+                  key={community.id} 
+                  onClick={() => navigate(`/community/${community.id}`)}
+                  className={`group relative flex items-center gap-4 py-4 px-2 sm:px-4 cursor-pointer transition-colors ${
+                    isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                  } ${index !== myCommunities.length - 1 ? (isDarkMode ? 'border-b border-white/5' : 'border-b border-black/5') : ''}`}
+                >
+                  {/* Thumbnail */}
+                  <div className="relative shrink-0">
+                    <img 
+                      src={community.thumbnail || defaultProfile} 
+                      alt={community.name} 
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover bg-zinc-200" 
+                    />
+                    {/* Optional online/activity indicator could go here */}
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1 min-w-0 pr-4">
+                        <h3 className="font-bold text-base sm:text-lg truncate">{community.name}</h3>
+                        {community.ytProfileId && (
+                          <VerifiedBadge isVerified={true} role="yt_influencer" className="w-4 h-4 shrink-0" />
+                        )}
+                      </div>
+                      {/* Fake timestamp for now, but looks authentic */}
+                      <span className={`text-xs whitespace-nowrap shrink-0 font-medium ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                        Just now
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm truncate pr-4 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        {community.description || `Welcome to ${community.name}!`}
+                      </p>
+                      
+                      {/* Unread badge example */}
+                      <div className="shrink-0 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-[10px] font-bold text-white">
+                        1
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : isCreator ? (
+          /* ── CREATOR UI (Empty State) ── */
           <div className="flex flex-col items-center max-w-lg text-center p-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="relative z-0 mb-8 sm:mb-10 group cursor-pointer mt-4">
               
@@ -146,7 +242,9 @@ const Community = () => {
               Create your first community for your YouTube channel to boost engagement, interact directly with your audience, and accelerate your growth.
             </p>
 
-            <button className={`w-full max-w-[280px] sm:max-w-[300px] py-3.5 px-5 rounded-xl text-sm font-bold shadow-xl transition-all active:scale-[0.98] hover:shadow-2xl flex items-center justify-center gap-2 ${
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className={`w-full max-w-[280px] sm:max-w-[300px] py-3.5 px-5 rounded-xl text-sm font-bold shadow-xl transition-all active:scale-[0.98] hover:shadow-2xl flex items-center justify-center gap-2 ${
               isDarkMode 
                 ? 'bg-white text-black hover:bg-zinc-200 shadow-white/10' 
                 : 'bg-black text-white hover:bg-zinc-800 shadow-black/10'
@@ -221,6 +319,14 @@ const Community = () => {
         )}
       </div>
 
+      <CreateCommunityModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+        onSuccess={(community) => {
+          console.log('Created!', community);
+          refetch(); // Refetch the communities list
+        }}
+      />
     </div>
   );
 };

@@ -1,133 +1,79 @@
 import communityService from '../services/communityService.js';
-const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 class CommunityController {
-  async create(req, res) {
+  async create(req, res, next) {
     try {
-      const ownerId = req.user.id;
-      const community = await communityService.createCommunity(ownerId, req.body);
+      const community = await communityService.createCommunity(req.user.id, req.body);
       res.status(201).json({ success: true, data: community });
-    } catch (error) {
-      console.error('[CommunityController] Create error:', error);
-      res.status(500).json({ success: false, message: error.message });
+    } catch (err) {
+      if (err.statusCode) return res.status(err.statusCode).json({ success: false, message: err.message });
+      next(err);
     }
   }
 
-  async getBySlug(req, res) {
+  async update(req, res, next) {
     try {
-      const { slug } = req.params;
-      const community = await communityService.getCommunityBySlug(slug);
-      if (!community) {
-        return res.status(404).json({ success: false, message: 'Community not found' });
-      }
-      res.json({ success: true, data: community });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      const community = await communityService.updateCommunity(req.params.id, req.body);
+      res.status(200).json({ success: true, data: community });
+    } catch (err) {
+      if (err.statusCode) return res.status(err.statusCode).json({ success: false, message: err.message });
+      next(err);
     }
   }
 
-  async join(req, res) {
+  async delete(req, res, next) {
     try {
-      const { communityId } = req.params;
-      if (!isValidUUID(communityId)) {
-        return res.status(400).json({ success: false, message: 'Invalid community ID format' });
-      }
-      const userId = req.user.id;
-      const membership = await communityService.joinCommunity(communityId, userId);
-      res.json({ success: true, data: membership });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      await communityService.deleteCommunity(req.params.id);
+      res.status(200).json({ success: true, message: 'Community deleted' });
+    } catch (err) {
+      next(err);
     }
   }
 
-  async sendMessage(req, res) {
+  async getById(req, res, next) {
     try {
-      const { communityId } = req.params;
-      if (!isValidUUID(communityId)) {
-        return res.status(400).json({ success: false, message: 'Invalid community ID format' });
-      }
-      const senderId = req.user.id;
-      const message = await communityService.sendMessage(communityId, senderId, req.body);
-      
-      // Emit socket event if available
-      if (req.io) {
-        req.io.to(`community:${communityId}`).emit('new_community_message', message);
-      }
-
-      res.status(201).json({ success: true, data: message });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      // The community is already fetched by middleware if we use it, but for simple GET we can just return it
+      const community = await communityService.getCommunityById(req.params.id);
+      if (!community) return res.status(404).json({ success: false, message: 'Not found' });
+      res.status(200).json({ success: true, data: community });
+    } catch (err) {
+      next(err);
     }
   }
 
-  async getMessages(req, res) {
+  async getBySlug(req, res, next) {
     try {
-      const { communityId } = req.params;
-      if (!isValidUUID(communityId)) {
-        return res.status(400).json({ success: false, message: 'Invalid community ID format' });
-      }
+      const community = await communityService.getCommunityBySlug(req.params.slug);
+      if (!community) return res.status(404).json({ success: false, message: 'Not found' });
+      res.status(200).json({ success: true, data: community });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMyCommunities(req, res, next) {
+    try {
       const { limit, cursor } = req.query;
-      const messages = await communityService.getMessages(communityId, parseInt(limit), cursor);
-      res.json({ success: true, data: messages });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      const data = await communityService.getMyCommunities(req.user.id, {
+        limit: parseInt(limit) || 20,
+        cursor,
+      });
+      res.status(200).json({ success: true, ...data });
+    } catch (err) {
+      next(err);
     }
   }
 
-  async reactToMessage(req, res) {
+  async discover(req, res, next) {
     try {
-      const { communityId, messageId } = req.params;
-      if (!isValidUUID(communityId) || !isValidUUID(messageId)) {
-        return res.status(400).json({ success: false, message: 'Invalid ID format' });
-      }
-      const { emoji } = req.body;
-      const userId = req.user.id;
-      
-      if (!emoji) {
-        return res.status(400).json({ success: false, message: 'Emoji is required' });
-      }
-
-      const result = await communityService.reactToMessage(communityId, messageId, userId, emoji);
-      
-      // Emit socket event if available
-      if (req.io) {
-        req.io.to(`community:${communityId}`).emit('message_reaction_update', {
-          messageId,
-          userId,
-          result
-        });
-      }
-
-      res.json({ success: true, data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  }
-
-  async getMyCommunities(req, res) {
-    try {
-      const userId = req.user.id;
       const { limit, cursor } = req.query;
-      const communities = await communityService.getMyCommunities(userId, parseInt(limit) || 20, cursor);
-      res.json({ success: true, data: communities });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  }
-
-  async getById(req, res) {
-    try {
-      const { communityId } = req.params;
-      if (!isValidUUID(communityId)) {
-        return res.status(400).json({ success: false, message: 'Invalid community ID format' });
-      }
-      const community = await communityService.getCommunityById(communityId);
-      if (!community) {
-        return res.status(404).json({ success: false, message: 'Community not found' });
-      }
-      res.json({ success: true, data: community });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      const data = await communityService.getDiscoverCommunities({
+        limit: parseInt(limit) || 20,
+        cursor,
+      });
+      res.status(200).json({ success: true, ...data });
+    } catch (err) {
+      next(err);
     }
   }
 }
