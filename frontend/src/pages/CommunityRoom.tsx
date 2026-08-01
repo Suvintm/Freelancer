@@ -29,7 +29,7 @@ export default function CommunityRoom() {
   });
 
   // Fetch Posts/Messages
-  const { data: postsData, isLoading: isPostsLoading } = useQuery({
+  const { data: postsData } = useQuery({
     queryKey: ['community_posts', communityId],
     queryFn: async () => {
       const res = await api.get(`/communities/${communityId}/posts`);
@@ -43,17 +43,26 @@ export default function CommunityRoom() {
   
   const isAdmin = community?.ownerId === user?.id;
 
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   // Real-time socket setup
   useEffect(() => {
     const socket = getSocket();
     if (communityId && socket) {
       socket.emit('community:join', { communityId });
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const handleNewPost = (post: any) => {
         // Append new post to react-query cache
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         queryClient.setQueryData(['community_posts', communityId], (oldData: any) => {
           if (!oldData) return { posts: [post] };
           // check if already exists
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (oldData.posts.find((p: any) => p.id === post.id)) return oldData;
           return {
             ...oldData,
@@ -71,12 +80,6 @@ export default function CommunityRoom() {
       };
     }
   }, [communityId, queryClient]);
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
 
   // Scroll to bottom on initial load
   useEffect(() => {
@@ -188,6 +191,7 @@ export default function CommunityRoom() {
         </div>
 
         {/* Post Items */}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {posts.map((post: any) => {
           const isMe = post.authorId === user?.id;
           

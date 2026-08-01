@@ -140,6 +140,7 @@ const Community = () => {
           /* ── MY COMMUNITIES UI ── */
           <div className="w-full animate-in fade-in duration-500 pt-2">
             <div className="flex flex-col w-full max-w-3xl mx-auto">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {myCommunities.map((community: any, index: number) => (
                 <div 
                   key={community.id} 

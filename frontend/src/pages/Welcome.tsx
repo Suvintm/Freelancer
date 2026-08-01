@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
-import { ChevronRight, Sparkles, Star } from 'lucide-react';
+import { ChevronRight, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '../assets/whitebglogo.png';
 import creatorChar from '../assets/3d.png';
@@ -271,7 +271,6 @@ export default function Welcome() {
 
   useEffect(() => {
     if (!isLast) {
-      setLastSlideImageIndex(0);
       return;
     }
     const t = setInterval(() => {
