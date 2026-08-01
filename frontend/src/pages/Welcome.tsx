@@ -242,6 +242,83 @@ function CreatorCharacter() {
     </div>
   );
 }
+
+// ── Floating "Mind Voice" Bubbles ──────────────────────────────────────────
+const THOUGHTS = [
+  "How to get more views?",
+  "Is the algorithm changing again?",
+  "Still a beginner...",
+  "What's the best time to post?",
+  "How to get my first 1,000 subs?",
+  "My retention is dropping 😭",
+  "Need better thumbnails...",
+  "Should I start a second channel?",
+  "How to grow fast?",
+  "Why did my video flop?",
+  "How to get sponsored?",
+  "Am I shadowbanned?"
+];
+
+function FloatingThoughts() {
+  const [bubbles, setBubbles] = useState<Array<{ id: number; text: string; side: 'left' | 'right'; top: number }>>([]);
+  
+  useEffect(() => {
+    let idCounter = 0;
+    
+    const interval = setInterval(() => {
+      const text = THOUGHTS[Math.floor(Math.random() * THOUGHTS.length)];
+      const side = (Math.random() > 0.5 ? 'left' : 'right') as 'left' | 'right';
+      // Keep mostly in the upper half so it doesn't get covered by the mobile card
+      const top = 5 + Math.random() * 40;
+      
+      const newBubble = {
+        id: idCounter++,
+        text,
+        side,
+        top,
+      };
+      
+      setBubbles(prev => {
+        const next = [...prev, newBubble];
+        if (next.length > 6) return next.slice(next.length - 6);
+        return next;
+      });
+      
+      setTimeout(() => {
+        setBubbles(prev => prev.filter(b => b.id !== newBubble.id));
+      }, 7000);
+      
+    }, 2000); 
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden block">
+      <AnimatePresence>
+        {bubbles.map(bubble => (
+          <motion.div
+            key={bubble.id}
+            initial={{ opacity: 0, y: 40, scale: 0.8 }}
+            animate={{ 
+              opacity: [0, 1, 1, 0], 
+              y: -100,
+              scale: 1 
+            }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 7, ease: "easeOut" }}
+            className={`absolute px-3 py-1.5 md:px-5 md:py-3 bg-white text-zinc-900 shadow-2xl font-bold text-[10px] sm:text-xs md:text-sm xl:text-base whitespace-nowrap drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]
+              ${bubble.side === 'left' ? 'left-[2%] md:left-[4%] xl:left-[8%] rounded-[12px] md:rounded-[20px] rounded-bl-[2px] md:rounded-bl-[4px]' : 'right-[2%] md:right-[4%] xl:right-[8%] rounded-[12px] md:rounded-[20px] rounded-br-[2px] md:rounded-br-[4px]'}`}
+            style={{ top: `${bubble.top}%` }}
+          >
+            {bubble.text}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Welcome() {
   const [active, setActive] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -299,7 +376,10 @@ export default function Welcome() {
       </AnimatePresence>
 
       {/* ── GRADIENT OVERLAY ──────────────────────────────────────────────── */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10 z-0" />
+
+      {/* ── FLOATING THOUGHTS ─────────────────────────────────────────────── */}
+      <FloatingThoughts />
 
       {/* ── LOGO ─────────────────────────────────────────────────────────── */}
       <motion.header
