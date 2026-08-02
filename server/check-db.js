@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma, { connectPostgres } from './src/infrastructure/database/postgres.js';
 
 async function main() {
-  const user = await prisma.profile.findFirst({ select: { profile_picture: true } });
-  console.log(user);
+  await connectPostgres();
+  const user = await prisma.user.findFirst({ select: { id: true, role: true } });
+  console.log("Database user fetch successful:", user);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());

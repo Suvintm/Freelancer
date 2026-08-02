@@ -365,6 +365,12 @@ export const login = asyncHandler(async (req, res) => {
   // Bust stale cache on fresh login
   await deleteCache(CacheKey.userProfile(user.id));
 
+  // Record last login timestamp asynchronously
+  prisma.user.update({
+    where: { id: user.id },
+    data: { last_login_at: new Date() },
+  }).catch((err) => logger.warn(`[AUTH] Could not update last_login_at: ${err.message}`));
+
   logger.info(
     `[SECURITY] Successful login for user ${user.id} (${email}). Family: ${familyId}`
   );
@@ -385,7 +391,20 @@ export const login = asyncHandler(async (req, res) => {
 
 export const getRoles = asyncHandler(async (req, res) => {
   const categories = await prisma.roleCategory.findMany({
-    include: { subCategories: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      icon: true,
+      maps_to_role: true,
+      description: true,
+      info: true,
+      subCategories: {
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: "asc" },
+      },
+    },
+    // Fixed display order: user first, then creator, editor, brand
     orderBy: { name: "asc" },
   });
   res.status(200).json({ success: true, categories });
@@ -826,7 +845,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
   // Update user verified state
   const updatedUser = await prisma.user.update({
     where: { email: normalizedEmail },
-    data: { is_email_verified: true },
+    data: { is_email_verified: true, email_verified_at: new Date() },
     include: USER_INCLUDE,
   });
 

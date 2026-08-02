@@ -22,11 +22,21 @@ import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-reso
 
 // ─── Role Mapping ──────────────────────────────────────────────────────────
 
-export const mapGroupToAppRole = (group, systemRole) => {
+export const mapGroupToAppRole = (group, systemRole, categorySlug = "") => {
   if (systemRole === "admin") return "admin";
-  if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "provider";
-  return "client";
+  if (systemRole === "creator") return "creator";
+  if (systemRole === "brand") return "brand";
+  if (systemRole === "editor") return "editor";
+  if (systemRole === "user") return "user";
+  
+  // Legacy fallback
+  if (systemRole === "suvix_user") {
+    if (categorySlug === "video_editor") return "editor";
+    if (categorySlug === "yt_influencer" || group === "PROVIDER") return "creator";
+    if (categorySlug === "social_promoter") return "brand";
+    return "user";
+  }
+  return "user";
 };
 
 // ─── Standard Prisma Include ───────────────────────────────────────────────
@@ -55,17 +65,20 @@ export const USER_INCLUDE = {
   },
   stats: true,
   follows: true,
+  editorProfile: true,
+  brandProfile: true,
 };
 
 // ─── Primary Identity Resolver ────────────────────────────────────────────
 
 export const resolvePrimaryIdentity = (user) => {
+  const systemRole = user.role || "user";
+  
   if (!user.profile) {
     return {
-      group: "CLIENT",
       category: "General",
       subCategory: "Member",
-      appRole: mapGroupToAppRole("CLIENT", user.role),
+      appRole: systemRole,
       is_onboarded: user.is_onboarded,
     };
   }
@@ -76,27 +89,28 @@ export const resolvePrimaryIdentity = (user) => {
   const subCat = primaryMapping?.subCategory;
   const cat = user.profile.category || subCat?.category;
 
+  const categorySlug = cat?.slug || "";
+
   if (!cat && !subCat) {
     return {
-      group: "CLIENT",
       category: "General",
       subCategory: "Member",
-      appRole: mapGroupToAppRole("CLIENT", user.role),
+      appRole: systemRole,
       is_onboarded: user.is_onboarded,
     };
   }
 
-  const group = cat?.roleGroup || "CLIENT";
+  // maps_to_role directly stores the UserRole enum value (user/creator/editor/brand)
+  const appRole = cat?.maps_to_role || systemRole;
 
   return {
-    group,
     category: cat?.name || "General",
     categorySlug: cat?.slug,
     subCategory: subCat?.name || "Member",
     categoryId: cat?.id || user.profile.categoryId,
     subCategoryId: subCat?.id,
     subCategorySlug: subCat?.slug,
-    appRole: mapGroupToAppRole(group, user.role),
+    appRole,
     is_onboarded: user.is_onboarded,
   };
 };
@@ -206,6 +220,8 @@ export const formatAuthResponse = (user, subscription = null) => {
     createdAt: user.created_at,
 
     youtubeProfile: youtubeProfiles,
+    editorProfile: user.editorProfile || null,
+    brandProfile: user.brandProfile || null,
 
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0,

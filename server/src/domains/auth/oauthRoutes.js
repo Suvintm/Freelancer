@@ -421,7 +421,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             if (!existing.google_id) {
                 finalUser = await prisma.user.update({
                     where: { id: existing.id },
-                    data: { google_id: googleId, is_verified: true, is_email_verified: true },
+                    data: { google_id: googleId, is_verified: true, is_email_verified: true, email_verified_at: new Date() },
                     include: USER_INCLUDE
                 });
             }
@@ -467,14 +467,27 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
 
         // 3. ATOMIC TRANSACTION: Create Everything
         const user = await prisma.$transaction(async (tx) => {
+            let assignedRole = "user";
+            if (validCategoryId) {
+                const selectedCategory = await tx.roleCategory.findUnique({
+                    where: { id: validCategoryId },
+                    select: { maps_to_role: true }
+                });
+                if (selectedCategory?.maps_to_role) {
+                    assignedRole = selectedCategory.maps_to_role;
+                }
+            }
+
             const newUser = await tx.user.create({
                 data: {
                     email: normalizedEmail,
+                    username: normalizedUsername,
                     google_id: googleId,
                     auth_provider: "google",
                     is_verified: true,
                     is_email_verified: true,
-                    role: "suvix_user",
+                    email_verified_at: new Date(),
+                    role: assignedRole,
                     is_onboarded: true, // Atomic!
                     password_hash: `OAUTH_ATOMIC_${crypto.randomBytes(8).toString("hex")}`,
                 }
@@ -496,6 +509,21 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             await tx.userStats.create({
                 data: { userId: newUser.id }
             });
+
+            // Initialize Role-Specific Profile (Editor/Brand)
+            if (assignedRole === "editor") {
+                await tx.editorProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id }
+                });
+            } else if (assignedRole === "brand") {
+                await tx.brandProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id }
+                });
+            }
 
             if (validRoleSubIds.length > 0) {
                 await tx.userRoleMapping.createMany({
@@ -589,9 +617,23 @@ router.post("/select-role", authLimiter, async (req, res) => {
         
         // Finalize PostgreSQL Profile
         const updatedUser = await prisma.$transaction(async (tx) => {
+            let assignedRole = "user";
+            if (categoryId) {
+                const selectedCategory = await tx.roleCategory.findUnique({
+                    where: { id: categoryId },
+                    select: { maps_to_role: true }
+                });
+                if (selectedCategory?.maps_to_role) {
+                    assignedRole = selectedCategory.maps_to_role;
+                }
+            }
+
             await tx.user.update({
                 where: { id: decoded.id },
-                data: { is_onboarded: true }
+                data: { 
+                    is_onboarded: true,
+                    role: assignedRole
+                }
             });
 
             const profile = await tx.userProfile.update({
@@ -603,6 +645,21 @@ router.post("/select-role", authLimiter, async (req, res) => {
                     ...(categoryId ? { categoryId } : {}),
                 }
             });
+
+            // Initialize Role-Specific Profile (Editor/Brand)
+            if (assignedRole === "editor") {
+                await tx.editorProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
+                });
+            } else if (assignedRole === "brand") {
+                await tx.brandProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
+                });
+            }
 
             // Add Role Mappings (Expertise)
             if (roleSubCategoryIds && Array.isArray(roleSubCategoryIds) && roleSubCategoryIds.length > 0) {

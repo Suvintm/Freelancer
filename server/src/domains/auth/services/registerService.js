@@ -33,6 +33,7 @@ export const registerFullUser = async (userData) => {
     authProvider = "local",
     googleId = null,
     website,
+    role = null,
   } = userData;
 
   const normalizedEmail = email.toLowerCase();
@@ -110,10 +111,16 @@ export const registerFullUser = async (userData) => {
       const selectedCategory = resolvedCategoryId
         ? await tx.roleCategory.findUnique({
             where: { id: resolvedCategoryId },
-            select: { id: true, slug: true },
+            select: { id: true, slug: true, maps_to_role: true },
           })
         : null;
-      const isYoutubeCategory = selectedCategory?.slug === "yt_influencer";
+      const isYoutubeCategory = selectedCategory?.slug === "creator"; // new slug
+
+      let assignedRole = role;
+      if (!assignedRole) {
+        // maps_to_role is now the direct UserRole enum value
+        assignedRole = selectedCategory?.maps_to_role || 'user';
+      }
 
       let normalizedRoleSubCategoryIds = Array.from(
         new Set((roleSubCategoryIds || []).filter(Boolean))
@@ -209,16 +216,17 @@ export const registerFullUser = async (userData) => {
         );
       }
 
-      // Step A: Create User (Auth)
       const newUser = await tx.user.create({
         data: {
           email: normalizedEmail,
+          username: normalizedUsername,
           password_hash: hashedPassword,
           auth_provider: authProvider,
           google_id: googleId,
-          role: 'suvix_user', // Standardized Professional Role
+          role: assignedRole,
           is_onboarded: !!resolvedCategoryId || normalizedRoleSubCategoryIds.length > 0,
           is_email_verified: authProvider === "google",
+          email_verified_at: authProvider === "google" ? new Date() : null,
         },
       });
 
@@ -232,11 +240,27 @@ export const registerFullUser = async (userData) => {
           mother_tongue: motherTongue,
           location_country: country,
           phone: phone,
-          auth_provider: authProvider,
           categoryId: resolvedCategoryId,
           website: website || null,
         },
       });
+
+      // Step B-3: Create Role-Specific Profile (Editor/Brand)
+      if (assignedRole === "editor") {
+        await tx.editorProfile.create({
+          data: {
+            userId: newUser.id,
+            portfolio_url: website || null,
+          }
+        });
+      } else if (assignedRole === "brand") {
+        await tx.brandProfile.create({
+          data: {
+            userId: newUser.id,
+            company_website: website || null,
+          }
+        });
+      }
 
       await tx.userStats.upsert({
         where: { userId: newUser.id },

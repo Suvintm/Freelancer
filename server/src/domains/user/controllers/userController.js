@@ -45,34 +45,42 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
 
   if (!profile) throw new ApiError(404, "User profile not found");
 
-  if (username && username !== profile.username) {
-    const normalizedUsername = username.toLowerCase().trim();
+  const normalizedNewUsername = username ? username.toLowerCase().trim() : undefined;
+
+  if (normalizedNewUsername && normalizedNewUsername !== profile.username) {
     const existing = await prisma.userProfile.findUnique({
-      where: { username: normalizedUsername },
+      where: { username: normalizedNewUsername },
       select: { id: true },
     });
     if (existing) throw new ApiError(409, "Username already taken");
   }
 
-  const updated = await prisma.userProfile.update({
-    where: { userId },
-    data: {
-      ...(name ? { name: name.trim() } : {}),
-      ...(username ? { username: username.toLowerCase().trim() } : {}),
-      ...(phone !== undefined ? { phone: String(phone).trim() } : {}),
-      ...(country !== undefined ? { location_country: String(country).trim() } : {}),
-      ...(bio !== undefined ? { bio: String(bio).substring(0, 150).trim() } : {}),
-      updated_at: new Date(),
-    },
-    select: {
-      name: true,
-      username: true,
-      phone: true,
-      location_country: true,
-      profile_picture: true,
-      bio: true,
-    },
-  });
+  const [updated] = await prisma.$transaction([
+    prisma.userProfile.update({
+      where: { userId },
+      data: {
+        ...(name ? { name: name.trim() } : {}),
+        ...(normalizedNewUsername ? { username: normalizedNewUsername } : {}),
+        ...(phone !== undefined ? { phone: String(phone).trim() } : {}),
+        ...(country !== undefined ? { location_country: String(country).trim() } : {}),
+        ...(bio !== undefined ? { bio: String(bio).substring(0, 150).trim() } : {}),
+      },
+      select: {
+        name: true,
+        username: true,
+        phone: true,
+        location_country: true,
+        profile_picture: true,
+        bio: true,
+      },
+    }),
+    ...(normalizedNewUsername ? [
+      prisma.user.update({
+        where: { id: userId },
+        data: { username: normalizedNewUsername },
+      })
+    ] : [])
+  ]);
 
   const responseUser = {
     id: userId,

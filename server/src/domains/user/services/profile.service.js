@@ -37,7 +37,7 @@ export const getProfilePosts = async (targetUserId, cursor = null, currentUserId
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -66,7 +66,7 @@ export const getProfilePosts = async (targetUserId, cursor = null, currentUserId
         username: post.user.profile.username,
         profilePicture: post.user.profile.profile_picture,
         category: post.user.profile.category?.slug,
-        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+        role: post.user.profile.category?.maps_to_role || 'user'
       } : null,
       media: firstMedia ? resolveMediaForApi(firstMedia) : null,
       thumbnail: firstMedia ? resolveMediaForApi(firstMedia).thumbnail : null,
@@ -103,7 +103,7 @@ export const getProfileReels = async (targetUserId, cursor = null, currentUserId
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -131,7 +131,7 @@ export const getProfileReels = async (targetUserId, cursor = null, currentUserId
         username: reel.user.profile.username,
         profilePicture: reel.user.profile.profile_picture,
         category: reel.user.profile.category?.slug,
-        roleGroup: reel.user.profile.category?.roleGroup || 'CLIENT'
+        role: reel.user.profile.category?.maps_to_role || 'user'
       } : null,
       isProcessing: !reel.is_ready
     };
@@ -166,7 +166,7 @@ export const getProfileYoutubePosts = async (targetUserId, cursor = null, curren
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -194,7 +194,7 @@ export const getProfileYoutubePosts = async (targetUserId, cursor = null, curren
         username: post.user.profile.username,
         profilePicture: post.user.profile.profile_picture,
         category: post.user.profile.category?.slug,
-        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+        role: post.user.profile.category?.maps_to_role || 'user'
       } : null,
       isProcessing: !post.is_ready
     };
@@ -228,7 +228,7 @@ export const getProfilePolls = async (targetUserId, cursor = null) => {
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -259,7 +259,7 @@ export const getProfilePolls = async (targetUserId, cursor = null) => {
         username: poll.user.profile.username,
         profilePicture: poll.user.profile.profile_picture,
         category: poll.user.profile.category?.slug,
-        roleGroup: poll.user.profile.category?.roleGroup || 'CLIENT'
+        role: poll.user.profile.category?.maps_to_role || 'user'
       } : null
     };
   });

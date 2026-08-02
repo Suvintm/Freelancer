@@ -20,15 +20,20 @@ export const ROLE_CATEGORY = {
 
 // ── System Roles (mirrors Prisma UserRole enum) ────────────────────────────
 export const SYSTEM_ROLE = {
-  SUVIX_USER: 'suvix_user',
-  ADMIN:      'admin',
+  USER:    'user',
+  CREATOR: 'creator',
+  BRAND:   'brand',
+  EDITOR:  'editor',
+  ADMIN:   'admin',
 };
 
 // ── App Roles (derived, not stored) ───────────────────────────────────────
 export const APP_ROLE = {
-  PROVIDER: 'provider', // All PROVIDERs (Creator, Editor) map to this app role
-  CLIENT:   'client',   // All CLIENTs (Brand, Promoter) map to this app role
-  ADMIN:    'admin',
+  USER:    'user',
+  CREATOR: 'creator',
+  BRAND:   'brand',
+  EDITOR:  'editor',
+  ADMIN:   'admin',
 };
 
 // ── Capabilities (what each sub-role can do) ──────────────────────────────
@@ -44,16 +49,16 @@ export const CAPABILITIES = {
   SUBSCRIPTION_PURCHASE:  'subscription.purchase',
 };
 
-// Maps capability → allowed main category slugs
+// Maps capability → allowed roles
 export const CAPABILITY_MAP = {
-  [CAPABILITIES.CONTENT_UPLOAD_POST]:  [ROLE_CATEGORY.YOUTUBE_CREATOR, ROLE_CATEGORY.EDITOR, ROLE_CATEGORY.NORMAL_USER],
-  [CAPABILITIES.CONTENT_UPLOAD_REEL]:  [ROLE_CATEGORY.YOUTUBE_CREATOR, ROLE_CATEGORY.EDITOR, ROLE_CATEGORY.NORMAL_USER],
-  [CAPABILITIES.CONTENT_UPLOAD_STORY]: [ROLE_CATEGORY.YOUTUBE_CREATOR, ROLE_CATEGORY.EDITOR, ROLE_CATEGORY.NORMAL_USER],
-  [CAPABILITIES.CREATOR_CONNECT_YT]:   [ROLE_CATEGORY.YOUTUBE_CREATOR],
-  [CAPABILITIES.CREATOR_SYNC_CHANNEL]: [ROLE_CATEGORY.YOUTUBE_CREATOR],
-  [CAPABILITIES.CAMPAIGN_CREATE]:      [ROLE_CATEGORY.BRAND],
-  [CAPABILITIES.CAMPAIGN_APPLY]:       [ROLE_CATEGORY.YOUTUBE_CREATOR],
-  [CAPABILITIES.SUBSCRIPTION_PURCHASE]: Object.values(ROLE_CATEGORY), // All roles
+  [CAPABILITIES.CONTENT_UPLOAD_POST]:  [SYSTEM_ROLE.CREATOR, SYSTEM_ROLE.EDITOR, SYSTEM_ROLE.USER],
+  [CAPABILITIES.CONTENT_UPLOAD_REEL]:  [SYSTEM_ROLE.CREATOR, SYSTEM_ROLE.EDITOR, SYSTEM_ROLE.USER],
+  [CAPABILITIES.CONTENT_UPLOAD_STORY]: [SYSTEM_ROLE.CREATOR, SYSTEM_ROLE.EDITOR, SYSTEM_ROLE.USER],
+  [CAPABILITIES.CREATOR_CONNECT_YT]:   [SYSTEM_ROLE.CREATOR],
+  [CAPABILITIES.CREATOR_SYNC_CHANNEL]: [SYSTEM_ROLE.CREATOR],
+  [CAPABILITIES.CAMPAIGN_CREATE]:      [SYSTEM_ROLE.BRAND],
+  [CAPABILITIES.CAMPAIGN_APPLY]:       [SYSTEM_ROLE.CREATOR],
+  [CAPABILITIES.SUBSCRIPTION_PURCHASE]: [SYSTEM_ROLE.USER, SYSTEM_ROLE.CREATOR, SYSTEM_ROLE.BRAND, SYSTEM_ROLE.EDITOR], // All roles
 };
 
 // ── Subscription Tiers ─────────────────────────────────────────────────────
