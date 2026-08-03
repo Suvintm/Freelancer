@@ -132,10 +132,13 @@ export default function RoleSelection() {
       // YouTube creators connect their channel before filling personal details
       navigate('/youtube-connect');
     } else if (roleType === 'editor') {
-      // Video editors can pick specializations or go straight to signup
-      navigate('/subcategory-selection');
+      // Video editors pick specializations & software before details
+      navigate('/editor-specialization');
+    } else if (roleType === 'brand') {
+      // Enterprise Brands & Sponsors configure company profile & industry vertical
+      navigate('/brand-details');
     } else {
-      // Normal Users and Brands go straight to signup form!
+      // Normal Users go straight to signup form!
       navigate('/signup');
     }
   };

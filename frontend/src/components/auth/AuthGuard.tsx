@@ -54,7 +54,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   // 5. ONBOARDING GUARD: Ensure user has completed setup
-  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/youtube-niche', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
+  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/youtube-niche', '/editor-specialization', '/brand-details', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
   if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
   }
@@ -146,7 +146,7 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   return <>{children}</>;
 };
 
-const STEP_ORDER = ['role', 'subcategory', 'youtube', 'details', 'complete'] as const;
+const STEP_ORDER = ['role', 'specialization', 'brand', 'subcategory', 'youtube', 'details', 'complete'] as const;
 type OnboardingStep = typeof STEP_ORDER[number];
 
 interface OnboardingGuardProps {

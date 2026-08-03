@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import prisma from "../../../infrastructure/database/postgres.js";
 import { hashPassword } from "./password.service.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
@@ -30,7 +31,12 @@ export const registerFullUser = async (userData) => {
     skills = [],
     softwareUsed = [],
     specializations = [],
+    portfolioUrl = null,
+    experienceYears = 0,
     companyName,
+    companyWebsite = null,
+    companySize = null,
+    approxBudget = null,
     industry,
     designation,
     pushToken,
@@ -40,6 +46,7 @@ export const registerFullUser = async (userData) => {
     googleId = null,
     website,
     role = null,
+    discoveryToken = null,
   } = userData;
 
   const normalizedEmail = email.toLowerCase().trim();
@@ -56,13 +63,40 @@ export const registerFullUser = async (userData) => {
   });
   if (existingProfile) throw new ApiError(400, "Username already taken.");
 
-  // 1.5 Conflict Check: YouTube Channels (Prevent Hijacking)
+  // 1.5 Conflict & Ownership Check: YouTube Channels (Prevent Hijacking)
   if (youtubeChannels && youtubeChannels.length > 0) {
     const channelIds = youtubeChannels
       .map((ch) => String(ch.channelId || ch.channel_id || ch.id || "").trim())
       .filter(Boolean);
 
     if (channelIds.length > 0) {
+      // 🛡️ Cryptographic Proof: Verify channel ownership signature
+      if (discoveryToken) {
+        try {
+          const decoded = jwt.verify(
+            discoveryToken,
+            process.env.JWT_SECRET || "suvix_dev_secret"
+          );
+          if (decoded.type !== "youtube_discovery") {
+            throw new ApiError(403, "Invalid channel discovery token.");
+          }
+          const authorizedIds = new Set(decoded.channelIds || []);
+          const unauthorized = channelIds.filter((id) => !authorizedIds.has(id));
+          if (unauthorized.length > 0) {
+            throw new ApiError(
+              403,
+              "Channel ownership verification failed. Please reconnect your YouTube channel."
+            );
+          }
+        } catch (err) {
+          if (err instanceof ApiError) throw err;
+          throw new ApiError(
+            403,
+            "Expired or invalid channel verification token. Please reconnect your YouTube channel."
+          );
+        }
+      }
+
       const claimedChannels = await prisma.youTubeChannel.findMany({
         where: { channel_id: { in: channelIds } },
         select: { channel_name: true },
@@ -254,23 +288,40 @@ export const registerFullUser = async (userData) => {
             });
           }
         } else if (assignedRole === "editor") {
+          const parsedExp = typeof experienceYears === "number"
+            ? experienceYears
+            : (parseInt(experienceYears, 10) || 0);
+
           await tx.editorProfile.create({
             data: {
               userId: newUser.id,
-              portfolio_url: website || null,
+              portfolio_url: portfolioUrl || website || null,
+              experience_years: parsedExp,
               skills: Array.isArray(skills) ? skills : [],
               software_used: Array.isArray(softwareUsed) ? softwareUsed : [],
               specializations: Array.isArray(specializations) ? specializations : [],
             },
           });
         } else if (assignedRole === "brand") {
+          let parsedBudget = null;
+          if (approxBudget) {
+            if (typeof approxBudget === "number") {
+              parsedBudget = approxBudget;
+            } else if (typeof approxBudget === "string") {
+              const match = approxBudget.replace(/,/g, "").match(/\d+(\.\d+)?/);
+              if (match) parsedBudget = parseFloat(match[0]);
+            }
+          }
+
           await tx.brandProfile.create({
             data: {
               userId: newUser.id,
               company_name: companyName || fullName,
-              company_website: website || null,
+              company_website: companyWebsite || website || null,
               industry: industry || null,
+              company_size: companySize || null,
               designation: designation || null,
+              approx_budget: parsedBudget,
             },
           });
         }

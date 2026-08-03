@@ -18,13 +18,27 @@ export interface YouTubeChannel {
 
 export interface TempSignupData {
   intent?: 'login' | 'register';
-  onboardingStep?: 'role' | 'subcategory' | 'youtube' | 'details' | 'complete';
+  onboardingStep?: 'role' | 'specialization' | 'brand' | 'subcategory' | 'youtube' | 'details' | 'complete';
   authMethod?: 'email' | 'google';
   categoryId?: string;
   categorySlug?: string;
   roleGroup?: 'CLIENT' | 'PROVIDER';
   roleName?: string;
   roleSubCategoryIds?: string[];
+  // Editor domain fields
+  specializations?: string[];
+  softwareUsed?: string[];
+  skills?: string[];
+  portfolioUrl?: string;
+  experienceYears?: number;
+  // Brand domain fields
+  companyName?: string;
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  designation?: string;
+  approxBudget?: string | number;
+  targetRegions?: string[];
   isSocialSignup?: boolean;
   socialProfile?: {
     name: string;
@@ -50,6 +64,7 @@ export interface TempSignupData {
       publishedAt: string;
     }>;
   }>;
+  discoveryToken?: string | null;
 }
 
 interface OnboardingState {

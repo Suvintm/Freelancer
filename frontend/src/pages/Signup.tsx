@@ -94,14 +94,14 @@ export default function Signup() {
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
   const [form, setForm] = useState({
-    fullName: socialProfile?.name || '',
+    fullName: tempSignupData?.companyName || socialProfile?.name || '',
     username: '',
     email: socialProfile?.email || '',
     phone: '',
     password: '',
     motherTongue: 'English',
     country: 'India',
-    website: ''
+    website: tempSignupData?.companyWebsite || ''
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -208,7 +208,19 @@ export default function Signup() {
         ...form,
         categoryId: tempSignupData?.categoryId,
         roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
+        specializations: tempSignupData?.specializations ?? [],
+        softwareUsed: tempSignupData?.softwareUsed ?? [],
+        skills: tempSignupData?.softwareUsed ?? [],
+        portfolioUrl: tempSignupData?.portfolioUrl,
+        experienceYears: tempSignupData?.experienceYears,
+        companyName: tempSignupData?.companyName || (isBrandClient ? form.fullName : undefined),
+        companyWebsite: tempSignupData?.companyWebsite || (isBrandClient ? form.website : undefined),
+        industry: tempSignupData?.industry,
+        companySize: tempSignupData?.companySize,
+        designation: tempSignupData?.designation,
+        approxBudget: tempSignupData?.approxBudget,
         youtubeChannels: selectedChannels,
+        discoveryToken: tempSignupData?.discoveryToken ?? null,
         googleId: socialProfile?.googleId,
         authProvider: socialProfile ? 'google' : 'local',
         profilePicture,
@@ -241,7 +253,7 @@ export default function Signup() {
     if (slug === 'creator' || slug === 'yt_influencer') {
       navigate('/youtube-niche');
     } else if (slug === 'editor' || slug === 'video_editor') {
-      navigate('/subcategory-selection');
+      navigate('/editor-specialization');
     } else {
       navigate('/role-selection');
     }

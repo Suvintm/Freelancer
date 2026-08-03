@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectToken, updateUser } from '../../store/slices/authSlice';
 import type { AuthUser } from '../../store/slices/authSlice';
@@ -57,19 +57,46 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
   const [channelName, setChannelName] = useState('your channel');
   const [isSuccess, setIsSuccess] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
+
+  const syncTriggered = useRef(false);
+  const isCompleted = useRef(false);
+
+  const completeSync = useCallback(() => {
+    if (isCompleted.current) return; // Guard against double-firing
+    isCompleted.current = true;
+    console.log("🎉 [FRONTEND] Sync completed 100%! Navigating to:", nextRoute);
+    setIsSuccess(true);
+    setProgress(100);
+    setSteps(getStepsForStepId('complete'));
+    setMessage('Sync completed successfully!');
+    
+    // Start 3 second countdown instead of immediate timeout
+    setCountdown(3);
+  }, [nextRoute]);
+
+  // ── SAFETY FALLBACK TIMER (20s) ───────────────────────────────────────────
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (!isCompleted.current) {
+        setShowFallback(true);
+      }
+    }, 20000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, []);
 
   // ── TRAP THE USER: Prevent navigation away ──────────────────────────────────
   useEffect(() => {
-    // 1. Prevent refresh / tab close
+    // 1. Prevent refresh / close tab
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const msg = "YouTube sync is still running. Are you sure you want to leave?";
       e.preventDefault();
-      e.returnValue = msg;
-      return msg;
+      e.returnValue = 'Importing your channel data in the background. Please wait...';
+      return e.returnValue;
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // 2. Prevent browser back button
+    // 2. Prevent Back button navigation
     window.history.pushState(null, '', window.location.href);
     const handlePopState = () => {
       window.history.pushState(null, '', window.location.href);
@@ -87,9 +114,6 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
   }, []);
 
   // ── TRIGGER MANUAL SYNC (FOREGROUND MODE) ──────────────────────────────────
-  const syncTriggered = useRef(false);
-  const isCompleted = useRef(false);
-
   useEffect(() => {
     let isMounted = true;
     const triggerSync = async () => {
@@ -143,19 +167,6 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
       };
     }
 
-    const completeSync = () => {
-      if (isCompleted.current) return; // Guard against double-firing
-      isCompleted.current = true;
-      console.log("🎉 [FRONTEND] Sync completed 100%! Navigating to:", nextRoute);
-      setIsSuccess(true);
-      setProgress(100);
-      setSteps(getStepsForStepId('complete'));
-      setMessage('Sync completed successfully!');
-      
-      // Start 3 second countdown instead of immediate timeout
-      setCountdown(3);
-    };
-
     const handleProgress = (data: SyncProgressData) => {
       if (data.type === 'SYNC_PROGRESS') {
         const { progress: p, channelName: cName, step, message: msg } = data.metadata;
@@ -187,7 +198,7 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
       socket.off('notification:new');
       socket.off('user:profile_updated');
     };
-  }, [token, dispatch, navigate, nextRoute]);
+  }, [token, completeSync, dispatch]);
 
   const activeStep = steps.find(s => s.status === 'running') || steps[steps.length - 1];
 
@@ -268,7 +279,7 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
           </div>
         </div>
 
-        <div className="mt-12 text-center">
+        <div className="mt-12 text-center w-full max-w-md">
           {isSuccess ? (
             <button 
               onClick={() => {
@@ -278,6 +289,20 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
             >
               Continue to Dashboard ({countdown}s)
             </button>
+          ) : showFallback ? (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-xs text-zinc-500 text-center">
+                Sync is taking a little longer than usual. We&apos;ll continue importing in the background.
+              </p>
+              <button 
+                onClick={() => {
+                  completeSync();
+                }}
+                className="px-6 py-3 rounded-xl bg-black hover:bg-zinc-800 text-white font-semibold text-xs transition-colors shadow-md cursor-pointer"
+              >
+                Continue to Dashboard &rarr;
+              </button>
+            </div>
           ) : (
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               Please do not close this page

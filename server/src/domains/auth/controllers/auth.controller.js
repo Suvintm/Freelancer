@@ -21,6 +21,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import jwt from "jsonwebtoken";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -126,11 +127,29 @@ export const refresh = asyncHandler(async (req, res) => {
   if (!storedData) {
     if (redisAvailable) {
       logger.warn(
-        `[SECURITY] Refresh token missing from Redis for user ${userId}. Session may have expired or was already rotated.`
+        `🚨 [SECURITY] REUSE DETECTED: Refresh token missing from Redis for user ${userId} (family: ${familyId}). Nuking token family!`
       );
+      // Nuke the entire token family on reuse
+      if (familyId) {
+        try {
+          const familyTokens = await redis.smembers(`token_family:${familyId}`);
+          const pipe = redis.pipeline();
+          if (familyTokens && familyTokens.length > 0) {
+            familyTokens.forEach((t) => pipe.del(`refresh_token:${t}`));
+          }
+          pipe.del(`token_family:${familyId}`);
+          if (userId) pipe.del(`user_sessions:${userId}`);
+          await pipe.exec();
+          logger.warn(
+            `🚨 [SECURITY] Nuked ${familyTokens?.length || 0} tokens in family ${familyId} for user ${userId}.`
+          );
+        } catch (nukeErr) {
+          logger.error(`Failed to nuke token family on reuse: ${nukeErr.message}`);
+        }
+      }
       throw new ApiError(
         401,
-        "Session expired or invalid. Please log in again."
+        "Security alert: Refresh token reuse detected. All active sessions have been terminated. Please log in again."
       );
     }
     if (!redisAvailable) {
@@ -434,7 +453,15 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
     }
   }
 
-  res.status(200).json({ success: true, channels });
+  // 🛡️ Generate a signed discovery token proving these channels were legitimately discovered via Google OAuth
+  const channelIds = (channels || []).map((ch) => ch.channelId);
+  const discoveryToken = jwt.sign(
+    { channelIds, type: "youtube_discovery" },
+    process.env.JWT_SECRET || "suvix_dev_secret",
+    { expiresIn: "1h" }
+  );
+
+  res.status(200).json({ success: true, channels, discoveryToken });
 });
 
 // ─── Atomic Register ──────────────────────────────────────────────────────
@@ -534,6 +561,7 @@ export const registerFull = asyncHandler(async (req, res) => {
     googleId: req.body.googleId || null,
     authProvider: req.body.authProvider || "local",
     role: req.body.role || null,
+    discoveryToken: req.body.discoveryToken || null,
   };
 
   const userWithProfile = await registerService(userData);

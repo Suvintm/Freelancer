@@ -15,6 +15,7 @@ import {
   Mail,
   Camera,
   X,
+  Building2,
 } from 'lucide-react';
 import logo from '../assets/darklogo.png';
 import { useDispatch, useSelector } from 'react-redux';
@@ -145,7 +146,21 @@ export default function CompleteProfile() {
         formData.append('authProvider', 'google');
         formData.append('categoryId', (tempSignupData?.categoryId as string) || '');
         formData.append('roleSubCategoryIds', JSON.stringify(tempSignupData?.roleSubCategoryIds || []));
+        formData.append('specializations', JSON.stringify(tempSignupData?.specializations || []));
+        formData.append('softwareUsed', JSON.stringify(tempSignupData?.softwareUsed || []));
+        formData.append('skills', JSON.stringify(tempSignupData?.softwareUsed || []));
+        if (tempSignupData?.portfolioUrl) formData.append('portfolioUrl', tempSignupData.portfolioUrl);
+        if (tempSignupData?.experienceYears !== undefined) formData.append('experienceYears', String(tempSignupData.experienceYears));
+        if (tempSignupData?.companyName) formData.append('companyName', tempSignupData.companyName);
+        if (tempSignupData?.companyWebsite) formData.append('companyWebsite', tempSignupData.companyWebsite);
+        if (tempSignupData?.industry) formData.append('industry', tempSignupData.industry);
+        if (tempSignupData?.companySize) formData.append('companySize', tempSignupData.companySize);
+        if (tempSignupData?.designation) formData.append('designation', tempSignupData.designation);
+        if (tempSignupData?.approxBudget) formData.append('approxBudget', String(tempSignupData.approxBudget));
         formData.append('youtubeChannels', JSON.stringify(tempSignupData?.youtubeChannels || []));
+        if (tempSignupData?.discoveryToken) {
+          formData.append('discoveryToken', tempSignupData.discoveryToken);
+        }
         formData.append('profilePicture', profilePicture);
         payload = formData;
       } else {
@@ -160,7 +175,19 @@ export default function CompleteProfile() {
           authProvider: 'google',
           categoryId: tempSignupData?.categoryId ?? null,
           roleSubCategoryIds: tempSignupData?.roleSubCategoryIds ?? [],
+          specializations: tempSignupData?.specializations ?? [],
+          softwareUsed: tempSignupData?.softwareUsed ?? [],
+          skills: tempSignupData?.softwareUsed ?? [],
+          portfolioUrl: tempSignupData?.portfolioUrl,
+          experienceYears: tempSignupData?.experienceYears,
+          companyName: tempSignupData?.companyName,
+          companyWebsite: tempSignupData?.companyWebsite,
+          industry: tempSignupData?.industry,
+          companySize: tempSignupData?.companySize,
+          designation: tempSignupData?.designation,
+          approxBudget: tempSignupData?.approxBudget,
           youtubeChannels: tempSignupData?.youtubeChannels ?? [],
+          discoveryToken: tempSignupData?.discoveryToken ?? null,
         };
       }
 
@@ -285,30 +312,91 @@ export default function CompleteProfile() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/role-selection')}
+                onClick={() => {
+                  const isEditor = selectedCategory.slug === 'editor' || selectedCategory.slug === 'video_editor';
+                  const isCreator = selectedCategory.slug === 'creator' || selectedCategory.slug === 'yt_influencer';
+                  const isBrand = selectedCategory.slug === 'brand' || selectedCategory.slug === 'social_promoter';
+                  if (isCreator) navigate('/youtube-niche');
+                  else if (isEditor) navigate('/editor-specialization');
+                  else if (isBrand) navigate('/brand-details');
+                  else navigate('/role-selection');
+                }}
                 className="text-[10px] font-bold text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded-md bg-white/5 border border-zinc-800"
               >
                 Change
               </button>
             </div>
 
-            {/* Niche / subcategory row */}
-            {selectedSubCategories.length > 0 && (
-              <div className="flex items-start gap-3 px-4 py-3.5">
-                <div className="w-7 h-7 rounded-lg bg-white/5 border border-zinc-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Tag size={13} className="text-zinc-300" />
+            {/* Brand Details row */}
+            {tempSignupData?.companyName && (
+              <div className="flex items-start gap-3 px-4 py-3.5 border-b border-zinc-800/40">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Building2 size={13} className="text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2">
-                    {selectedSubCategories.length === 1 ? 'Niche' : 'Niches'}
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">
+                    Company & Industry
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-white">
+                      {tempSignupData.companyName}
+                    </span>
+                    {tempSignupData.industry && (
+                      <span className="px-2 py-0.5 rounded-md bg-blue-950/50 border border-blue-500/30 text-[11px] font-semibold text-blue-300">
+                        {tempSignupData.industry}
+                      </span>
+                    )}
+                    {tempSignupData.companySize && (
+                      <span className="px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] text-zinc-400">
+                        {tempSignupData.companySize}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Editor Specializations row */}
+            {((tempSignupData?.specializations && tempSignupData.specializations.length > 0) || selectedSubCategories.length > 0) && (
+              <div className="flex items-start gap-3 px-4 py-3.5 border-b border-zinc-800/40">
+                <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Tag size={13} className="text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                    Specializations
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedSubCategories.map(sub => (
+                    {(tempSignupData?.specializations ?? selectedSubCategories.map(s => s.name)).map(name => (
                       <span
-                        key={sub.id}
-                        className="px-2.5 py-1 rounded-full bg-white/5 border border-zinc-700 text-[11px] font-semibold text-zinc-300"
+                        key={name}
+                        className="px-2.5 py-1 rounded-full bg-purple-950/40 border border-purple-500/30 text-[11px] font-semibold text-purple-300"
                       >
-                        {sub.name}
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Editor Software Tools row */}
+            {tempSignupData?.softwareUsed && tempSignupData.softwareUsed.length > 0 && (
+              <div className="flex items-start gap-3 px-4 py-3.5">
+                <div className="w-7 h-7 rounded-lg bg-zinc-800/80 border border-zinc-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Briefcase size={13} className="text-zinc-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                    Software & Tools
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tempSignupData.softwareUsed.map(name => (
+                      <span
+                        key={name}
+                        className="px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-[11px] font-semibold text-zinc-300"
+                      >
+                        {name}
                       </span>
                     ))}
                   </div>

@@ -33,8 +33,18 @@ export default function OAuthSuccess() {
   const exchangeStarted = useRef(false);
 
   useEffect(() => {
-    const code = searchParams.get('code');
+    // 🛡️ Support both URL fragment (#code=...) and query (?code=...)
+    let code = searchParams.get('code');
+    if (!code && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      code = hashParams.get('code');
+    }
     
+    // Clean URL fragment/query immediately so OTC never lingers in URL bar
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     if (!code) {
       navigate('/login?error=no_code');
       return;
@@ -106,6 +116,8 @@ export default function OAuthSuccess() {
           }));
 
           const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+          const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
+          const isBrand = categorySlug === 'brand' || categorySlug === 'social_promoter';
 
           // YouTube flow: user selected creator role AND we have a Google token
           if (isCreator && googleAccessToken) {
@@ -113,7 +125,19 @@ export default function OAuthSuccess() {
             return;
           }
 
-          // All other roles (Normal User, Video Editor, Brand): go straight to complete profile!
+          // Video Editor flow: select specializations & tools
+          if (isEditor) {
+            navigate('/editor-specialization');
+            return;
+          }
+
+          // Brand / Sponsor flow: set up company profile & industry
+          if (isBrand) {
+            navigate('/brand-details');
+            return;
+          }
+
+          // All other roles (Normal User): go straight to complete profile!
           const currentOnboardingStore = (store.getState() as RootState).onboarding;
           if (currentOnboardingStore.tempSignupData?.categoryId) {
             navigate('/complete-profile');
