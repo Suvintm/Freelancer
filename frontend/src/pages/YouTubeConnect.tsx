@@ -6,28 +6,33 @@ import youtubeLoaderAnimation from '../assets/lottie/youtube_loader.json';
 
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
-import { 
-  ChevronLeft, 
+
+import {
+  ChevronLeft,
   ArrowRight,
   Plus,
   Check,
   Users,
   Video,
-  TrendingUp,
   AlertCircle,
-  Info,
-  Mail,
-  ExternalLink
+  Play,
+  Sparkles,
+  ShieldCheck,
+  Star,
+  Award,
+  Zap,
+  Flame
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
-import { setTempSignupData, addDiscoveredChannels, resetYoutubeDiscovery } from '../store/slices/onboardingSlice';
+import { setTempSignupData, addDiscoveredChannels } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
 import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
 import { SuccessOverlay } from '../components/shared/SuccessOverlay';
 import logo from '../assets/lightlogo.png';
+import brandLogo from '../assets/logo.png';
 
 const formatCount = (n: number | string): string => {
   const num = Number(n);
@@ -36,15 +41,216 @@ const formatCount = (n: number | string): string => {
   return num.toLocaleString();
 };
 
-// Generated once at module load to maintain strict component render purity
-const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
-  id: i,
-  x: Math.random() * 100 + '%',
-  y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
-  opacity: Math.random() * 0.8,
-  scale: Math.random() * 0.7 + 0.3,
-  duration: Math.random() * 5 + 4,
-}));
+// ── Showcase 3D Cards Data ────────────────────────────────────────────────
+interface CreatorCardData {
+  id: string;
+  name: string;
+  handle: string;
+  subscribers: string;
+  avatar: string;
+  mediaUrl: string;
+  mediaType: 'short' | 'video';
+  tag?: string;
+  badgeIcon?: 'growth' | 'verified' | 'viral';
+  positionClass: string;
+  rotation: number;
+  zIndex: number;
+  chipPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  floatDuration: number;
+  floatDelay: number;
+}
+
+const SHOWCASE_CARDS: CreatorCardData[] = [
+  {
+    id: 'vanessa-lau',
+    name: 'Vanessa Lau',
+    handle: '@VanessaLau',
+    subscribers: '954K subscribers',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=faces',
+    mediaUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&h=650&fit=crop',
+    mediaType: 'short',
+    tag: '⚡ Top Educator',
+    badgeIcon: 'verified',
+    positionClass: 'w-[42%] sm:w-[38%] aspect-[3/4] top-[0%] left-[2%]',
+    rotation: -5,
+    zIndex: 20,
+    chipPosition: 'bottom-right',
+    floatDuration: 5.2,
+    floatDelay: 0,
+  },
+  {
+    id: 'jenny-hoyos',
+    name: 'Jenny Hoyos',
+    handle: '@JennyHoyos',
+    subscribers: '9M subscribers',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&h=120&fit=crop&crop=faces',
+    mediaUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=500&h=750&fit=crop',
+    mediaType: 'short',
+    tag: '🔥 100M+ Monthly Views',
+    badgeIcon: 'viral',
+    positionClass: 'w-[44%] sm:w-[42%] aspect-[3/4.2] top-[2%] right-[1%]',
+    rotation: 5,
+    zIndex: 25,
+    chipPosition: 'bottom-left',
+    floatDuration: 5.8,
+    floatDelay: 0.7,
+  },
+  {
+    id: 'saucestache',
+    name: 'Sauce Stache',
+    handle: '@SauceStache',
+    subscribers: '655K subscribers',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=faces',
+    mediaUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600&h=400&fit=crop',
+    mediaType: 'video',
+    tag: '🍳 Studio Creator',
+    badgeIcon: 'growth',
+    positionClass: 'w-[46%] sm:w-[42%] aspect-[16/11] bottom-[12%] left-[0%]',
+    rotation: -3,
+    zIndex: 15,
+    chipPosition: 'bottom-right',
+    floatDuration: 6.2,
+    floatDelay: 1.2,
+  },
+  {
+    id: 'danie-jay',
+    name: 'Danie Jay',
+    handle: '@DanieJay',
+    subscribers: '80K subscribers',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop&crop=faces',
+    mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=500&h=650&fit=crop',
+    mediaType: 'short',
+    tag: '📈 +310% YoY',
+    badgeIcon: 'growth',
+    positionClass: 'w-[40%] sm:w-[36%] aspect-[3/4] bottom-[0%] left-[30%]',
+    rotation: 2,
+    zIndex: 35,
+    chipPosition: 'bottom-left',
+    floatDuration: 4.8,
+    floatDelay: 0.3,
+  },
+  {
+    id: 'devin-supertramp',
+    name: 'Devin Super Tramp',
+    handle: '@devinsupertramp',
+    subscribers: '6.4M subscribers',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=faces',
+    mediaUrl: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop',
+    mediaType: 'video',
+    tag: '🎬 4K Action Films',
+    badgeIcon: 'verified',
+    positionClass: 'w-[46%] sm:w-[44%] aspect-[16/11] bottom-[8%] right-[0%]',
+    rotation: 4,
+    zIndex: 18,
+    chipPosition: 'bottom-left',
+    floatDuration: 5.5,
+    floatDelay: 1.5,
+  },
+];
+
+// Top Creator Avatars for the Social Proof Bar
+const SOCIAL_PROOF_AVATARS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=faces',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=faces',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=faces',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=faces',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&h=80&fit=crop&crop=faces',
+];
+
+function FloatingCreatorShowcase() {
+  return (
+    <div className="relative w-full aspect-[16/13] max-w-[42rem] mx-auto select-none">
+      {/* Background Radial Glow */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-red-500/10 to-transparent rounded-full blur-3xl -z-10 pointer-events-none" />
+
+      {SHOWCASE_CARDS.map((card) => (
+        <motion.div
+          key={card.id}
+          initial={{ opacity: 0, y: 30, rotate: card.rotation, scale: 0.94 }}
+          animate={{ opacity: 1, y: 0, rotate: card.rotation, scale: 1 }}
+          transition={{ duration: 0.8, delay: card.floatDelay * 0.25, ease: [0.16, 1, 0.3, 1] }}
+          style={{ zIndex: card.zIndex }}
+          className={`absolute ${card.positionClass}`}
+        >
+          {/* Continuous Floating Bob Animation */}
+          <motion.div
+            animate={{
+              y: [0, -12, 0],
+              rotate: [card.rotation, card.rotation + (card.rotation > 0 ? 1 : -1), card.rotation],
+            }}
+            transition={{
+              duration: card.floatDuration,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: card.floatDelay,
+            }}
+            className="relative w-full h-full group cursor-pointer"
+          >
+            {/* Card Container with 3D Depth & Shadow */}
+            <div className="relative w-full h-full rounded-[1.6rem] overflow-hidden border-[3.5px] border-white bg-white shadow-[0_20px_50px_rgba(0,0,0,0.14),0_6px_15px_rgba(0,0,0,0.08)] transition-all duration-300 group-hover:shadow-[0_28px_65px_rgba(0,0,0,0.22)] group-hover:border-zinc-50">
+              <img
+                src={card.mediaUrl}
+                alt={card.name}
+                className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+              {/* Tag / Micro Badge on Image */}
+              {card.tag && (
+                <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md border border-white/20 text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                  {card.badgeIcon === 'viral' && <Flame size={10} className="text-amber-400 fill-amber-400" />}
+                  {card.badgeIcon === 'growth' && <Zap size={10} className="text-emerald-400 fill-emerald-400" />}
+                  {card.badgeIcon === 'verified' && <Sparkles size={10} className="text-red-400" />}
+                  <span>{card.tag}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Creator Identity Chip (Float Overlay Pill) */}
+            <div
+              className={`absolute ${
+                card.chipPosition === 'bottom-left'
+                  ? '-bottom-4 -left-4 sm:-bottom-5 sm:-left-5'
+                  : '-bottom-4 -right-4 sm:-bottom-5 sm:-right-5'
+              } z-40 bg-white rounded-full shadow-[0_12px_30px_rgba(0,0,0,0.18)] border border-zinc-100/90 pl-1.5 pr-4 py-1.5 flex items-center gap-2.5 whitespace-nowrap transition-transform duration-300 group-hover:scale-105`}
+            >
+              <div className="w-8 h-8 rounded-full bg-zinc-900 border border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+                <img src={card.avatar} alt={card.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex flex-col leading-tight pr-1">
+                <span className="text-[11px] font-black text-zinc-900 tracking-tight flex items-center gap-1">
+                  {card.handle}
+                </span>
+                <span className="text-[9.5px] font-semibold text-zinc-500">{card.subscribers}</span>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ))}
+
+      {/* Central Brand Mark / Nexus Center Hub */}
+      <motion.div
+        initial={{ scale: 0, rotate: -25 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 150, damping: 14, delay: 0.5 }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
+      >
+        <motion.div
+          animate={{ scale: [1, 1.08, 1], rotate: [0, 2, -2, 0] }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+          className="relative flex items-center justify-center"
+        >
+          {/* Pulsing Backlight */}
+          <div className="absolute inset-0 bg-red-600 rounded-full blur-xl opacity-50 animate-ping" />
+          
+          <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border-[3px] border-white shadow-[0_14px_35px_rgba(0,0,0,0.25)] flex items-center justify-center p-2.5 overflow-hidden">
+            <img src={brandLogo} alt="SuviX" className="w-full h-full object-contain" />
+          </div>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function YouTubeConnect() {
   const navigate = useNavigate();
@@ -59,81 +265,157 @@ export default function YouTubeConnect() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const fetchStarted = useRef(false);
 
-  const categoryId = tempSignupData?.categoryId;
-  const googleAccessToken = location.state?.googleAccessToken as string | undefined;
+  const rawToken =
+    (location.state?.googleAccessToken as string | undefined) ||
+    sessionStorage.getItem('youtube_access_token') ||
+    undefined;
+
   const connected = youtubeDiscovery.channels.length > 0;
   const hasUnclaimedChannel = youtubeDiscovery.channels.some((c) => !c.isClaimed);
 
   const handleConnect = () => {
     // Flag so OAuthSuccess knows we are ONLY fetching channels, not logging in
     sessionStorage.setItem('oauth_intent', 'connect_youtube');
+    if (tempSignupData?.categoryId) {
+      try {
+        sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(tempSignupData));
+      } catch {
+        // ignore
+      }
+    }
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
     window.location.href = `${apiUrl}/auth/google/youtube`;
   };
 
-  const fetchChannels = useCallback(async (token: string) => {
-    setIsLoading(true);
-    setFetchError(null);
-    try {
-      const res = await api.post('/auth/youtube/channels', { accessToken: token });
-      if (res.data.success) {
-        dispatch(addDiscoveredChannels(res.data.channels));
-        if (res.data.discoveryToken) {
-          dispatch(setTempSignupData({ discoveryToken: res.data.discoveryToken }));
+  const fetchChannels = useCallback(
+    async (token: string) => {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        const res = await api.post('/auth/youtube/channels', { accessToken: token });
+        if (res.data.success) {
+          dispatch(addDiscoveredChannels(res.data.channels));
+          const updates: Record<string, unknown> = {};
+          if (res.data.discoveryToken) {
+            updates.discoveryToken = res.data.discoveryToken;
+          }
+          if (res.data.googleUser?.email) {
+            updates.socialProfile = {
+              name: res.data.googleUser.name || '',
+              email: res.data.googleUser.email,
+              picture: res.data.googleUser.picture || undefined,
+              googleId: res.data.googleUser.googleId || '',
+            };
+          }
+          if (Object.keys(updates).length > 0) {
+            dispatch(setTempSignupData(updates));
+            try {
+              const raw = sessionStorage.getItem('suvix_temp_signup_data');
+              const cur = raw ? JSON.parse(raw) : {};
+              sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({ ...cur, ...updates }));
+            } catch {
+              // ignore
+            }
+          }
+          setShowSuccess(true);
+          setTimeout(() => setShowSuccess(false), 2000);
+        } else {
+          throw new Error(res.data.message || 'Failed to fetch channels');
         }
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
-      } else {
-        throw new Error(res.data.message || 'Failed to fetch channels');
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } }; message?: string };
+        setFetchError(error.response?.data?.message || error.message || 'Unable to connect. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } }; message?: string };
-      setFetchError(error.response?.data?.message || error.message || 'Unable to connect. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [dispatch]);
+    },
+    [dispatch]
+  );
 
+  // 1. Session Storage State Recovery
   useEffect(() => {
-    if (!categoryId) {
-      navigate('/role-selection', { replace: true });
-      return;
+    if (!tempSignupData?.categoryId) {
+      try {
+        const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+        if (rawBackup) {
+          const parsed = JSON.parse(rawBackup);
+          if (parsed?.categoryId) {
+            dispatch(setTempSignupData(parsed));
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
-    if (!googleAccessToken && youtubeDiscovery.channels.length > 0) {
-      dispatch(resetYoutubeDiscovery());
-    }
+  }, [tempSignupData, dispatch]);
 
-    if (googleAccessToken && youtubeDiscovery.channels.length === 0 && !fetchStarted.current) {
-      fetchStarted.current = true;
-      fetchChannels(googleAccessToken);
+  // 2. Category Auto-heal (prevent redirecting out if categories are ready)
+  useEffect(() => {
+    if (categoriesLoading) return;
+    if (!tempSignupData?.categoryId && categories.length > 0) {
+      const ytCat = categories.find((c) => c.slug === 'yt_influencer' || c.slug === 'creator');
+      if (ytCat) {
+        const data = {
+          categoryId: ytCat.id,
+          categorySlug: ytCat.slug,
+          roleGroup: ytCat.roleGroup,
+          roleName: ytCat.name,
+          onboardingStep: 'role' as const,
+        };
+        dispatch(setTempSignupData(data));
+        try {
+          sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(data));
+        } catch {
+          // ignore
+        }
+      } else {
+        navigate('/role-selection', { replace: true });
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [categories, categoriesLoading, tempSignupData, dispatch, navigate]);
+
+  // 3. Channel Fetch on Token Arrival
+  useEffect(() => {
+    const token = rawToken;
+    if (token && youtubeDiscovery.channels.length === 0 && !fetchStarted.current) {
+      fetchStarted.current = true;
+      fetchChannels(token);
+    }
+  }, [rawToken, fetchChannels, youtubeDiscovery.channels.length]);
 
   /**
    * Save channel data (without niche — that comes next) and go to niche selection page.
    */
   const handleNext = () => {
-    const ytCat = categories.find(c => c.slug === 'yt_influencer');
+    const ytCat = categories.find((c) => c.slug === 'yt_influencer' || c.slug === 'creator');
 
     const youtubeChannels = youtubeDiscovery.channels
       .filter((c) => !c.isClaimed)
       .map((channel, index: number) => ({
-        channelId:       channel.channelId,
-        channelName:     channel.channelName,
-        thumbnailUrl:    channel.thumbnailUrl || null,
+        channelId: channel.channelId,
+        channelName: channel.channelName,
+        thumbnailUrl: channel.thumbnailUrl || null,
         subscriberCount: Number(channel.subscriberCount || 0),
-        videoCount:      Number(channel.videoCount || 0),
-        isPrimary:       index === 0,
-        isVerified:      true,
-        videos:          channel.videos || [],
+        videoCount: Number(channel.videoCount || 0),
+        isPrimary: index === 0,
+        isVerified: true,
+        videos: channel.videos || [],
       }));
 
-    dispatch(setTempSignupData({
-      categorySlug:   ytCat?.slug ?? 'yt_influencer',
+    const updatePayload = {
+      categorySlug: ytCat?.slug ?? 'yt_influencer',
       youtubeChannels,
-      onboardingStep: 'youtube',
-    }));
+      onboardingStep: 'youtube' as const,
+    };
+
+    dispatch(setTempSignupData(updatePayload));
+    try {
+      const raw = sessionStorage.getItem('suvix_temp_signup_data');
+      const cur = raw ? JSON.parse(raw) : {};
+      sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({ ...cur, ...updatePayload }));
+    } catch {
+      // ignore
+    }
 
     navigate('/youtube-niche');
   };
@@ -143,405 +425,287 @@ export default function YouTubeConnect() {
       <div className="h-screen w-full bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-40 h-40 flex items-center justify-center">
-            <Lottie 
-              animationData={youtubeLoaderAnimation} 
-              loop={true} 
-              style={{ width: '100%', height: '100%' }} 
+            <Lottie
+              animationData={youtubeLoaderAnimation}
+              loop={true}
+              style={{ width: '100%', height: '100%' }}
             />
           </div>
-          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-2">Initializing Sync...</p>
+          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-2">
+            Initializing Sync...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-white flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-zinc-900">
-
-      {/* ── BACKGROUND ─────────────────────────────────────────────────────── */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none h-full w-full">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[70vh] bg-gradient-to-b from-red-600/[0.12] to-transparent blur-[120px]" />
-        <div 
-          className="absolute inset-0 opacity-[0.12]" 
-          style={{ backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)`, backgroundSize: '32px 32px' }} 
+    <div className="min-h-screen w-full bg-[#fcfcfd] text-zinc-900 flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-white font-sans">
+      
+      {/* ── ARCHITECTURAL GRID BACKGROUND ─────────────────────────────────── */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Subtle geometric grid background */}
+        <div
+          className="absolute inset-0 opacity-[0.4]"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(228, 228, 231, 0.7) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(228, 228, 231, 0.7) 1px, transparent 1px)
+            `,
+            backgroundSize: '44px 44px',
+          }}
         />
-        {STATIC_PARTICLES.map((p) => (
-          <motion.div
-            key={p.id}
-            initial={{ x: p.x, y: p.y, opacity: p.opacity, scale: p.scale }}
-            animate={{ y: [null, '-25%', '25%', '-10%'], x: [null, '12%', '-12%', '6%'], opacity: [0.3, 0.8, 0.3] }}
-            transition={{ duration: p.duration, repeat: Infinity, ease: "linear" }}
-            className="absolute w-1 h-1 bg-red-500 rounded-full blur-[1px]"
-          />
-        ))}
-        <motion.div animate={{ scale: [1, 1.15, 1], x: ['-4%', '4%', '-4%'], rotate: [0, 45, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute -top-[10%] -left-[10%] w-[90%] h-[60%] bg-zinc-100/60 rounded-full blur-[140px]" />
-        <motion.div animate={{ scale: [1.15, 1, 1.15], x: ['4%', '-4%', '4%'], rotate: [0, -45, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} className="absolute -top-[5%] -right-[10%] w-[90%] h-[60%] bg-red-500/[0.05] rounded-full blur-[140px]" />
+
+        {/* Ambient Top Glows */}
+        <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80rem] h-[35rem] bg-gradient-to-b from-amber-500/10 via-red-500/5 to-transparent rounded-full blur-[130px]" />
+        <div className="absolute top-[20%] right-[-10%] w-[35rem] h-[35rem] bg-amber-400/[0.08] rounded-full blur-[140px]" />
       </div>
 
-      <LoadingOverlay isVisible={isLoading} theme="youtube" message="Verifying..." />
-      <SuccessOverlay isVisible={showSuccess} type="youtube" title="Channel Found!" message="Identity synced successfully." />
+      <LoadingOverlay isVisible={isLoading} theme="youtube" message="Verifying YouTube Channel with Google..." />
+      <SuccessOverlay isVisible={showSuccess} type="youtube" title="Channel Verified!" message="YouTube identity synced successfully." />
 
-      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div className="absolute top-0 inset-x-0 z-[100] p-4 md:p-8 lg:p-10 flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto">
-          <img src={logo} alt="SuviX" className="h-6 md:h-8 lg:h-10" />
+      {/* ── TOP NAVIGATION ────────────────────────────────────────────────── */}
+      <header className="relative z-50 w-full px-6 py-6 md:px-12 md:py-8 max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="SuviX" className="h-7 md:h-9 object-contain" />
         </div>
-        <button 
-          onClick={() => navigate('/role-selection')}
-          className="w-8 h-8 md:w-11 md:h-11 rounded-lg border border-zinc-200 flex items-center justify-center bg-white/40 backdrop-blur-md pointer-events-auto group active:scale-95"
-        >
-          <ChevronLeft size={16} className="text-zinc-600 group-hover:text-zinc-900" />
-        </button>
-      </div>
 
-      {/* ── MAIN: Two-column layout ─────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col items-center p-4 pt-20 md:pt-24 relative pb-32">
-        <div className="w-full max-w-[80rem] mx-auto relative z-10 flex flex-col lg:flex-row lg:items-start items-center justify-center gap-8 lg:gap-16">
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-600">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span>Step 2 of 3 • Channel Verification</span>
+          </div>
 
-          {/* LEFT COLUMN */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center lg:items-start text-center lg:text-left w-full lg:w-[40%] max-w-[48rem] py-4 md:py-8 lg:sticky lg:top-24"
+          <button
+            onClick={() => navigate('/role-selection')}
+            className="h-10 px-4 rounded-xl border border-zinc-200/90 bg-white/80 backdrop-blur-md text-zinc-700 hover:text-zinc-950 hover:bg-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 group active:scale-95"
           >
-            <div className="space-y-2 mb-6 w-full">
-              <h1 className="text-[clamp(1.75rem,7vw,4rem)] lg:text-[4rem] font-bold text-zinc-900 tracking-tight leading-[1.1]">
-                Connect your <br />
-                <span className="text-zinc-500">digital identity.</span>
+            <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Change Role</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ── MAIN CONTENT CONTAINER ────────────────────────────────────────── */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-6 md:px-12 pt-4 pb-28 relative z-10 flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 items-center">
+
+          {/* ── LEFT COLUMN: HERO & ACTION HUB (5 Cols on lg) ──────────────── */}
+          <motion.div
+            initial={{ opacity: 0, x: -25 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 max-w-xl mx-auto lg:mx-0"
+          >
+            {/* Pill Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-300/80 bg-white shadow-sm">
+              <span className="text-[10px] font-black text-zinc-800 tracking-[0.18em] uppercase">
+                #1 YouTube SEO & Growth Tool
+              </span>
+            </div>
+
+            {/* Main Headline */}
+            <div className="space-y-3">
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black tracking-tight text-zinc-950 leading-[1.12]">
+                Get More{' '}
+                <span className="relative inline-block text-zinc-950">
+                  Views &amp;
+                  {/* Subtle highlight brush underline */}
+                  <span className="absolute left-0 bottom-1 w-full h-3 bg-amber-400/35 -z-10 rounded-sm transform -rotate-1" />
+                </span>
+                <br />
+                Subscribers on YouTube
               </h1>
-              <p className="text-xs md:text-lg text-zinc-500 font-medium max-w-[24rem] mx-auto lg:mx-0">
-                Synchronize your professional presence.
+              
+              <p className="text-sm sm:text-base text-zinc-600 font-normal leading-relaxed max-w-lg">
+                Optimize your content, gain visibility, and grow faster on YouTube. SuviX is an all-in-one optimization platform with powerful YouTube SEO, verified brand sponsorships, and video editor collaboration.
               </p>
             </div>
 
-            {/* CTA + guidance */}
-            <div className="w-full max-w-[20rem] space-y-3 mb-8">
-              <Button 
+            {/* Primary Action Button (CTA) */}
+            <div className="w-full sm:max-w-md pt-2 space-y-3">
+              <Button
                 onClick={handleConnect}
                 disabled={isLoading}
-                className={`w-full h-12 md:h-16 rounded-xl font-bold text-sm md:text-lg flex items-center justify-center gap-3 border-none active:scale-[0.98] transition-all duration-500 ${
-                  connected 
-                    ? '!bg-zinc-100 !text-zinc-600 border border-zinc-200 hover:!bg-zinc-200 shadow-xl' 
-                    : '!bg-red-600 !text-zinc-900 shadow-lg shadow-red-900/20'
+                className={`w-full h-14 sm:h-16 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-3 transition-all duration-300 transform active:scale-[0.98] ${
+                  connected
+                    ? 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-xl shadow-zinc-900/10'
+                    : 'bg-[#ffb703] hover:bg-[#fb8500] text-zinc-950 shadow-[0_12px_28px_rgba(251,133,0,0.3)] hover:shadow-[0_16px_34px_rgba(251,133,0,0.4)]'
                 }`}
               >
                 {connected ? (
-                  <><Plus size={20} strokeWidth={3} className="text-zinc-500" /><span>Add another account</span></>
+                  <>
+                    <Plus size={20} strokeWidth={3} />
+                    <span>Connect Another Channel</span>
+                  </>
                 ) : (
-                  <>Sync with YouTube<ArrowRight size={16} /></>
+                  <>
+                    <span className="w-7 h-7 rounded-lg bg-black/10 flex items-center justify-center">
+                      <Play size={14} className="fill-current text-current ml-0.5" />
+                    </span>
+                    <span>Connect YouTube Channel</span>
+                    <ArrowRight size={18} strokeWidth={2.5} />
+                  </>
                 )}
               </Button>
 
-              {/* Email guidance */}
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-center lg:text-left flex items-center justify-center lg:justify-start gap-1.5">
-                  <Mail size={9} className="text-zinc-600" />
-                  Choose the email linked to your channel
-                </p>
-                <div className="flex items-start gap-2 bg-zinc-50 border border-zinc-200/60 rounded-xl p-3 text-left">
-                  <Info size={12} className="text-zinc-500 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-zinc-600 leading-relaxed">
-                    Google lets us read only the <span className="text-zinc-600 font-semibold">primary channel</span> of the account you sign in with. You can link more channels after signup.
-                  </p>
+              {/* OAuth Trust & Security Notice */}
+              <div className="flex items-center justify-center lg:justify-start gap-2 pt-1 text-[11px] font-medium text-zinc-500">
+                <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                <span>Google Verified OAuth • Read-only discovery • 100% Privacy Protected</span>
+              </div>
+
+              {fetchError && (
+                <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-red-600 text-xs font-medium">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                  <span>{fetchError}</span>
                 </div>
-                {fetchError && (
-                  <div className="flex items-start gap-2 bg-red-500/8 border border-red-500/20 rounded-xl p-3 text-left">
-                    <AlertCircle size={12} className="text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-red-400 font-semibold leading-relaxed">{fetchError}</p>
-                  </div>
-                )}
+              )}
+            </div>
+
+            {/* Social Proof Bar */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center gap-4 text-left border-t border-zinc-200/70 w-full">
+              {/* Creator Avatars */}
+              <div className="flex -space-x-2.5 overflow-hidden p-0.5">
+                {SOCIAL_PROOF_AVATARS.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt="Creator"
+                    className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover shadow-sm"
+                  />
+                ))}
+              </div>
+
+              {/* Stars & Text */}
+              <div className="flex flex-col leading-tight">
+                <div className="flex items-center gap-1 text-amber-500">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-zinc-800 mt-1">
+                  10M+ creators worldwide trust SuviX
+                </span>
               </div>
             </div>
 
-            {/* Benefits Card (Desktop) */}
-            <div className="hidden lg:block w-full max-w-xl bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-left relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Video size={80} className="text-zinc-500" />
+            {/* External Trust Badges */}
+            <div className="flex items-center gap-3 pt-1">
+              <div className="px-3 py-1.5 rounded-lg bg-white border border-zinc-200 shadow-sm flex items-center gap-2 text-[11px] font-bold text-zinc-700">
+                <span className="text-amber-500 font-extrabold">★ 4.8</span>
+                <span className="text-zinc-400">|</span>
+                <span>10K+ reviews</span>
               </div>
-              <div className="relative z-10 space-y-4">
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-[9px] font-bold uppercase tracking-widest">
-                  Creator Benefits
-                </div>
-                <h3 className="text-xl font-bold text-zinc-900 tracking-tight leading-tight">Unlock Your Creator Identity</h3>
-                <p className="text-zinc-600 text-xs leading-relaxed max-w-sm">
-                  Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.
-                </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
-                  {[
-                    { icon: <Users size={14} />, text: "Verified Stats" },
-                    { icon: <TrendingUp size={14} />, text: "Engagement" },
-                    { icon: <Check size={14} />, text: "Search Priority" },
-                    { icon: <Video size={14} />, text: "Brand Verified" }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 text-zinc-700 text-[10px] font-bold uppercase tracking-tight">
-                      <div className="p-1 rounded-lg bg-white border border-zinc-200 shadow-sm text-red-500">{item.icon}</div>
-                      {item.text}
-                    </div>
-                  ))}
-                </div>
+
+              <div className="px-3 py-1.5 rounded-lg bg-white border border-zinc-200 shadow-sm flex items-center gap-2 text-[11px] font-bold text-zinc-700">
+                <Award size={13} className="text-amber-500" />
+                <span>4.9 G2 · Top Rated 2025</span>
               </div>
             </div>
           </motion.div>
 
-          {/* RIGHT COLUMN */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex flex-col items-center w-full lg:w-[60%] max-w-[48rem] py-4 md:py-8"
+          {/* ── RIGHT COLUMN: 3D FLOATING CREATOR COLLAGE (6 Cols on lg) ───── */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-6 w-full flex flex-col items-center justify-center relative py-4"
           >
-            {/* ── CONNECTED: Channel identity cards ─────────────────── */}
-            {connected && (
-              <div className="w-full max-w-6xl mx-auto mb-16 space-y-6">
-                {/* Header */}
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.4)]" />
-                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                      {youtubeDiscovery.channels.length === 1 ? 'Channel Discovered' : `${youtubeDiscovery.channels.length} Channels Discovered`}
+            {/* Discovered Channels View (When Connected) */}
+            {connected ? (
+              <div className="w-full max-w-md bg-white rounded-3xl border border-zinc-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.08)] p-6 space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-black uppercase tracking-wider text-zinc-900">
+                      Channel Discovered
                     </span>
                   </div>
-                  <div className="max-w-md bg-zinc-50 border border-zinc-200/50 rounded-2xl p-4 text-center">
-                    <p className="text-[11px] font-medium text-zinc-600 leading-relaxed">
-                      Only see one channel? That's normal — Google returns the channel tied to the account you signed in with.{' '}
-                      <span className="text-zinc-600">You can link more after signup.</span>
-                    </p>
-                  </div>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Verified
+                  </span>
                 </div>
 
-                {/* All claimed warning */}
-                {!hasUnclaimedChannel && (
-                  <div className="bg-white shadow-sm border border-orange-500/20 rounded-2xl p-6 text-center space-y-4">
-                    <AlertCircle size={32} className="text-orange-400 mx-auto" />
-                    <div>
-                      <p className="text-sm font-bold text-zinc-900 mb-1">All found channels are already on SuviX</p>
-                      <p className="text-[11px] text-zinc-600 leading-relaxed max-w-sm mx-auto">
-                        Try connecting with a different Google account or contact support.
-                      </p>
-                    </div>
-                    <div className="flex justify-center gap-3">
-                      <button onClick={handleConnect} className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-700 text-[10px] font-bold hover:bg-zinc-700 transition-colors uppercase tracking-wider">
-                        Try Different Account
-                      </button>
-                      <a href="mailto:support@suvix.com" className="px-4 py-2 rounded-xl bg-red-600/10 border border-red-600/20 text-red-400 text-[10px] font-bold hover:bg-red-600/15 transition-colors uppercase tracking-wider flex items-center gap-1.5">
-                        <ExternalLink size={10} /> Contact Support
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Channel Cards — display only, no niche picker here */}
-                <div className="flex flex-col gap-4 w-full max-w-4xl">
-                  {youtubeDiscovery.channels.map((channel) => {
-                    const isClaimed = channel.isClaimed;
-                    return (
-                      <motion.div
-                        key={channel.channelId}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className={`relative rounded-3xl border transition-all duration-500 overflow-hidden ${
-                          isClaimed
-                            ? 'border-orange-500/30 bg-zinc-50'
-                            : 'border-zinc-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.3)]'
-                        }`}
-                      >
-                        <div className="p-5 md:p-8">
-                          <div className="flex items-center gap-6">
-                            {/* Thumbnail */}
-                            <div className="relative flex-shrink-0">
-                              <img 
-                                src={channel.thumbnailUrl} 
-                                alt={channel.channelName}
-                                className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover border-2 ${
-                                  isClaimed ? 'border-orange-500/30 grayscale' : 'border-zinc-200'
-                                }`} 
-                              />
-                              {!isClaimed && (
-                                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-red-600 flex items-center justify-center border-2 border-white">
-                                  <svg viewBox="0 0 24 24" className="w-3 h-3 fill-zinc-900"><path d="M8 5v14l11-7z" /></svg>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                <h4 className="text-lg md:text-xl font-bold text-zinc-900 truncate tracking-tight">{channel.channelName}</h4>
-                                {isClaimed ? (
-                                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
-                                    <AlertCircle size={10} className="text-orange-400" />
-                                    <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Already on SuviX</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-600/10 border border-green-600/20">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Ready to Link</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-4 flex-wrap">
-                                <div className="flex items-center gap-2 text-red-500">
-                                  <Users size={14} />
-                                  <span className="text-sm font-black">{formatCount(channel.subscriberCount)}</span>
-                                </div>
-                                {channel.videoCount && (
-                                  <>
-                                    <div className="h-4 w-px bg-zinc-800" />
-                                    <div className="flex items-center gap-1.5 text-zinc-500">
-                                      <Video size={12} />
-                                      <span className="text-xs font-bold">{formatCount(channel.videoCount)} videos</span>
-                                    </div>
-                                  </>
-                                )}
-                                <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
-                                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] hidden sm:block">Verified Identity</span>
-                              </div>
-                            </div>
-
-                            {/* Tick for unclaimed */}
-                            {!isClaimed && (
-                              <div className="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
-                                <Check size={18} className="text-green-400" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Claimed explanation */}
-                          {isClaimed && (
-                            <div className="mt-5 p-4 rounded-2xl bg-orange-50 border border-orange-500/15 space-y-2">
-                              <p className="text-xs font-bold text-orange-300">This channel is already registered on SuviX</p>
-                              <p className="text-[11px] text-zinc-600 leading-relaxed">
-                                If this is your channel and you believe this is an error, please contact our support team.
-                              </p>
-                              <div className="flex items-center gap-2 pt-1">
-                                <a href="mailto:support@suvix.com" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold hover:bg-orange-500/15 transition-colors">
-                                  <ExternalLink size={10} /> Contact Support
-                                </a>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-
-                <p className="text-center text-[11px] text-zinc-600">
-                  Channel not showing?{' '}
-                  <button onClick={handleConnect} className="text-zinc-600 font-semibold hover:text-zinc-900 transition-colors underline underline-offset-2">
-                    Try a different Google account
-                  </button>
-                </p>
-              </div>
-            )}
-
-            {/* ── PRE-CONNECT: Marquee ──── */}
-            {!connected && (
-              <div className="w-full relative py-8 bg-white/80 backdrop-blur-xl border-y border-zinc-200 mb-16">
-                <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
-                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
-                <div className="overflow-hidden">
-                  <motion.div 
-                    className="flex gap-4 w-max px-4"
-                    animate={{ x: [0, -1200] }}
-                    transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
+                {youtubeDiscovery.channels.map((channel) => (
+                  <div
+                    key={channel.channelId}
+                    className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center gap-4"
                   >
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="flex gap-4">
-                        {[
-                          { name: "MrBeast",       sub: "245M",  img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&h=200&fit=crop" },
-                          { name: "MKBHD",         sub: "18.5M", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop" },
-                          { name: "Casey Neistat", sub: "12.6M", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop" },
-                          { name: "Peter McKinnon",sub: "5.9M",  img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop" },
-                          { name: "Ali Abdaal",    sub: "5.2M",  img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop" },
-                          { name: "Lofi Girl",     sub: "14.1M", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop" }
-                        ].map((creator, idx) => (
-                          <div key={idx} className="relative flex flex-col items-center p-4 rounded-[1.5rem] bg-white/60 border border-zinc-200/50 backdrop-blur-md w-36">
-                            <div className="relative mb-3">
-                              <img src={creator.img} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200" />
-                              <div className="absolute -bottom-1 -right-1 z-20">
-                                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-red-600">
-                                  <path d="M22.5 12.5c0-1.58-.811-3.029-2.126-3.882l.144-1.618a2.5 2.5 0 00-2.483-2.722l-1.614.076a4.522 4.522 0 00-3.321-2.13L12.5 1.5l-.6-.05c-1.58 0-3.029.811-3.882 2.126l-1.618-.144a2.5 2.5 0 00-2.722 2.483l.076 1.614a4.522 4.522 0 00-2.13 3.321L1.5 11.5l-.05.6c0 1.58.811 3.029 2.126 3.882l-.144 1.618a2.5 2.5 0 002.483 2.722l1.614-.076a4.522 4.522 0 003.321 2.13L11.5 22.5l.6.05c1.58 0 3.029-.811 3.882-2.126l1.618.144a2.5 2.5 0 002.722-2.483l-.076-1.614a4.522 4.522 0 002.13-3.321L22.5 12.5l.05-.6z" />
-                                  <path d="M10.5 15.5l-3.5-3.5 1.414-1.414L10.5 12.672l5.586-5.586L17.5 8.5z" fill="white" />
-                                </svg>
-                              </div>
-                            </div>
-                            <div className="text-center space-y-1">
-                              <h4 className="text-sm font-bold text-zinc-900 truncate">{creator.name}</h4>
-                              <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest bg-red-600/10 px-2 py-0.5 rounded-md">{creator.sub}</span>
-                            </div>
-                          </div>
-                        ))}
+                    <img
+                      src={channel.thumbnailUrl || 'https://via.placeholder.com/80'}
+                      alt={channel.channelName}
+                      className="w-16 h-16 rounded-xl object-cover border border-white shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-base font-bold text-zinc-900 truncate">
+                        {channel.channelName}
+                      </h4>
+                      <p className="text-xs text-zinc-500 font-medium">{channel.channelHandle || '@creator'}</p>
+                      
+                      <div className="flex items-center gap-3 mt-2 text-xs font-bold text-zinc-700">
+                        <span className="flex items-center gap-1 text-red-600">
+                          <Users size={13} /> {formatCount(channel.subscriberCount)}
+                        </span>
+                        <span className="text-zinc-300">•</span>
+                        <span className="flex items-center gap-1 text-zinc-600">
+                          <Video size={13} /> {formatCount(channel.videoCount)} videos
+                        </span>
                       </div>
-                    ))}
-                  </motion.div>
-                </div>
-              </div>
-            )}
-
-            {/* Benefits Card (Mobile) */}
-            <div className="lg:hidden w-full max-w-xl bg-zinc-50 border border-zinc-200 rounded-2xl p-6 text-left relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Video size={80} className="text-zinc-500" />
-              </div>
-              <div className="relative z-10 space-y-4">
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-[9px] font-bold uppercase tracking-widest">Creator Benefits</div>
-                <h3 className="text-xl font-bold text-zinc-900 tracking-tight leading-tight">Unlock Your Creator Identity</h3>
-                <p className="text-zinc-600 text-xs leading-relaxed max-w-sm">Sync your channel to display verified metrics, gain access to exclusive brand deals, and boost your profile credibility.</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1">
-                  {[
-                    { icon: <Users size={14} />, text: "Verified Stats" },
-                    { icon: <TrendingUp size={14} />, text: "Engagement" },
-                    { icon: <Check size={14} />, text: "Search Priority" },
-                    { icon: <Video size={14} />, text: "Brand Verified" }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 text-zinc-700 text-[10px] font-bold uppercase tracking-tight">
-                      <div className="p-1 rounded-lg bg-white border border-zinc-200 shadow-sm text-red-500">{item.icon}</div>
-                      {item.text}
                     </div>
-                  ))}
+                  </div>
+                ))}
+
+                <div className="pt-2">
+                  <Button
+                    onClick={handleNext}
+                    className="w-full h-13 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 font-bold text-sm flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <span>Continue to Select Niche</span>
+                    <ArrowRight size={16} />
+                  </Button>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* 3D Floating Creator Showcase (Default Hero) */
+              <FloatingCreatorShowcase />
+            )}
           </motion.div>
+
         </div>
       </main>
 
-      {/* ── STICKY BOTTOM HUD ──────────────────────────────────────────────── */}
+      {/* ── STICKY BOTTOM HUD (When Connected) ────────────────────────────── */}
       {connected && (
-        <div className="fixed bottom-6 inset-x-4 md:bottom-10 z-[100] flex justify-center pointer-events-none">
-          <div className="w-full max-w-[42rem] bg-white/80 backdrop-blur-2xl border border-zinc-200 p-3 md:p-4 rounded-[2rem] flex items-center justify-between gap-6 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center gap-4 pl-3">
-              <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-200 flex items-center justify-center">
-                <div className={`w-2.5 h-2.5 rounded-full ${hasUnclaimedChannel ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-orange-500'}`} />
+        <div className="fixed bottom-6 inset-x-4 md:bottom-8 z-50 flex justify-center pointer-events-none">
+          <div className="w-full max-w-xl bg-white/90 backdrop-blur-xl border border-zinc-200/90 p-4 rounded-2xl flex items-center justify-between gap-4 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
+            <div className="flex items-center gap-3 pl-2">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                <Check size={18} strokeWidth={3} />
               </div>
-              <div className="hidden sm:block">
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">Channel Status</p>
-                <p className="text-sm font-bold text-zinc-900 leading-none">
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Channel Status</p>
+                <p className="text-xs font-bold text-zinc-900">
                   {hasUnclaimedChannel
-                    ? `${youtubeDiscovery.channels.filter((c) => !c.isClaimed).length} ready · click Next to choose your niche`
-                    : 'All channels already registered'
-                  }
+                    ? `${youtubeDiscovery.channels.filter((c) => !c.isClaimed).length} Channel ready to link`
+                    : 'All channels claimed'}
                 </p>
               </div>
             </div>
 
-            <Button 
-              size="lg" 
+            <Button
+              size="md"
               disabled={!hasUnclaimedChannel}
               onClick={handleNext}
-              className={`h-12 md:h-14 px-8 md:px-10 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-3 border-none ${
-                hasUnclaimedChannel
-                  ? 'bg-white text-black hover:opacity-90 active:scale-[0.98] shadow-xl shadow-white/5' 
-                  : 'bg-zinc-900 text-zinc-600 cursor-not-allowed opacity-50'
-              }`}
+              className="h-11 px-6 rounded-xl font-bold text-xs bg-zinc-950 hover:bg-zinc-800 text-white flex items-center gap-2 shadow-md transition-all active:scale-95"
             >
-              Next: Choose Niche
-              <ArrowRight size={18} />
+              <span>Next: Choose Niche</span>
+              <ArrowRight size={14} />
             </Button>
           </div>
         </div>
       )}
+
     </div>
   );
 }

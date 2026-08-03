@@ -63,12 +63,26 @@ api.interceptors.response.use(
     }
 
     if (response?.status === 401 && !originalRequest._retry) {
-      // 🛡️ SKIP REFRESH for auth endpoints
+      // 🛡️ SKIP REFRESH for auth endpoints and guest identity checks
       if (
         originalRequest.url?.includes('/auth/login') ||
         originalRequest.url?.includes('/auth/register') ||
-        originalRequest.url?.includes('/auth/refresh-token')
+        originalRequest.url?.includes('/auth/refresh-token') ||
+        originalRequest.url?.includes('/auth/me') ||
+        originalRequest.url?.includes('/auth/exchange-code') ||
+        originalRequest.url?.includes('/auth/youtube/channels') ||
+        originalRequest.url?.includes('/auth/roles')
       ) {
+        // If /auth/me fails with 401, simply clear auth without disrupting onboarding
+        if (originalRequest.url?.includes('/auth/me')) {
+          try {
+            const { store } = await import('../store');
+            const { clearAuth } = await import('../store/slices/authSlice');
+            store.dispatch(clearAuth());
+          } catch {
+            // ignore
+          }
+        }
         return Promise.reject(error);
       }
 
@@ -114,23 +128,33 @@ api.interceptors.response.use(
         
         const { store } = await import('../store');
         const { clearAuth, selectAllSessions } = await import('../store/slices/authSlice');
-        const { clearTempSignupData } = await import('../store/slices/onboardingSlice');
         
-        // Clear active session
+        // Clear stale auth session
         store.dispatch(clearAuth());
-        store.dispatch(clearTempSignupData());
         
-        // If it was the last session, purge entirely
-        const remainingSessions = selectAllSessions(store.getState() as RootState);
-        if (remainingSessions.length === 0) {
-          const { persistor } = await import('../store');
-          await persistor.purge();
-          window.dispatchEvent(new CustomEvent('suvix:logout'));
-          window.location.href = '/'; 
-        } else {
-          // If there are other sessions, we just gracefully switch to another one 
-          // without full logout redirect
-          window.location.reload(); 
+        // 🛡️ CRITICAL: Never clear onboarding data or force-redirect if user is currently onboarding!
+        const isOnboardingOrAuthRoute = 
+          window.location.pathname.startsWith('/role-selection') ||
+          window.location.pathname.startsWith('/youtube-') ||
+          window.location.pathname.startsWith('/signup') ||
+          window.location.pathname.startsWith('/login') ||
+          window.location.pathname.startsWith('/oauth') ||
+          window.location.pathname.startsWith('/editor-') ||
+          window.location.pathname.startsWith('/brand-');
+
+        if (!isOnboardingOrAuthRoute) {
+          const { clearTempSignupData } = await import('../store/slices/onboardingSlice');
+          store.dispatch(clearTempSignupData());
+          
+          const remainingSessions = selectAllSessions(store.getState() as RootState);
+          if (remainingSessions.length === 0) {
+            const { persistor } = await import('../store');
+            await persistor.purge();
+            window.dispatchEvent(new CustomEvent('suvix:logout'));
+            window.location.href = '/'; 
+          } else {
+            window.location.reload(); 
+          }
         }
         
         return Promise.reject(refreshError);

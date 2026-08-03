@@ -453,6 +453,25 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
     }
   }
 
+  // 🛡️ Fetch Google profile info (email, name, picture) if available from OAuth token
+  let googleUser = null;
+  try {
+    const userinfoRes = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 4000,
+    });
+    if (userinfoRes.data?.email) {
+      googleUser = {
+        email: userinfoRes.data.email,
+        name: userinfoRes.data.name || null,
+        picture: userinfoRes.data.picture || null,
+        googleId: userinfoRes.data.sub || null,
+      };
+    }
+  } catch (userInfoErr) {
+    logger.debug(`[YT-OAUTH] Userinfo not available from token: ${userInfoErr.message}`);
+  }
+
   // 🛡️ Generate a signed discovery token proving these channels were legitimately discovered via Google OAuth
   const channelIds = (channels || []).map((ch) => ch.channelId);
   const discoveryToken = jwt.sign(
@@ -461,7 +480,7 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
     { expiresIn: "1h" }
   );
 
-  res.status(200).json({ success: true, channels, discoveryToken });
+  res.status(200).json({ success: true, channels, discoveryToken, googleUser });
 });
 
 // ─── Atomic Register ──────────────────────────────────────────────────────

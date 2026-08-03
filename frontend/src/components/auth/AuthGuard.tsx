@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectIsAuthenticated, selectIsInitialized, selectUser, selectIsAddingAccount } from '../../store/slices/authSlice';
+import { setTempSignupData } from '../../store/slices/onboardingSlice';
 import type { RootState } from '../../store';
 import { queryClient } from '../../queries/queryClient';
 import { CURRENT_USER_QUERY_KEY } from '../../queries/useCurrentUser';
@@ -156,18 +157,38 @@ interface OnboardingGuardProps {
 }
 
 export const OnboardingGuard = ({ children, requiredStep, fallback = '/role-selection' }: OnboardingGuardProps) => {
+  const dispatch = useDispatch();
   const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
 
-  const currentStep = tempSignupData?.onboardingStep;
-  const categoryId = tempSignupData?.categoryId;
+  let currentStep = tempSignupData?.onboardingStep;
+  let categoryId = tempSignupData?.categoryId;
+
+  // Check sessionStorage backup if Redux is not yet populated
+  if (!categoryId) {
+    try {
+      const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+      if (rawBackup) {
+        const parsed = JSON.parse(rawBackup);
+        if (parsed?.categoryId) {
+          categoryId = parsed.categoryId;
+          currentStep = parsed.onboardingStep;
+          dispatch(setTempSignupData(parsed));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   // Base requirement: must have a category selected at minimum
-  if (!categoryId) {
+  // If user is in the middle of YouTube connect OAuth flow, allow grace period
+  const isYouTubeOAuth = sessionStorage.getItem('oauth_intent') === 'connect_youtube' || !!sessionStorage.getItem('youtube_access_token');
+  if (!categoryId && !isYouTubeOAuth) {
     return <Navigate to={fallback} replace />;
   }
 
   // If a specific step is required, verify the user has reached at least that step
-  if (requiredStep !== 'role') {
+  if (requiredStep !== 'role' && !isYouTubeOAuth) {
     const currentIndex = currentStep ? STEP_ORDER.indexOf(currentStep) : -1;
     const requiredIndex = STEP_ORDER.indexOf(requiredStep);
 

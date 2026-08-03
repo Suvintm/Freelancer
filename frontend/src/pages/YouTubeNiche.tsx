@@ -8,9 +8,25 @@ import {
   Video,
   ArrowRight,
   Loader2,
-  Youtube,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Laptop,
+  Gamepad2,
+  Camera,
+  GraduationCap,
+  Smile,
+  Dumbbell,
+  Music,
+  DollarSign,
+  Utensils,
+  Compass,
+  Film,
+  Newspaper,
+  Car,
+  Atom,
+  Heart,
+  Layers,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,7 +35,7 @@ import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
 import { selectUser } from '../store/slices/authSlice';
 import { api } from '../api/client';
-import logo from '../assets/darklogo.png';
+import logo from '../assets/lightlogo.png';
 
 const formatCount = (n: number | string): string => {
   const num = Number(n);
@@ -33,46 +49,29 @@ const formatVideoDate = (dateString?: string) => {
   return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-interface StaticParticle {
-  id: number;
-  x: string;
-  y: string;
-  opacity: number;
-  scale: number;
-  duration: number;
-}
-
-const STATIC_PARTICLES: StaticParticle[] = Array.from({ length: 8 }).map((_, i) => ({
-  id: i,
-  x: `${Math.random() * 100}%`,
-  y: `${Math.random() * 100}%`,
-  opacity: Math.random() * 0.4 + 0.1,
-  scale: Math.random() * 0.5 + 0.5,
-  duration: Math.random() * 5 + 4,
-}));
-
 interface NicheItem {
   id: string;
   name: string;
+  icon?: React.ReactNode;
 }
 
 const YOUTUBE_NICHES: NicheItem[] = [
-  { id: 'tech_gadgets', name: 'Tech & Gadgets' },
-  { id: 'gaming', name: 'Gaming' },
-  { id: 'vlogs_lifestyle', name: 'Vlogs & Lifestyle' },
-  { id: 'education_howto', name: 'Education & How-To' },
-  { id: 'comedy_entertainment', name: 'Comedy & Entertainment' },
-  { id: 'fitness_health', name: 'Fitness & Health' },
-  { id: 'music_dance', name: 'Music & Dance' },
-  { id: 'finance_business', name: 'Finance & Business' },
-  { id: 'fashion_beauty', name: 'Fashion & Beauty' },
-  { id: 'food_cooking', name: 'Food & Cooking' },
-  { id: 'travel_adventure', name: 'Travel & Adventure' },
-  { id: 'film_animation', name: 'Film & Animation' },
-  { id: 'news_politics', name: 'News & Politics' },
-  { id: 'auto_vehicles', name: 'Auto & Vehicles' },
-  { id: 'science_nature', name: 'Science & Nature' },
-  { id: 'kids_family', name: 'Kids & Family' },
+  { id: 'tech_gadgets', name: 'Tech & Gadgets', icon: <Laptop size={18} /> },
+  { id: 'gaming', name: 'Gaming', icon: <Gamepad2 size={18} /> },
+  { id: 'vlogs_lifestyle', name: 'Vlogs & Lifestyle', icon: <Camera size={18} /> },
+  { id: 'education_howto', name: 'Education & How-To', icon: <GraduationCap size={18} /> },
+  { id: 'comedy_entertainment', name: 'Comedy & Entertainment', icon: <Smile size={18} /> },
+  { id: 'fitness_health', name: 'Fitness & Health', icon: <Dumbbell size={18} /> },
+  { id: 'music_dance', name: 'Music & Dance', icon: <Music size={18} /> },
+  { id: 'finance_business', name: 'Finance & Business', icon: <DollarSign size={18} /> },
+  { id: 'fashion_beauty', name: 'Fashion & Beauty', icon: <Sparkles size={18} /> },
+  { id: 'food_cooking', name: 'Food & Cooking', icon: <Utensils size={18} /> },
+  { id: 'travel_adventure', name: 'Travel & Adventure', icon: <Compass size={18} /> },
+  { id: 'film_animation', name: 'Film & Animation', icon: <Film size={18} /> },
+  { id: 'news_politics', name: 'News & Politics', icon: <Newspaper size={18} /> },
+  { id: 'auto_vehicles', name: 'Auto & Vehicles', icon: <Car size={18} /> },
+  { id: 'science_nature', name: 'Science & Nature', icon: <Atom size={18} /> },
+  { id: 'kids_family', name: 'Kids & Family', icon: <Heart size={18} /> },
 ];
 
 export default function YouTubeNiche() {
@@ -85,50 +84,81 @@ export default function YouTubeNiche() {
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const youtubeCategory = categories.find(c => c.slug === 'yt_influencer' || c.slug === 'creator' || c.maps_to_role === 'creator');
+  const youtubeCategory = categories.find(
+    (c) => c.slug === 'yt_influencer' || c.slug === 'creator' || c.maps_to_role === 'creator'
+  );
   const channel = tempSignupData?.youtubeChannels?.[0];
 
   const availableNiches: NicheItem[] = useMemo(() => {
     if (youtubeCategory?.subCategories && youtubeCategory.subCategories.length > 0) {
-      return youtubeCategory.subCategories;
+      return youtubeCategory.subCategories.map((sub) => {
+        const fallback = YOUTUBE_NICHES.find((n) => n.id === sub.id || n.name.toLowerCase() === sub.name.toLowerCase());
+        return {
+          id: sub.id,
+          name: sub.name,
+          icon: fallback?.icon || <Layers size={18} />,
+        };
+      });
     }
     return YOUTUBE_NICHES;
   }, [youtubeCategory]);
 
   useEffect(() => {
     if (!channel) {
+      try {
+        const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+        if (rawBackup) {
+          const parsed = JSON.parse(rawBackup);
+          if (parsed?.youtubeChannels?.[0]) {
+            dispatch(setTempSignupData(parsed));
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
       navigate('/youtube-connect', { replace: true });
     }
-  }, [channel, navigate]);
+  }, [channel, dispatch, navigate]);
 
   if (!channel) return null;
 
-  const selectedNicheName = availableNiches.find((s: NicheItem) => s.id === selectedNiche)?.name;
+  const selectedNicheItem = availableNiches.find((s) => s.id === selectedNiche);
+  const selectedNicheName = selectedNicheItem?.name;
 
   const handleContinue = async () => {
     if (!selectedNiche) return;
     setIsSubmitting(true);
     try {
-      const matched = availableNiches.find((s: NicheItem) => s.id === selectedNiche);
+      const matched = availableNiches.find((s) => s.id === selectedNiche);
       const nicheName = matched?.name || selectedNiche;
       const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
         ...ch,
         niche: nicheName,
-        subCategoryId:   selectedNiche,
+        subCategoryId: selectedNiche,
         subCategorySlug: selectedNiche,
       }));
-      
-      dispatch(setTempSignupData({
+
+      const updateData = {
         youtubeChannels,
         roleSubCategoryIds: [selectedNiche],
-        onboardingStep:     'youtube',
-      }));
+        onboardingStep: 'youtube' as const,
+      };
+
+      dispatch(setTempSignupData(updateData));
+      try {
+        const raw = sessionStorage.getItem('suvix_temp_signup_data');
+        const cur = raw ? JSON.parse(raw) : {};
+        sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({ ...cur, ...updateData }));
+      } catch {
+        // ignore
+      }
 
       const isEmailFlow = tempSignupData?.authMethod === 'email';
       const isSocialFlow = tempSignupData?.isSocialSignup || tempSignupData?.authMethod === 'google';
       const isRegistering = tempSignupData?.intent === 'register' || isEmailFlow || isSocialFlow || !user?.isOnboarded;
 
-      // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM SETTINGS:
+      // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM DASHBOARD SETTINGS:
       if (user && user.isOnboarded && !isRegistering) {
         for (const ch of youtubeChannels) {
           await api.post('/youtube-creator/channel/link', { channel: ch });
@@ -145,288 +175,308 @@ export default function YouTubeNiche() {
         } else {
           navigate('/complete-profile');
         }
-      }, 900);
+      }, 700);
     } catch (err) {
-      console.error("Failed to link YouTube channel:", err);
+      console.error('Failed to link YouTube channel niche:', err);
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="h-screen w-full bg-black flex flex-col relative overflow-hidden selection:bg-red-500 selection:text-white">
-
-      {/* ── BACKGROUND — identical to YouTubeConnect ───────────────────────── */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[70vh] bg-gradient-to-b from-red-600/[0.12] to-transparent blur-[120px]" />
+    <div className="min-h-screen w-full bg-[#fcfcfd] text-zinc-900 flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-white font-sans">
+      
+      {/* ── ARCHITECTURAL GRID BACKGROUND ─────────────────────────────────── */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute inset-0 opacity-[0.12]"
-          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)', backgroundSize: '32px 32px' }}
+          className="absolute inset-0 opacity-[0.4]"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(228, 228, 231, 0.7) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(228, 228, 231, 0.7) 1px, transparent 1px)
+            `,
+            backgroundSize: '44px 44px',
+          }}
         />
-        {STATIC_PARTICLES.map((p) => (
-          <motion.div
-            key={p.id}
-            initial={{ x: p.x, y: p.y, opacity: p.opacity, scale: p.scale }}
-            animate={{ y: [null, '-25%', '25%', '-10%'], x: [null, '12%', '-12%', '6%'], opacity: [0.3, 0.8, 0.3] }}
-            transition={{ duration: p.duration, repeat: Infinity, ease: 'linear' }}
-            className="absolute w-1 h-1 bg-red-500 rounded-full blur-[1px]"
-          />
-        ))}
-        <motion.div animate={{ scale: [1, 1.15, 1], x: ['-4%', '4%', '-4%'], rotate: [0, 45, 0] }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} className="absolute -top-[10%] -left-[10%] w-[90%] h-[60%] bg-zinc-900/15 rounded-full blur-[140px]" />
-        <motion.div animate={{ scale: [1.15, 1, 1.15], x: ['4%', '-4%', '4%'], rotate: [0, -45, 0] }} transition={{ duration: 12, repeat: Infinity, ease: 'linear' }} className="absolute -top-[5%] -right-[10%] w-[90%] h-[60%] bg-red-900/[0.08] rounded-full blur-[140px]" />
+        {/* Soft Ambient Glows */}
+        <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80rem] h-[35rem] bg-gradient-to-b from-amber-500/10 via-red-500/5 to-transparent rounded-full blur-[130px]" />
+        <div className="absolute top-[30%] right-[-10%] w-[35rem] h-[35rem] bg-amber-400/[0.08] rounded-full blur-[140px]" />
       </div>
 
-      {/* ── HEADER — same absolute style as YouTubeConnect ─────────────────── */}
-      <div className="absolute top-0 inset-x-0 z-[100] p-4 md:p-6 lg:p-8 flex items-center justify-between pointer-events-none">
-        {/* Logo */}
-        <div className="pointer-events-auto">
-          <img src={logo} alt="SuviX" className="h-6 md:h-7 lg:h-9" />
+      {/* ── TOP HEADER ────────────────────────────────────────────────────── */}
+      <header className="relative z-50 w-full px-6 py-6 md:px-12 md:py-8 max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="SuviX" className="h-7 md:h-9 object-contain" />
         </div>
 
-        {/* Step indicator — center */}
-        <div className="flex items-center gap-2 pointer-events-none">
-          {[
-            { label: 'Role',    done: true  },
-            { label: 'YouTube', done: true  },
-            { label: 'Niche',   done: false, active: true },
-            { label: 'Details', done: false },
-          ].map((s, i, arr) => (
-            <div key={s.label} className="flex items-center gap-2">
-              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider transition-all ${
-                s.done   ? 'bg-green-500/10 border-green-500/30 text-green-400' :
-                s.active ? 'bg-white/10 border-white/20 text-white' :
-                           'bg-zinc-900/60 border-zinc-800 text-zinc-600'
-              }`}>
-                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-black ${
-                  s.done   ? 'bg-green-500 text-black' :
-                  s.active ? 'bg-white text-black' :
-                             'bg-zinc-800 text-zinc-600'
-                }`}>
-                  {s.done ? <Check size={7} strokeWidth={3} /> : i + 1}
-                </div>
-                <span className="hidden sm:block">{s.label}</span>
-              </div>
-              {i < arr.length - 1 && <div className={`w-4 h-px ${s.done ? 'bg-green-500/30' : 'bg-zinc-800'}`} />}
-            </div>
-          ))}
-        </div>
-
-        {/* Back button */}
-        <button
-          onClick={() => navigate('/youtube-connect')}
-          className="w-8 h-8 md:w-10 md:h-10 rounded-lg border border-zinc-800 flex items-center justify-center bg-black/40 backdrop-blur-md pointer-events-auto group active:scale-95"
-        >
-          <ChevronLeft size={15} className="text-zinc-400 group-hover:text-white" />
-        </button>
-      </div>
-
-      {/* ── MAIN: Two-column layout — no outer scroll ──────────────────────── */}
-      <div className="flex-1 flex flex-col lg:flex-row items-stretch overflow-hidden relative z-10 pt-16 md:pt-20 pb-20">
-
-        {/* ╔══════════════════════════════════════════════════════╗
-            ║  LEFT: Channel Identity Card (sticky, compact)      ║
-            ╚══════════════════════════════════════════════════════╝ */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="lg:w-[42%] xl:w-[38%] flex flex-col px-5 md:px-8 lg:px-10 xl:px-14 py-4 lg:py-8 lg:overflow-y-auto lg:border-r lg:border-zinc-900/60 custom-scrollbar"
-        >
-          {/* Channel hero */}
-          <div className="flex flex-row lg:flex-col items-center lg:items-start gap-5 lg:gap-4 mb-5 lg:mb-6">
-            {/* Avatar + verified */}
-            <div className="relative flex-shrink-0">
-              {/* Mini banner glow behind avatar */}
-              <div className="absolute inset-0 scale-150 rounded-full blur-2xl opacity-40"
-                style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.3) 0%, transparent 70%)' }} />
-              <img
-                src={channel.thumbnailUrl ?? ''}
-                alt={channel.channelName}
-                className="relative w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full object-cover border-4 border-zinc-900 shadow-2xl"
-              />
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-red-600 flex items-center justify-center border-2 border-black shadow-xl">
-                <Check size={11} strokeWidth={3} className="text-white" />
-              </div>
-            </div>
-
-            {/* Name + meta */}
-            <div className="flex-1 min-w-0 lg:w-full">
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white tracking-tight truncate">{channel.channelName}</h2>
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600/10 border border-red-600/20 flex-shrink-0">
-                  <Youtube size={9} className="text-red-500" />
-                  <span className="text-[8px] font-black text-red-400 uppercase tracking-widest">Verified</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5 text-red-400 font-bold">
-                  <Users size={13} />
-                  <span className="text-sm">{formatCount(channel.subscriberCount ?? 0)}</span>
-                </div>
-                <div className="w-px h-3.5 bg-zinc-800" />
-                <div className="flex items-center gap-1.5 text-zinc-500 font-semibold">
-                  <Video size={12} />
-                  <span className="text-xs">{formatCount(channel.videoCount ?? 0)} videos</span>
-                </div>
-                <div className="w-px h-3.5 bg-zinc-800 hidden sm:block" />
-                <div className="hidden sm:flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Identity Synced</span>
-                </div>
-              </div>
-            </div>
+        {/* Step Indicator & Back Button */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-700">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>Step 3 of 4 • Primary Niche</span>
           </div>
 
-          {/* Divider */}
-          <div className="h-px bg-zinc-900 mb-5" />
+          <button
+            onClick={() => navigate('/youtube-connect')}
+            className="h-10 px-4 rounded-xl border border-zinc-200/90 bg-white/80 backdrop-blur-md text-zinc-700 hover:text-zinc-950 hover:bg-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 group active:scale-95"
+          >
+            <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Channel</span>
+          </button>
+        </div>
+      </header>
 
-          {/* Recent videos — horizontal compact strip */}
-          {channel.videos && channel.videos.length > 0 && (
-            <div className="space-y-3 mb-5">
-              <div className="flex items-center gap-2">
-                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.25em]">Channel Highlights</p>
-                <span className="text-[8px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Live Synced</span>
+      {/* ── MAIN CONTENT (2-COLUMN RESPONSIVE LAYOUT) ─────────────────────── */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-5 sm:px-8 md:px-12 pt-2 pb-32 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+
+          {/* ╔════════════════════════════════════════════════════════════════╗
+              ║  LEFT COLUMN: Channel Identity & Highlights (5 Cols on lg)   ║
+              ╚════════════════════════════════════════════════════════════════╝ */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-28"
+          >
+            {/* Channel Identity Card */}
+            <div className="bg-white rounded-3xl border border-zinc-200/90 shadow-[0_12px_36px_rgba(0,0,0,0.05)] p-6 relative overflow-hidden">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="relative shrink-0">
+                  <img
+                    src={channel.thumbnailUrl ?? 'https://via.placeholder.com/96'}
+                    alt={channel.channelName}
+                    className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white shadow-md"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-white shadow-sm">
+                    <Check size={12} strokeWidth={3} />
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-black text-zinc-950 truncate tracking-tight">
+                      {channel.channelName}
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-[9px] font-black uppercase tracking-wider">
+                      Verified
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-2 text-xs font-bold text-zinc-600 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-red-600">
+                      <Users size={14} /> {formatCount(channel.subscriberCount ?? 0)}
+                    </span>
+                    <span className="text-zinc-300">•</span>
+                    <span className="flex items-center gap-1 text-zinc-600">
+                      <Video size={13} /> {formatCount(channel.videoCount ?? 0)} videos
+                    </span>
+                  </div>
+
+                  <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Identity Linked with Google</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
-                {channel.videos.slice(0, 6).map((video) => (
-                  <a
-                    key={video.id}
-                    href={`https://www.youtube.com/watch?v=${video.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-none w-[130px] md:w-[150px] group/v rounded-xl bg-zinc-950/80 border border-zinc-800/60 hover:border-zinc-700 overflow-hidden transition-all hover:-translate-y-0.5"
-                  >
-                    <div className="relative aspect-video bg-zinc-900">
-                      <img src={video.thumbnail} alt="" className="w-full h-full object-cover group-hover/v:scale-105 transition-transform duration-400" />
-                      <div className="absolute inset-0 bg-black/20 group-hover/v:bg-black/0 transition-colors" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/v:opacity-100 transition-opacity">
-                        <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
-                          <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-white ml-0.5"><path d="M8 5v14l11-7z" /></svg>
+
+              {/* Video Highlights Strip */}
+              {channel.videos && channel.videos.length > 0 && (
+                <div className="mt-6 pt-5 border-t border-zinc-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      Recent Channel Highlights
+                    </p>
+                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                      Live Synced
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+                    {channel.videos.slice(0, 4).map((video) => (
+                      <a
+                        key={video.id}
+                        href={`https://www.youtube.com/watch?v=${video.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 w-36 sm:w-40 rounded-xl bg-zinc-50 border border-zinc-200/80 hover:border-zinc-300 overflow-hidden transition-all hover:-translate-y-0.5 group shadow-sm"
+                      >
+                        <div className="relative aspect-video bg-zinc-100">
+                          <img
+                            src={video.thumbnail}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
                         </div>
-                      </div>
-                    </div>
-                    <div className="p-2">
-                      <p className="text-[9px] font-semibold text-zinc-400 line-clamp-2 leading-snug group-hover/v:text-red-400 transition-colors">{video.title}</p>
-                      <p className="text-[8px] text-zinc-600 mt-0.5">{formatVideoDate(video.publishedAt)}</p>
-                    </div>
-                  </a>
-                ))}
-              </div>
+                        <div className="p-2">
+                          <p className="text-[10px] font-bold text-zinc-800 line-clamp-2 leading-snug group-hover:text-red-600 transition-colors">
+                            {video.title}
+                          </p>
+                          <p className="text-[9px] text-zinc-400 mt-1 font-medium">
+                            {formatVideoDate(video.publishedAt)}
+                          </p>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Benefits Card — same as YT Connect left column */}
-          <div className="hidden lg:block w-full bg-zinc-900/40 border border-zinc-800 rounded-2xl p-5 text-left relative overflow-hidden group mt-auto">
-            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Video size={56} className="text-zinc-500" />
-            </div>
-            <div className="relative z-10 space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-[8px] font-bold uppercase tracking-widest">
-                <Sparkles size={8} /> Creator Benefits
+            {/* Why Niche Matters Card (Desktop & Tablet) */}
+            <div className="bg-white rounded-3xl border border-zinc-200/80 p-6 shadow-sm hidden sm:block">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-600">
+                  <Sparkles size={14} />
+                </div>
+                <h3 className="text-sm font-black text-zinc-900 uppercase tracking-wider">
+                  Why Pick Your Niche?
+                </h3>
               </div>
-              <h3 className="text-base font-bold text-white tracking-tight">Unlock Your Creator Identity</h3>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1">
+              <p className="text-xs text-zinc-600 leading-relaxed mb-4">
+                Selecting your primary niche trains the SuviX matching engine to connect you with the highest-converting opportunities:
+              </p>
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: <Users size={12} />, text: "Verified Stats" },
-                  { icon: <TrendingUp size={12} />, text: "Engagement" },
-                  { icon: <Check size={12} />, text: "Search Priority" },
-                  { icon: <Video size={12} />, text: "Brand Verified" }
+                  { icon: <TrendingUp size={13} />, title: 'Brand Deals', desc: 'Direct sponsor matchmaking' },
+                  { icon: <Users size={13} />, title: 'Video Editors', desc: 'Niche-specialized editors' },
+                  { icon: <ShieldCheck size={13} />, title: 'Rank Priority', desc: 'Top category search rank' },
+                  { icon: <Video size={13} />, title: 'Growth Tools', desc: 'SEO & keyword benchmarks' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-zinc-400 text-[9px] font-bold uppercase tracking-tight">
-                    <div className="p-1 rounded-md bg-white/5 border border-white/10 text-red-500">{item.icon}</div>
-                    {item.text}
+                  <div key={i} className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-100">
+                    <div className="flex items-center gap-1.5 text-zinc-900 font-bold text-xs">
+                      <span className="text-amber-500">{item.icon}</span>
+                      <span>{item.title}</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 mt-0.5 font-medium">{item.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* ╔══════════════════════════════════════════════════════╗
-            ║  RIGHT: Niche Selection (scrollable within column)  ║
-            ╚══════════════════════════════════════════════════════╝ */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:flex-1 flex flex-col px-5 md:px-8 lg:px-10 xl:px-14 py-4 lg:py-8 overflow-y-auto custom-scrollbar"
-        >
-          {/* Heading */}
-          <div className="mb-6 lg:mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Step 3 of 4</span>
+          {/* ╔════════════════════════════════════════════════════════════════╗
+              ║  RIGHT COLUMN: Interactive Niche Selection (7 Cols on lg)    ║
+              ╚════════════════════════════════════════════════════════════════╝ */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="lg:col-span-7 flex flex-col space-y-6"
+          >
+            {/* Header / Title Area */}
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-zinc-200 bg-white shadow-sm mb-3">
+                <Sparkles size={11} className="text-amber-500" />
+                <span className="text-[9.5px] font-black text-zinc-700 uppercase tracking-[0.16em]">
+                  Creator Categorization
+                </span>
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl lg:text-[2.6rem] font-black text-zinc-950 tracking-tight leading-tight">
+                What content do{' '}
+                <span className="relative inline-block text-zinc-950">
+                  you create?
+                  <span className="absolute left-0 bottom-1 w-full h-2.5 bg-amber-400/35 -z-10 rounded-sm transform -rotate-1" />
+                </span>
+              </h1>
+
+              <p className="text-sm text-zinc-600 font-medium mt-2 max-w-xl leading-relaxed">
+                Choose the primary niche that best represents your channel. Brands and top video editors use this to discover and collaborate with you.
+              </p>
             </div>
-            <h1 className="text-2xl md:text-3xl lg:text-[2.25rem] font-bold text-white tracking-tight leading-tight">
-              What content do <br className="hidden lg:block" />
-              <span className="text-zinc-600">you create?</span>
-            </h1>
-            <p className="text-zinc-500 text-xs md:text-sm font-medium mt-2 max-w-sm">
-              Choose the niche that best describes your channel. This helps brands and clients discover you.
-            </p>
-          </div>
 
-          {/* Niche grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-3 mb-5">
-            {availableNiches.map((sub: NicheItem) => {
-              const isActive = selectedNiche === sub.id;
-              return (
-                <motion.button
-                  key={sub.id}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => setSelectedNiche(sub.id)}
-                  className={`relative px-3 py-3.5 md:px-4 md:py-4 rounded-2xl text-[11px] md:text-xs font-bold transition-all border text-center leading-snug cursor-pointer overflow-hidden group ${
-                    isActive
-                      ? 'bg-white border-white text-black shadow-[0_8px_24px_rgba(255,255,255,0.1)]'
-                      : 'bg-zinc-950/50 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white hover:bg-zinc-900/60'
-                  }`}
+            {/* Niches Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {availableNiches.map((niche) => {
+                const isActive = selectedNiche === niche.id;
+                return (
+                  <motion.button
+                    key={niche.id}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => setSelectedNiche(niche.id)}
+                    className={`relative p-4 rounded-2xl text-left transition-all duration-200 border flex flex-col justify-between min-h-[5.75rem] cursor-pointer group select-none ${
+                      isActive
+                        ? 'bg-amber-500/10 border-2 border-amber-500 text-zinc-950 shadow-[0_8px_20px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/30'
+                        : 'bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/80 text-zinc-800 shadow-sm'
+                    }`}
+                  >
+                    {/* Top Row: Icon + Checkmark */}
+                    <div className="flex items-center justify-between w-full mb-2">
+                      <div
+                        className={`p-2 rounded-xl transition-colors ${
+                          isActive
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-zinc-100 text-zinc-600 group-hover:text-zinc-900 group-hover:bg-zinc-200/80'
+                        }`}
+                      >
+                        {niche.icon}
+                      </div>
+
+                      {isActive && (
+                        <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-sm">
+                          <Check size={11} strokeWidth={3.5} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Niche Name */}
+                    <span className="text-xs font-bold leading-tight line-clamp-2">
+                      {niche.name}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* Selection Confirmation Strip */}
+            <AnimatePresence>
+              {selectedNiche && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="flex items-center gap-3.5 p-4 rounded-2xl bg-emerald-50 border border-emerald-200/90 shadow-sm"
                 >
-                  <span className="relative z-10 flex flex-col items-center justify-center gap-1.5 min-h-[2rem]">
-                    {isActive && <Check size={13} strokeWidth={3} className="text-black" />}
-                    {sub.name}
-                  </span>
-                </motion.button>
-              );
-            })}
-          </div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Check size={16} strokeWidth={3} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-emerald-900">
+                      Primary Niche Selected: <span className="font-extrabold">{selectedNicheName}</span>
+                    </p>
+                    <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                      You can add secondary niches or adjust this anytime from your creator settings.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
-          {/* Selected confirmation strip */}
-          <AnimatePresence>
-            {selectedNiche && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                className="flex items-center gap-3 p-3.5 rounded-2xl bg-green-500/5 border border-green-500/20 mt-1"
-              >
-                <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check size={14} className="text-green-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] font-bold text-green-400">Niche confirmed</p>
-                  <p className="text-[10px] text-zinc-500">
-                    Tagged as <span className="text-white font-bold">{selectedNicheName}</span> — you can update this later.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      </div>
+        </div>
+      </main>
 
-      {/* ── STICKY BOTTOM HUD — same style as YouTubeConnect ──────────────── */}
-      <div className="absolute bottom-4 inset-x-4 md:bottom-6 z-[100] flex justify-center pointer-events-none">
-        <div className="w-full max-w-[44rem] bg-zinc-950/80 backdrop-blur-2xl border border-zinc-800 p-3 md:p-4 rounded-[2rem] flex items-center justify-between gap-4 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center gap-3 pl-2">
-            <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center flex-shrink-0">
-              <div className={`w-2 h-2 rounded-full ${selectedNiche ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-zinc-700'}`} />
+      {/* ── STICKY BOTTOM HUD BAR (Responsive & Sleek) ────────────────────── */}
+      <div className="fixed bottom-5 inset-x-4 sm:bottom-6 z-50 flex justify-center pointer-events-none">
+        <div className="w-full max-w-2xl bg-white/90 backdrop-blur-xl border border-zinc-200/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl flex items-center justify-between gap-4 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.12)]">
+          
+          <div className="flex items-center gap-3 pl-2 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${
+                  selectedNiche
+                    ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                    : 'bg-zinc-400'
+                }`}
+              />
             </div>
-            <div className="hidden sm:block">
-              <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-0.5">Niche Status</p>
-              <p className="text-sm font-bold text-white leading-none truncate max-w-[180px] md:max-w-xs">
-                {selectedNiche
-                  ? selectedNicheName
-                  : 'Select a niche above to continue'
-                }
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider leading-none mb-1">
+                Niche Status
+              </p>
+              <p className="text-xs sm:text-sm font-bold text-zinc-900 truncate">
+                {selectedNiche ? selectedNicheName : 'Select a niche above to proceed'}
               </p>
             </div>
           </div>
@@ -435,19 +485,24 @@ export default function YouTubeNiche() {
             size="lg"
             disabled={!selectedNiche || isSubmitting}
             onClick={handleContinue}
-            className={`h-11 md:h-13 px-6 md:px-8 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2.5 border-none flex-shrink-0 ${
+            className={`h-11 sm:h-13 px-6 sm:px-8 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 border-none shrink-0 ${
               selectedNiche
-                ? 'bg-white text-black hover:opacity-90 active:scale-[0.98] shadow-xl shadow-white/5'
-                : 'bg-zinc-900 text-zinc-600 cursor-not-allowed opacity-50'
+                ? 'bg-[#ffb703] hover:bg-[#fb8500] text-zinc-950 shadow-md shadow-amber-500/20 active:scale-95'
+                : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
             }`}
           >
-            {isSubmitting
-              ? <Loader2 size={15} className="animate-spin" />
-              : <><span>Continue to Details</span><ArrowRight size={16} /></>
-            }
+            {isSubmitting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <>
+                <span>Continue to Details</span>
+                <ArrowRight size={15} strokeWidth={2.5} />
+              </>
+            )}
           </Button>
         </div>
       </div>
+
     </div>
   );
 }

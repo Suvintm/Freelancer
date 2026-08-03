@@ -118,15 +118,22 @@ export default function RoleSelection() {
 
     const roleType = getRoleType(selectedCategory);
 
-    dispatch(setTempSignupData({
+    const signupData = {
       categoryId: selected,
       categorySlug: selectedCategory.slug,
       roleGroup: selectedCategory.roleGroup,
       roleName: selectedCategory.name,
-      intent: 'register',
-      authMethod: 'email',
-      onboardingStep: 'role',
-    }));
+      intent: 'register' as const,
+      authMethod: 'email' as const,
+      onboardingStep: 'role' as const,
+    };
+
+    try {
+      sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(signupData));
+    } catch {
+      // ignore
+    }
+    dispatch(setTempSignupData(signupData));
 
     if (roleType === 'creator') {
       // YouTube creators connect their channel before filling personal details
@@ -155,16 +162,27 @@ export default function RoleSelection() {
 
     const roleType = getRoleType(selectedCategory);
 
-    // Save role context BEFORE redirect (Zustand persist = survives page reload)
-    dispatch(setTempSignupData({
+    const signupData = {
       categoryId: selected,
       categorySlug: selectedCategory.slug,
       roleGroup: selectedCategory.roleGroup,
       roleName: selectedCategory.name,
-      intent: 'register',
-      authMethod: 'google',
-      onboardingStep: 'role',
-    }));
+      intent: 'register' as const,
+      authMethod: 'google' as const,
+      onboardingStep: 'role' as const,
+    };
+
+    try {
+      sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(signupData));
+      if (roleType === 'creator') {
+        sessionStorage.setItem('oauth_intent', 'connect_youtube');
+      }
+    } catch {
+      // ignore
+    }
+
+    // Save role context BEFORE redirect
+    dispatch(setTempSignupData(signupData));
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 
