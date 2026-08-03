@@ -116,13 +116,24 @@ export default function Signup() {
   const isBrandClient = tempSignupData?.categorySlug === 'brand' || tempSignupData?.categorySlug === 'social_promoter';
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
-  // If tempSignupData has no categoryId, the user navigated here without going
-  // through role selection — redirect them back.
+  // If tempSignupData has no categoryId, attempt sessionStorage recovery before redirecting.
   useEffect(() => {
     if (!tempSignupData?.categoryId) {
+      try {
+        const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+        if (rawBackup) {
+          const parsed = JSON.parse(rawBackup);
+          if (parsed?.categoryId) {
+            dispatch(setTempSignupData(parsed));
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
       navigate('/role-selection', { replace: true });
     }
-  }, [tempSignupData?.categoryId, navigate]);
+  }, [tempSignupData?.categoryId, dispatch, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -407,16 +418,28 @@ export default function Signup() {
                 </div>
 
                 {/* Email */}
-                <InputField 
-                  label={isBrandClient ? "Work Email Address" : "Email Address"} 
-                  name="email" 
-                  type="email" 
-                  placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"} 
-                  icon={<Mail size={16} />} 
-                  value={form.email} 
-                  onChange={handleChange} 
-                  required 
-                />
+                <div>
+                  <InputField 
+                    label={isBrandClient ? "Work Email Address" : "Email Address"} 
+                    name="email" 
+                    type="email" 
+                    placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"} 
+                    icon={<Mail size={16} />} 
+                    value={form.email} 
+                    onChange={handleChange} 
+                    required 
+                    helperText={socialProfile?.email ? (
+                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                        <Check size={11} strokeWidth={3} /> Auto-filled
+                      </span>
+                    ) : undefined}
+                  />
+                  {socialProfile?.email && (
+                    <p className="mt-1 text-[10px] text-zinc-400 font-medium pl-1 flex items-center gap-1">
+                      <span>💡 Pre-filled from Google. You can change this to your preferred business email.</span>
+                    </p>
+                  )}
+                </div>
 
                 {/* Phone + Language/Website */}
                 <div className="grid grid-cols-2 gap-4">
@@ -601,12 +624,16 @@ export default function Signup() {
 interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon: React.ReactNode;
+  helperText?: React.ReactNode;
 }
 
-function InputField({ label, icon, ...props }: InputFieldProps) {
+function InputField({ label, icon, helperText, ...props }: InputFieldProps) {
   return (
     <div className="space-y-1">
-      <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">{label}</label>
+        {helperText}
+      </div>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">{icon}</span>
         <input

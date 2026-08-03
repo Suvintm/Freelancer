@@ -62,30 +62,75 @@ export default function OAuthSuccess() {
           return;
         }
 
-        // Read intent from tempSignupData (set before OAuth redirect)
-        // This is the ONLY source of truth — we never read stale role data here.
-        const onboardingStore = (store.getState() as RootState).onboarding;
-        const intent = onboardingStore.tempSignupData?.intent ?? 'login';
-        const categorySlug = onboardingStore.tempSignupData?.categorySlug;
+        // Read intent and state from tempSignupData, with synchronous sessionStorage recovery
+        let tempSignupData = (store.getState() as RootState).onboarding.tempSignupData;
+        if (!tempSignupData?.categoryId) {
+          try {
+            const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+            if (rawBackup) {
+              const parsed = JSON.parse(rawBackup);
+              if (parsed?.categoryId) {
+                dispatch(setTempSignupData(parsed));
+                tempSignupData = parsed;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
 
-        // ── CHANNEL FETCH OVERRIDE ───────────────────────────────────────────
-        // If the user clicked "Try a different Google account" from YouTubeConnect,
-        // we ONLY want to fetch the token to get their channels. We DO NOT want to
-        // overwrite their ongoing signup identity, and we definitely do NOT want 
-        // to log them in (even if they picked an existing account).
         const oauthIntent = sessionStorage.getItem('oauth_intent');
-        if (oauthIntent === 'connect_youtube') {
+        const intent = tempSignupData?.intent ?? (oauthIntent === 'connect_youtube' ? 'register' : 'login');
+        const categorySlug = tempSignupData?.categorySlug;
+        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer' || oauthIntent === 'connect_youtube';
+
+        // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
+        // Whenever the user is in YouTube onboarding OR explicitly connecting YouTube:
+        if (oauthIntent === 'connect_youtube' || (intent === 'register' && isCreator)) {
           sessionStorage.removeItem('oauth_intent');
           const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
           
+          if (tokenToUse) {
+            try {
+              sessionStorage.setItem('youtube_access_token', tokenToUse);
+            } catch {
+              // ignore
+            }
+          }
+
+          const profileData = response.data.socialProfile || (response.data.user ? {
+            name: response.data.user.name || response.data.user.fullName || '',
+            email: response.data.user.email,
+            picture: response.data.user.avatar || response.data.user.profile?.avatar || undefined,
+            googleId: response.data.user.google_id || '',
+          } : undefined);
+
+          if (profileData?.email) {
+            const profileUpdate = {
+              socialProfile: {
+                name: profileData.name || '',
+                email: profileData.email,
+                picture: profileData.picture || undefined,
+                googleId: profileData.googleId || '',
+              }
+            };
+            dispatch(setTempSignupData(profileUpdate));
+            try {
+              const raw = sessionStorage.getItem('suvix_temp_signup_data');
+              const current = raw ? JSON.parse(raw) : {};
+              sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({ ...current, ...profileUpdate }));
+            } catch {
+              // ignore
+            }
+          }
+
           if (tokenToUse) {
             navigate('/youtube-connect', { state: { googleAccessToken: tokenToUse } });
           } else {
             navigate('/youtube-connect?error=no_token');
           }
-          return; // Early return prevents ALL login / profile mutation logic!
+          return; // Early return prevents unwanted redirect to /role-selection or /home!
         }
-
 
         if (response.data.isNewUser) {
           // ── NEW USER ────────────────────────────────────────────────────────
@@ -98,9 +143,9 @@ export default function OAuthSuccess() {
           }
 
           // intent === 'register': proceed with onboarding
-          const { socialProfile, googleAccessToken } = response.data;
-          const tempSignupData = (store.getState() as RootState).onboarding.tempSignupData;
-          const isEmailFlow = tempSignupData?.authMethod === 'email';
+          const { socialProfile } = response.data;
+          const currentData = (store.getState() as RootState).onboarding.tempSignupData;
+          const isEmailFlow = currentData?.authMethod === 'email';
 
           // Merge social profile into temp data (preserving role/intent already set)
           dispatch(setTempSignupData({ 
@@ -115,15 +160,8 @@ export default function OAuthSuccess() {
             } : {})
           }));
 
-          const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
           const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
           const isBrand = categorySlug === 'brand' || categorySlug === 'social_promoter';
-
-          // YouTube flow: user selected creator role AND we have a Google token
-          if (isCreator && googleAccessToken) {
-            navigate('/youtube-connect', { state: { googleAccessToken } });
-            return;
-          }
 
           // Video Editor flow: select specializations & tools
           if (isEditor) {
@@ -150,27 +188,15 @@ export default function OAuthSuccess() {
 
         // ── EXISTING USER ──────────────────────────────────────────────────
 
-        const { user, token, refreshToken, googleAccessToken } = response.data;
+        const { user, token, refreshToken } = response.data;
 
         // Set auth state first so the user is authenticated in Redux
         dispatch(setAuth({ user, token, refreshToken }));
         dispatch(setIsAddingAccount(false));
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
 
-        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
-
         if (!user.isOnboarded) {
-          if (isCreator && googleAccessToken) {
-            navigate('/youtube-connect', { state: { googleAccessToken } });
-            return;
-          }
           navigate('/complete-profile');
-          return;
-        }
-
-        if (intent === 'register' && isCreator && googleAccessToken) {
-          // Existing creator user claiming channel
-          navigate('/youtube-connect', { state: { googleAccessToken } });
           return;
         }
 
