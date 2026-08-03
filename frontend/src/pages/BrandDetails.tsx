@@ -91,7 +91,7 @@ export default function BrandDetails() {
   }, [tempSignupData, user, navigate]);
 
   const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.trim();
+    const val = e.target.value.trim();
     setCompanyWebsite(val);
   };
 

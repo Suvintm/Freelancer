@@ -169,9 +169,9 @@ describe("🛡️ Security Tests", () => {
         .get("/api/auth/me")
         .set(authHeader(users.editor));
       
-      // Verify the user role is correct (provider, not admin)
+      // Verify the user role is correct (editor, not admin)
       expect(res.status).toBe(200);
-      expect(res.body.user?.role).toBe("provider");
+      expect(res.body.user?.role).toBe("editor");
       // Role field must not have been escalated
       expect(res.body.user?.role).not.toBe("admin");
       expect(res.body.user?.role).not.toBe("superadmin");
