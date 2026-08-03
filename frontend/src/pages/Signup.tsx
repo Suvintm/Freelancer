@@ -24,7 +24,7 @@ import logo from '../assets/lightlogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearTempSignupData } from '../store/slices/onboardingSlice';
+import { setTempSignupData, clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useSignup } from '../mutations/useSignup';
 import type { RootState } from '../store';
 import { authService } from '../api/services/auth.service';

@@ -30,6 +30,7 @@ import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
 import { api } from '../api/client';
 import { LoadingOverlay } from '../components/shared/LoadingOverlay';
+import { SuccessOverlay } from '../components/shared/SuccessOverlay';
 import logo from '../assets/lightlogo.png';
 import brandLogo from '../assets/logo.png';
 
@@ -693,7 +694,7 @@ export default function YouTubeConnect() {
             </div>
 
             <Button
-              size="default"
+              size="md"
               disabled={!hasUnclaimedChannel}
               onClick={handleNext}
               className="h-11 px-6 rounded-xl font-bold text-xs bg-zinc-950 hover:bg-zinc-800 text-white flex items-center gap-2 shadow-md transition-all active:scale-95"

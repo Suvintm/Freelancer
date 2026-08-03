@@ -7,6 +7,7 @@ export interface YouTubeChannel {
   thumbnailUrl: string;
   subscriberCount: number | string;
   videoCount: number | string;
+  channelHandle?: string;
   isClaimed?: boolean;
   videos?: Array<{
     id: string;
