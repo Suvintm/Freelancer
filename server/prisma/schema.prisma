@@ -7,101 +7,226 @@ datasource db {
 }
 
 model User {
+  // ─── 1. Auth & Credentials ──────────────────────────────────────────────
   id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username                  String?                    @unique @db.VarChar(100)
   email                     String                     @unique @db.VarChar(255)
   password_hash             String?                    @map("password_hash")
-  role                      UserRole                   @default(suvix_user)
+  role                      UserRole                   @default(user)
   auth_provider             AuthProvider?              @default(local) @map("auth_provider")
   google_id                 String?                    @unique @map("google_id") @db.VarChar(255)
+  token_version             Int                        @default(0) @map("token_version")
+
+  // ─── 2. Security & Moderation ───────────────────────────────────────────
   is_verified               Boolean                    @default(false) @map("is_verified")
   is_email_verified         Boolean                    @default(false) @map("is_email_verified")
+  email_verified_at         DateTime?                  @map("email_verified_at") @db.Timestamptz(6)
   is_banned                 Boolean                    @default(false) @map("is_banned")
   ban_reason                String?                    @map("ban_reason")
+  login_attempts            Int                        @default(0) @map("login_attempts")
+  locked_until              DateTime?                  @map("locked_until") @db.Timestamptz(6)
+
+  // ─── 3. Lifecycle & Timestamps ──────────────────────────────────────────
   is_onboarded              Boolean                    @default(false) @map("is_onboarded")
+  last_login_at             DateTime?                  @map("last_login_at") @db.Timestamptz(6)
+  deleted_at                DateTime?                  @map("deleted_at") @db.Timestamptz(6)
   created_at                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at                DateTime                   @default(now()) @map("updated_at") @db.Timestamptz(6)
-  token_version             Int                        @default(0) @map("token_version")
-  comment_likes             CommentLike[]
-  comments                  Comment[]                  @relation("UserComments")
-  communities_owned         Community[]                @relation("CommunityOwner")
-  memberships               CommunityMember[]
-  communityMessageReactions CommunityMessageReaction[]
-  community_messages        CommunityMessage[]
-  communityPostsAuthored    CommunityPost[]            @relation("CommunityPostAuthor")
-  communityPostReactions    CommunityPostReaction[]    @relation("CommunityPostReactionUser")
-  media                     Media[]
-  media_user_tags           MediaUserTag[]
-  received_messages         Message[]                  @relation("MessageReceiver")
-  sent_messages             Message[]                  @relation("MessageSender")
-  triggeredNotifications    Notification[]             @relation("TriggeredNotifications")
-  notifications             Notification[]             @relation("UserNotifications")
-  paymentsAsClient          Payment[]                  @relation("ClientPayments")
-  paymentsAsEditor          Payment[]                  @relation("EditorPayments")
-  poll_likes                PollLike[]
-  poll_responses            PollResponse[]
-  polls                     Poll[]
-  post_collaborations       PostCollaborator[]
+  updated_at                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // ─── 4. Core Identity Profiles (1:1) ────────────────────────────────────
+  profile                   UserProfile?
+  creatorProfile            CreatorProfile?
+  editorProfile             EditorProfile?
+  brandProfile              BrandProfile?
+  stats                     UserStats?
+  youtubeChannels           YouTubeChannel[]
+
+  // ─── 5. Content & Social Relations ──────────────────────────────────────
+  posts                     Post[]
   post_likes                PostLike[]
   post_mentions             PostMention[]
-  posts                     Post[]
-  pushTokens                PushToken[]
-  recommendation_logs       RecommendationLog[]
-  reel_likes                ReelLike[]
+  post_collaborations       PostCollaborator[]
   reels                     Reel[]
-  refundsAsClient           Refund[]                   @relation("ClientRefunds")
-  refundsAsEditor           Refund[]                   @relation("EditorRefunds")
+  reel_likes                ReelLike[]
   stories                   Story[]
   story_views               StoryView[]
-  subscriptions             Subscription[]
+  comments                  Comment[]                  @relation("UserComments")
+  comment_likes             CommentLike[]
+  polls                     Poll[]
+  poll_likes                PollLike[]
+  poll_responses            PollResponse[]
+  media                     Media[]
+  media_user_tags           MediaUserTag[]
   content_affinities        UserContentAffinity[]
   follows                   UserFollow[]               @relation("Follower")
   following                 UserFollow[]               @relation("Following")
-  profile                   UserProfile?
-  stats                     UserStats?
+
+  // ─── 6. Communication & Notifications ───────────────────────────────────
+  sent_messages             Message[]                  @relation("MessageSender")
+  received_messages         Message[]                  @relation("MessageReceiver")
+  notifications             Notification[]             @relation("UserNotifications")
+  triggeredNotifications    Notification[]             @relation("TriggeredNotifications")
+  pushTokens                PushToken[]
+  communities_owned         Community[]                @relation("CommunityOwner")
+  memberships               CommunityMember[]
+  community_messages        CommunityMessage[]
+  communityMessageReactions CommunityMessageReaction[]
+  communityPostsAuthored    CommunityPost[]            @relation("CommunityPostAuthor")
+  communityPostReactions    CommunityPostReaction[]    @relation("CommunityPostReactionUser")
+
+  // ─── 7. Monetization & Payments ─────────────────────────────────────────
+  paymentsAsClient          Payment[]                  @relation("ClientPayments")
+  paymentsAsEditor          Payment[]                  @relation("EditorPayments")
+  refundsAsClient           Refund[]                   @relation("ClientRefunds")
+  refundsAsEditor           Refund[]                   @relation("EditorRefunds")
+  subscriptions             Subscription[]
   walletTransactions        WalletTransaction[]
   withdrawalRequests        WithdrawalRequest[]
-  youtube_post_likes        YoutubePostLike[]
-  youtube_posts             YoutubePost[]
-  youtubeProfiles           YouTubeProfile[]
-  youtube_videos            YouTubeVideo[]
 
+  // ─── 8. YouTube Platform Extension ──────────────────────────────────────
+  youtube_posts             YoutubePost[]
+  youtube_post_likes        YoutubePostLike[]
+  youtube_videos            YouTubeVideo[]
+  recommendation_logs       RecommendationLog[]
+
+  // ─── Indexes ────────────────────────────────────────────────────────────
   @@index([role])
   @@index([is_onboarded])
+  @@index([created_at(sort: Desc)])
+  @@index([deleted_at])
   @@map("users")
 }
 
 model UserProfile {
+  // ─── 1. Core Identity & Media ───────────────────────────────────────────
   id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId                String             @unique @map("user_id") @db.Uuid
   username              String             @unique @db.VarChar(100)
   name                  String             @db.VarChar(100)
   profile_picture       String?            @map("profile_picture")
+  cover_banner          String?            @map("cover_banner")
   bio                   String?
+  gender                String?            @db.VarChar(20)
+  date_of_birth         DateTime?          @db.Date
   mother_tongue         String?            @map("mother_tongue") @db.VarChar(50)
-  auth_provider         AuthProvider?      @default(local) @map("auth_provider")
+
+  // ─── 2. Location & Contact ──────────────────────────────────────────────
   location_city         String?            @map("location_city") @db.VarChar(100)
   location_state        String?            @map("location_state") @db.VarChar(100)
   location_country      String?            @default("India") @map("location_country") @db.VarChar(100)
   phone                 String?            @db.VarChar(20)
   is_phone_verified     Boolean            @default(false) @map("is_phone_verified")
+  website               String?            @db.VarChar(255)
+  social_links          Json?              @default("{}")
+
+  // ─── 3. Role & Marketplace Availability ─────────────────────────────────
   availability          AvailabilityStatus @default(available)
   categoryId            String?            @map("role_category_id") @db.Uuid
-  created_at            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at            DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
-  cover_banner          String?            @map("cover_banner")
-  website               String?            @db.VarChar(255)
+
+  // ─── 4. Feed & Discovery Preferences ────────────────────────────────────
   content_interests     String[]           @default([])
   preferences_completed Boolean            @default(false)
   preferred_language    String?            @db.VarChar(50)
   preferred_region      String?            @db.VarChar(100)
   preferred_vibe        String?            @db.VarChar(50)
-  category              RoleCategory?      @relation(fields: [categoryId], references: [id])
-  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roles                 UserRoleMapping[]
 
+  // ─── 5. Lifecycle & Timestamps ──────────────────────────────────────────
+  created_at            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // ─── 6. Relations ───────────────────────────────────────────────────────
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category              RoleCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // ─── 7. Optimized Indexes ───────────────────────────────────────────────
   @@index([categoryId])
+  @@index([availability])
+  @@index([location_country, location_city])
   @@map("user_profiles")
+}
+
+model EditorProfile {
+  // ─── 1. Identity ───────────────────────────────────────────────────────────
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String   @unique @map("user_id") @db.Uuid
+
+  // ─── 2. Portfolio & Showcase ───────────────────────────────────────────────
+  portfolio_url       String?  @map("portfolio_url") @db.VarChar(255)
+  showcase_video_urls String[] @default([]) @map("showcase_video_urls")
+
+  // ─── 3. Experience & Tools ─────────────────────────────────────────────────
+  experience_years    Int      @default(0) @map("experience_years")
+  skills              String[] @default([]) // Technical tools: e.g. "Premiere Pro", "DaVinci Resolve"
+  software_used       String[] @default([]) @map("software_used")
+  specializations     String[] @default([]) @map("specializations") // Content types: e.g. "Gaming", "Documentary", "Shorts/Reels"
+
+  // ─── 4. Marketplace Availability & Delivery ────────────────────────────────
+  accepting_orders    Boolean  @default(true) @map("accepting_orders")
+  turnaround_time_days Int     @default(3) @map("turnaround_time_days")
+
+  // ─── 5. Rates (Decimal for financial precision) ────────────────────────────
+  rate_currency       String   @default("INR") @map("rate_currency") @db.VarChar(10)
+  hourly_rate         Decimal? @map("hourly_rate") @db.Decimal(12, 2)
+  base_video_rate     Decimal? @map("base_video_rate") @db.Decimal(12, 2)
+  rate_per_short      Decimal? @map("rate_per_short") @db.Decimal(12, 2)
+
+  // ─── 6. Trust Signals & Metrics ────────────────────────────────────────────
+  avg_rating          Float    @default(0.0) @map("avg_rating")
+  review_count        Int      @default(0) @map("review_count")
+  completed_gigs      Int      @default(0) @map("completed_gigs")
+
+  // ─── 7. Timestamps ─────────────────────────────────────────────────────────
+  created_at          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // ─── 8. Relations ──────────────────────────────────────────────────────────
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ─── 9. Indexes ────────────────────────────────────────────────────────────
+  @@index([accepting_orders])
+  @@index([experience_years])
+  @@index([base_video_rate])
+  @@index([avg_rating(sort: Desc)])
+  @@map("editor_profiles")
+}
+
+model BrandProfile {
+  // ─── 1. Identity ───────────────────────────────────────────────────────────
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+
+  // ─── 2. Company Info ───────────────────────────────────────────────────────
+  company_name      String?  @map("company_name") @db.VarChar(100)
+  company_website   String?  @map("company_website") @db.VarChar(255)
+  logo_url          String?  @map("logo_url")
+  industry          String?  @db.VarChar(100)
+  company_size      String?  @map("company_size") @db.VarChar(50)
+  designation       String?  @db.VarChar(100) // Role of contact person: e.g. "Brand Lead", "Founder"
+  brand_description String?  @map("brand_description")
+
+  // ─── 3. Campaign Targeting & Trust ─────────────────────────────────────────
+  target_regions    String[] @default([]) @map("target_regions")
+  is_verified       Boolean  @default(false) @map("is_verified")
+
+  // ─── 4. Budget & Financials ────────────────────────────────────────────────
+  budget_currency   String   @default("INR") @map("budget_currency") @db.VarChar(10)
+  approx_budget     Decimal? @map("approx_budget") @db.Decimal(14, 2)
+
+  // ─── 5. Activity Counters ──────────────────────────────────────────────────
+  campaigns_posted  Int      @default(0) @map("campaigns_posted")
+  total_spent       Decimal? @map("total_spent") @db.Decimal(14, 2)
+
+  // ─── 6. Timestamps ─────────────────────────────────────────────────────────
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // ─── 7. Relations ──────────────────────────────────────────────────────────
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ─── 8. Indexes ────────────────────────────────────────────────────────────
+  @@index([industry])
+  @@index([is_verified])
+  @@map("brand_profiles")
 }
 
 model UserFollow {
@@ -117,43 +242,18 @@ model UserFollow {
 }
 
 model RoleCategory {
-  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String            @db.VarChar(100)
-  slug          String            @unique @db.VarChar(100)
-  icon          String?           @db.VarChar(50)
-  roleGroup     RoleGroup         @default(PROVIDER) @map("role_group")
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String        @db.VarChar(100)
+  slug          String        @unique @db.VarChar(100)
+  icon          String?       @db.VarChar(50)
+  maps_to_role  UserRole      @default(user) @map("maps_to_role")
   description   String?
   info          String?
-  subCategories RoleSubCategory[]
+  is_active     Boolean       @default(true) @map("is_active")
+  display_order Int           @default(0) @map("display_order")
   profiles      UserProfile[]
 
   @@map("role_categories")
-}
-
-model RoleSubCategory {
-  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  roleCategoryId  String            @map("role_category_id") @db.Uuid
-  name            String            @db.VarChar(100)
-  slug            String            @db.VarChar(100)
-  category        RoleCategory      @relation(fields: [roleCategoryId], references: [id], onDelete: Cascade)
-  userRoles       UserRoleMapping[]
-  youtubeProfiles YouTubeProfile[]
-
-  @@unique([roleCategoryId, slug])
-  @@map("role_sub_categories")
-}
-
-model UserRoleMapping {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId         String          @map("profile_id") @db.Uuid
-  roleSubCategoryId String          @map("role_sub_category_id") @db.Uuid
-  isPrimary         Boolean         @default(false) @map("is_primary")
-  profile           UserProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  subCategory       RoleSubCategory @relation(fields: [roleSubCategoryId], references: [id], onDelete: Cascade)
-
-  @@unique([profileId, roleSubCategoryId])
-  @@index([profileId, isPrimary])
-  @@map("user_role_mappings")
 }
 
 model UserStats {
@@ -161,51 +261,97 @@ model UserStats {
   followers_count Int      @default(0)
   following_count Int      @default(0)
   created_at      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_stats")
 }
 
-model YouTubeProfile {
-  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                  String                   @map("user_id") @db.Uuid
-  is_primary              Boolean                  @default(false)
-  channel_id              String                   @unique @db.VarChar(255)
-  channel_name            String                   @db.VarChar(255)
-  subscriber_count        Int?                     @default(0)
-  video_count             Int?                     @default(0)
-  thumbnail_url           String?
-  connected_at            DateTime                 @default(now()) @map("connected_at") @db.Timestamptz(6)
-  created_at              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at              DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
-  last_synced_at          DateTime?                @map("last_synced_at") @db.Timestamptz(6)
-  uploads_playlist_id     String?                  @map("uploads_playlist_id") @db.VarChar(255)
-  video_cache_count       Int                      @default(0) @map("video_cache_count")
-  subCategoryId           String?                  @map("sub_category_id") @db.Uuid
-  language                String?                  @db.VarChar(50)
-  authority_score         Float                    @default(0.0)
-  avg_views_per_video     Float                    @default(0.0) @map("avg_views_per_video")
-  banner_url              String?
-  country                 String?                  @db.VarChar(10)
-  custom_url              String?                  @db.VarChar(255)
+// ─── 1. Creator Profile (1:1 with User) ─────────────────────────────────────
+model CreatorProfile {
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String           @unique @map("user_id") @db.Uuid
+  primary_channel_id    String?          @map("primary_channel_id") @db.Uuid
+  business_email        String?          @map("business_email") @db.VarChar(255)
+  accepting_sponsorships Boolean         @default(true) @map("accepting_sponsorships")
+  rate_currency         String           @default("INR") @map("rate_currency") @db.VarChar(10)
+  rate_dedicated_video  Decimal?         @map("rate_dedicated_video") @db.Decimal(12, 2)
+  rate_integrated_video Decimal?         @map("rate_integrated_video") @db.Decimal(12, 2)
+  rate_short            Decimal?         @map("rate_short") @db.Decimal(12, 2)
+  created_at            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channels              YouTubeChannel[]
+
+  @@index([accepting_sponsorships])
+  @@map("creator_profiles")
+}
+
+// ─── 2. YouTube Channel (1:N with CreatorProfile & User) ────────────────────
+model YouTubeChannel {
+  id                      String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorProfileId        String           @map("creator_profile_id") @db.Uuid
+  userId                  String           @map("user_id") @db.Uuid
+  is_primary              Boolean          @default(true) @map("is_primary")
+  channel_id              String           @unique @map("channel_id") @db.VarChar(255)
+  channel_name            String           @map("channel_name") @db.VarChar(255)
+  custom_url              String?          @unique @map("custom_url") @db.VarChar(255)
+  thumbnail_url           String?          @map("thumbnail_url")
+  banner_url              String?          @map("banner_url")
   description             String?
-  engagement_rate         Float                    @default(0.0) @map("engagement_rate")
-  hidden_subscriber_count Boolean                  @default(false) @map("hidden_subscriber_count")
+  channel_status          ChannelStatus    @default(active) @map("channel_status")
+
+  // Audience & Channel Metrics
+  subscriber_count        Int?             @default(0) @map("subscriber_count")
+  hidden_subscriber_count Boolean          @default(false) @map("hidden_subscriber_count")
+  video_count             Int?             @default(0) @map("video_count")
+  view_count              BigInt?          @default(0) @map("view_count")
+  avg_views_per_video     Float            @default(0.0) @map("avg_views_per_video")
+  engagement_rate         Float            @default(0.0) @map("engagement_rate")
+  authority_score         Float            @default(0.0) @map("authority_score")
+
+  // Classification & Niche
+  niche                   String?          @db.VarChar(100)
+  language                String?          @db.VarChar(50)
+  country                 String?          @db.VarChar(10)
   keywords                String?
-  made_for_kids           Boolean                  @default(false) @map("made_for_kids")
-  published_at            DateTime?                @db.Timestamptz(6)
+  topic_categories        String[]         @default([]) @map("topic_categories")
+  made_for_kids           Boolean          @default(false) @map("made_for_kids")
+
+  // Sync Engine & Health
+  uploads_playlist_id     String?          @map("uploads_playlist_id") @db.VarChar(255)
+  video_cache_count       Int              @default(0) @map("video_cache_count")
+  sync_status             SyncStatus       @default(idle) @map("sync_status")
+  sync_error              String?          @map("sync_error")
+  sync_frequency_hours    Int              @default(24) @map("sync_frequency_hours")
+  last_synced_at          DateTime?        @map("last_synced_at") @db.Timestamptz(6)
+  connected_at            DateTime         @default(now()) @map("connected_at") @db.Timestamptz(6)
+  published_at            DateTime?        @map("published_at") @db.Timestamptz(6)
+  created_at              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at              DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Search Vector
   search_vector           Unsupported("tsvector")?
-  topic_categories        String[]                 @default([]) @map("topic_categories")
-  view_count              BigInt?                  @default(0)
-  youtube_posts           YoutubePost[]
-  subCategory             RoleSubCategory?         @relation(fields: [subCategoryId], references: [id])
-  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sync_logs               YouTubeSyncLog[]
+
+  // Relations
+  creatorProfile          CreatorProfile   @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   videos                  YouTubeVideo[]
+  sync_logs               YouTubeSyncLog[]
+  youtube_posts           YoutubePost[]
   community               Community?
 
-  @@map("youtube_profiles")
+  // Indexes
+  @@index([creatorProfileId, is_primary])
+  @@index([userId])
+  @@index([niche])
+  @@index([country, language])
+  @@index([subscriber_count(sort: Desc)])
+  @@index([authority_score(sort: Desc)])
+  @@index([engagement_rate(sort: Desc)])
+  @@map("youtube_channels")
 }
 
 model YouTubeVideo {
@@ -217,10 +363,10 @@ model YouTubeVideo {
   thumbnail        String?
   published_at     DateTime?                @map("published_at") @db.Timestamptz(6)
   created_at       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at       DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updated_at       DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   is_latest        Boolean                  @default(true)
   position         Int?                     @default(0)
-  youtubeProfileId String                   @map("youtube_profile_id") @db.Uuid
+  youtubeChannelId String                   @map("youtube_channel_id") @db.Uuid
   category_id      String?                  @map("category_id") @db.VarChar(10)
   comment_count    BigInt?                  @default(0) @map("comment_count")
   description      String?
@@ -232,22 +378,22 @@ model YouTubeVideo {
   tags             String?
   view_count       BigInt?                  @default(0)
   user             User?                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  youtubeProfile   YouTubeProfile           @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
+  youtubeChannel   YouTubeChannel           @relation(fields: [youtubeChannelId], references: [id], onDelete: Cascade)
 
   @@index([channel_id])
-  @@index([youtubeProfileId, published_at])
+  @@index([youtubeChannelId, published_at])
   @@map("youtube_videos")
 }
 
 model YouTubeSyncLog {
   id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  youtubeProfileId String         @map("youtube_profile_id") @db.Uuid
+  youtubeChannelId String         @map("youtube_channel_id") @db.Uuid
   lastSyncedAt     DateTime       @default(now()) @map("last_synced_at") @db.Timestamptz(6)
-  status           String         @db.VarChar(20)
+  status           SyncStatus     @default(idle)
   error_message    String?
-  youtubeProfile   YouTubeProfile @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
+  youtubeChannel   YouTubeChannel @relation(fields: [youtubeChannelId], references: [id], onDelete: Cascade)
 
-  @@index([youtubeProfileId])
+  @@index([youtubeChannelId])
   @@map("youtube_sync_logs")
 }
 
@@ -411,7 +557,7 @@ model YoutubePost {
   media              Media[]
   likes              YoutubePostLike[]
   user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  youtube_channel    YouTubeProfile?   @relation(fields: [youtube_channel_id], references: [id])
+  youtube_channel    YouTubeChannel?   @relation(fields: [youtube_channel_id], references: [id], onDelete: SetNull)
 
   @@index([userId, created_at])
   @@index([youtube_channel_id])
@@ -621,7 +767,7 @@ model AdminSession {
 model Community {
   id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerId        String                   @map("owner_id") @db.Uuid
-  ytProfileId    String?                  @unique @map("yt_profile_id") @db.Uuid
+  ytChannelId    String?                  @unique @map("yt_channel_id") @db.Uuid
   name           String                   @db.VarChar(100)
   slug           String                   @unique @db.VarChar(100)
   description    String?
@@ -635,7 +781,7 @@ model Community {
   created_at     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at     DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
   owner          User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  ytProfile      YouTubeProfile?          @relation(fields: [ytProfileId], references: [id])
+  ytChannel      YouTubeChannel?          @relation(fields: [ytChannelId], references: [id], onDelete: SetNull)
   linkedAccounts CommunityLinkedAccount[]
   members        CommunityMember[]
   messages       CommunityMessage[]
@@ -729,7 +875,7 @@ model CommunityPost {
   updated_at  DateTime          @default(now()) @db.Timestamptz(6)
 
   community Community               @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  author    User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id])
+  author    User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   media     Media?                  @relation(fields: [mediaId], references: [id])
   reactions CommunityPostReaction[]
 
@@ -746,7 +892,7 @@ model CommunityPostReaction {
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
   post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User          @relation("CommunityPostReactionUser", fields: [userId], references: [id])
+  user User          @relation("CommunityPostReactionUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId, emoji])
   @@index([postId])
@@ -1149,6 +1295,21 @@ enum NotificationPriority {
   HIGH
 }
 
+enum ChannelStatus {
+  active
+  suspended
+  terminated
+  deactivated
+}
+
+enum SyncStatus {
+  idle
+  syncing
+  failed
+  rate_limited
+  disabled
+}
+
 enum Platform {
   IOS
   ANDROID
@@ -1158,6 +1319,9 @@ enum Platform {
 enum UserRole {
   admin
   user
+  creator
+  brand
+  editor
   suvix_user
 }
 
@@ -1166,10 +1330,7 @@ enum AuthProvider {
   google
 }
 
-enum RoleGroup {
-  CLIENT
-  PROVIDER
-}
+// RoleGroup enum removed — replaced by maps_to_role on RoleCategory
 
 enum AvailabilityStatus {
   available

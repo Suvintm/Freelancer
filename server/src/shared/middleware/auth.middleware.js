@@ -30,41 +30,16 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 // ─── Role Helpers ──────────────────────────────────────────────────────────
 
-const mapGroupToAppRole = (group, systemRole) => {
-  if (systemRole === "admin") return "admin";
-  if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "provider";
-  return "client";
-};
-
-/**
- * Derives the application role from a user object.
- *
- * ✅ FIX: Handles BOTH formats:
- *   - Raw Prisma user: has nested user.profile.roles, user.profile.category
- *   - Cached formatted user: has flat user.primaryRole.group
- *
- * Previously only handled raw Prisma users, causing PROVIDER users served
- * from Redis cache to be assigned "client" role (breaking access control).
- */
-const deriveAppRoleFromUser = (user) => {
-  // ── Case 1: Already-formatted user from cache (has flat primaryRole) ──────
-  if (user.primaryRole?.group) {
-    // systemRole is the raw DB role ("suvix_user", "admin")
-    const systemRole = user.systemRole || user._systemRole || "suvix_user";
-    return mapGroupToAppRole(user.primaryRole.group, systemRole);
+const getCleanRole = (user) => {
+  const role = user.role || user._systemRole || "user";
+  if (role === "suvix_user") {
+    const catSlug = user.primaryRole?.categorySlug || user.profile?.category?.slug || "";
+    if (catSlug === "creator" || catSlug === "yt_influencer") return "creator";
+    if (catSlug === "editor" || catSlug === "video_editor") return "editor";
+    if (catSlug === "brand" || catSlug === "social_promoter") return "brand";
+    return "user";
   }
-
-  // ── Case 2: Raw Prisma user (has nested profile.roles) ────────────────────
-  const primaryMapping =
-    user.profile?.roles?.find((mapping) => mapping.isPrimary) ||
-    user.profile?.roles?.[0];
-  const group =
-    user.profile?.category?.roleGroup ||
-    primaryMapping?.subCategory?.category?.roleGroup ||
-    "CLIENT";
-
-  return mapGroupToAppRole(group, user.role);
+  return role;
 };
 
 // ─── Main Authentication Middleware ───────────────────────────────────────
@@ -238,14 +213,12 @@ export const authenticate = async (req, res, next) => {
     //
     // NOTE: formatAuthResponse now stores _systemRole to preserve the DB role.
     // ─────────────────────────────────────────────────────────────────────────
-    const derivedAppRole = deriveAppRoleFromUser(user);
+    const derivedRole = getCleanRole(user);
 
     req.user = {
       ...user,
-      // Preserve the raw DB system role for authorization checks
-      systemRole: user._systemRole || user.systemRole || status.role || "suvix_user",
-      // Set the application-level role (editor, client, admin)
-      role: derivedAppRole,
+      systemRole: derivedRole,
+      role: derivedRole,
     };
 
     next();
@@ -293,10 +266,11 @@ export const optionalAuth = async (req, res, next) => {
         }
 
         if (user) {
+          const derivedRole = getCleanRole(user);
           req.user = {
             ...user,
-            systemRole: user._systemRole || user.systemRole || "suvix_user",
-            role: deriveAppRoleFromUser(user),
+            systemRole: derivedRole,
+            role: derivedRole,
           };
         }
       }

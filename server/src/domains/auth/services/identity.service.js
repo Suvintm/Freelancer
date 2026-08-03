@@ -1,52 +1,38 @@
 /**
- * authHelpers.js — The Single Source of Truth for User Identity
+ * identity.service.js — Single Source of Truth for User Identity & Session Hydration
  *
- * ── Fixes Applied ─────────────────────────────────────────────────────────────
- * 1. formatAuthResponse now stores `_systemRole` on the returned object.
- *    This allows authMiddleware to correctly re-derive the app role when
- *    serving a cached formatted user (where user.role is already "editor"
- *    not "suvix_user"), preventing PROVIDER users from being demoted to "client".
- *
- * 2. isOnboarded is now a guaranteed boolean (!!user.is_onboarded).
- *    Previously could be undefined if the field was missing, causing the
- *    navigation guard's strict check (isOnboarded === true) to fail.
- *
- * 3. name and username are guaranteed strings (never undefined/null).
- *    The navigation guard checks !user.username || !user.name — if these
- *    are undefined the guard redirects to /complete-profile incorrectly.
- * ─────────────────────────────────────────────────────────────────────────────
+ * Fully updated for:
+ * 1. Dynamic RoleCategory architecture (user, creator, editor, brand)
+ * 2. CreatorProfile + YouTubeChannel (1:N)
+ * 3. EditorProfile & BrandProfile
+ * 4. Zero obsolete junction tables (UserRoleMapping/RoleSubCategory removed)
  */
 
 import { generateAccessToken, generateRefreshToken } from "./token.service.js";
 import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 
-// ─── Role Mapping ──────────────────────────────────────────────────────────
-
-export const mapGroupToAppRole = (group, systemRole) => {
-  if (systemRole === "admin") return "admin";
-  if (group === "CLIENT") return "client";
-  if (group === "PROVIDER") return "provider";
-  return "client";
-};
-
-// ─── Standard Prisma Include ───────────────────────────────────────────────
+// ─── Standard Prisma Include for Full Hydration ────────────────────────────
 
 export const USER_INCLUDE = {
   profile: {
     include: {
       category: true,
-      roles: {
+    },
+  },
+  creatorProfile: {
+    include: {
+      channels: {
         include: {
-          subCategory: {
-            include: { category: true },
+          videos: {
+            orderBy: { published_at: "desc" },
+            take: 25,
           },
         },
       },
     },
   },
-  youtubeProfiles: {
+  youtubeChannels: {
     include: {
-      subCategory: true,
       videos: {
         orderBy: { published_at: "desc" },
         take: 25,
@@ -55,49 +41,24 @@ export const USER_INCLUDE = {
   },
   stats: true,
   follows: true,
+  editorProfile: true,
+  brandProfile: true,
 };
 
 // ─── Primary Identity Resolver ────────────────────────────────────────────
 
 export const resolvePrimaryIdentity = (user) => {
-  if (!user.profile) {
-    return {
-      group: "CLIENT",
-      category: "General",
-      subCategory: "Member",
-      appRole: mapGroupToAppRole("CLIENT", user.role),
-      is_onboarded: user.is_onboarded,
-    };
-  }
-
-  const primaryMapping =
-    user.profile.roles?.find((m) => m.isPrimary) ||
-    user.profile.roles?.[0];
-  const subCat = primaryMapping?.subCategory;
-  const cat = user.profile.category || subCat?.category;
-
-  if (!cat && !subCat) {
-    return {
-      group: "CLIENT",
-      category: "General",
-      subCategory: "Member",
-      appRole: mapGroupToAppRole("CLIENT", user.role),
-      is_onboarded: user.is_onboarded,
-    };
-  }
-
-  const group = cat?.roleGroup || "CLIENT";
+  const systemRole = user.role || "user";
+  const cat = user.profile?.category;
+  const categorySlug = cat?.slug || (systemRole !== "suvix_user" ? systemRole : "user");
+  const appRole = cat?.maps_to_role || systemRole;
 
   return {
-    group,
-    category: cat?.name || "General",
-    categorySlug: cat?.slug,
-    subCategory: subCat?.name || "Member",
-    categoryId: cat?.id || user.profile.categoryId,
-    subCategoryId: subCat?.id,
-    subCategorySlug: subCat?.slug,
-    appRole: mapGroupToAppRole(group, user.role),
-    is_onboarded: user.is_onboarded,
+    category: cat?.name || (appRole.charAt(0).toUpperCase() + appRole.slice(1)),
+    categorySlug: categorySlug,
+    categoryId: cat?.id || user.profile?.categoryId || null,
+    appRole,
+    is_onboarded: !!user.is_onboarded,
   };
 };
 
@@ -109,7 +70,7 @@ export const generateUserTokens = (user, familyId, deviceId = null) => {
     id: user.id,
     role: user.role,
     categorySlug: identity.categorySlug,
-    isOnboarded: user.is_onboarded,
+    isOnboarded: !!user.is_onboarded,
     tokenVersion: user.token_version ?? 0,
     ...(deviceId && { deviceId }),
   };
@@ -128,18 +89,6 @@ export const generateUserTokens = (user, familyId, deviceId = null) => {
 //
 // This function runs ONCE on raw Prisma data and produces a stable flat object.
 // authMiddleware caches this result and serves it on all subsequent requests.
-//
-// ✅ CRITICAL: We store `_systemRole` (the raw DB role like "suvix_user")
-//    so that when authMiddleware re-derives the app role from a cached user,
-//    it has the original system role available.
-//    Without this, PROVIDER users cached as { role: "editor" } would have their
-//    system role treated as "editor" on re-derivation, causing incorrect behavior.
-//
-// ✅ name and username are always strings (never undefined).
-//    Guards check !user.name || !user.username — falsy undefined would
-//    incorrectly trigger the /complete-profile redirect.
-//
-// ✅ isOnboarded is always a strict boolean via !!(...)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const formatAuthResponse = (user, subscription = null) => {
@@ -149,13 +98,16 @@ export const formatAuthResponse = (user, subscription = null) => {
   const name = user.profile?.name || user.displayName || "";
   const username = user.profile?.username || user.username || "";
 
-  // YouTube data — flatten across all linked profiles
-  const youtubeProfiles = (user.youtubeProfiles || []).map((p) => ({
-    ...p,
-    country: p.country || user.profile?.location_country || "INDIA",
-    subCategoryName: p.subCategory?.name || null,
-    thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
-    banner_url: smartResolveMediaUrl(p.banner_url),
+  // YouTube channels data — resolve from creatorProfile.channels or direct relation
+  const rawChannels = user.creatorProfile?.channels?.length
+    ? user.creatorProfile.channels
+    : user.youtubeChannels || [];
+
+  const formattedChannels = rawChannels.map((ch) => ({
+    ...ch,
+    country: ch.country || user.profile?.location_country || "India",
+    thumbnail_url: smartResolveMediaUrl(ch.thumbnail_url),
+    banner_url: smartResolveMediaUrl(ch.banner_url),
   }));
 
   return {
@@ -167,37 +119,29 @@ export const formatAuthResponse = (user, subscription = null) => {
     email: user.email,
     is_email_verified: !!user.is_email_verified,
 
-    // ── App-level role (editor | client | admin) ────────────────────────────
+    // App-level role (creator | editor | brand | user | admin)
     role: identity.appRole,
-
-    // ── _systemRole: raw DB value — preserved for authMiddleware re-derivation
-    // This field is prefixed with _ to signal it's internal infrastructure data.
-    // authMiddleware reads this to correctly re-derive app role from cached users.
-    _systemRole: user.role || "suvix_user",
+    _systemRole: user.role || "user",
 
     primaryRole: {
-      group: identity.group,
-      category: identity.categorySlug || identity.category,
+      category: identity.category,
       categorySlug: identity.categorySlug,
-      subCategory: identity.subCategory,
       categoryId: identity.categoryId,
-      subCategoryId: identity.subCategoryId,
-      subCategorySlug: identity.subCategorySlug,
       appRole: identity.appRole,
-      // Guaranteed boolean — undefined here would break navigation guard
       is_onboarded: !!user.is_onboarded,
     },
 
     profilePicture: smartResolveMediaUrl(user.profile?.profile_picture),
     coverBanner: smartResolveMediaUrl(user.profile?.cover_banner),
     location: user.profile?.location_country || null,
+    location_city: user.profile?.location_city || null,
+    location_state: user.profile?.location_state || null,
     bio: user.profile?.bio || null,
     phone: user.profile?.phone || null,
     website: user.profile?.website || null,
 
-    // ── Guaranteed strict boolean — the navigation guard uses === true ────────
+    // Guaranteed strict boolean
     isOnboarded: !!user.is_onboarded,
-    
     preferencesCompleted: !!user.profile?.preferences_completed,
 
     isVerified: !!user.is_verified,
@@ -205,7 +149,12 @@ export const formatAuthResponse = (user, subscription = null) => {
     isBanned: !!user.is_banned,
     createdAt: user.created_at,
 
-    youtubeProfile: youtubeProfiles,
+    // Specialized role profiles
+    creatorProfile: user.creatorProfile || null,
+    youtubeProfile: formattedChannels, // Backward compatibility for existing UI
+    youtubeChannels: formattedChannels,
+    editorProfile: user.editorProfile || null,
+    brandProfile: user.brandProfile || null,
 
     followers: user.stats?.followers_count || 0,
     following: user.stats?.following_count || 0,

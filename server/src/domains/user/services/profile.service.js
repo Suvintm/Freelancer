@@ -37,7 +37,7 @@ export const getProfilePosts = async (targetUserId, cursor = null, currentUserId
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -66,7 +66,7 @@ export const getProfilePosts = async (targetUserId, cursor = null, currentUserId
         username: post.user.profile.username,
         profilePicture: post.user.profile.profile_picture,
         category: post.user.profile.category?.slug,
-        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+        role: post.user.profile.category?.maps_to_role || 'user'
       } : null,
       media: firstMedia ? resolveMediaForApi(firstMedia) : null,
       thumbnail: firstMedia ? resolveMediaForApi(firstMedia).thumbnail : null,
@@ -103,7 +103,7 @@ export const getProfileReels = async (targetUserId, cursor = null, currentUserId
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -131,7 +131,7 @@ export const getProfileReels = async (targetUserId, cursor = null, currentUserId
         username: reel.user.profile.username,
         profilePicture: reel.user.profile.profile_picture,
         category: reel.user.profile.category?.slug,
-        roleGroup: reel.user.profile.category?.roleGroup || 'CLIENT'
+        role: reel.user.profile.category?.maps_to_role || 'user'
       } : null,
       isProcessing: !reel.is_ready
     };
@@ -166,7 +166,7 @@ export const getProfileYoutubePosts = async (targetUserId, cursor = null, curren
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -194,7 +194,7 @@ export const getProfileYoutubePosts = async (targetUserId, cursor = null, curren
         username: post.user.profile.username,
         profilePicture: post.user.profile.profile_picture,
         category: post.user.profile.category?.slug,
-        roleGroup: post.user.profile.category?.roleGroup || 'CLIENT'
+        role: post.user.profile.category?.maps_to_role || 'user'
       } : null,
       isProcessing: !post.is_ready
     };
@@ -228,7 +228,7 @@ export const getProfilePolls = async (targetUserId, cursor = null) => {
               category: {
                 select: {
                   slug: true,
-                  roleGroup: true
+                  maps_to_role: true
                 }
               }
             }
@@ -259,7 +259,7 @@ export const getProfilePolls = async (targetUserId, cursor = null) => {
         username: poll.user.profile.username,
         profilePicture: poll.user.profile.profile_picture,
         category: poll.user.profile.category?.slug,
-        roleGroup: poll.user.profile.category?.roleGroup || 'CLIENT'
+        role: poll.user.profile.category?.maps_to_role || 'user'
       } : null
     };
   });
@@ -274,35 +274,32 @@ export const getProfilesByCategory = async (categorySlug) => {
   const profiles = await prisma.userProfile.findMany({
     where: {
       category: {
-        slug: categorySlug
-      }
+        slug: categorySlug,
+      },
     },
     include: {
       category: true,
-      roles: {
-        include: {
-          subCategory: true
-        }
-      },
       user: {
         include: {
-          youtubeProfiles: {
+          youtubeChannels: {
             include: {
               videos: {
-                orderBy: { published_at: 'desc' },
-                take: 3
-              }
-            }
-          }
-        }
-      }
+                orderBy: { published_at: "desc" },
+                take: 3,
+              },
+            },
+          },
+          editorProfile: true,
+          brandProfile: true,
+        },
+      },
     },
     orderBy: {
-      created_at: 'desc'
-    }
+      created_at: "desc",
+    },
   });
 
-  return profiles.map(profile => {
+  return profiles.map((profile) => {
     return {
       id: profile.id,
       userId: profile.userId,
@@ -311,10 +308,9 @@ export const getProfilesByCategory = async (categorySlug) => {
       profilePicture: smartResolveMediaUrl(profile.profile_picture),
       coverBanner: smartResolveMediaUrl(profile.cover_banner),
       bio: profile.bio,
-      location: `${profile.location_city || ''}, ${profile.location_country || ''}`.replace(/^,\s*/, ''),
+      location: `${profile.location_city || ""}, ${profile.location_country || ""}`.replace(/^,\s*/, ""),
       category: profile.category?.name,
-      roles: profile.roles.map(r => r.subCategory.name),
-      youtubeProfiles: (profile.user?.youtubeProfiles || []).map(ytProfile => ({
+      youtubeProfiles: (profile.user?.youtubeChannels || []).map((ytProfile) => ({
         channelId: ytProfile.channel_id,
         channelName: ytProfile.channel_name,
         thumbnailUrl: smartResolveMediaUrl(ytProfile.thumbnail_url),
@@ -324,16 +320,19 @@ export const getProfilesByCategory = async (categorySlug) => {
         viewCount: ytProfile.view_count,
         averageViews: ytProfile.average_views,
         engagementRate: ytProfile.engagement_rate,
-        videos: (ytProfile.videos || []).map(v => {
+        niche: ytProfile.niche,
+        videos: (ytProfile.videos || []).map((v) => {
           const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
           return {
             id: v.id,
             title: v.title,
             thumbnail: smartResolveMediaUrl(rawThumb),
-            viewCount: v.view_count
+            viewCount: v.view_count,
           };
-        })
-      }))
+        }),
+      })),
+      editorProfile: profile.user?.editorProfile || null,
+      brandProfile: profile.user?.brandProfile || null,
     };
   });
 };
@@ -341,36 +340,32 @@ export const getProfilesByCategory = async (categorySlug) => {
 export const getChannelDetails = async (channelId) => {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(channelId);
 
-  const channel = await prisma.youTubeProfile.findFirst({
-    where: isUuid 
+  const channel = await prisma.youTubeChannel.findFirst({
+    where: isUuid
       ? { OR: [{ channel_id: channelId }, { id: channelId }] }
       : { channel_id: channelId },
     include: {
       videos: {
-        orderBy: { published_at: 'desc' },
+        orderBy: { published_at: "desc" },
       },
       user: {
         include: {
           profile: {
             include: {
-              roles: {
-                include: {
-                  subCategory: true
-                }
-              }
-            }
+              category: true,
+            },
           },
-          youtubeProfiles: {
+          youtubeChannels: {
             include: {
               videos: {
-                orderBy: { published_at: 'desc' },
-                take: 3
-              }
-            }
-          }
-        }
-      }
-    }
+                orderBy: { published_at: "desc" },
+                take: 3,
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!channel) return null;
@@ -386,7 +381,8 @@ export const getChannelDetails = async (channelId) => {
     viewCount: channel.view_count != null ? String(channel.view_count) : "0",
     averageViews: channel.average_views || 0,
     engagementRate: channel.engagement_rate || 0,
-    videos: (channel.videos || []).map(v => {
+    niche: channel.niche,
+    videos: (channel.videos || []).map((v) => {
       const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
       return {
         id: v.id,
@@ -404,17 +400,18 @@ export const getChannelDetails = async (channelId) => {
       profilePicture: smartResolveMediaUrl(channel.user.profile?.profile_picture),
       coverBanner: smartResolveMediaUrl(channel.user.profile?.cover_banner),
       bio: channel.user.profile?.bio || "",
-      location: `${channel.user.profile?.location_city || ''}, ${channel.user.profile?.location_country || ''}`.replace(/^,\s*/, '') || "India",
-      roles: (channel.user.profile?.roles || []).map(r => r.subCategory.name),
-      otherChannels: (channel.user.youtubeProfiles || [])
-        .filter(p => p.channel_id !== channel.channel_id)
-        .map(p => ({
+      location: `${channel.user.profile?.location_city || ""}, ${channel.user.profile?.location_country || ""}`.replace(/^,\s*/, "") || "India",
+      category: channel.user.profile?.category?.name,
+      otherChannels: (channel.user.youtubeChannels || [])
+        .filter((p) => p.channel_id !== channel.channel_id)
+        .map((p) => ({
           channelId: p.channel_id,
           channelName: p.channel_name,
           thumbnailUrl: smartResolveMediaUrl(p.thumbnail_url),
           subscriberCount: p.subscriber_count || 0,
-        }))
-    }
+          niche: p.niche,
+        })),
+    },
   };
 };
 

@@ -2,9 +2,8 @@ import prisma from "../../../infrastructure/database/postgres.js";
 import storageService from "../../../infrastructure/storage/storage-client.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
-;
 import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
-import { emitToUser } from '../../../platform/socket/socket.gateway.js';
+import { emitToUser } from "../../../platform/socket/socket.gateway.js";
 import { deleteCache, CacheKey } from "../../../infrastructure/cache/cache.service.js";
 
 /**
@@ -20,13 +19,15 @@ import { deleteCache, CacheKey } from "../../../infrastructure/cache/cache.servi
  * @param {Object} tx - Optional Prisma transaction client
  */
 export const persistYouTubeContent = async (userId, channelData, triggerReason = "manual", tx = prisma) => {
-  // Initialization
-  const videoRecords = []; // 💉 Defined at top-level to prevent ReferenceErrors in callbacks
+  const videoRecords = [];
 
   try {
-    // 🛡️ PRODUCTION DATA MAPPING: Support multiple formats (camelCase, snake_case, or direct ID)
-    const channelId = String(channelData.channelId || channelData.channel_id || channelData.id || "").trim();
-    const channelName = (channelData.channelName || channelData.channel_name || channelData.title || "Untitled Channel").trim();
+    const channelId = String(
+      channelData.channelId || channelData.channel_id || channelData.id || ""
+    ).trim();
+    const channelName = (
+      channelData.channelName || channelData.channel_name || channelData.title || "Untitled Channel"
+    ).trim();
     const thumbnailUrl = channelData.thumbnailUrl || channelData.thumbnail_url || channelData.thumbnail;
     const subscriberCount = Number(channelData.subscriberCount || channelData.subscriber_count || 0);
     const videoCount = Number(channelData.videoCount || channelData.video_count || 0);
@@ -39,15 +40,22 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     const bannerUrl = channelData.bannerUrl || channelData.banner_url || null;
     const uploadsPlaylistId = channelData.uploadsPlaylistId || channelData.uploads_playlist_id;
     const videos = channelData.videos || [];
-    // ── NEW fields from expanded API fetch ────────────────────────────────────
-    const language             = channelData.language || channelData.defaultLanguage || null;
+    const language = channelData.language || channelData.defaultLanguage || null;
     const hiddenSubscriberCount = channelData.hiddenSubscriberCount || false;
-    const madeForKids          = channelData.madeForKids || false;
-    const topicCategories      = channelData.topicCategories || [];
+    const madeForKids = channelData.madeForKids || false;
+    const topicCategories = channelData.topicCategories || [];
+    const niche = channelData.niche || channelData.subCategoryName || channelData.category || null;
 
     if (!channelId || channelId === "undefined") {
-      logger.error(`❌ [YT-SYNC] Critical Mapping Failure: Received invalid channelId from data: ${JSON.stringify(channelData)}`);
-      throw new ApiError(400, "YouTube Sync Error: A valid Channel ID is required to link your account.");
+      logger.error(
+        `❌ [YT-SYNC] Critical Mapping Failure: Received invalid channelId: ${JSON.stringify(
+          channelData
+        )}`
+      );
+      throw new ApiError(
+        400,
+        "YouTube Sync Error: A valid Channel ID is required to link your account."
+      );
     }
 
     logger.info(`🔄 [YT-SYNC] Persisting content for channel: ${channelName} (${channelId})`);
@@ -56,285 +64,275 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     let mirroredAvatar = channelData.mirroredAvatarUrl || channelData.mirrored_avatar_url;
     if (!mirroredAvatar && thumbnailUrl) {
       logger.info(`💾 [YT-SYNC] Optimizing Avatar for ${channelId}`);
-      mirroredAvatar = await storageService.optimizeAndMirrorUrl(thumbnailUrl, "media/avatars/youtube", { format: 'webp' });
+      mirroredAvatar = await storageService.optimizeAndMirrorUrl(
+        thumbnailUrl,
+        "media/avatars/youtube",
+        { format: "webp" }
+      );
     }
 
-    // 2. Mirror Channel Banner (Processed & Optimized)
+    // 2. Mirror Channel Banner
     let mirroredBanner = channelData.mirroredBannerUrl || channelData.mirrored_banner_url;
     if (!mirroredBanner && bannerUrl) {
       logger.info(`💾 [YT-SYNC] Processing & Optimizing banner for ${channelId}`);
       try {
-        mirroredBanner = await storageService.optimizeAndMirrorUrl(bannerUrl, "media/avatars/youtube/banners", { format: 'jpeg', quality: 90 });
+        mirroredBanner = await storageService.optimizeAndMirrorUrl(
+          bannerUrl,
+          "media/avatars/youtube/banners",
+          { format: "jpeg", quality: 90 }
+        );
       } catch (bErr) {
         logger.warn(`⚠️ [YT-SYNC] Banner processing failed: ${bErr.message}`);
       }
     }
 
-    // Safe Model Resolvers (Use standard Prisma camelCase)
-    const ytProfileModel = tx.youTubeProfile;
-    const ytVideoModel = tx.youTubeVideo;
+    // 3. Ensure CreatorProfile exists
+    const creatorProfile = await tx.creatorProfile.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
 
-    if (!ytProfileModel || !ytVideoModel) {
-       logger.error(`❌ [YT-SYNC] Models not found on client. tx keys: ${Object.keys(tx).join(', ')}`);
-       throw new Error("Critical: YouTube models not found on Prisma client.");
-    }
-
-    // 2. Safety Check: Verify ownership if channel already exists
-    const existing = await ytProfileModel.findFirst({
-       where: { channel_id: channelId },
-       select: { id: true, userId: true }
+    // 4. Safety Check: Verify ownership
+    const existing = await tx.youTubeChannel.findFirst({
+      where: { channel_id: channelId },
+      select: { id: true, userId: true },
     });
 
     if (existing && existing.userId !== userId) {
-       throw new ApiError(409, `YouTube channel ${channelId} is already owned by another user.`);
+      throw new ApiError(409, `YouTube channel ${channelId} is already owned by another user.`);
     }
 
-    // 3. Resilient Upsert Pattern
-    let youtubeProfile;
-    const subCategoryId = channelData.subCategoryId || channelData.sub_category_id || undefined;
-
+    // 5. Upsert YouTube Channel
     const profileData = {
-      channel_name:            channelName,
-      thumbnail_url:           mirroredAvatar || thumbnailUrl,
-      subscriber_count:        subscriberCount,
-      video_count:             videoCount,
-      view_count:              BigInt(viewCount || "0"),
-      description:             description,
-      custom_url:              customUrl,
-      banner_url:              mirroredBanner || bannerUrl,
-      published_at:            publishedAt ? new Date(publishedAt) : null,
-      country:                 country,
-      keywords:                keywords,
-      uploads_playlist_id:     uploadsPlaylistId,
-      last_synced_at:          new Date(),
-      userId:                  userId,
-      subCategoryId:           subCategoryId,
-      // ── NEW fields (were fetched but never stored before) ─────────────────
-      language:                language,
+      creatorProfileId: creatorProfile.id,
+      channel_name: channelName,
+      thumbnail_url: mirroredAvatar || thumbnailUrl,
+      subscriber_count: subscriberCount,
+      video_count: videoCount,
+      view_count: BigInt(viewCount || "0"),
+      custom_url: customUrl,
+      banner_url: mirroredBanner || bannerUrl,
+      published_at: publishedAt ? new Date(publishedAt) : null,
+      country: country,
+      keywords: keywords,
+      uploads_playlist_id: uploadsPlaylistId,
+      last_synced_at: new Date(),
+      userId: userId,
+      niche: niche,
+      language: language,
       hidden_subscriber_count: hiddenSubscriberCount,
-      made_for_kids:           madeForKids,
-      topic_categories:        topicCategories,
+      made_for_kids: madeForKids,
+      topic_categories: topicCategories,
+      sync_status: "idle",
     };
 
+    let youtubeChannel;
     if (existing) {
-       youtubeProfile = await ytProfileModel.update({
-         where: { id: existing.id },
-         data: profileData
-       });
+      youtubeChannel = await tx.youTubeChannel.update({
+        where: { id: existing.id },
+        data: profileData,
+      });
     } else {
-       youtubeProfile = await ytProfileModel.create({
-         data: { ...profileData, channel_id: channelId }
-       });
+      youtubeChannel = await tx.youTubeChannel.create({
+        data: { ...profileData, channel_id: channelId },
+      });
     }
 
-    // 3. Mirror and Persist Videos (Atomic Sync)
+    // 6. Mirror and Persist Videos
     if (videos && videos.length > 0) {
-      logger.info(`📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos for ${youtubeProfile.id}`);
-      
+      logger.info(
+        `📽️ [YT-SYNC] Attempting to mirror up to ${videos.length} videos for ${youtubeChannel.id}`
+      );
+
       try {
-        const videosToSync = videos.slice(0, 50); // We now fetch up to 50 via playlistItems
+        const videosToSync = videos.slice(0, 50);
 
         for (const v of videosToSync) {
           try {
             let mirroredThumb = v.thumbnail;
             try {
-              mirroredThumb = await storageService.uploadFromUrl(v.thumbnail, "uploads/processed/images/youtube");
+              mirroredThumb = await storageService.uploadFromUrl(
+                v.thumbnail,
+                "uploads/processed/images/youtube"
+              );
             } catch (thumbErr) {
-              logger.warn(`⚠️ [YT-SYNC] Thumbnail mirroring failed for ${v.id}, using original: ${thumbErr.message}`);
+              logger.warn(
+                `⚠️ [YT-SYNC] Thumbnail mirroring failed for ${v.id}, using original: ${thumbErr.message}`
+              );
             }
 
             videoRecords.push({
-              video_id:         v.id,
-              title:            v.title,
-              description:      v.description    || null,
-              thumbnail:        mirroredThumb    || v.thumbnail,
-              published_at:     v.publishedAt    ? new Date(v.publishedAt) : new Date(),
-              youtubeProfileId: youtubeProfile.id,
-              channel_id:       channelId,
-              user_id:          userId,
-              // ── Stats from videos.list (NEW — were always 0/null before) ─────
-              view_count:    v.viewCount    ? BigInt(v.viewCount)    : 0n,
-              like_count:    v.likeCount    ? BigInt(v.likeCount)    : 0n,
+              video_id: v.id,
+              title: v.title,
+              description: v.description || null,
+              thumbnail: mirroredThumb || v.thumbnail,
+              published_at: v.publishedAt ? new Date(v.publishedAt) : new Date(),
+              youtubeChannelId: youtubeChannel.id,
+              channel_id: channelId,
+              user_id: userId,
+              view_count: v.viewCount ? BigInt(v.viewCount) : 0n,
+              like_count: v.likeCount ? BigInt(v.likeCount) : 0n,
               comment_count: v.commentCount ? BigInt(v.commentCount) : 0n,
               duration_secs: v.durationSecs || null,
-              category_id:   v.categoryId   || null,
-              tags:          v.tags          ? v.tags.join(",") : null, // stored as CSV string
-              made_for_kids: v.madeForKids  || false,
+              category_id: v.categoryId || null,
+              tags: v.tags ? (Array.isArray(v.tags) ? v.tags.join(",") : String(v.tags)) : null,
+              made_for_kids: v.madeForKids || false,
             });
           } catch (vErr) {
             logger.warn(`⚠️ [YT-SYNC] Skipping video ${v.id} record creation: ${vErr.message}`);
           }
         }
 
-        // Clean old videos and insert new ones
         if (videoRecords.length > 0) {
-          await ytVideoModel.deleteMany({
-            where: { youtubeProfileId: youtubeProfile.id },
+          await tx.youTubeVideo.deleteMany({
+            where: { youtubeChannelId: youtubeChannel.id },
           });
 
-          await ytVideoModel.createMany({
+          await tx.youTubeVideo.createMany({
             data: videoRecords,
             skipDuplicates: true,
           });
           logger.info(`✅ [YT-SYNC] Successfully persisted ${videoRecords.length} videos.`);
 
-          // ── Compute and store engagement_rate + avg_views_per_video ─────────
-          // engagement_rate = avg((likes + comments) / views) across videos with views > 0
+          // Compute engagement rate and average views
           try {
-            const videosWithViews = videoRecords.filter(vr => vr.view_count > 0n);
-            let engagementRate    = 0;
-            let avgViewsPerVideo  = 0;
+            const videosWithViews = videoRecords.filter((vr) => vr.view_count > 0n);
+            let engagementRate = 0;
+            let avgViewsPerVideo = 0;
 
             if (videosWithViews.length > 0) {
               const totalEngagement = videosWithViews.reduce((sum, vr) => {
                 const v = Number(vr.view_count);
-                const l = Number(vr.like_count    || 0n);
+                const l = Number(vr.like_count || 0n);
                 const c = Number(vr.comment_count || 0n);
                 return sum + (v > 0 ? (l + c) / v : 0);
               }, 0);
-              engagementRate = (totalEngagement / videosWithViews.length) * 100; // as percentage
+              engagementRate = (totalEngagement / videosWithViews.length) * 100;
             }
 
             if (videoRecords.length > 0) {
-              const totalViews = videoRecords.reduce((sum, vr) => sum + Number(vr.view_count || 0n), 0);
+              const totalViews = videoRecords.reduce(
+                (sum, vr) => sum + Number(vr.view_count || 0n),
+                0
+              );
               avgViewsPerVideo = totalViews / videoRecords.length;
             }
 
-            await ytProfileModel.update({
-              where: { id: youtubeProfile.id },
+            await tx.youTubeChannel.update({
+              where: { id: youtubeChannel.id },
               data: {
-                engagement_rate:     parseFloat(engagementRate.toFixed(4)),
+                engagement_rate: parseFloat(engagementRate.toFixed(4)),
                 avg_views_per_video: parseFloat(avgViewsPerVideo.toFixed(2)),
               },
             });
-            logger.info(`📈 [YT-SYNC] Engagement rate: ${engagementRate.toFixed(2)}% | Avg views: ${avgViewsPerVideo.toFixed(0)}`);
+            logger.info(
+              `📈 [YT-SYNC] Engagement rate: ${engagementRate.toFixed(2)}% | Avg views: ${avgViewsPerVideo.toFixed(0)}`
+            );
           } catch (engErr) {
             logger.warn(`⚠️ [YT-SYNC] Engagement calc skipped: ${engErr.message}`);
-          }
-
-          // 🧠 [SEARCH-OPTIMIZATION] Index titles into the Search Dictionary (Probabilistic Engine)
-          try {
-            const dictionaryTerms = [
-              { term: youtubeProfile.channel_name, type: 'CHANNEL_NAME', popularity_score: Number(youtubeProfile.subscriber_count || 0) },
-              ...videoRecords.map(vr => ({
-                term: vr.title,
-                type: 'VIDEO_TITLE',
-                popularity_score: Number(vr.view_count || 0)
-              }))
-            ];
-
-            for (const dt of dictionaryTerms) {
-              await tx.youTubeSearchDictionary.upsert({
-                where: { term: dt.term },
-                update: { 
-                  popularity_score: { increment: dt.popularity_score > 0 ? 1 : 0 }, // Simple popularity bump
-                  last_used_at: new Date()
-                },
-                create: { 
-                  term: dt.term,
-                  type: dt.type,
-                  popularity_score: dt.popularity_score
-                }
-              });
-            }
-            logger.info(`🧠 [YT-SYNC] Indexed ${dictionaryTerms.length} terms into Search Dictionary.`);
-          } catch (dictErr) {
-            logger.warn(`⚠️ [YT-SYNC] Dictionary indexing skipped: ${dictErr.message}`);
           }
         }
       } catch (vidSyncErr) {
         logger.error(`❌ [YT-SYNC] Video persistence layer failed: ${vidSyncErr.message}`);
-        // We don't throw here - we want the profile sync to at least succeed
       }
     }
 
-    // 🛰️ [DATA-AGGREGATION] Fetch the FULL state of all channels for the user
-    // This prevents the UI from "losing" other accounts when one channel finishes syncing.
-    const allProfiles = await ytProfileModel.findMany({
+    // 7. Fetch FULL updated state
+    const allChannels = await tx.youTubeChannel.findMany({
       where: { userId },
       include: {
         videos: {
-          orderBy: { published_at: 'desc' },
-          take: 25
-        }
-      }
+          orderBy: { published_at: "desc" },
+          take: 25,
+        },
+      },
     });
 
-    const allVideos = allProfiles
-      .flatMap(p => (p.videos || []).map(v => {
-        const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
-        const resolvedUrl = smartResolveMediaUrl(rawThumb);
-        return {
-          id: v.id,            // DB row UUID
-          video_id: v.video_id, // YouTube video ID (for watch links)
-          title: v.title,
-          description: v.description || null,
-          thumbnail: resolvedUrl,
-          published_at: v.published_at,
-          channel_id: p.channel_id,
-          youtubeProfileId: p.id,
-          // ── Stats (were missing from socket payload — caused view_count=0 on UI) ──
-          view_count:    v.view_count    != null ? String(v.view_count)    : "0",
-          like_count:    v.like_count    != null ? String(v.like_count)    : "0",
-          comment_count: v.comment_count != null ? String(v.comment_count) : "0",
-          duration_secs: v.duration_secs || null,
-          category_id:   v.category_id  || null,
-          tags:          v.tags          || null,
-          made_for_kids: v.made_for_kids || false,
-          // 🛰️ NORMALIZE FOR UNIFIED ENGINE
-          media: {
-            type: 'IMAGE',
-            status: 'READY',
-            urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl }
-          }
-        };
-      }))
-      .sort((a, b) => new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime());
+    const allVideos = allChannels
+      .flatMap((p) =>
+        (p.videos || []).map((v) => {
+          const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
+          const resolvedUrl = smartResolveMediaUrl(rawThumb);
+          return {
+            id: v.id,
+            video_id: v.video_id,
+            title: v.title,
+            description: v.description || null,
+            thumbnail: resolvedUrl,
+            published_at: v.published_at,
+            channel_id: p.channel_id,
+            youtubeProfileId: p.id,
+            youtubeChannelId: p.id,
+            view_count: v.view_count != null ? String(v.view_count) : "0",
+            like_count: v.like_count != null ? String(v.like_count) : "0",
+            comment_count: v.comment_count != null ? String(v.comment_count) : "0",
+            duration_secs: v.duration_secs || null,
+            category_id: v.category_id || null,
+            tags: v.tags || null,
+            made_for_kids: v.made_for_kids || false,
+            media: {
+              type: "IMAGE",
+              status: "READY",
+              urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl },
+            },
+          };
+        })
+      )
+      .sort(
+        (a, b) => new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime()
+      );
 
-    // ── TRIGGER NOTIFICATION (Production Quality) ───────────────────────────
-    const { default: notificationService } = await import('../../../domains/notification/services/notificationService.js');
-    
-    logger.info(`📡 [NOTIFY-SYNC] Sending sync signal for user ${userId}. Total channels: ${allProfiles.length}, Total videos: ${allVideos.length}`);
+    // 8. Trigger Notification
+    const { default: notificationService } = await import(
+      "../../../domains/notification/services/notificationService.js"
+    );
 
-    // Custom Notification Content based on Reason
-    let notificationTitle = 'YouTube Profile Updated! 🎥';
-    let notificationBody = `Your latest content from ${youtubeProfile.channel_name} is now live on SuviX.`;
+    let notificationTitle = "YouTube Profile Updated! 🎥";
+    let notificationBody = `Your latest content from ${youtubeChannel.channel_name} is now live on SuviX.`;
 
     if (triggerReason === "manual_verify") {
-      notificationTitle = 'Account Linked! 🎥';
-      notificationBody = `Your channel ${youtubeProfile.channel_name} was successfully linked to your account. Your latest videos are now live!`;
+      notificationTitle = "Account Linked! 🎥";
+      notificationBody = `Your channel ${youtubeChannel.channel_name} was successfully linked to your account. Your latest videos are now live!`;
     }
 
-    notificationService.notify({
-      userId,
-      type: 'SYNC_COMPLETE',
-      title: notificationTitle,
-      body: notificationBody,
-      imageUrl: smartResolveMediaUrl(youtubeProfile.thumbnail_url),
-      priority: 'HIGH',
-      entityId: youtubeProfile.id,
-      entityType: 'YOUTUBE_PROFILE',
-      metadata: { 
-        type: 'youtube_sync_complete', 
-        sync_complete: true,
-        videos: allVideos.slice(0, 25) // Only send first 25 to notification to avoid payload limits
-      }
-    }).catch(err => logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`));
+    notificationService
+      .notify({
+        userId,
+        type: "SYNC_COMPLETE",
+        title: notificationTitle,
+        body: notificationBody,
+        imageUrl: smartResolveMediaUrl(youtubeChannel.thumbnail_url),
+        priority: "HIGH",
+        entityId: youtubeChannel.id,
+        entityType: "YOUTUBE_PROFILE",
+        metadata: {
+          type: "youtube_sync_complete",
+          sync_complete: true,
+          videos: allVideos.slice(0, 25),
+        },
+      })
+      .catch((err) =>
+        logger.error(`[NOTIFY-SYNC] Failed to send sync notification: ${err.message}`)
+      );
 
-    // 🧹 [CACHE] Invalidate user profile and user videos to ensure "Ghost Channels" or "Missing Videos" are resolved
+    // Invalidate Cache
     await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);
 
-    // 🛰️ [SOCKET] Surgical Broadcast for real-time UI refresh
-    emitToUser(userId, "user:profile_updated", { 
-      youtubeProfile: allProfiles.map(p => ({
+    // Emit Socket Update
+    emitToUser(userId, "user:profile_updated", {
+      youtubeProfile: allChannels.map((p) => ({
         ...p,
-        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url)
+        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
       })),
-      youtubeVideos: allVideos
+      youtubeChannels: allChannels.map((p) => ({
+        ...p,
+        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
+      })),
+      youtubeVideos: allVideos,
     });
 
-    return youtubeProfile;
-
+    return youtubeChannel;
   } catch (error) {
     logger.error(`❌ [YT-SYNC] Persistence failed: ${error.message}`);
     throw error;
@@ -343,14 +341,12 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
 
 /**
  * Execute a manual, synchronous YouTube sync for a user's channels.
- * This runs directly in the HTTP request thread, bypassing BullMQ.
- * It fetches metadata, mirrors thumbnails, saves to DB, and emits socket events.
  */
 export const executeManualSync = async (userId, channelIds, triggerReason = "manual") => {
   if (!channelIds || channelIds.length === 0) return { processed: 0, total: 0 };
-  
+
   const { default: youtubeApiService } = await import("./youtubeApiService.js");
-  
+
   const totalChannels = channelIds.length;
   let processedCount = 0;
 
@@ -364,30 +360,33 @@ export const executeManualSync = async (userId, channelIds, triggerReason = "man
       const progress = Math.min(baseProgress + stepContribution, 99);
       emitToUser(userId, "notification:new", {
         type: "SYNC_PROGRESS",
-        metadata: { userId, progress, channelId, channelName, step, message }
+        metadata: { userId, progress, channelId, channelName, step, message },
       });
     };
 
     try {
-      emitProgress(10, 'connection', 'Connecting to YouTube API...');
-      
+      emitProgress(10, "connection", "Connecting to YouTube API...");
+
       const channelMetadata = await youtubeApiService.getChannelPublicData({
         identifier: channelId,
-        type: 'id'
+        type: "id",
       });
       channelName = channelMetadata.title || channelName;
 
-      emitProgress(45, 'metadata', 'Fetching channel profile & stats...');
+      emitProgress(45, "metadata", "Fetching channel profile & stats...");
 
       if (channelMetadata.uploadsPlaylistId) {
-        channelMetadata.videos = await youtubeApiService.getPlaylistVideos(channelMetadata.uploadsPlaylistId, 50);
+        channelMetadata.videos = await youtubeApiService.getPlaylistVideos(
+          channelMetadata.uploadsPlaylistId,
+          50
+        );
       }
 
-      emitProgress(75, 'videos', 'Syncing video library (up to 50 videos)...');
+      emitProgress(75, "videos", "Syncing video library (up to 50 videos)...");
 
       await persistYouTubeContent(userId, channelMetadata, triggerReason);
-      
-      emitProgress(95, 'finalize', 'Saving analytics & generating dashboard...');
+
+      emitProgress(95, "finalize", "Saving analytics & generating dashboard...");
 
       processedCount++;
       const progress = Math.round((processedCount / totalChannels) * 100);
@@ -395,20 +394,28 @@ export const executeManualSync = async (userId, channelIds, triggerReason = "man
       emitToUser(userId, "notification:new", {
         type: "SYNC_PROGRESS",
         metadata: {
-          userId, progress, channelId, channelName, step: 'complete',
-          message: `Completed sync for ${channelName}!`
-        }
+          userId,
+          progress,
+          channelId,
+          channelName,
+          step: "complete",
+          message: `Completed sync for ${channelName}!`,
+        },
       });
-      // Also emit SYNC_COMPLETE for good measure
       emitToUser(userId, "notification:new", {
         type: "SYNC_COMPLETE",
-        metadata: { userId, channelId }
+        metadata: { userId, channelId },
       });
     } catch (error) {
       logger.error(`❌ [YT-SYNC-MANUAL] Channel failed`, error, { userId, channelId });
       emitToUser(userId, "notification:new", {
         type: "SYNC_FAILED",
-        metadata: { userId, channelId, channelName, message: `Failed to sync channel: ${error.message}` }
+        metadata: {
+          userId,
+          channelId,
+          channelName,
+          message: `Failed to sync channel: ${error.message}`,
+        },
       });
       throw new Error(`Channel sync failed for ${channelId}: ${error.message}`);
     }

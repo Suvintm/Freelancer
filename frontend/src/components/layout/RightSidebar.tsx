@@ -82,7 +82,7 @@ export const RightSidebar = () => {
 
   const menuItems = useMemo(() => {
     let items = [...NAV_ITEMS];
-    const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+    const isClientCategory = ['user', 'brand', 'social_promoter', 'direct_client'].includes(user?.primaryRole?.category || user?.role || '');
     if (isClientCategory) {
       items = items.filter(item => item.path !== '/upload-portal' && item.path !== '/reels');
     }
@@ -95,7 +95,7 @@ export const RightSidebar = () => {
       }
     }
     return items;
-  }, [hasYoutube, user?.primaryRole?.category]);
+  }, [hasYoutube, user?.primaryRole?.category, user?.role]);
 
   const visibleConvs = conversations.slice(activeCardIndex, activeCardIndex + 3);
 

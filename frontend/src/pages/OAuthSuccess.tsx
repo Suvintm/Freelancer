@@ -33,8 +33,18 @@ export default function OAuthSuccess() {
   const exchangeStarted = useRef(false);
 
   useEffect(() => {
-    const code = searchParams.get('code');
+    // 🛡️ Support both URL fragment (#code=...) and query (?code=...)
+    let code = searchParams.get('code');
+    if (!code && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      code = hashParams.get('code');
+    }
     
+    // Clean URL fragment/query immediately so OTC never lingers in URL bar
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     if (!code) {
       navigate('/login?error=no_code');
       return;
@@ -50,16 +60,6 @@ export default function OAuthSuccess() {
         if (!response.data.success) {
           navigate('/login?error=exchange_failed');
           return;
-        }
-
-        // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-        const emailToCheck = response.data.socialProfile?.email || response.data.user?.email;
-        if (emailToCheck) {
-          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com', 'uber@company.com'];
-          if (!allowedEmails.includes(emailToCheck.toLowerCase().trim())) {
-            navigate('/login?error=server_busy');
-            return;
-          }
         }
 
         // Read intent from tempSignupData (set before OAuth redirect)
@@ -115,24 +115,32 @@ export default function OAuthSuccess() {
             } : {})
           }));
 
-          // YouTube flow: user selected yt_influencer role AND we have a Google token
-          if (categorySlug === 'yt_influencer' && googleAccessToken) {
+          const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+          const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
+          const isBrand = categorySlug === 'brand' || categorySlug === 'social_promoter';
+
+          // YouTube flow: user selected creator role AND we have a Google token
+          if (isCreator && googleAccessToken) {
             navigate('/youtube-connect', { state: { googleAccessToken } });
             return;
           }
 
-          // All other roles: if they need subcategory selection, go there first
+          // Video Editor flow: select specializations & tools
+          if (isEditor) {
+            navigate('/editor-specialization');
+            return;
+          }
+
+          // Brand / Sponsor flow: set up company profile & industry
+          if (isBrand) {
+            navigate('/brand-details');
+            return;
+          }
+
+          // All other roles (Normal User): go straight to complete profile!
           const currentOnboardingStore = (store.getState() as RootState).onboarding;
           if (currentOnboardingStore.tempSignupData?.categoryId) {
-            // Check if this role requires subcategory
-            const needsSubcategory = categorySlug && 
-              !['direct_client', 'yt_influencer'].includes(categorySlug);
-            
-            if (needsSubcategory) {
-              navigate('/subcategory-selection');
-            } else {
-              navigate('/complete-profile');
-            }
+            navigate('/complete-profile');
           } else {
             // No role data — send back to role selection to start fresh
             navigate('/role-selection');
@@ -149,9 +157,19 @@ export default function OAuthSuccess() {
         dispatch(setIsAddingAccount(false));
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
 
-        if (intent === 'register' && categorySlug === 'yt_influencer' && googleAccessToken) {
-          // Edge case: existing user who is trying to re-link YouTube during onboarding
-          // Pass token to YouTubeConnect to show their claimed channels
+        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+
+        if (!user.isOnboarded) {
+          if (isCreator && googleAccessToken) {
+            navigate('/youtube-connect', { state: { googleAccessToken } });
+            return;
+          }
+          navigate('/complete-profile');
+          return;
+        }
+
+        if (intent === 'register' && isCreator && googleAccessToken) {
+          // Existing creator user claiming channel
           navigate('/youtube-connect', { state: { googleAccessToken } });
           return;
         }

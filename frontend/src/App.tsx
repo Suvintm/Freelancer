@@ -4,7 +4,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import VerifyEmail from './pages/VerifyEmail';
 import RoleSelection from './pages/RoleSelection';
-import SubcategorySelection from './pages/SubcategorySelection';
+import EditorSpecialization from './pages/EditorSpecialization';
+import BrandDetails from './pages/BrandDetails';
 import YouTubeConnect from './pages/YouTubeConnect';
 import YouTubeNiche from './pages/YouTubeNiche';
 import Home from './pages/Home';
@@ -99,7 +100,8 @@ function App() {
     };
 
     checkServer();
-  }, [isInitialized, navigate, location.pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, navigate]);
 
   if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
     return (
@@ -129,12 +131,26 @@ function App() {
         {/* role-selection is always accessible (it clears state on mount) */}
         <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
 
-        {/* subcategory-selection requires role to be selected first */}
+        {/* editor-specialization requires role to be selected first */}
         <Route
-          path="/subcategory-selection"
+          path="/editor-specialization"
           element={
             <OnboardingGuard requiredStep="role">
-              <SubcategorySelection />
+              <EditorSpecialization />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/subcategory-selection"
+          element={<Navigate to="/editor-specialization" replace />}
+        />
+
+        {/* brand-details requires role = brand to be selected */}
+        <Route
+          path="/brand-details"
+          element={
+            <OnboardingGuard requiredStep="role">
+              <BrandDetails />
             </OnboardingGuard>
           }
         />

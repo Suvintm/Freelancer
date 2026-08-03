@@ -113,7 +113,7 @@ router.get(
                         accessToken: user.accessToken
                     }
                 });
-                return res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+                return res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
             }
 
             // [EXISTING] Handle Login for Registered Users
@@ -125,8 +125,8 @@ router.get(
                 accessToken: user.accessToken
             });
 
-            // Redirect with a short-lived exchange code
-            res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+            // Redirect with a short-lived exchange code in URL fragment (prevents referrer leaks & history logs)
+            res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
         } catch (error) {
             logger.error("Google callback error:", error);
             const host = req.get('host');
@@ -386,7 +386,7 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
  */
 router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (req, res) => {
     try {
-        const { idToken, username, phone, categoryId, roleSubCategoryIds, youtubeChannels } = req.body;
+        const { idToken, username, phone, categoryId, youtubeChannels } = req.body;
 
         if (!idToken || !username || !phone) {
             return res.status(400).json({ success: false, message: "Missing mandatory registration data" });
@@ -421,7 +421,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             if (!existing.google_id) {
                 finalUser = await prisma.user.update({
                     where: { id: existing.id },
-                    data: { google_id: googleId, is_verified: true, is_email_verified: true },
+                    data: { google_id: googleId, is_verified: true, is_email_verified: true, email_verified_at: new Date() },
                     include: USER_INCLUDE
                 });
             }
@@ -461,20 +461,29 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             ? categoryId 
             : null;
         
-        const validRoleSubIds = (roleSubCategoryIds || []).filter(id => 
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-        );
-
         // 3. ATOMIC TRANSACTION: Create Everything
         const user = await prisma.$transaction(async (tx) => {
+            let assignedRole = "user";
+            if (validCategoryId) {
+                const selectedCategory = await tx.roleCategory.findUnique({
+                    where: { id: validCategoryId },
+                    select: { maps_to_role: true }
+                });
+                if (selectedCategory?.maps_to_role) {
+                    assignedRole = selectedCategory.maps_to_role;
+                }
+            }
+
             const newUser = await tx.user.create({
                 data: {
                     email: normalizedEmail,
+                    username: normalizedUsername,
                     google_id: googleId,
                     auth_provider: "google",
                     is_verified: true,
                     is_email_verified: true,
-                    role: "suvix_user",
+                    email_verified_at: new Date(),
+                    role: assignedRole,
                     is_onboarded: true, // Atomic!
                     password_hash: `OAUTH_ATOMIC_${crypto.randomBytes(8).toString("hex")}`,
                 }
@@ -497,19 +506,26 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                 data: { userId: newUser.id }
             });
 
-            if (validRoleSubIds.length > 0) {
-                await tx.userRoleMapping.createMany({
-                    data: validRoleSubIds.map((subId, index) => ({
-                        profileId: profile.id,
-                        roleSubCategoryId: subId,
-                        isPrimary: index === 0,
-                    }))
+            // Initialize Role-Specific Profile
+            if (assignedRole === "creator") {
+                await tx.creatorProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id, business_email: normalizedEmail }
+                });
+            } else if (assignedRole === "editor") {
+                await tx.editorProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id }
+                });
+            } else if (assignedRole === "brand") {
+                await tx.brandProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id }
                 });
             }
-
-            // Removed manual YouTube Profile insertion.
-            // This is now fully deferred to the BullMQ background worker to securely process
-            // Cloudinary thumbnails and 15 related videos without blocking DB performance.
 
             return await tx.user.findUnique({
                 where: { id: newUser.id },
@@ -580,7 +596,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
  */
 router.post("/select-role", authLimiter, async (req, res) => {
     try {
-        const { token, phone, country, categoryId, roleSubCategoryIds, username } = req.body;
+        const { token, phone, country, categoryId, username } = req.body;
 
         if (!token) throw new Error("Onboarding token required");
 
@@ -589,9 +605,23 @@ router.post("/select-role", authLimiter, async (req, res) => {
         
         // Finalize PostgreSQL Profile
         const updatedUser = await prisma.$transaction(async (tx) => {
+            let assignedRole = "user";
+            if (categoryId) {
+                const selectedCategory = await tx.roleCategory.findUnique({
+                    where: { id: categoryId },
+                    select: { maps_to_role: true }
+                });
+                if (selectedCategory?.maps_to_role) {
+                    assignedRole = selectedCategory.maps_to_role;
+                }
+            }
+
             await tx.user.update({
                 where: { id: decoded.id },
-                data: { is_onboarded: true }
+                data: { 
+                    is_onboarded: true,
+                    role: assignedRole
+                }
             });
 
             const profile = await tx.userProfile.update({
@@ -604,19 +634,24 @@ router.post("/select-role", authLimiter, async (req, res) => {
                 }
             });
 
-            // Add Role Mappings (Expertise)
-            if (roleSubCategoryIds && Array.isArray(roleSubCategoryIds) && roleSubCategoryIds.length > 0) {
-                // Clear existing mappings if any (unlikely for new user but safe)
-                await tx.userRoleMapping.deleteMany({
-                    where: { profileId: profile.id }
+            // Initialize Role-Specific Profile (Creator/Editor/Brand)
+            if (assignedRole === "creator") {
+                await tx.creatorProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
                 });
-
-                await tx.userRoleMapping.createMany({
-                    data: roleSubCategoryIds.map((subId, index) => ({
-                        profileId: profile.id,
-                        roleSubCategoryId: subId,
-                        isPrimary: index === 0,
-                    }))
+            } else if (assignedRole === "editor") {
+                await tx.editorProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
+                });
+            } else if (assignedRole === "brand") {
+                await tx.brandProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
                 });
             }
 

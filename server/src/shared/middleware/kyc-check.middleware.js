@@ -9,7 +9,7 @@ import { ApiError } from "./error-handler.middleware.js";
 export const requireClientKYC = async (req, res, next) => {
   try {
     // Skip for non-clients (editors don't need client KYC)
-    if (req.user.role !== "client") {
+    if (req.user.role !== "client" && req.user.role !== "brand" && req.user.role !== "user") {
       return next();
     }
 
@@ -48,7 +48,7 @@ export const requireClientKYC = async (req, res, next) => {
  */
 export const checkClientKYC = async (req, res, next) => {
   try {
-    if (req.user.role !== "client") {
+    if (req.user.role !== "client" && req.user.role !== "brand" && req.user.role !== "user") {
       req.kycVerified = true;
       return next();
     }

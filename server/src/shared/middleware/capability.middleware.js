@@ -49,25 +49,19 @@ export const requireCapability = (capability) => (req, res, next) => {
   }
 
   // Admin bypass — admins can do everything
-  if (req.user._systemRole === 'admin' || req.user.role === 'admin') {
+  if (req.user.role === 'admin' || req.user.systemRole === 'admin') {
     return next();
   }
 
-  // Get user's category slug from their primary role
-  const userCategorySlug = req.user.primaryRole?.categorySlug || '';
-  const userGroupRole = req.user.primaryRole?.group || '';
-
-  // Check if user's category is in the allowed list
-  const hasCapability = allowedSubCategories.some((allowed) =>
-    userCategorySlug.toLowerCase().includes(allowed.toLowerCase())
-  );
+  // Check if user's role is in the allowed list
+  const hasCapability = allowedSubCategories.includes(req.user.role);
 
   if (!hasCapability) {
     return res.status(403).json({
       success: false,
-      message: `Your role (${req.user.primaryRole?.subCategory || userGroupRole}) does not have access to this feature.`,
+      message: `Your role (${req.user.role}) does not have access to this feature.`,
       required: capability,
-      userRole: req.user.primaryRole?.subCategory,
+      userRole: req.user.role,
     });
   }
 

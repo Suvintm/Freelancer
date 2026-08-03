@@ -59,6 +59,18 @@ export interface SignupPayload {
   motherTongue?: string;
   categoryId?: string;
   roleSubCategoryIds?: string[];
+  specializations?: string[];
+  softwareUsed?: string[];
+  skills?: string[];
+  portfolioUrl?: string;
+  experienceYears?: number;
+  companyName?: string;
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  designation?: string;
+  approxBudget?: string | number;
+  targetRegions?: string[];
   youtubeChannels?: Array<{
     channelId: string;
     channelName: string;
@@ -82,6 +94,7 @@ export interface SignupPayload {
   profilePicture?: File | string | null;
   pushToken?: string;
   turnstileToken?: string;
+  discoveryToken?: string | null;
 }
 
 export interface AuthSession {

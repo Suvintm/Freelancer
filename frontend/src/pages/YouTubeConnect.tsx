@@ -78,6 +78,9 @@ export default function YouTubeConnect() {
       const res = await api.post('/auth/youtube/channels', { accessToken: token });
       if (res.data.success) {
         dispatch(addDiscoveredChannels(res.data.channels));
+        if (res.data.discoveryToken) {
+          dispatch(setTempSignupData({ discoveryToken: res.data.discoveryToken }));
+        }
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
       } else {

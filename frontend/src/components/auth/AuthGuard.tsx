@@ -54,7 +54,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   // 5. ONBOARDING GUARD: Ensure user has completed setup
-  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
+  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/youtube-niche', '/editor-specialization', '/brand-details', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
   if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
   }
@@ -62,8 +62,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   // 6. PREFERENCES GUARD: Ensure fully onboarded users have completed their preferences
   // We check for preferencesCompleted === false explicitly to avoid redirecting 
   // if the backend hasn't populated this field yet (e.g., during migration rollout).
-  // NOTE: Brand Sponsors (social_promoter) are exempt from content preferences.
-  const isBrandClient = user?.primaryRole?.category === 'social_promoter';
+  // NOTE: Brand Sponsors (brand / social_promoter) are exempt from content preferences.
+  const isBrandClient = user?.primaryRole?.category === 'brand' || user?.primaryRole?.category === 'social_promoter' || user?.role === 'brand';
   
   if (
     user && 
@@ -95,8 +95,21 @@ export const RoleGuard = ({ children, allowedCategories }: RoleGuardProps) => {
     return <>{children}</>;
   }
 
-  const userCategorySlug = user.primaryRole?.category;
-  if (!userCategorySlug || !allowedCategories.includes(userCategorySlug)) {
+  const userCategorySlug = user.primaryRole?.category || user.role;
+  const isAllowed = allowedCategories.some(cat => 
+    cat === userCategorySlug || 
+    cat === user.role ||
+    (cat === 'yt_influencer' && (userCategorySlug === 'creator' || user.role === 'creator')) ||
+    (cat === 'video_editor' && (userCategorySlug === 'editor' || user.role === 'editor')) ||
+    (cat === 'social_promoter' && (userCategorySlug === 'brand' || user.role === 'brand')) ||
+    (cat === 'direct_client' && (userCategorySlug === 'user' || user.role === 'user')) ||
+    (cat === 'creator' && (userCategorySlug === 'yt_influencer' || user.role === 'creator')) ||
+    (cat === 'editor' && (userCategorySlug === 'video_editor' || user.role === 'editor')) ||
+    (cat === 'brand' && (userCategorySlug === 'social_promoter' || user.role === 'brand')) ||
+    (cat === 'user' && (userCategorySlug === 'direct_client' || user.role === 'user'))
+  );
+
+  if (!isAllowed) {
     return <Navigate to="/home" replace />;
   }
 
@@ -133,7 +146,7 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   return <>{children}</>;
 };
 
-const STEP_ORDER = ['role', 'subcategory', 'youtube', 'details', 'complete'] as const;
+const STEP_ORDER = ['role', 'specialization', 'brand', 'subcategory', 'youtube', 'details', 'complete'] as const;
 type OnboardingStep = typeof STEP_ORDER[number];
 
 interface OnboardingGuardProps {

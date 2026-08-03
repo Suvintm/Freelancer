@@ -1,11 +1,11 @@
-import prisma from '../../../infrastructure/database/postgres.js';
+import prisma from "../../../infrastructure/database/postgres.js";
 
 export const communityRepository = {
   findById: async (id) => {
     return prisma.community.findUnique({
       where: { id },
       include: {
-        ytProfile: true,
+        ytChannel: true,
       },
     });
   },
@@ -14,15 +14,15 @@ export const communityRepository = {
     return prisma.community.findUnique({
       where: { slug },
       include: {
-        ytProfile: true,
+        ytChannel: true,
       },
     });
   },
 
-  findByYtProfileId: async (ytProfileId) => {
-    if (!ytProfileId) return null;
+  findByYtChannelId: async (ytChannelId) => {
+    if (!ytChannelId) return null;
     return prisma.community.findUnique({
-      where: { ytProfileId },
+      where: { ytChannelId },
     });
   },
 
@@ -32,7 +32,7 @@ export const communityRepository = {
       const community = await tx.community.create({
         data: {
           ownerId: data.ownerId,
-          ytProfileId: data.ytProfileId,
+          ytChannelId: data.ytChannelId || data.ytProfileId,
           name: data.name,
           slug: data.slug,
           description: data.description,
@@ -46,7 +46,7 @@ export const communityRepository = {
           members: {
             create: {
               userId: data.ownerId,
-              role: 'ADMIN',
+              role: "ADMIN",
             },
           },
         },
@@ -57,7 +57,7 @@ export const communityRepository = {
         data: {
           communityId: community.id,
           authorId: data.ownerId,
-          type: 'NATIVE',
+          type: "NATIVE",
           content: `Welcome to ${community.name}!`,
         },
       });
@@ -85,7 +85,7 @@ export const communityRepository = {
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { memberCount: 'desc' },
+      orderBy: { memberCount: "desc" },
     });
   },
 
@@ -95,7 +95,7 @@ export const communityRepository = {
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { joined_at: 'desc' },
+      orderBy: { joined_at: "desc" },
       include: {
         community: true,
       },

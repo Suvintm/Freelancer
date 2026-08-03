@@ -13,10 +13,13 @@ export const getPaymentHistory = asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const userRole = req.user.role;
 
+  const isClient = userRole === "brand" || userRole === "user" || userRole === "client";
+  const isProvider = userRole === "creator" || userRole === "editor" || userRole === "provider";
+
   let where = {};
-  if (userRole === "client") {
+  if (isClient) {
     where.clientId = userId;
-  } else if (userRole === "provider") {
+  } else if (isProvider) {
     where.editorId = userId;
   }
 
@@ -56,10 +59,13 @@ export const getPaymentStats = asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const userRole = req.user.role;
 
+  const isClient = userRole === "brand" || userRole === "user" || userRole === "client";
+  const isProvider = userRole === "creator" || userRole === "editor" || userRole === "provider";
+
   let matchCondition = {};
-  if (userRole === "client") {
+  if (isClient) {
     matchCondition.clientId = userId;
-  } else if (userRole === "provider") {
+  } else if (isProvider) {
     matchCondition.editorId = userId;
   }
 
@@ -85,13 +91,13 @@ export const getPaymentStats = asyncHandler(async (req, res) => {
     SELECT 
       EXTRACT(YEAR FROM created_at) as year,
       EXTRACT(MONTH FROM created_at) as month,
-      SUM(CASE WHEN ${userRole === "provider"} THEN editor_earning ELSE amount END) as amount,
+      SUM(CASE WHEN ${isProvider} THEN editor_earning ELSE amount END) as amount,
       COUNT(*) as count
     FROM payments
     WHERE status = 'completed'
       AND created_at >= ${sixMonthsAgo}
-      ${userRole === "client" ? prisma.$raw`AND client_id = ${userId}::uuid` : prisma.$raw``}
-      ${userRole === "provider" ? prisma.$raw`AND editor_id = ${userId}::uuid` : prisma.$raw``}
+      ${isClient ? prisma.$raw`AND client_id = ${userId}::uuid` : prisma.$raw``}
+      ${isProvider ? prisma.$raw`AND editor_id = ${userId}::uuid` : prisma.$raw``}
     GROUP BY year, month
     ORDER BY year ASC, month ASC
   `;

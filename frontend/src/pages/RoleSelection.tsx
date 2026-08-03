@@ -40,13 +40,17 @@ import musicianThumb from '../assets/categories/musician.jpg';
 import actorThumb from '../assets/categories/actor.jpg';
 
 const CATEGORY_ORDER = [
-  'direct_client',    // Normal User
-  'yt_influencer',    // YouTube
+  'user',             // Normal User
+  'creator',          // YouTube Creator
+  'editor',           // Video Editor
+  'brand',            // Brand & Sponsor
+  'direct_client',    // Legacy Normal User
+  'yt_influencer',    // Legacy YouTube
+  'video_editor',     // Legacy Video Editor
+  'social_promoter',  // Legacy Ads & Promotions
   'fitness_expert',   // Gym / Fitness Pro
   'singer',           // Singer
   'dancer',           // Dance
-  'social_promoter',  // Ads & Promotions
-  'video_editor',
   'rent_service',
   'photographer',
   'videographer',
@@ -72,20 +76,37 @@ export default function RoleSelection() {
 
   const getCategoryAssets = (slug: string) => {
     switch(slug) {
-      case 'yt_influencer': return { thumb: youtubeThumb, overlay: youtubeIcon };
+      case 'user':
       case 'direct_client': return { thumb: clientThumb, overlay: null };
+      case 'creator':
+      case 'yt_influencer': return { thumb: youtubeThumb, overlay: youtubeIcon };
+      case 'editor':
+      case 'video_editor': return { thumb: editorThumb, overlay: editingIcon };
+      case 'brand':
+      case 'social_promoter': return { thumb: promotionsThumb, overlay: adsIcon };
       case 'fitness_expert': return { thumb: fitnessThumb, overlay: fitnessIcon };
       case 'dancer': return { thumb: dancerThumb, overlay: dancerIcon };
       case 'singer': return { thumb: singerThumb, overlay: singerIcon };
-      case 'social_promoter': return { thumb: promotionsThumb, overlay: adsIcon };
-      case 'video_editor': return { thumb: editorThumb, overlay: editingIcon };
       case 'rent_service': return { thumb: rentalsThumb, overlay: rentalIcon };
       case 'photographer': return { thumb: photographerThumb, overlay: null };
       case 'videographer': return { thumb: videographerThumb, overlay: null };
       case 'musician': return { thumb: musicianThumb, overlay: null };
       case 'actor': return { thumb: actorThumb, overlay: null };
-      default: return { thumb: editorThumb, overlay: null };
+      default: return { thumb: clientThumb, overlay: null };
     }
+  };
+
+  /**
+   * Helper to identify role type
+   */
+  const getRoleType = (cat?: RoleCategory) => {
+    if (!cat) return 'user';
+    const slug = cat.slug || '';
+    const mapsTo = cat.maps_to_role || '';
+    if (slug === 'creator' || slug === 'yt_influencer' || mapsTo === 'creator') return 'creator';
+    if (slug === 'editor' || slug === 'video_editor' || mapsTo === 'editor') return 'editor';
+    if (slug === 'brand' || slug === 'social_promoter' || mapsTo === 'brand') return 'brand';
+    return 'user';
   };
 
   /**
@@ -94,6 +115,8 @@ export default function RoleSelection() {
    */
   const handleEmailSignup = () => {
     if (!selected || !selectedCategory) return;
+
+    const roleType = getRoleType(selectedCategory);
 
     dispatch(setTempSignupData({
       categoryId: selected,
@@ -105,15 +128,18 @@ export default function RoleSelection() {
       onboardingStep: 'role',
     }));
 
-    if (selectedCategory.slug === 'direct_client') {
-      // Clients don't need subcategory — go straight to signup form
-      navigate('/signup');
-    } else if (selectedCategory.slug === 'yt_influencer') {
+    if (roleType === 'creator') {
       // YouTube creators connect their channel before filling personal details
       navigate('/youtube-connect');
+    } else if (roleType === 'editor') {
+      // Video editors pick specializations & software before details
+      navigate('/editor-specialization');
+    } else if (roleType === 'brand') {
+      // Enterprise Brands & Sponsors configure company profile & industry vertical
+      navigate('/brand-details');
     } else {
-      // All other creators pick their niches first
-      navigate('/subcategory-selection');
+      // Normal Users go straight to signup form!
+      navigate('/signup');
     }
   };
 
@@ -126,6 +152,8 @@ export default function RoleSelection() {
    */
   const handleGoogleSignup = () => {
     if (!selected || !selectedCategory) return;
+
+    const roleType = getRoleType(selectedCategory);
 
     // Save role context BEFORE redirect (Zustand persist = survives page reload)
     dispatch(setTempSignupData({
@@ -140,11 +168,11 @@ export default function RoleSelection() {
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 
-    if (selectedCategory.slug === 'yt_influencer') {
+    if (roleType === 'creator') {
       // YouTube flow: request YouTube-scoped OAuth
       window.location.href = `${apiUrl}/auth/google/youtube`;
     } else {
-      // Standard profile-scoped OAuth for all other roles
+      // Standard profile-scoped OAuth for all other roles (User, Editor, Brand)
       window.location.href = `${apiUrl}/auth/google`;
     }
   };

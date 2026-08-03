@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -33,15 +33,47 @@ const formatVideoDate = (dateString?: string) => {
   return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-// Generated once at module load to maintain strict component render purity
-const STATIC_PARTICLES = [...Array(50)].map((_, i) => ({
+interface StaticParticle {
+  id: number;
+  x: string;
+  y: string;
+  opacity: number;
+  scale: number;
+  duration: number;
+}
+
+const STATIC_PARTICLES: StaticParticle[] = Array.from({ length: 8 }).map((_, i) => ({
   id: i,
-  x: Math.random() * 100 + '%',
-  y: (i < 35) ? (Math.random() * 60 + '%') : (Math.random() * 100 + '%'),
-  opacity: Math.random() * 0.8,
-  scale: Math.random() * 0.7 + 0.3,
+  x: `${Math.random() * 100}%`,
+  y: `${Math.random() * 100}%`,
+  opacity: Math.random() * 0.4 + 0.1,
+  scale: Math.random() * 0.5 + 0.5,
   duration: Math.random() * 5 + 4,
 }));
+
+interface NicheItem {
+  id: string;
+  name: string;
+}
+
+const YOUTUBE_NICHES: NicheItem[] = [
+  { id: 'tech_gadgets', name: 'Tech & Gadgets' },
+  { id: 'gaming', name: 'Gaming' },
+  { id: 'vlogs_lifestyle', name: 'Vlogs & Lifestyle' },
+  { id: 'education_howto', name: 'Education & How-To' },
+  { id: 'comedy_entertainment', name: 'Comedy & Entertainment' },
+  { id: 'fitness_health', name: 'Fitness & Health' },
+  { id: 'music_dance', name: 'Music & Dance' },
+  { id: 'finance_business', name: 'Finance & Business' },
+  { id: 'fashion_beauty', name: 'Fashion & Beauty' },
+  { id: 'food_cooking', name: 'Food & Cooking' },
+  { id: 'travel_adventure', name: 'Travel & Adventure' },
+  { id: 'film_animation', name: 'Film & Animation' },
+  { id: 'news_politics', name: 'News & Politics' },
+  { id: 'auto_vehicles', name: 'Auto & Vehicles' },
+  { id: 'science_nature', name: 'Science & Nature' },
+  { id: 'kids_family', name: 'Kids & Family' },
+];
 
 export default function YouTubeNiche() {
   const navigate = useNavigate();
@@ -53,25 +85,37 @@ export default function YouTubeNiche() {
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const youtubeCategory = categories.find(c => c.slug === 'yt_influencer');
+  const youtubeCategory = categories.find(c => c.slug === 'yt_influencer' || c.slug === 'creator' || c.maps_to_role === 'creator');
   const channel = tempSignupData?.youtubeChannels?.[0];
 
-  if (!channel) {
-    navigate('/youtube-connect', { replace: true });
-    return null;
-  }
+  const availableNiches: NicheItem[] = useMemo(() => {
+    if (youtubeCategory?.subCategories && youtubeCategory.subCategories.length > 0) {
+      return youtubeCategory.subCategories;
+    }
+    return YOUTUBE_NICHES;
+  }, [youtubeCategory]);
 
-  const selectedNicheName = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche)?.name;
+  useEffect(() => {
+    if (!channel) {
+      navigate('/youtube-connect', { replace: true });
+    }
+  }, [channel, navigate]);
+
+  if (!channel) return null;
+
+  const selectedNicheName = availableNiches.find((s: NicheItem) => s.id === selectedNiche)?.name;
 
   const handleContinue = async () => {
     if (!selectedNiche) return;
     setIsSubmitting(true);
     try {
-      const subCategory = youtubeCategory?.subCategories?.find(s => s.id === selectedNiche);
+      const matched = availableNiches.find((s: NicheItem) => s.id === selectedNiche);
+      const nicheName = matched?.name || selectedNiche;
       const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
         ...ch,
+        niche: nicheName,
         subCategoryId:   selectedNiche,
-        subCategorySlug: subCategory?.slug ?? null,
+        subCategorySlug: selectedNiche,
       }));
       
       dispatch(setTempSignupData({
@@ -80,8 +124,12 @@ export default function YouTubeNiche() {
         onboardingStep:     'youtube',
       }));
 
-      // IF USER IS ALREADY LOGGED IN: Call backend link endpoint directly!
-      if (user) {
+      const isEmailFlow = tempSignupData?.authMethod === 'email';
+      const isSocialFlow = tempSignupData?.isSocialSignup || tempSignupData?.authMethod === 'google';
+      const isRegistering = tempSignupData?.intent === 'register' || isEmailFlow || isSocialFlow || !user?.isOnboarded;
+
+      // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM SETTINGS:
+      if (user && user.isOnboarded && !isRegistering) {
         for (const ch of youtubeChannels) {
           await api.post('/youtube-creator/channel/link', { channel: ch });
         }
@@ -92,8 +140,11 @@ export default function YouTubeNiche() {
 
       setTimeout(() => {
         setIsSubmitting(false);
-        const isSocial = tempSignupData?.isSocialSignup;
-        navigate(isSocial ? '/complete-profile' : '/signup');
+        if (isEmailFlow) {
+          navigate('/signup');
+        } else {
+          navigate('/complete-profile');
+        }
       }, 900);
     } catch (err) {
       console.error("Failed to link YouTube channel:", err);
@@ -316,7 +367,7 @@ export default function YouTubeNiche() {
 
           {/* Niche grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-3 mb-5">
-            {youtubeCategory?.subCategories?.map((sub) => {
+            {availableNiches.map((sub: NicheItem) => {
               const isActive = selectedNiche === sub.id;
               return (
                 <motion.button
