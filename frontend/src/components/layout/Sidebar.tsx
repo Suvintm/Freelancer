@@ -42,7 +42,8 @@ export const Sidebar = () => {
   const { isDarkMode } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
-  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+  const isClientCategory = ['user', 'brand', 'social_promoter', 'direct_client'].includes(user?.primaryRole?.category || user?.role || '');
+  const isCreator = ['creator', 'yt_influencer'].includes(user?.primaryRole?.category || user?.role || '');
 
   const userCategory = user?.primaryRole?.category || user?.role || '';
   let activeLottie = verifyLottieAnimation;
@@ -205,7 +206,7 @@ export const Sidebar = () => {
         </div>
 
         {/* ── 1.5 Growth Tools ────────────────────────────────────────────── */}
-        {user?.primaryRole?.category === 'yt_influencer' && (
+        {isCreator && (
           <button
             onClick={() => navigate('/polls/create')}
             className={`
@@ -226,7 +227,7 @@ export const Sidebar = () => {
         )}
 
         {/* ── 2. YouTube Channel Overview (YouTube Creators only) ──────────── */}
-        {user?.primaryRole?.category === 'yt_influencer' && (
+        {isCreator && (
           <div className="space-y-3">
             <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-1 mb-1">
               Connected Channel

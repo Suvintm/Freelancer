@@ -238,9 +238,9 @@ export const login = asyncHandler(async (req, res) => {
     include: USER_INCLUDE,
   });
 
-  if (!user) {
+  if (!user || user.deleted_at) {
     await trackFailedLogin(email);
-    throw new ApiError(401, "Invalid credentials.");
+    throw new ApiError(401, "Invalid credentials or account deactivated.");
   }
 
   if (user.is_banned) {
@@ -391,6 +391,7 @@ export const login = asyncHandler(async (req, res) => {
 
 export const getRoles = asyncHandler(async (req, res) => {
   const categories = await prisma.roleCategory.findMany({
+    where: { is_active: true },
     select: {
       id: true,
       name: true,
@@ -399,13 +400,9 @@ export const getRoles = asyncHandler(async (req, res) => {
       maps_to_role: true,
       description: true,
       info: true,
-      subCategories: {
-        select: { id: true, name: true, slug: true },
-        orderBy: { name: "asc" },
-      },
+      display_order: true,
     },
-    // Fixed display order: user first, then creator, editor, brand
-    orderBy: { name: "asc" },
+    orderBy: { display_order: "asc" },
   });
   res.status(200).json({ success: true, categories });
 });
@@ -423,23 +420,14 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
   if (channels && channels.length > 0) {
     try {
       const channelIds = channels.map((ch) => ch.channelId);
-      const ytModel =
-        prisma.youtubeProfile ||
-        prisma.youTubeProfile ||
-        prisma.youtubeProfiles;
-
-      if (!ytModel) {
-        channels.forEach((ch) => (ch.isClaimed = false));
-      } else {
-        const existingProfiles = await ytModel.findMany({
-          where: { channel_id: { in: channelIds } },
-          select: { channel_id: true },
-        });
-        const claimedSet = new Set(existingProfiles.map((p) => p.channel_id));
-        channels.forEach((ch) => {
-          ch.isClaimed = claimedSet.has(ch.channelId);
-        });
-      }
+      const claimedChannels = await prisma.youTubeChannel.findMany({
+        where: { channel_id: { in: channelIds } },
+        select: { channel_id: true },
+      });
+      const claimedSet = new Set(claimedChannels.map((p) => p.channel_id));
+      channels.forEach((ch) => {
+        ch.isClaimed = claimedSet.has(ch.channelId);
+      });
     } catch (ytError) {
       logger.error(`⚠️ [YT-GUARD] Duplicate check failed: ${ytError.message}`);
       channels.forEach((ch) => (ch.isClaimed = false));
@@ -461,8 +449,14 @@ export const registerFull = asyncHandler(async (req, res) => {
     motherTongue,
     country,
     categoryId,
-    roleSubCategoryIds,
+    categorySlug,
     youtubeChannels,
+    skills,
+    softwareUsed,
+    specializations,
+    companyName,
+    industry,
+    designation,
     pushToken,
     platform,
     website,
@@ -474,29 +468,6 @@ export const registerFull = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Security check failed. Please refresh and try again.");
   }
 
-  let parsedSubIds = roleSubCategoryIds;
-  if (typeof roleSubCategoryIds === "string" && roleSubCategoryIds) {
-    try {
-      parsedSubIds = JSON.parse(roleSubCategoryIds);
-    } catch {
-      parsedSubIds = [roleSubCategoryIds];
-    }
-  }
-
-  let finalSubIds = parsedSubIds || [];
-  if (
-    finalSubIds.length > 0 &&
-    !finalSubIds[0].match(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    )
-  ) {
-    const dbSubs = await prisma.roleSubCategory.findMany({
-      where: { slug: { in: finalSubIds } },
-      select: { id: true },
-    });
-    finalSubIds = dbSubs.map((s) => s.id);
-  }
-
   let parsedYoutubeChannels = youtubeChannels;
   if (typeof youtubeChannels === "string" && youtubeChannels) {
     try {
@@ -506,7 +477,36 @@ export const registerFull = asyncHandler(async (req, res) => {
     }
   }
 
-  if (!categoryId) throw new ApiError(400, "categoryId is required.");
+  let parsedSkills = skills;
+  if (typeof skills === "string" && skills) {
+    try {
+      parsedSkills = JSON.parse(skills);
+    } catch {
+      parsedSkills = [skills];
+    }
+  }
+
+  let parsedSoftwareUsed = softwareUsed;
+  if (typeof softwareUsed === "string" && softwareUsed) {
+    try {
+      parsedSoftwareUsed = JSON.parse(softwareUsed);
+    } catch {
+      parsedSoftwareUsed = [softwareUsed];
+    }
+  }
+
+  let parsedSpecializations = specializations;
+  if (typeof specializations === "string" && specializations) {
+    try {
+      parsedSpecializations = JSON.parse(specializations);
+    } catch {
+      parsedSpecializations = [specializations];
+    }
+  }
+
+  if (!categoryId && !categorySlug && !req.body.role) {
+    throw new ApiError(400, "categoryId or categorySlug is required.");
+  }
 
   const userData = {
     fullName,
@@ -517,16 +517,23 @@ export const registerFull = asyncHandler(async (req, res) => {
     motherTongue,
     country,
     categoryId,
-    roleSubCategoryIds: finalSubIds,
+    categorySlug,
     youtubeChannels: Array.isArray(parsedYoutubeChannels)
       ? parsedYoutubeChannels
       : [],
+    skills: Array.isArray(parsedSkills) ? parsedSkills : [],
+    softwareUsed: Array.isArray(parsedSoftwareUsed) ? parsedSoftwareUsed : [],
+    specializations: Array.isArray(parsedSpecializations) ? parsedSpecializations : [],
+    companyName,
+    industry,
+    designation,
     pushToken,
     platform,
     website,
     profilePictureBuffer: req.file ? req.file.buffer : null,
     googleId: req.body.googleId || null,
     authProvider: req.body.authProvider || "local",
+    role: req.body.role || null,
   };
 
   const userWithProfile = await registerService(userData);
@@ -832,15 +839,26 @@ export const verifyEmail = asyncHandler(async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  const attemptsKey = `email_otp_attempts:${normalizedEmail}`;
   const redisKey = `email_otp:${normalizedEmail}`;
+
+  // Check attempt limiter
+  const currentAttempts = parseInt((await redis.get(attemptsKey)) || "0", 10);
+  if (currentAttempts >= 5) {
+    await redis.del(redisKey);
+    throw new ApiError(429, "Too many failed attempts. Please request a new verification code.");
+  }
+
   const storedOtp = await redis.get(redisKey);
 
   if (!storedOtp || storedOtp !== String(otp).trim()) {
+    await redis.set(attemptsKey, String(currentAttempts + 1), "EX", 15 * 60);
     throw new ApiError(400, "Invalid or expired verification code.");
   }
 
-  // OTP verified, remove it
+  // OTP verified, remove OTP and attempt counter
   await redis.del(redisKey);
+  await redis.del(attemptsKey);
 
   // Update user verified state
   const updatedUser = await prisma.user.update({

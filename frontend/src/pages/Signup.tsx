@@ -41,13 +41,14 @@ interface StepBarProps {
 }
 
 function StepBar({ categorySlug }: StepBarProps) {
-  // Steps vary by role
-  const steps =
-    categorySlug === 'direct_client'
-      ? ['Role', 'Details']
-      : categorySlug === 'yt_influencer'
-      ? ['Role', 'YouTube', 'Details']
-      : ['Role', 'Niches', 'Details'];
+  const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+  const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
+
+  const steps = isCreator
+    ? ['Role', 'YouTube', 'Details']
+    : isEditor
+    ? ['Role', 'Specialization', 'Details']
+    : ['Role', 'Details'];
 
   const activeIndex = steps.length - 1; // Always on last step (Details) in this page
 
@@ -112,7 +113,7 @@ export default function Signup() {
   const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   const navigate = useNavigate();
-  const isBrandClient = tempSignupData?.roleGroup === 'CLIENT' && tempSignupData?.categorySlug !== 'direct_client';
+  const isBrandClient = tempSignupData?.categorySlug === 'brand' || tempSignupData?.categorySlug === 'social_promoter';
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
   // If tempSignupData has no categoryId, the user navigated here without going
@@ -188,13 +189,6 @@ export default function Signup() {
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
 
-    // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com','suvineditography@gmail.com', 'uber@company.com'];
-    if (!allowedEmails.includes(form.email.toLowerCase().trim())) {
-      setError('Server busy ! Please try again later or contact SuviX team.');
-      return;
-    }
-
     if (!socialProfile && !form.password) { setError('Password is required.'); return; }
 
     setIsLoading(true);
@@ -242,12 +236,15 @@ export default function Signup() {
     }
   };
 
-  // Determine back navigation based on role
   const handleBack = () => {
     const slug = tempSignupData?.categorySlug;
-    if (slug === 'direct_client') navigate('/role-selection');
-    else if (slug === 'yt_influencer') navigate('/youtube-connect');
-    else navigate('/subcategory-selection');
+    if (slug === 'creator' || slug === 'yt_influencer') {
+      navigate('/youtube-niche');
+    } else if (slug === 'editor' || slug === 'video_editor') {
+      navigate('/subcategory-selection');
+    } else {
+      navigate('/role-selection');
+    }
   };
 
   return (

@@ -137,7 +137,6 @@ model UserProfile {
   // ─── 6. Relations ───────────────────────────────────────────────────────
   user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   category              RoleCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  roles                 UserRoleMapping[]
 
   // ─── 7. Optimized Indexes ───────────────────────────────────────────────
   @@index([categoryId])
@@ -147,33 +146,86 @@ model UserProfile {
 }
 
 model EditorProfile {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String   @unique @map("user_id") @db.Uuid
-  portfolio_url    String?  @map("portfolio_url") @db.VarChar(255)
-  hourly_rate      Float?   @map("hourly_rate")
-  base_video_rate  Float?   @map("base_video_rate")
-  skills           String[] @default([])
-  experience_years Int?     @map("experience_years")
-  software_used    String[] @default([]) @map("software_used")
-  created_at       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // ─── 1. Identity ───────────────────────────────────────────────────────────
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String   @unique @map("user_id") @db.Uuid
 
+  // ─── 2. Portfolio & Showcase ───────────────────────────────────────────────
+  portfolio_url       String?  @map("portfolio_url") @db.VarChar(255)
+  showcase_video_urls String[] @default([]) @map("showcase_video_urls")
+
+  // ─── 3. Experience & Tools ─────────────────────────────────────────────────
+  experience_years    Int      @default(0) @map("experience_years")
+  skills              String[] @default([]) // Technical tools: e.g. "Premiere Pro", "DaVinci Resolve"
+  software_used       String[] @default([]) @map("software_used")
+  specializations     String[] @default([]) @map("specializations") // Content types: e.g. "Gaming", "Documentary", "Shorts/Reels"
+
+  // ─── 4. Marketplace Availability & Delivery ────────────────────────────────
+  accepting_orders    Boolean  @default(true) @map("accepting_orders")
+  turnaround_time_days Int     @default(3) @map("turnaround_time_days")
+
+  // ─── 5. Rates (Decimal for financial precision) ────────────────────────────
+  rate_currency       String   @default("INR") @map("rate_currency") @db.VarChar(10)
+  hourly_rate         Decimal? @map("hourly_rate") @db.Decimal(12, 2)
+  base_video_rate     Decimal? @map("base_video_rate") @db.Decimal(12, 2)
+  rate_per_short      Decimal? @map("rate_per_short") @db.Decimal(12, 2)
+
+  // ─── 6. Trust Signals & Metrics ────────────────────────────────────────────
+  avg_rating          Float    @default(0.0) @map("avg_rating")
+  review_count        Int      @default(0) @map("review_count")
+  completed_gigs      Int      @default(0) @map("completed_gigs")
+
+  // ─── 7. Timestamps ─────────────────────────────────────────────────────────
+  created_at          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // ─── 8. Relations ──────────────────────────────────────────────────────────
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ─── 9. Indexes ────────────────────────────────────────────────────────────
+  @@index([accepting_orders])
+  @@index([experience_years])
+  @@index([base_video_rate])
+  @@index([avg_rating(sort: Desc)])
   @@map("editor_profiles")
 }
 
 model BrandProfile {
+  // ─── 1. Identity ───────────────────────────────────────────────────────────
   id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId            String   @unique @map("user_id") @db.Uuid
+
+  // ─── 2. Company Info ───────────────────────────────────────────────────────
   company_name      String?  @map("company_name") @db.VarChar(100)
   company_website   String?  @map("company_website") @db.VarChar(255)
+  logo_url          String?  @map("logo_url")
   industry          String?  @db.VarChar(100)
+  company_size      String?  @map("company_size") @db.VarChar(50)
+  designation       String?  @db.VarChar(100) // Role of contact person: e.g. "Brand Lead", "Founder"
   brand_description String?  @map("brand_description")
-  approx_budget     Float?   @map("approx_budget")
+
+  // ─── 3. Campaign Targeting & Trust ─────────────────────────────────────────
+  target_regions    String[] @default([]) @map("target_regions")
+  is_verified       Boolean  @default(false) @map("is_verified")
+
+  // ─── 4. Budget & Financials ────────────────────────────────────────────────
+  budget_currency   String   @default("INR") @map("budget_currency") @db.VarChar(10)
+  approx_budget     Decimal? @map("approx_budget") @db.Decimal(14, 2)
+
+  // ─── 5. Activity Counters ──────────────────────────────────────────────────
+  campaigns_posted  Int      @default(0) @map("campaigns_posted")
+  total_spent       Decimal? @map("total_spent") @db.Decimal(14, 2)
+
+  // ─── 6. Timestamps ─────────────────────────────────────────────────────────
   created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at        DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // ─── 7. Relations ──────────────────────────────────────────────────────────
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // ─── 8. Indexes ────────────────────────────────────────────────────────────
+  @@index([industry])
+  @@index([is_verified])
   @@map("brand_profiles")
 }
 
@@ -190,43 +242,18 @@ model UserFollow {
 }
 
 model RoleCategory {
-  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String            @db.VarChar(100)
-  slug          String            @unique @db.VarChar(100)
-  icon          String?           @db.VarChar(50)
-  maps_to_role  UserRole          @default(user) @map("maps_to_role")
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String        @db.VarChar(100)
+  slug          String        @unique @db.VarChar(100)
+  icon          String?       @db.VarChar(50)
+  maps_to_role  UserRole      @default(user) @map("maps_to_role")
   description   String?
   info          String?
-  subCategories RoleSubCategory[]
+  is_active     Boolean       @default(true) @map("is_active")
+  display_order Int           @default(0) @map("display_order")
   profiles      UserProfile[]
 
   @@map("role_categories")
-}
-
-model RoleSubCategory {
-  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  roleCategoryId  String            @map("role_category_id") @db.Uuid
-  name            String            @db.VarChar(100)
-  slug            String            @db.VarChar(100)
-  category        RoleCategory      @relation(fields: [roleCategoryId], references: [id], onDelete: Cascade)
-  userRoles       UserRoleMapping[]
-  youtubeChannels YouTubeChannel[]
-
-  @@unique([roleCategoryId, slug])
-  @@map("role_sub_categories")
-}
-
-model UserRoleMapping {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId         String          @map("profile_id") @db.Uuid
-  roleSubCategoryId String          @map("role_sub_category_id") @db.Uuid
-  isPrimary         Boolean         @default(false) @map("is_primary")
-  profile           UserProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  subCategory       RoleSubCategory @relation(fields: [roleSubCategoryId], references: [id], onDelete: Cascade)
-
-  @@unique([profileId, roleSubCategoryId])
-  @@index([profileId, isPrimary])
-  @@map("user_role_mappings")
 }
 
 model UserStats {
@@ -286,7 +313,7 @@ model YouTubeChannel {
   authority_score         Float            @default(0.0) @map("authority_score")
 
   // Classification & Niche
-  subCategoryId           String?          @map("sub_category_id") @db.Uuid
+  niche                   String?          @db.VarChar(100)
   language                String?          @db.VarChar(50)
   country                 String?          @db.VarChar(10)
   keywords                String?
@@ -311,7 +338,6 @@ model YouTubeChannel {
   // Relations
   creatorProfile          CreatorProfile   @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
   user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subCategory             RoleSubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
   videos                  YouTubeVideo[]
   sync_logs               YouTubeSyncLog[]
   youtube_posts           YoutubePost[]
@@ -320,7 +346,7 @@ model YouTubeChannel {
   // Indexes
   @@index([creatorProfileId, is_primary])
   @@index([userId])
-  @@index([subCategoryId])
+  @@index([niche])
   @@index([country, language])
   @@index([subscriber_count(sort: Desc)])
   @@index([authority_score(sort: Desc)])
@@ -849,7 +875,7 @@ model CommunityPost {
   updated_at  DateTime          @default(now()) @db.Timestamptz(6)
 
   community Community               @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  author    User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id])
+  author    User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   media     Media?                  @relation(fields: [mediaId], references: [id])
   reactions CommunityPostReaction[]
 
@@ -866,7 +892,7 @@ model CommunityPostReaction {
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
   post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User          @relation("CommunityPostReactionUser", fields: [userId], references: [id])
+  user User          @relation("CommunityPostReactionUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId, emoji])
   @@index([postId])

@@ -99,7 +99,8 @@ function App() {
     };
 
     checkServer();
-  }, [isInitialized, navigate, location.pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, navigate]);
 
   if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
     return (

@@ -89,7 +89,7 @@ export default function CompleteProfile() {
 
   // Resolve real subcategory names from store
   const selectedSubCategories = useMemo(() => {
-    if (!selectedCategory) return [];
+    if (!selectedCategory || !selectedCategory.subCategories) return [];
     const ids = (tempSignupData?.roleSubCategoryIds as string[]) ?? [];
     return selectedCategory.subCategories.filter(s => ids.includes(s.id));
   }, [selectedCategory, tempSignupData?.roleSubCategoryIds]);

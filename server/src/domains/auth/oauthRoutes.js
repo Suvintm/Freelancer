@@ -113,7 +113,7 @@ router.get(
                         accessToken: user.accessToken
                     }
                 });
-                return res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+                return res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
             }
 
             // [EXISTING] Handle Login for Registered Users
@@ -125,8 +125,8 @@ router.get(
                 accessToken: user.accessToken
             });
 
-            // Redirect with a short-lived exchange code
-            res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+            // Redirect with a short-lived exchange code in URL fragment (prevents referrer leaks & history logs)
+            res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
         } catch (error) {
             logger.error("Google callback error:", error);
             const host = req.get('host');
@@ -386,7 +386,7 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
  */
 router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (req, res) => {
     try {
-        const { idToken, username, phone, categoryId, roleSubCategoryIds, youtubeChannels } = req.body;
+        const { idToken, username, phone, categoryId, youtubeChannels } = req.body;
 
         if (!idToken || !username || !phone) {
             return res.status(400).json({ success: false, message: "Missing mandatory registration data" });
@@ -461,10 +461,6 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             ? categoryId 
             : null;
         
-        const validRoleSubIds = (roleSubCategoryIds || []).filter(id => 
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-        );
-
         // 3. ATOMIC TRANSACTION: Create Everything
         const user = await prisma.$transaction(async (tx) => {
             let assignedRole = "user";
@@ -510,8 +506,14 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                 data: { userId: newUser.id }
             });
 
-            // Initialize Role-Specific Profile (Editor/Brand)
-            if (assignedRole === "editor") {
+            // Initialize Role-Specific Profile
+            if (assignedRole === "creator") {
+                await tx.creatorProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id, business_email: normalizedEmail }
+                });
+            } else if (assignedRole === "editor") {
                 await tx.editorProfile.upsert({
                     where: { userId: newUser.id },
                     update: {},
@@ -524,20 +526,6 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                     create: { userId: newUser.id }
                 });
             }
-
-            if (validRoleSubIds.length > 0) {
-                await tx.userRoleMapping.createMany({
-                    data: validRoleSubIds.map((subId, index) => ({
-                        profileId: profile.id,
-                        roleSubCategoryId: subId,
-                        isPrimary: index === 0,
-                    }))
-                });
-            }
-
-            // Removed manual YouTube Profile insertion.
-            // This is now fully deferred to the BullMQ background worker to securely process
-            // Cloudinary thumbnails and 15 related videos without blocking DB performance.
 
             return await tx.user.findUnique({
                 where: { id: newUser.id },
@@ -608,7 +596,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
  */
 router.post("/select-role", authLimiter, async (req, res) => {
     try {
-        const { token, phone, country, categoryId, roleSubCategoryIds, username } = req.body;
+        const { token, phone, country, categoryId, username } = req.body;
 
         if (!token) throw new Error("Onboarding token required");
 
@@ -646,8 +634,14 @@ router.post("/select-role", authLimiter, async (req, res) => {
                 }
             });
 
-            // Initialize Role-Specific Profile (Editor/Brand)
-            if (assignedRole === "editor") {
+            // Initialize Role-Specific Profile (Creator/Editor/Brand)
+            if (assignedRole === "creator") {
+                await tx.creatorProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
+                });
+            } else if (assignedRole === "editor") {
                 await tx.editorProfile.upsert({
                     where: { userId: decoded.id },
                     update: {},
@@ -658,22 +652,6 @@ router.post("/select-role", authLimiter, async (req, res) => {
                     where: { userId: decoded.id },
                     update: {},
                     create: { userId: decoded.id }
-                });
-            }
-
-            // Add Role Mappings (Expertise)
-            if (roleSubCategoryIds && Array.isArray(roleSubCategoryIds) && roleSubCategoryIds.length > 0) {
-                // Clear existing mappings if any (unlikely for new user but safe)
-                await tx.userRoleMapping.deleteMany({
-                    where: { profileId: profile.id }
-                });
-
-                await tx.userRoleMapping.createMany({
-                    data: roleSubCategoryIds.map((subId, index) => ({
-                        profileId: profile.id,
-                        roleSubCategoryId: subId,
-                        isPrimary: index === 0,
-                    }))
                 });
             }
 

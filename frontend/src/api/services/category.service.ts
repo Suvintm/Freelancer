@@ -15,7 +15,8 @@ export interface RoleCategory {
   roleGroup: 'CLIENT' | 'PROVIDER';
   description: string | null;
   info: string | null;
-  subCategories: RoleSubCategory[];
+  maps_to_role?: string | null;
+  subCategories?: RoleSubCategory[];
 }
 
 export const categoryService = {

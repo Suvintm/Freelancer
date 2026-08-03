@@ -1,11 +1,10 @@
 import logger from "../../../infrastructure/monitoring/logger.js";
 import * as youtubeVerificationService from "../services/youtubeVerificationService.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
-;
 import prisma from "../../../infrastructure/database/postgres.js";
 import quotaManager from "../services/youtubeQuotaManager.js";
 import { deleteCache, CacheKey, withCache, TTL } from "../../../infrastructure/cache/cache.service.js";
-import { emitToUser } from '../../../platform/socket/socket.gateway.js';
+import { emitToUser } from "../../../platform/socket/socket.gateway.js";
 import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 import { paginate } from "../../../shared/utils/pagination.js";
 
@@ -15,15 +14,13 @@ import { paginate } from "../../../shared/utils/pagination.js";
  */
 
 /**
- * Fetch all subcategories for YouTube Creators (yt_influencer)
+ * Fetch all categories / niches for YouTube Creators
  */
 export const getYoutubeSubCategories = async (req, res, next) => {
   try {
-    const subCategories = await prisma.roleSubCategory.findMany({
+    const categories = await prisma.roleCategory.findMany({
       where: {
-        category: {
-          slug: "yt_influencer",
-        },
+        is_active: true,
       },
       select: {
         id: true,
@@ -37,7 +34,7 @@ export const getYoutubeSubCategories = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: subCategories,
+      data: categories,
     });
   } catch (error) {
     next(error);
@@ -49,30 +46,33 @@ export const getYoutubeSubCategories = async (req, res, next) => {
  */
 export const initiateManualVerification = async (req, res, next) => {
   try {
-    const { channelInput, subCategoryId, language } = req.body;
+    const { channelInput, niche, subCategoryId, language } = req.body;
     const userId = req.user.id;
 
     if (!channelInput) {
       throw new ApiError(400, "Channel handle or URL is required.");
     }
 
-    // 🔑 Quota Guard
+    // Quota Guard
     const quota = await quotaManager.getStatus();
     if (quota && quota.remaining_units < 1) {
-      throw new ApiError(429, "YouTube daily limit reached. We've paused new signups for today to keep existing profiles safe. Please try again tomorrow!");
+      throw new ApiError(
+        429,
+        "YouTube daily limit reached. We've paused new signups for today to keep existing profiles safe. Please try again tomorrow!"
+      );
     }
 
     logger.info(`🎬 [CONTROLLER] Initiating manual verification for channel: ${channelInput}`);
 
     const result = await youtubeVerificationService.initiateVerification(userId, channelInput, {
-      subCategoryId,
-      language
+      niche: niche || subCategoryId,
+      language,
     });
 
     res.status(200).json({
       success: true,
       message: "Verification initiated. Please add the code to your channel description.",
-      data: result
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -91,10 +91,13 @@ export const checkManualVerification = async (req, res, next) => {
       throw new ApiError(400, "Channel handle/ID and the verification token are required.");
     }
 
-    // 🔑 Quota Guard
+    // Quota Guard
     const quota = await quotaManager.getStatus();
     if (quota && quota.remaining_units < 1) {
-      throw new ApiError(429, "YouTube daily limit reached. We've paused new signups for today to keep existing profiles safe. Please try again tomorrow!");
+      throw new ApiError(
+        429,
+        "YouTube daily limit reached. We've paused new signups for today to keep existing profiles safe. Please try again tomorrow!"
+      );
     }
 
     logger.info(`🔍 [CONTROLLER] Checking verification for channel: ${channelInput}`);
@@ -104,7 +107,7 @@ export const checkManualVerification = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Channel successfully verified and linked!",
-      data: result
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -130,7 +133,7 @@ export const regenerateManualVerification = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "New verification token generated.",
-      data: result
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -149,97 +152,106 @@ export const deleteChannel = async (req, res, next) => {
       throw new ApiError(400, "Profile ID is required.");
     }
 
-    logger.info(`🗑️ [CONTROLLER] User ${userId} requested deletion of YouTube profile: ${profileId}`);
+    logger.info(
+      `🗑️ [CONTROLLER] User ${userId} requested deletion of YouTube channel: ${profileId}`
+    );
 
     // 1. Fetch channel and verify ownership
-    const profile = await prisma.youTubeProfile.findFirst({
+    const channel = await prisma.youTubeChannel.findFirst({
       where: { id: profileId, userId },
       include: {
         videos: {
-          select: { thumbnail: true }
-        }
-      }
+          select: { thumbnail: true },
+        },
+      },
     });
 
-    if (!profile) {
+    if (!channel) {
       throw new ApiError(404, "YouTube profile not found or access denied.");
     }
 
     // 2. Collect all S3 keys for cleanup
     const keysToDelete = [];
-    if (profile.thumbnail_url) keysToDelete.push(profile.thumbnail_url);
-    
-    profile.videos.forEach(v => {
+    if (channel.thumbnail_url) keysToDelete.push(channel.thumbnail_url);
+
+    channel.videos.forEach((v) => {
       if (v.thumbnail && !v.thumbnail.startsWith("http")) {
         keysToDelete.push(v.thumbnail);
       }
     });
 
     // 3. Delete from Database (Cascades to videos and logs)
-    await prisma.youTubeProfile.delete({
-      where: { id: profileId }
+    await prisma.youTubeChannel.delete({
+      where: { id: profileId },
     });
 
     // 4. Cleanup S3 Media in background
     if (keysToDelete.length > 0) {
-      import("../../../utils/storageService.js").then(service => {
-        // storageService.deleteFile handles multiple keys if we pass an array or we can iterate
-        // Actually storageService.deleteFile calls storage.deleteObjects([key])
-        // Let's call it for the whole array
-        service.default.deleteFile(keysToDelete).catch(err => {
+      import("../../../utils/storageService.js").then((service) => {
+        service.default.deleteFile(keysToDelete).catch((err) => {
           logger.error(`❌ [YT-DELETE] Background S3 cleanup failed: ${err.message}`);
         });
       });
     }
 
-    // 5. Invalidate User Cache to prevent "Ghost Channels"
+    // 5. Invalidate User Cache
     await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);
 
     // 🛰️ [SOCKET] Surgical Broadcast to remove channel from UI
-    // We fetch the full identity to ensure the mobile app's guard remains satisfied
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
         profile: true,
-        youtubeProfiles: {
+        youtubeChannels: {
           include: {
-            videos: { orderBy: { published_at: 'desc' }, take: 25 }
-          }
-        }
-      }
+            videos: { orderBy: { published_at: "desc" }, take: 25 },
+          },
+        },
+      },
     });
 
-    const remainingChannels = user.youtubeProfiles || [];
+    const remainingChannels = user.youtubeChannels || [];
 
-    emitToUser(userId, "user:profile_updated", { 
+    emitToUser(userId, "user:profile_updated", {
       id: user.id,
       name: user.profile?.name,
       username: user.profile?.username,
       isOnboarded: user.is_onboarded,
-      youtubeProfile: remainingChannels.map(p => ({
+      youtubeProfile: remainingChannels.map((p) => ({
         ...p,
         thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
-        banner_url: smartResolveMediaUrl(p.banner_url)
+        banner_url: smartResolveMediaUrl(p.banner_url),
+      })),
+      youtubeChannels: remainingChannels.map((p) => ({
+        ...p,
+        thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
+        banner_url: smartResolveMediaUrl(p.banner_url),
       })),
       youtubeVideos: remainingChannels
-        .flatMap(p => (p.videos || []).map(v => {
-          const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
-          return {
-            ...v,
-            thumbnail: resolvedUrl,
-            media: {
-              type: 'IMAGE',
-              status: 'READY',
-              urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl }
-            }
-          };
-        }))
-        .sort((a, b) => new Date(b.published_at || b.publishedAt) - new Date(a.published_at || a.publishedAt))
+        .flatMap((p) =>
+          (p.videos || []).map((v) => {
+            const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+            return {
+              ...v,
+              thumbnail: resolvedUrl,
+              media: {
+                type: "IMAGE",
+                status: "READY",
+                urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl },
+              },
+            };
+          })
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.published_at || b.publishedAt).getTime() -
+            new Date(a.published_at || a.publishedAt).getTime()
+        ),
     });
 
     res.status(200).json({
       success: true,
-      message: "Channel and all associated data permanently deleted."
+      message: "Channel and all associated data permanently deleted.",
     });
   } catch (error) {
     next(error);
@@ -248,33 +260,32 @@ export const deleteChannel = async (req, res, next) => {
 
 /**
  * Fetch all available YouTube videos for the Explore page
- * Includes associated profile data for rich UI rendering.
  */
 export const getExploreVideos = async (req, res, next) => {
   try {
     const videos = await prisma.youTubeVideo.findMany({
       include: {
-        youtubeProfile: {
+        youtubeChannel: {
           select: {
             channel_name: true,
             thumbnail_url: true,
             subscriber_count: true,
             view_count: true,
             language: true,
-          }
-        }
+            niche: true,
+          },
+        },
       },
       orderBy: {
-        published_at: 'desc',
+        published_at: "desc",
       },
-      take: 50, // Limit to 50 for performance, can add pagination later
+      take: 50,
     });
 
-    // 🛰️ NORMALIZE DATA: Resolve URLs and format for frontend
-    const normalizedVideos = videos.map(v => {
+    const normalizedVideos = videos.map((v) => {
       const videoThumb = smartResolveMediaUrl(v.thumbnail);
-      const channelThumb = smartResolveMediaUrl(v.youtubeProfile?.thumbnail_url);
-      
+      const channelThumb = smartResolveMediaUrl(v.youtubeChannel?.thumbnail_url);
+
       return {
         id: v.id,
         videoId: v.video_id,
@@ -282,16 +293,16 @@ export const getExploreVideos = async (req, res, next) => {
         thumbnail: videoThumb,
         publishedAt: v.published_at,
         channel: {
-          name: v.youtubeProfile?.channel_name || "Unknown Channel",
+          name: v.youtubeChannel?.channel_name || "Unknown Channel",
           thumbnail: channelThumb,
-          subscribers: v.youtubeProfile?.subscriber_count || 0,
+          subscribers: v.youtubeChannel?.subscriber_count || 0,
+          niche: v.youtubeChannel?.niche || null,
         },
-        // 🛰️ UNIFIED MEDIA OBJECT (Matches mobile app's expected structure)
         media: {
-          type: 'IMAGE',
-          status: 'READY',
-          urls: { thumb: videoThumb, feed: videoThumb, full: videoThumb }
-        }
+          type: "IMAGE",
+          status: "READY",
+          urls: { thumb: videoThumb, feed: videoThumb, full: videoThumb },
+        },
       };
     });
 
@@ -317,60 +328,73 @@ export const linkOAuthChannel = async (req, res, next) => {
       throw new ApiError(400, "Channel data with channelId is required.");
     }
 
-    logger.info(`🎬 [CONTROLLER] User ${userId} linking OAuth channel: ${channel.channelName || channel.channelId}`);
+    logger.info(
+      `🎬 [CONTROLLER] User ${userId} linking OAuth channel: ${
+        channel.channelName || channel.channelId
+      }`
+    );
 
     const syncService = await import("../services/youtubeSyncService.js");
     const result = await syncService.persistYouTubeContent(userId, channel, "oauth_link");
 
     await deleteCache(CacheKey.userProfile(userId));
 
-    // Get the updated user with full professional relations
     const updatedUser = await prisma.user.findUnique({
       where: { id: userId },
       include: {
         profile: true,
-        youtubeProfiles: {
+        youtubeChannels: {
           include: {
-            videos: { orderBy: { published_at: 'desc' }, take: 25 }
-          }
-        }
-      }
+            videos: { orderBy: { published_at: "desc" }, take: 25 },
+          },
+        },
+      },
     });
 
-    // Surgical WebSocket Broadcast to instantly update the frontend store
     if (updatedUser) {
-      const remainingChannels = updatedUser.youtubeProfiles || [];
+      const remainingChannels = updatedUser.youtubeChannels || [];
       emitToUser(userId, "user:profile_updated", {
         id: updatedUser.id,
         name: updatedUser.profile?.name,
         username: updatedUser.profile?.username,
         isOnboarded: updatedUser.is_onboarded,
-        youtubeProfile: remainingChannels.map(p => ({
+        youtubeProfile: remainingChannels.map((p) => ({
           ...p,
           thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
-          banner_url: smartResolveMediaUrl(p.banner_url)
+          banner_url: smartResolveMediaUrl(p.banner_url),
+        })),
+        youtubeChannels: remainingChannels.map((p) => ({
+          ...p,
+          thumbnail_url: smartResolveMediaUrl(p.thumbnail_url),
+          banner_url: smartResolveMediaUrl(p.banner_url),
         })),
         youtubeVideos: remainingChannels
-          .flatMap(p => (p.videos || []).map(v => {
-            const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
-            return {
-              ...v,
-              thumbnail: resolvedUrl,
-              media: {
-                type: 'IMAGE',
-                status: 'READY',
-                urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl }
-              }
-            };
-          }))
-          .sort((a, b) => new Date(b.published_at || b.publishedAt).getTime() - new Date(a.published_at || a.publishedAt).getTime())
+          .flatMap((p) =>
+            (p.videos || []).map((v) => {
+              const resolvedUrl = smartResolveMediaUrl(v.thumbnail);
+              return {
+                ...v,
+                thumbnail: resolvedUrl,
+                media: {
+                  type: "IMAGE",
+                  status: "READY",
+                  urls: { thumb: resolvedUrl, feed: resolvedUrl, full: resolvedUrl },
+                },
+              };
+            })
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.published_at || b.publishedAt).getTime() -
+              new Date(a.published_at || a.publishedAt).getTime()
+          ),
       });
     }
 
     res.status(200).json({
       success: true,
       message: "Channel successfully linked and synced!",
-      data: result
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -378,7 +402,7 @@ export const linkOAuthChannel = async (req, res, next) => {
 };
 
 /**
- * Fetch a user's YouTube videos dynamically instead of bloating the cached profile.
+ * Fetch a user's YouTube videos dynamically
  */
 export const getUserVideos = async (req, res, next) => {
   try {
@@ -389,10 +413,10 @@ export const getUserVideos = async (req, res, next) => {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
-          youtubeProfiles: {
+          youtubeChannels: {
             include: {
               videos: {
-                orderBy: { published_at: 'desc' },
+                orderBy: { published_at: "desc" },
                 take: 50,
               },
             },
@@ -404,7 +428,7 @@ export const getUserVideos = async (req, res, next) => {
         throw new ApiError(404, "User not found");
       }
 
-      return (user.youtubeProfiles || [])
+      return (user.youtubeChannels || [])
         .flatMap((p) =>
           (p.videos || []).map((v) => {
             const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;
@@ -412,22 +436,22 @@ export const getUserVideos = async (req, res, next) => {
 
             return {
               ...v,
-              video_id:      v.video_id      || null,
-              view_count:    v.view_count    != null ? String(v.view_count)    : "0",
-              like_count:    v.like_count    != null ? String(v.like_count)    : "0",
+              video_id: v.video_id || null,
+              view_count: v.view_count != null ? String(v.view_count) : "0",
+              like_count: v.like_count != null ? String(v.like_count) : "0",
               comment_count: v.comment_count != null ? String(v.comment_count) : "0",
               duration_secs: v.duration_secs || null,
-              category_id:   v.category_id   || null,
-              tags:          v.tags           || null,
-              made_for_kids: v.made_for_kids  || false,
+              category_id: v.category_id || null,
+              tags: v.tags || null,
+              made_for_kids: v.made_for_kids || false,
               thumbnail: resolvedUrl,
               media: {
                 type: "IMAGE",
                 status: "READY",
                 urls: {
                   thumb: resolvedUrl,
-                  feed:  resolvedUrl,
-                  full:  resolvedUrl,
+                  feed: resolvedUrl,
+                  full: resolvedUrl,
                 },
               },
             };
@@ -443,21 +467,21 @@ export const getUserVideos = async (req, res, next) => {
     const { paginate: shouldPaginate, cursor, limit } = req.query;
     const pageSize = parseInt(limit, 10) || 12;
 
-    if (shouldPaginate === 'true' || cursor) {
+    if (shouldPaginate === "true" || cursor) {
       let startIndex = 0;
       if (cursor) {
-        startIndex = youtubeVideos.findIndex(v => v.id === cursor) + 1;
+        startIndex = youtubeVideos.findIndex((v) => v.id === cursor) + 1;
         if (startIndex <= 0) {
           startIndex = 0;
         }
       }
-      
+
       const sliced = youtubeVideos.slice(startIndex, startIndex + pageSize + 1);
-      const paginatedResult = paginate(sliced, pageSize, 'id');
+      const paginatedResult = paginate(sliced, pageSize, "id");
 
       return res.status(200).json({
         success: true,
-        ...paginatedResult
+        ...paginatedResult,
       });
     }
 
@@ -477,27 +501,37 @@ export const getUserVideos = async (req, res, next) => {
 export const manualSyncChannels = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    
-    // Find channels seeded by auth registration
-    const ytModel = prisma.youtubeProfile || prisma.youTubeProfile || prisma.youtubeProfiles;
-    const channels = await ytModel.findMany({ where: { userId } });
-    
+
+    const channels = await prisma.youTubeChannel.findMany({ where: { userId } });
+
     if (!channels || channels.length === 0) {
-      return res.status(200).json({ success: true, message: "No channels to sync.", data: { processed: 0, total: 0 } });
+      return res.status(200).json({
+        success: true,
+        message: "No channels to sync.",
+        data: { processed: 0, total: 0 },
+      });
     }
 
-    const channelIds = channels.map(c => c.channel_id || c.channelId);
-    logger.info(`✨ [CONTROLLER] Starting manual foreground sync for ${channelIds.length} channels for user ${userId}`);
+    const channelIds = channels.map((c) => c.channel_id || c.channelId);
+    logger.info(
+      `✨ [CONTROLLER] Starting manual foreground sync for ${channelIds.length} channels for user ${userId}`
+    );
 
     const syncService = await import("../services/youtubeSyncService.js");
-    const result = await syncService.executeManualSync(userId, channelIds, "manual_foreground");
+    const result = await syncService.executeManualSync(
+      userId,
+      channelIds,
+      "manual_foreground"
+    );
 
-    logger.info(`✅ [CONTROLLER] Manual foreground sync completed successfully for user ${userId}. Processed ${result.processed}/${result.total} channels.`);
+    logger.info(
+      `✅ [CONTROLLER] Manual foreground sync completed successfully for user ${userId}. Processed ${result.processed}/${result.total} channels.`
+    );
 
     res.status(200).json({
       success: true,
       message: "Foreground sync completed successfully",
-      data: result
+      data: result,
     });
   } catch (error) {
     logger.error(`❌ [CONTROLLER] Manual sync failed: ${error.message}`);

@@ -1,19 +1,19 @@
 import prisma from "../../../infrastructure/database/postgres.js";
 import { hashPassword } from "./password.service.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
-;
 import { eventBus } from "../../../shared/kernel/events.js";
 import storageService from "../../../infrastructure/storage/storage-client.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 import { redis } from "../../../infrastructure/cache/redis.client.js";
 import { sendOTPEmail } from "../../../infrastructure/email/email.client.js";
+import { USER_INCLUDE } from "./identity.service.js";
 
 /**
- * PRODUCTION-GRADE ATOMIC REGISTRATION (Split Schema)
- * 1. User (Auth) in PostgreSQL
- * 2. UserProfile (Identity) in PostgreSQL
- * 3. UserRoleMapping (Expertise) in PostgreSQL
- * 4. Auth-first onboarding flow (no cross-module sync)
+ * PRODUCTION-GRADE ATOMIC REGISTRATION
+ * 1. User (Auth)
+ * 2. UserProfile (Identity)
+ * 3. Role-specific Profiles (CreatorProfile + YouTubeChannel, EditorProfile, BrandProfile)
+ * 4. UserStats & PushToken
  */
 export const registerFullUser = async (userData) => {
   const {
@@ -24,9 +24,15 @@ export const registerFullUser = async (userData) => {
     phone,
     motherTongue,
     country = "India",
-    categoryId, // Optional primary category (legacy compatibility)
-    roleSubCategoryIds = [], // Array of UUIDs
+    categoryId, // RoleCategory UUID or slug
+    categorySlug,
     youtubeChannels = [],
+    skills = [],
+    softwareUsed = [],
+    specializations = [],
+    companyName,
+    industry,
+    designation,
     pushToken,
     platform,
     profilePictureBuffer,
@@ -36,36 +42,38 @@ export const registerFullUser = async (userData) => {
     role = null,
   } = userData;
 
-  const normalizedEmail = email.toLowerCase();
-  const normalizedUsername = username.toLowerCase();
+  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedUsername = username.toLowerCase().trim();
 
   // 1. Conflict Check: Email or Username
   const existingUser = await prisma.user.findFirst({
-    where: { email: normalizedEmail }
+    where: { email: normalizedEmail },
   });
   if (existingUser) throw new ApiError(400, "Email already registered. Please login.");
 
   const existingProfile = await prisma.userProfile.findFirst({
-    where: { username: normalizedUsername }
+    where: { username: normalizedUsername },
   });
   if (existingProfile) throw new ApiError(400, "Username already taken.");
 
   // 1.5 Conflict Check: YouTube Channels (Prevent Hijacking)
   if (youtubeChannels && youtubeChannels.length > 0) {
-    const channelIds = youtubeChannels.map(ch => String(ch.channelId || ch.channel_id || ch.id || "").trim()).filter(Boolean);
-    
-    // Safe Property Resolver
-    const ytModel = prisma.youtubeProfile || prisma.youTubeProfile || prisma.youtubeProfiles;
-    
-    if (ytModel) {
-      const claimedProfiles = await ytModel.findMany({
+    const channelIds = youtubeChannels
+      .map((ch) => String(ch.channelId || ch.channel_id || ch.id || "").trim())
+      .filter(Boolean);
+
+    if (channelIds.length > 0) {
+      const claimedChannels = await prisma.youTubeChannel.findMany({
         where: { channel_id: { in: channelIds } },
-        select: { channel_name: true }
+        select: { channel_name: true },
       });
 
-      if (claimedProfiles.length > 0) {
-         const names = claimedProfiles.map(p => p.channel_name).join(", ");
-         throw new ApiError(409, `The following YouTube channels are already registered on SuviX: ${names}. Each channel can only be linked to one account.`);
+      if (claimedChannels.length > 0) {
+        const names = claimedChannels.map((p) => p.channel_name).join(", ");
+        throw new ApiError(
+          409,
+          `The following YouTube channels are already registered on SuviX: ${names}. Each channel can only be linked to one account.`
+        );
       }
     }
   }
@@ -77,296 +85,242 @@ export const registerFullUser = async (userData) => {
   let profilePictureUrl = "";
   if (profilePictureBuffer) {
     try {
-      const uploadResult = await storageService.uploadBuffer(profilePictureBuffer, "avatars/onboarding");
+      const uploadResult = await storageService.uploadBuffer(
+        profilePictureBuffer,
+        "avatars/onboarding"
+      );
       profilePictureUrl = uploadResult.secure_url;
     } catch (error) {
       logger.error("Storage Upload Failed:", error);
     }
   }
 
-  // 3.5 Pre-Transaction Performance Optimization (Move Network Calls Out)
+  // 3.5 Pre-Transaction Avatar Mirroring
   let preMirroredYoutubeAvatar = null;
   if (youtubeChannels?.length > 0) {
     const mainChannel = youtubeChannels[0];
-    const thumb = mainChannel.thumbnailUrl || mainChannel.thumbnail_url || mainChannel.thumbnail;
+    const thumb =
+      mainChannel.thumbnailUrl || mainChannel.thumbnail_url || mainChannel.thumbnail;
     if (thumb) {
-       logger.info(`💾 [REG-SYNC] Pre-mirroring YouTube avatar to avoid transaction timeout...`);
-       preMirroredYoutubeAvatar = await storageService.uploadFromUrl(thumb, "media/avatars/youtube");
+      logger.info(`💾 [REG-SYNC] Pre-mirroring YouTube avatar to avoid transaction timeout...`);
+      preMirroredYoutubeAvatar = await storageService.uploadFromUrl(
+        thumb,
+        "media/avatars/youtube"
+      );
     }
   }
 
   // 4. Atomic PostgreSQL Transaction
   let user;
   try {
-    user = await prisma.$transaction(async (tx) => {
-      let resolvedCategoryId = categoryId || null;
-      if (!resolvedCategoryId && roleSubCategoryIds.length > 0) {
-        const firstSubCategory = await tx.roleSubCategory.findFirst({
-          where: { id: roleSubCategoryIds[0] },
-          select: { roleCategoryId: true },
-        });
-        resolvedCategoryId = firstSubCategory?.roleCategoryId || null;
-      }
-
-      const selectedCategory = resolvedCategoryId
-        ? await tx.roleCategory.findUnique({
-            where: { id: resolvedCategoryId },
+    user = await prisma.$transaction(
+      async (tx) => {
+        // Resolve RoleCategory
+        let selectedCategory = null;
+        if (categoryId) {
+          selectedCategory = await tx.roleCategory.findFirst({
+            where: {
+              OR: [{ id: categoryId }, { slug: categoryId }],
+            },
             select: { id: true, slug: true, maps_to_role: true },
-          })
-        : null;
-      const isYoutubeCategory = selectedCategory?.slug === "creator"; // new slug
-
-      let assignedRole = role;
-      if (!assignedRole) {
-        // maps_to_role is now the direct UserRole enum value
-        assignedRole = selectedCategory?.maps_to_role || 'user';
-      }
-
-      let normalizedRoleSubCategoryIds = Array.from(
-        new Set((roleSubCategoryIds || []).filter(Boolean))
-      );
-      let normalizedChannels = [];
-
-      if (isYoutubeCategory) {
-        if (!youtubeChannels?.length) {
-          throw new ApiError(400, "YouTube creator onboarding requires at least one connected channel.");
+          });
+        } else if (categorySlug) {
+          selectedCategory = await tx.roleCategory.findUnique({
+            where: { slug: categorySlug },
+            select: { id: true, slug: true, maps_to_role: true },
+          });
         }
 
-        normalizedChannels = youtubeChannels
-          .map((ch, index) => {
-            const channelId = String(ch.channelId || ch.channel_id || ch.id || "").trim();
-            const channelName = String(ch.channelName || ch.channel_name || ch.name || "").trim();
-            if (!channelId || !channelName) return null;
-            return {
-              channel_id: channelId,
-              channel_name: channelName,
-              thumbnail_url: ch.thumbnailUrl || ch.thumbnail_url || null,
-              subscriber_count: Number.isFinite(Number(ch.subscriberCount)) ? Number(ch.subscriberCount) : 0,
-              video_count: Number.isFinite(Number(ch.videoCount)) ? Number(ch.videoCount) : 0,
-              subCategoryRef:
-                ch.subCategoryId ||
-                ch.sub_category_id ||
-                ch.subCategorySlug ||
-                ch.sub_category_slug ||
-                ch.categorySlug ||
-                ch.category_slug ||
-                null,
-              language: ch.language || null,
-              country: ch.country || null,
-              isPrimary: ch.isPrimary === true || index === 0,
-              is_verified: ch.isVerified !== false,
-              uploads_playlist_id: ch.uploadsPlaylistId || null,
-              videos: ch.videos || [],
-            };
-          })
-          .filter(Boolean);
-
-        if (!normalizedChannels.length) {
-          throw new ApiError(400, "Connected YouTube channels are invalid.");
+        let assignedRole = role;
+        if (!assignedRole) {
+          assignedRole = selectedCategory?.maps_to_role || "user";
         }
 
-        const refs = Array.from(
-          new Set(normalizedChannels.map((ch) => ch.subCategoryRef).filter(Boolean))
-        );
-        const unresolvedChannels = normalizedChannels.filter((ch) => !ch.subCategoryRef);
-        if (unresolvedChannels.length > 0) {
-          throw new ApiError(400, "Each selected YouTube channel must have a subcategory.");
-        }
+        const isCreator = assignedRole === "creator" || selectedCategory?.slug === "creator";
 
-        const idRefs = refs.filter((ref) =>
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ref)
-        );
-        const slugRefs = refs.filter((ref) => !idRefs.includes(ref));
-
-        const matchedSubCategories = await tx.roleSubCategory.findMany({
-          where: {
-            roleCategoryId: selectedCategory.id,
-            OR: [
-              ...(idRefs.length ? [{ id: { in: idRefs } }] : []),
-              ...(slugRefs.length ? [{ slug: { in: slugRefs.map((r) => String(r).toLowerCase()) } }] : []),
-            ],
-          },
-          select: { id: true, slug: true },
-        });
-
-        const byId = new Map(matchedSubCategories.map((sub) => [sub.id, sub]));
-        const bySlug = new Map(matchedSubCategories.map((sub) => [sub.slug, sub]));
-
-        normalizedChannels = normalizedChannels.map((channel) => {
-          const ref = String(channel.subCategoryRef).toLowerCase();
-          const matched = byId.get(channel.subCategoryRef) || bySlug.get(ref);
-          if (!matched) {
+        let normalizedChannels = [];
+        if (isCreator) {
+          if (!youtubeChannels?.length) {
             throw new ApiError(
               400,
-              `Invalid YouTube subcategory for channel ${channel.channel_name}.`
+              "YouTube creator onboarding requires at least one connected channel."
             );
           }
-          return {
-            ...channel,
-            category_slug: matched.slug,
-            roleSubCategoryId: matched.id,
-          };
-        });
 
-        normalizedRoleSubCategoryIds = Array.from(
-          new Set([
-            ...normalizedRoleSubCategoryIds,
-            ...normalizedChannels.map((ch) => ch.roleSubCategoryId),
-          ])
-        );
-      }
+          normalizedChannels = youtubeChannels
+            .map((ch, index) => {
+              const channelId = String(ch.channelId || ch.channel_id || ch.id || "").trim();
+              const channelName = String(
+                ch.channelName || ch.channel_name || ch.name || ""
+              ).trim();
+              if (!channelId || !channelName) return null;
+              return {
+                channel_id: channelId,
+                channel_name: channelName,
+                thumbnail_url: ch.thumbnailUrl || ch.thumbnail_url || null,
+                subscriber_count: Number.isFinite(Number(ch.subscriberCount || ch.subscriber_count))
+                  ? Number(ch.subscriberCount || ch.subscriber_count)
+                  : 0,
+                video_count: Number.isFinite(Number(ch.videoCount || ch.video_count))
+                  ? Number(ch.videoCount || ch.video_count)
+                  : 0,
+                niche: ch.niche || ch.subCategoryName || ch.category || null,
+                language: ch.language || null,
+                country: ch.country || null,
+                isPrimary: ch.isPrimary === true || index === 0,
+                uploads_playlist_id: ch.uploadsPlaylistId || ch.uploads_playlist_id || null,
+              };
+            })
+            .filter(Boolean);
 
-      const newUser = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          username: normalizedUsername,
-          password_hash: hashedPassword,
-          auth_provider: authProvider,
-          google_id: googleId,
-          role: assignedRole,
-          is_onboarded: !!resolvedCategoryId || normalizedRoleSubCategoryIds.length > 0,
-          is_email_verified: authProvider === "google",
-          email_verified_at: authProvider === "google" ? new Date() : null,
-        },
-      });
-
-      // Step B: Create User Profile (Identity)
-      const profile = await tx.userProfile.create({
-        data: {
-          userId: newUser.id,
-          username: normalizedUsername,
-          name: fullName,
-          profile_picture: profilePictureUrl || null,
-          mother_tongue: motherTongue,
-          location_country: country,
-          phone: phone,
-          categoryId: resolvedCategoryId,
-          website: website || null,
-        },
-      });
-
-      // Step B-3: Create Role-Specific Profile (Editor/Brand)
-      if (assignedRole === "editor") {
-        await tx.editorProfile.create({
-          data: {
-            userId: newUser.id,
-            portfolio_url: website || null,
+          if (!normalizedChannels.length) {
+            throw new ApiError(400, "Connected YouTube channels are invalid.");
           }
-        });
-      } else if (assignedRole === "brand") {
-        await tx.brandProfile.create({
-          data: {
-            userId: newUser.id,
-            company_website: website || null,
-          }
-        });
-      }
-
-      await tx.userStats.upsert({
-        where: { userId: newUser.id },
-        update: { updated_at: new Date() },
-        create: { userId: newUser.id },
-      });
-
-      // Step B-2. Register VIP Push Token Instantly
-      if (pushToken) {
-        await tx.pushToken.upsert({
-          where: { token: pushToken },
-          update: {
-            userId: newUser.id,
-            platform: platform ? platform.toUpperCase() : 'ANDROID',
-            is_active: true,
-            last_used_at: new Date()
-          },
-          create: {
-            userId: newUser.id,
-            token: pushToken,
-            platform: platform ? platform.toUpperCase() : 'ANDROID',
-            is_active: true,
-            device_name: 'SuviX Mobile App'
-          }
-        });
-      }
-
-      // Step C: Map Dynamic Roles (Expertise)
-      if (normalizedRoleSubCategoryIds.length > 0) {
-        const mappings = normalizedRoleSubCategoryIds.map((subId, index) => ({
-          profileId: profile.id,
-          roleSubCategoryId: subId,
-          isPrimary: index === 0,
-        }));
-        await tx.userRoleMapping.createMany({ data: mappings, skipDuplicates: true });
-      }
-
-      // Step D: SEED YOUTUBE SKELETONS (Immediate Identity)
-      // This ensures the first response to the mobile app already identifies the user as a Creator
-      // for all their selected channels, even while videos are still syncing in the background.
-      if (isYoutubeCategory && normalizedChannels.length > 0) {
-        // SAFE MODEL RESOLVER: Handle varying Prisma naming (youTubeProfile vs youtubeProfile)
-        const ytModel = tx.youtubeProfile || tx.youTubeProfile || tx.youtubeProfiles;
-
-        if (ytModel) {
-            for (const [index, channel] of normalizedChannels.entries()) {
-                // Use the pre-mirrored avatar for the primary channel if available
-                const thumb = (index === 0 && preMirroredYoutubeAvatar) ? preMirroredYoutubeAvatar : channel.thumbnail_url;
-                
-                await ytModel.create({
-                    data: {
-                        userId: newUser.id,
-                        channel_id: channel.channel_id,
-                        channel_name: channel.channel_name,
-                        thumbnail_url: thumb,
-                        subscriber_count: channel.subscriber_count || 0,
-                        video_count: channel.video_count || 0,
-                        uploads_playlist_id: channel.uploads_playlist_id || null,
-                        subCategoryId: channel.roleSubCategoryId,
-                        language: channel.language,
-                        country: channel.country,
-                        is_primary: channel.isPrimary || index === 0
-                    }
-                });
-            }
-            logger.info(`✨ [REG-SERVICE] Atomic YouTube Identity seeded for user ${newUser.id} (${normalizedChannels.length} channels)`);
-        } else {
-            logger.error(`❌ [REG-SERVICE] YouTubeProfile model NOT found in transaction client.`);
         }
+
+        // Step A: Create User
+        const newUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            username: normalizedUsername,
+            password_hash: hashedPassword,
+            auth_provider: authProvider,
+            google_id: googleId,
+            role: assignedRole,
+            is_onboarded: true,
+            is_email_verified: authProvider === "google",
+            email_verified_at: authProvider === "google" ? new Date() : null,
+          },
+        });
+
+        // Step B: Create UserProfile
+        const profile = await tx.userProfile.create({
+          data: {
+            userId: newUser.id,
+            username: normalizedUsername,
+            name: fullName,
+            profile_picture: profilePictureUrl || null,
+            mother_tongue: motherTongue || null,
+            location_country: country,
+            phone: phone || null,
+            categoryId: selectedCategory?.id || null,
+            website: website || null,
+          },
+        });
+
+        // Step C: Create Role-Specific Profile
+        if (isCreator) {
+          const creatorProfile = await tx.creatorProfile.create({
+            data: {
+              userId: newUser.id,
+              business_email: normalizedEmail,
+            },
+          });
+
+          let primaryChannelId = null;
+
+          for (const [index, channel] of normalizedChannels.entries()) {
+            const thumb =
+              index === 0 && preMirroredYoutubeAvatar
+                ? preMirroredYoutubeAvatar
+                : channel.thumbnail_url;
+
+            const createdChannel = await tx.youTubeChannel.create({
+              data: {
+                creatorProfileId: creatorProfile.id,
+                userId: newUser.id,
+                channel_id: channel.channel_id,
+                channel_name: channel.channel_name,
+                thumbnail_url: thumb,
+                subscriber_count: channel.subscriber_count,
+                video_count: channel.video_count,
+                uploads_playlist_id: channel.uploads_playlist_id,
+                niche: channel.niche,
+                language: channel.language,
+                country: channel.country,
+                is_primary: channel.isPrimary,
+              },
+            });
+
+            if (channel.isPrimary && !primaryChannelId) {
+              primaryChannelId = createdChannel.id;
+            }
+          }
+
+          if (primaryChannelId) {
+            await tx.creatorProfile.update({
+              where: { id: creatorProfile.id },
+              data: { primary_channel_id: primaryChannelId },
+            });
+          }
+        } else if (assignedRole === "editor") {
+          await tx.editorProfile.create({
+            data: {
+              userId: newUser.id,
+              portfolio_url: website || null,
+              skills: Array.isArray(skills) ? skills : [],
+              software_used: Array.isArray(softwareUsed) ? softwareUsed : [],
+              specializations: Array.isArray(specializations) ? specializations : [],
+            },
+          });
+        } else if (assignedRole === "brand") {
+          await tx.brandProfile.create({
+            data: {
+              userId: newUser.id,
+              company_name: companyName || fullName,
+              company_website: website || null,
+              industry: industry || null,
+              designation: designation || null,
+            },
+          });
+        }
+
+        // Step D: UserStats
+        await tx.userStats.upsert({
+          where: { userId: newUser.id },
+          update: { updated_at: new Date() },
+          create: { userId: newUser.id },
+        });
+
+        // Step E: Register Push Token
+        if (pushToken) {
+          await tx.pushToken.upsert({
+            where: { token: pushToken },
+            update: {
+              userId: newUser.id,
+              platform: platform ? platform.toUpperCase() : "ANDROID",
+              is_active: true,
+              last_used_at: new Date(),
+            },
+            create: {
+              userId: newUser.id,
+              token: pushToken,
+              platform: platform ? platform.toUpperCase() : "ANDROID",
+              is_active: true,
+              device_name: "SuviX Mobile App",
+            },
+          });
+        }
+
+        return {
+          ...newUser,
+          profile,
+          _deferredYoutubeChannels: isCreator ? normalizedChannels : null,
+        };
+      },
+      {
+        timeout: 60000,
       }
+    );
 
-      return {
-        ...newUser,
-        profile,
-        // Carry channels outward to enqueue them later
-        _deferredYoutubeChannels: (isYoutubeCategory && normalizedChannels.length > 0) ? normalizedChannels : null
-      };
-    }, {
-      timeout: 60000 // Increased timeout to 60s for Neon/S3 latency during onboarding
-    });
-
-    // 5. Hydrate the final user object with all professional relations
-    // This ensure resolvePrimaryIdentity() works correctly on the first response
+    // 5. Hydrate final user with full relations
     const hydratedUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        profile: {
-          include: { 
-            category: true,
-            roles: { include: { subCategory: { include: { category: true } } } } 
-          }
-        },
-        youtubeProfiles: {
-          include: {
-            videos: {
-              orderBy: { published_at: 'desc' },
-              take: 15
-            }
-          }
-        },
-        stats: true
-      }
+      include: USER_INCLUDE,
     });
 
     logger.info(`Production Registration Success: ${hydratedUser.email} (${hydratedUser.id})`);
-    
+
     if (authProvider === "local") {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const redisKey = `email_otp:${normalizedEmail}`;
@@ -378,16 +332,13 @@ export const registerFullUser = async (userData) => {
         logger.error(`❌ [REG-OTP] Failed to generate/send email OTP: ${emailError.message}`);
       }
     } else {
-      // ── TRIGGER WELCOME NOTIFICATION (Elite Quality via Event Bus) ────────────────────────
-      // Only for verified users (e.g. Google auth)
-      eventBus.publish('user.registered', {
+      eventBus.publish("user.registered", {
         userId: hydratedUser.id,
         email: hydratedUser.email,
       });
     }
-    
-    return hydratedUser;
 
+    return hydratedUser;
   } catch (error) {
     logger.error("Registration Critical Failure:", error);
     throw error;

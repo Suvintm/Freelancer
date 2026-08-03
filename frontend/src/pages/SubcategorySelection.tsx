@@ -26,6 +26,19 @@ import adsIcon from '../assets/categories/ads.png';
 import editingIcon from '../assets/categories/editing.png';
 import rentalIcon from '../assets/categories/rental.png';
 
+const DEFAULT_EDITOR_SPECIALIZATIONS = [
+  { id: 'yt_longform', name: 'YouTube Long-form' },
+  { id: 'reels_shorts', name: 'Reels, TikTok & Shorts' },
+  { id: 'gaming_montage', name: 'Gaming & Stream Highlights' },
+  { id: 'documentary', name: 'Documentary & Storytelling' },
+  { id: 'cinematic_grading', name: 'Cinematic & Color Grading' },
+  { id: 'motion_vfx', name: 'Motion Graphics & VFX' },
+  { id: 'podcast_interview', name: 'Podcasts & Interviews' },
+  { id: 'sound_design', name: 'Audio & Sound Design' },
+  { id: 'commercials', name: 'Commercials & Ads' },
+  { id: 'music_video', name: 'Music Videos & Trailers' },
+];
+
 export default function SubcategorySelection() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -41,17 +54,33 @@ export default function SubcategorySelection() {
 
   useEffect(() => {
     // 🔐 PRODUCTION GUARD: Subcategory selection requires a role to have been selected first.
-    if (!categoryId) {
+    if (!categoryId && !isLoading) {
       navigate('/role-selection', { replace: true });
+      return;
     }
-  }, [categoryId, navigate]);
+
+    // If role is NOT editor, skip this page completely!
+    if (category) {
+      const isEditor = category.slug === 'editor' || category.slug === 'video_editor' || category.maps_to_role === 'editor';
+      if (!isEditor) {
+        const isSocial = tempSignupData?.isSocialSignup;
+        navigate(isSocial ? '/complete-profile' : '/signup', { replace: true });
+      }
+    }
+  }, [categoryId, category, isLoading, tempSignupData?.isSocialSignup, navigate]);
+
+  const availableSubs = useMemo(() => {
+    if (category?.subCategories && category.subCategories.length > 0) {
+      return category.subCategories;
+    }
+    return DEFAULT_EDITOR_SPECIALIZATIONS;
+  }, [category]);
 
   const filteredSubs = useMemo(() => {
-    if (!category?.subCategories) return [];
-    return category.subCategories.filter(sub => 
+    return availableSubs.filter(sub => 
       sub.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [category, searchQuery]);
+  }, [availableSubs, searchQuery]);
 
   const toggleSub = (id: string) => {
     setSelectedSubs(prev => 
@@ -76,14 +105,17 @@ export default function SubcategorySelection() {
 
   const getOverlayIcon = (slug?: string) => {
     switch(slug) {
+      case 'creator':
       case 'yt_influencer': return youtubeIcon;
+      case 'editor':
+      case 'video_editor': return editingIcon;
       case 'fitness_expert': return fitnessIcon;
       case 'dancer': return danceIcon;
       case 'singer': return singerIcon;
+      case 'brand':
       case 'social_promoter': return adsIcon;
-      case 'video_editor': return editingIcon;
       case 'rent_service': return rentalIcon;
-      default: return null;
+      default: return editingIcon;
     }
   };
 

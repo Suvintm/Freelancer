@@ -34,9 +34,9 @@ const getCleanRole = (user) => {
   const role = user.role || user._systemRole || "user";
   if (role === "suvix_user") {
     const catSlug = user.primaryRole?.categorySlug || user.profile?.category?.slug || "";
-    if (catSlug === "yt_influencer") return "creator";
-    if (catSlug === "video_editor") return "editor";
-    if (catSlug === "social_promoter") return "brand";
+    if (catSlug === "creator" || catSlug === "yt_influencer") return "creator";
+    if (catSlug === "editor" || catSlug === "video_editor") return "editor";
+    if (catSlug === "brand" || catSlug === "social_promoter") return "brand";
     return "user";
   }
   return role;
