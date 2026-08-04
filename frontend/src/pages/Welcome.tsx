@@ -254,38 +254,10 @@ export default function Welcome() {
               ║  RIGHT COLUMN: Presentation Card & CTAs (7 Cols on lg)       ║
               ╚════════════════════════════════════════════════════════════════╝ */}
           <div className="lg:col-span-7 flex flex-col items-center w-full">
-            {/* ── Mobile 3D Creator Collage (Enlarged & Nicely Positioned) ── */}
+            {/* ── Mobile 3D Creator Collage ── */}
             <div className="lg:hidden w-full flex flex-col items-center pointer-events-none -mt-6 -mb-6 xs:-mt-4 xs:-mb-4 sm:-my-2 overflow-visible">
               <CreatorShowcaseCollage theme="dark" className="scale-[0.70] xs:scale-[0.76] sm:scale-[0.88] origin-center" />
             </div>
-
-            {/* Floating Row Above the Card: Left Flank Metric + Lottie Welcome Pill + Right Flank Metric */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, ...EASE }}
-              className="w-full max-w-xl flex items-center justify-between sm:justify-center gap-2 xs:gap-3 px-3 sm:px-0 mb-1.5 sm:mb-3 pointer-events-auto"
-            >
-              {/* Left Flank: Pure White Views Growth (Mobile Only, 0 BG, 0 Blur, Small) */}
-              <div className="lg:hidden flex-1 max-w-[6.5rem] xs:max-w-[7.5rem] sm:max-w-[8.5rem] pointer-events-auto">
-                <ViewsGrowthWidget variant="mobile-flank" />
-              </div>
-
-              {/* Center: Lottie Welcome Pill (Unaffected, Centered) */}
-              <div className="flex items-center justify-center bg-white/95 backdrop-blur-md rounded-full px-3 py-1 sm:px-6 sm:py-2.5 shadow-xl border border-white/30 shrink-0">
-                <Lottie
-                  animationData={welcomeAnimation}
-                  loop={true}
-                  rendererSettings={{ preserveAspectRatio: 'xMidYMid slice' }}
-                  className="w-15 h-4 sm:w-28 sm:h-8 gpu-layer"
-                />
-              </div>
-
-              {/* Right Flank: Pure White Audience Reach (Mobile Only, 0 BG, 0 Blur, Small) */}
-              <div className="lg:hidden flex-1 max-w-[6.5rem] xs:max-w-[7.5rem] sm:max-w-[8.5rem] pointer-events-auto">
-                <AudienceReachWidget variant="mobile-flank" />
-              </div>
-            </motion.div>
 
             {/* Slide Presentation Card */}
             <motion.div
@@ -294,8 +266,31 @@ export default function Welcome() {
               transition={{ delay: 0.25, ...EASE }}
               className="relative overflow-visible w-full bg-black/85 rounded-[22px] xs:rounded-[26px] sm:rounded-[32px] p-4 xs:p-5 sm:p-7 md:p-9 max-w-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] gpu-layer"
             >
+              {/* ── TOP INTEGRATED HEADER: Views Growth + Lottie Welcome Pill + Audience Reach ── */}
+              <div className="w-full flex items-center justify-between sm:justify-center gap-2 xs:gap-3 mb-3.5 sm:mb-5">
+                {/* Left Flank: Views Growth (Mobile Only) */}
+                <div className="lg:hidden flex-1 max-w-[6.2rem] xs:max-w-[7.2rem] sm:max-w-[8.2rem] pointer-events-auto">
+                  <ViewsGrowthWidget variant="mobile-flank" />
+                </div>
+
+                {/* Center: Lottie Welcome Pill */}
+                <div className="flex items-center justify-center bg-white/95 backdrop-blur-md rounded-full px-2.5 py-1 sm:px-5 sm:py-2 shadow-lg border border-white/30 shrink-0 mx-auto">
+                  <Lottie
+                    animationData={welcomeAnimation}
+                    loop={true}
+                    rendererSettings={{ preserveAspectRatio: 'xMidYMid slice' }}
+                    className="w-14 h-4 xs:w-16 xs:h-4.5 sm:w-24 sm:h-7 gpu-layer"
+                  />
+                </div>
+
+                {/* Right Flank: Audience Reach (Mobile Only) */}
+                <div className="lg:hidden flex-1 max-w-[6.2rem] xs:max-w-[7.2rem] sm:max-w-[8.2rem] pointer-events-auto">
+                  <AudienceReachWidget variant="mobile-flank" />
+                </div>
+              </div>
+
               {/* Progress Indicators */}
-              <div className="flex gap-2 mb-3 sm:mb-5">
+              <div className="flex gap-2 mb-3 sm:mb-4">
                 {SLIDES.map((_, i) => (
                   <button
                     key={i}
