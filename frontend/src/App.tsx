@@ -1,41 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Welcome from './pages/Welcome';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import VerifyEmail from './pages/VerifyEmail';
-import RoleSelection from './pages/RoleSelection';
-import EditorSpecialization from './pages/EditorSpecialization';
-import BrandDetails from './pages/BrandDetails';
-import YouTubeConnect from './pages/YouTubeConnect';
-import YouTubeNiche from './pages/YouTubeNiche';
-import Home from './pages/Home';
-import Explore from './pages/Explore';
-import CommunicationHub from './pages/CommunicationHub';
-import Profile from './pages/Profile';
-import CreatorProfilePage from './pages/CreatorProfilePage';
-import ChannelProfilePage from './pages/ChannelProfilePage';
-import Settings from './pages/Settings';
-import Nearby from './pages/Nearby';
-import PlaceholderPage from './pages/PlaceholderPage';
-import Maintenance from './pages/Maintenance';
-import OAuthSuccess from './pages/OAuthSuccess';
-import CompleteProfile from './pages/CompleteProfile';
-import Preferences from './pages/onboarding/Preferences';
-import Notifications from './pages/Notifications';
-import TempUploadPortal from './pages/TempUploadPortal';
-import CreateContent from './pages/CreateContent';
-import YTDashboard from './pages/YTDashboard';
-import Subscription from './pages/Subscription';
-import About from './pages/About';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsAndConditions from './pages/TermsAndConditions';
-import CreatePoll from './pages/CreatePoll';
-import CreatorTools from './pages/CreatorTools';
-import Community from './pages/Community';
-import CommunityRoom from './pages/CommunityRoom';
 import { AppLayout } from './components/layout/AppLayout';
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthInit } from './queries/useCurrentUser';
 import { AuthGuard, PublicRoute, OnboardingGuard, RoleGuard } from './components/auth/AuthGuard';
 import LottieComponent from 'lottie-react';
@@ -44,6 +10,51 @@ import loaderAnimation from './assets/lottie/loader.json';
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
+// ── Lazy-loaded Route Components for Code-Splitting ─────────────────────────
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const RoleSelection = lazy(() => import('./pages/RoleSelection'));
+const EditorSpecialization = lazy(() => import('./pages/EditorSpecialization'));
+const BrandDetails = lazy(() => import('./pages/BrandDetails'));
+const YouTubeConnect = lazy(() => import('./pages/YouTubeConnect'));
+const YouTubeNiche = lazy(() => import('./pages/YouTubeNiche'));
+const Home = lazy(() => import('./pages/Home'));
+const Explore = lazy(() => import('./pages/Explore'));
+const CommunicationHub = lazy(() => import('./pages/CommunicationHub'));
+const Profile = lazy(() => import('./pages/Profile'));
+const CreatorProfilePage = lazy(() => import('./pages/CreatorProfilePage'));
+const ChannelProfilePage = lazy(() => import('./pages/ChannelProfilePage'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Nearby = lazy(() => import('./pages/Nearby'));
+const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+const OAuthSuccess = lazy(() => import('./pages/OAuthSuccess'));
+const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
+const Preferences = lazy(() => import('./pages/onboarding/Preferences'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const TempUploadPortal = lazy(() => import('./pages/TempUploadPortal'));
+const CreateContent = lazy(() => import('./pages/CreateContent'));
+const YTDashboard = lazy(() => import('./pages/YTDashboard'));
+const Subscription = lazy(() => import('./pages/Subscription'));
+const About = lazy(() => import('./pages/About'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const CreatePoll = lazy(() => import('./pages/CreatePoll'));
+const CreatorTools = lazy(() => import('./pages/CreatorTools'));
+const Community = lazy(() => import('./pages/Community'));
+const CommunityRoom = lazy(() => import('./pages/CommunityRoom'));
+
+// Lightweight fallback for lazy-loaded route transitions
+function PageFallback() {
+  return (
+    <div className="min-h-screen w-full bg-[#0A0A0A] flex items-center justify-center">
+      <div className="w-24 h-24 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const navigate = useNavigate();
@@ -78,19 +89,15 @@ function App() {
           }
         }
         
-        console.log(`🌐 [HEALTH] Checking connectivity: ${baseUrl}/api/health`);
-        
         const response = await fetch(`${baseUrl}/api/health`, { 
-          signal: AbortSignal.timeout(10000) 
+          signal: AbortSignal.timeout(8000) 
         });
         
         if (response.status === 503) {
           navigate('/maintenance', { replace: true });
         }
-      } catch (error) {
+      } catch {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-        console.error(`❌ [HEALTH] Nexus unreachable at ${apiUrl}:`, error);
-        
         if (!apiUrl.includes('localhost')) {
           navigate('/maintenance', { replace: true });
         }
@@ -119,331 +126,331 @@ function App() {
 
   return (
     <main className="min-h-screen bg-black font-sans antialiased text-white">
-      <Routes>
-        <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
-        <Route path="/maintenance" element={<Maintenance />} />
-        
-        {/* Auth pages — publicly accessible */}
-        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
-        
-        {/* Onboarding Routes — protected by OnboardingGuard for step sequencing */}
-        {/* role-selection is always accessible (it clears state on mount) */}
-        <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
+          <Route path="/maintenance" element={<Maintenance />} />
+          
+          {/* Auth pages — publicly accessible */}
+          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
+          
+          {/* Onboarding Routes — protected by OnboardingGuard for step sequencing */}
+          <Route path="/role-selection" element={<PublicRoute><RoleSelection /></PublicRoute>} />
 
-        {/* editor-specialization requires role to be selected first */}
-        <Route
-          path="/editor-specialization"
-          element={
-            <OnboardingGuard requiredStep="role">
-              <EditorSpecialization />
-            </OnboardingGuard>
-          }
-        />
-        <Route
-          path="/subcategory-selection"
-          element={<Navigate to="/editor-specialization" replace />}
-        />
+          {/* editor-specialization requires role to be selected first */}
+          <Route
+            path="/editor-specialization"
+            element={
+              <OnboardingGuard requiredStep="role">
+                <EditorSpecialization />
+              </OnboardingGuard>
+            }
+          />
+          <Route
+            path="/subcategory-selection"
+            element={<Navigate to="/editor-specialization" replace />}
+          />
 
-        {/* brand-details requires role = brand to be selected */}
-        <Route
-          path="/brand-details"
-          element={
-            <OnboardingGuard requiredStep="role">
-              <BrandDetails />
-            </OnboardingGuard>
-          }
-        />
+          {/* brand-details requires role = brand to be selected */}
+          <Route
+            path="/brand-details"
+            element={
+              <OnboardingGuard requiredStep="role">
+                <BrandDetails />
+              </OnboardingGuard>
+            }
+          />
 
-        {/* youtube-connect requires role = yt_influencer to be selected */}
-        <Route
-          path="/youtube-connect"
-          element={
-            <OnboardingGuard requiredStep="role">
-              <YouTubeConnect />
-            </OnboardingGuard>
-          }
-        />
+          {/* youtube-connect requires role = yt_influencer to be selected */}
+          <Route
+            path="/youtube-connect"
+            element={
+              <OnboardingGuard requiredStep="role">
+                <YouTubeConnect />
+              </OnboardingGuard>
+            }
+          />
 
-        {/* youtube-niche: niche selection after channel is fetched */}
-        <Route
-          path="/youtube-niche"
-          element={
-            <OnboardingGuard requiredStep="youtube">
-              <YouTubeNiche />
-            </OnboardingGuard>
-          }
-        />
+          {/* youtube-niche: niche selection after channel is fetched */}
+          <Route
+            path="/youtube-niche"
+            element={
+              <OnboardingGuard requiredStep="youtube">
+                <YouTubeNiche />
+              </OnboardingGuard>
+            }
+          />
 
-        {/* complete-profile is for Google OAuth users only — requires youtube or subcategory step */}
-        <Route
-          path="/complete-profile"
-          element={
-            <OnboardingGuard requiredStep="role">
-              <CompleteProfile />
-            </OnboardingGuard>
-          }
-        />
+          {/* complete-profile is for Google OAuth users only */}
+          <Route
+            path="/complete-profile"
+            element={
+              <OnboardingGuard requiredStep="role">
+                <CompleteProfile />
+              </OnboardingGuard>
+            }
+          />
 
-        {/* Preferences page — immediately after profile completion */}
-        <Route
-          path="/onboarding/preferences"
-          element={
-            <AuthGuard>
-              <Preferences />
-            </AuthGuard>
-          }
-        />
+          {/* Preferences page — immediately after profile completion */}
+          <Route
+            path="/onboarding/preferences"
+            element={
+              <AuthGuard>
+                <Preferences />
+              </AuthGuard>
+            }
+          />
 
-        {/* signup is for email users — requires role to be selected */}
-        <Route
-          path="/signup"
-          element={
-            <OnboardingGuard requiredStep="role">
-              <Signup />
-            </OnboardingGuard>
-          }
-        />
+          {/* signup is for email users — requires role to be selected */}
+          <Route
+            path="/signup"
+            element={
+              <OnboardingGuard requiredStep="role">
+                <Signup />
+              </OnboardingGuard>
+            }
+          />
 
-        <Route path="/oauth-success" element={<OAuthSuccess />} />
-        
-        {/* Public Informational / Legal Pages */}
-        <Route path="/about" element={<AppLayout><About /></AppLayout>} />
-        <Route path="/privacy" element={<AppLayout><PrivacyPolicy /></AppLayout>} />
-        <Route path="/terms" element={<AppLayout><TermsAndConditions /></AppLayout>} />
-        
-        {/* Authenticated Protected Routes */}
-        <Route 
-          path="/creator-tools" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <CreatorTools />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/community" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Community />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/community/:communityId" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <CommunityRoom />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/polls/create" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <CreatePoll />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/home" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Home />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/stories/:storyId" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Home />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/explore" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Explore />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/communication-hub" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <CommunicationHub />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/nearby" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Nearby />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/reels" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <PlaceholderPage title="Reels" />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/jobs" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <PlaceholderPage title="Jobs" />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/chats" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <PlaceholderPage title="Chats" />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/notifications" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Notifications />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/profile" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Profile />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/creator/:userId" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <CreatorProfilePage />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/channel/:channelId" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <ChannelProfilePage />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/subscription" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Subscription />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/settings" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <Settings />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/create" 
-          element={
-            <AuthGuard>
-              <AppLayout>
-                <CreateContent />
-              </AppLayout>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/upload-portal" 
-          element={
-            <AuthGuard>
-              <RoleGuard allowedCategories={['yt_influencer', 'video_editor', 'singer', 'dancer', 'videographer', 'photographer', 'actor', 'musician', 'fitness_expert', 'rent_service']}>
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
+          
+          {/* Public Informational / Legal Pages */}
+          <Route path="/about" element={<AppLayout><About /></AppLayout>} />
+          <Route path="/privacy" element={<AppLayout><PrivacyPolicy /></AppLayout>} />
+          <Route path="/terms" element={<AppLayout><TermsAndConditions /></AppLayout>} />
+          
+          {/* Authenticated Protected Routes */}
+          <Route 
+            path="/creator-tools" 
+            element={
+              <AuthGuard>
                 <AppLayout>
-                  <TempUploadPortal />
+                  <CreatorTools />
                 </AppLayout>
-              </RoleGuard>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/youtube-dashboard" 
-          element={
-            <AuthGuard>
-              <RoleGuard allowedCategories={['yt_influencer']}>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/community" 
+            element={
+              <AuthGuard>
                 <AppLayout>
-                  <YTDashboard />
+                  <Community />
                 </AppLayout>
-              </RoleGuard>
-            </AuthGuard>
-          } 
-        />
-        <Route 
-          path="/youtube-dashboard/:channelId" 
-          element={
-            <AuthGuard>
-              <RoleGuard allowedCategories={['yt_influencer']}>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/community/:communityId" 
+            element={
+              <AuthGuard>
                 <AppLayout>
-                  <YTDashboard />
+                  <CommunityRoom />
                 </AppLayout>
-              </RoleGuard>
-            </AuthGuard>
-          } 
-        />
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/polls/create" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <CreatePoll />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/home" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Home />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/stories/:storyId" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Home />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/explore" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Explore />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/communication-hub" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <CommunicationHub />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/nearby" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Nearby />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/reels" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <PlaceholderPage title="Reels" />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/jobs" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <PlaceholderPage title="Jobs" />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/chats" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <PlaceholderPage title="Chats" />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/notifications" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Notifications />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Profile />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/creator/:userId" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <CreatorProfilePage />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/channel/:channelId" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <ChannelProfilePage />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/subscription" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Subscription />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <Settings />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/create" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <CreateContent />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/upload-portal" 
+            element={
+              <AuthGuard>
+                <RoleGuard allowedCategories={['yt_influencer', 'video_editor', 'singer', 'dancer', 'videographer', 'photographer', 'actor', 'musician', 'fitness_expert', 'rent_service']}>
+                  <AppLayout>
+                    <TempUploadPortal />
+                  </AppLayout>
+                </RoleGuard>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/youtube-dashboard" 
+            element={
+              <AuthGuard>
+                <RoleGuard allowedCategories={['yt_influencer']}>
+                  <AppLayout>
+                    <YTDashboard />
+                  </AppLayout>
+                </RoleGuard>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/youtube-dashboard/:channelId" 
+            element={
+              <AuthGuard>
+                <RoleGuard allowedCategories={['yt_influencer']}>
+                  <AppLayout>
+                    <YTDashboard />
+                  </AppLayout>
+                </RoleGuard>
+              </AuthGuard>
+            } 
+          />
 
-
-        {/* Catch-all redirect */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </main>
   );
 }

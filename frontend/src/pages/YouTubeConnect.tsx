@@ -540,7 +540,7 @@ export default function YouTubeConnect() {
                   </>
                 ) : (
                   <>
-                    <span className="w-7 h-7 rounded-lg bg-black/10 flex items-center justify-center">
+                    <span className="w-7 h-7 rounded-lg bg-black/90 flex items-center justify-center">
                       <Play size={14} className="fill-current text-current ml-0.5" />
                     </span>
                     <span>Connect YouTube Channel</span>
