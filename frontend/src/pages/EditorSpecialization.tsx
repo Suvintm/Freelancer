@@ -182,7 +182,6 @@ export default function EditorSpecialization() {
     }, 350);
   };
 
-  const totalSelections = selectedSpecs.length + selectedSoftware.length;
   const expTierObj = useMemo(
     () => EXPERIENCE_TIERS.find((t) => t.value === experienceYears) || EXPERIENCE_TIERS[1],
     [experienceYears]
