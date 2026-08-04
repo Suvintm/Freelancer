@@ -50,6 +50,7 @@ export interface TempSignupData {
   youtubeChannels?: Array<{
     channelId: string;
     channelName: string;
+    channelHandle?: string | null;
     thumbnailUrl?: string | null;
     subscriberCount?: number | string;
     videoCount?: number | string;

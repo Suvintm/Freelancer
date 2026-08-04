@@ -522,6 +522,101 @@ export default function YouTubeConnect() {
               </p>
             </div>
 
+            {/* ── MOBILE ONLY: Red Theme Fetched Channel Card ── */}
+            {connected && (
+              <div className="w-full lg:hidden pt-2">
+                <div className="w-full max-w-md mx-auto bg-gradient-to-br from-[#E60000] via-[#D00000] to-[#B00000] rounded-3xl border border-red-500/40 shadow-[0_20px_50px_rgba(220,38,38,0.25)] p-4 sm:p-5 space-y-4 text-left relative overflow-hidden">
+                  {/* Subtle Top-Right Ambient Glow */}
+                  <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+
+                  {/* Top Status Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-white/15 relative z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-white text-red-600 flex items-center justify-center shadow-xs">
+                        <Play size={12} className="fill-red-600 ml-0.5" />
+                      </div>
+                      <span className="text-xs font-black tracking-wide text-white uppercase">
+                        Connected Channel
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Verified</span>
+                    </div>
+                  </div>
+
+                  {/* Channel Details */}
+                  {youtubeDiscovery.channels.map((channel) => (
+                    <div
+                      key={channel.channelId}
+                      className="p-3.5 rounded-2xl bg-black/25 backdrop-blur-md border border-white/15 space-y-3 relative z-10"
+                    >
+                      {/* Identity Row */}
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={channel.thumbnailUrl || 'https://via.placeholder.com/80'}
+                          alt={channel.channelName}
+                          className="w-13 h-13 rounded-2xl object-cover border-2 border-white shadow-md shrink-0"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-sm font-black text-white truncate tracking-tight">
+                              {channel.channelName}
+                            </h4>
+                            <div className="w-4 h-4 rounded-full bg-white text-red-600 flex items-center justify-center shrink-0 shadow-xs">
+                              <Check size={10} strokeWidth={3.5} />
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-red-100/90 font-medium truncate mt-0.5">
+                            {channel.channelHandle || '@creator'}
+                          </p>
+
+                          <p className="text-[10px] text-white/60 font-mono truncate mt-0.5">
+                            ID: {channel.channelId}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Stat Metrics */}
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                        <div className="p-2.5 rounded-xl bg-white text-zinc-950 shadow-sm">
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <Users size={11} className="text-red-600" /> Subscribers
+                          </p>
+                          <p className="text-xs sm:text-sm font-black text-zinc-950 mt-0.5">
+                            {formatCount(channel.subscriberCount)}
+                          </p>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-white text-zinc-950 shadow-sm">
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <Video size={11} className="text-zinc-900" /> Videos
+                          </p>
+                          <p className="text-xs sm:text-sm font-black text-zinc-950 mt-0.5">
+                            {formatCount(channel.videoCount)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Continue Button */}
+                  <div className="pt-1 relative z-10">
+                    <Button
+                      onClick={handleNext}
+                      className="w-full h-12 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
+                    >
+                      <span>Continue to Select Niche</span>
+                      <ArrowRight size={15} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Primary Action Button (CTA) */}
             <div className="w-full sm:max-w-md pt-2 space-y-3">
               <Button
@@ -610,56 +705,95 @@ export default function YouTubeConnect() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-6 w-full flex flex-col items-center justify-center relative py-4"
+            className={`w-full flex-col items-center justify-center relative py-4 ${
+              connected ? 'hidden lg:flex lg:col-span-6' : 'lg:col-span-6 flex'
+            }`}
           >
-            {/* Discovered Channels View (When Connected) */}
+            {/* Discovered Channels View (Desktop only when connected) */}
             {connected ? (
-              <div className="w-full max-w-md bg-white rounded-3xl border border-zinc-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.08)] p-6 space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-wider text-zinc-900">
-                      Channel Discovered
+              <div className="w-full max-w-md bg-gradient-to-br from-[#E60000] via-[#D00000] to-[#B00000] rounded-3xl border border-red-500/40 shadow-[0_20px_50px_rgba(220,38,38,0.25)] p-6 space-y-5 text-left relative overflow-hidden">
+                {/* Subtle Top-Right Ambient Glow */}
+                <div className="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+
+                {/* Top Status Header */}
+                <div className="flex items-center justify-between pb-3.5 border-b border-white/15 relative z-10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-white text-red-600 flex items-center justify-center shadow-xs">
+                      <Play size={13} className="fill-red-600 ml-0.5" />
+                    </div>
+                    <span className="text-sm font-black tracking-wide text-white uppercase">
+                      Connected Channel
                     </span>
                   </div>
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    Verified
-                  </span>
+
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-xs font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Verified</span>
+                  </div>
                 </div>
 
+                {/* Channel Details */}
                 {youtubeDiscovery.channels.map((channel) => (
                   <div
                     key={channel.channelId}
-                    className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center gap-4"
+                    className="p-4 rounded-2xl bg-black/25 backdrop-blur-md border border-white/15 space-y-3.5 relative z-10"
                   >
-                    <img
-                      src={channel.thumbnailUrl || 'https://via.placeholder.com/80'}
-                      alt={channel.channelName}
-                      className="w-16 h-16 rounded-xl object-cover border border-white shadow-sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-base font-bold text-zinc-900 truncate">
-                        {channel.channelName}
-                      </h4>
-                      <p className="text-xs text-zinc-500 font-medium">{channel.channelHandle || '@creator'}</p>
-                      
-                      <div className="flex items-center gap-3 mt-2 text-xs font-bold text-zinc-700">
-                        <span className="flex items-center gap-1 text-red-600">
-                          <Users size={13} /> {formatCount(channel.subscriberCount)}
-                        </span>
-                        <span className="text-zinc-300">•</span>
-                        <span className="flex items-center gap-1 text-zinc-600">
-                          <Video size={13} /> {formatCount(channel.videoCount)} videos
-                        </span>
+                    {/* Identity Row */}
+                    <div className="flex items-center gap-3.5">
+                      <img
+                        src={channel.thumbnailUrl || 'https://via.placeholder.com/80'}
+                        alt={channel.channelName}
+                        className="w-15 h-15 rounded-2xl object-cover border-2 border-white shadow-md shrink-0"
+                      />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-base font-black text-white truncate tracking-tight">
+                            {channel.channelName}
+                          </h4>
+                          <div className="w-4 h-4 rounded-full bg-white text-red-600 flex items-center justify-center shrink-0 shadow-xs">
+                            <Check size={11} strokeWidth={3.5} />
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-red-100/90 font-medium truncate mt-0.5">
+                          {channel.channelHandle || '@creator'}
+                        </p>
+
+                        <p className="text-[11px] text-white/60 font-mono truncate mt-0.5">
+                          ID: {channel.channelId}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Stat Metrics */}
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                      <div className="p-3 rounded-xl bg-white text-zinc-950 shadow-sm">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                          <Users size={12} className="text-red-600" /> Subscribers
+                        </p>
+                        <p className="text-sm sm:text-base font-black text-zinc-950 mt-0.5">
+                          {formatCount(channel.subscriberCount)}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white text-zinc-950 shadow-sm">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                          <Video size={12} className="text-zinc-900" /> Videos
+                        </p>
+                        <p className="text-sm sm:text-base font-black text-zinc-950 mt-0.5">
+                          {formatCount(channel.videoCount)}
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))}
 
-                <div className="pt-2">
+                {/* Continue Button */}
+                <div className="pt-1 relative z-10">
                   <Button
                     onClick={handleNext}
-                    className="w-full h-13 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 font-bold text-sm flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full h-13 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
                   >
                     <span>Continue to Select Niche</span>
                     <ArrowRight size={16} />
