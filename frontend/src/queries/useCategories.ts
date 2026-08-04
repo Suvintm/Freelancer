@@ -8,8 +8,8 @@ export const useCategories = () => {
   const query = useQuery({
     queryKey: CATEGORIES_QUERY_KEY,
     queryFn: categoryService.fetchCategories,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 60 * 60 * 1000,    // 1 hour
+    staleTime: 4 * 60 * 60 * 1000, // 4 hours in-memory client cache
+    gcTime: 24 * 60 * 60 * 1000,   // 24 hours garbage collection
   });
 
   const getCategoryBySlug = (slug: string): RoleCategory | undefined => {

@@ -322,4 +322,83 @@ html.lenis, html.lenis body { height: auto; }
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Hardware acceleration layer */
+  .gpu-layer {
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* Ultra-smooth GPU floating keyframes */
+  .animate-float-1 {
+    animation: floatGpu1 5.2s ease-in-out infinite;
+  }
+  .animate-float-2 {
+    animation: floatGpu2 5.8s ease-in-out infinite 0.7s;
+  }
+  .animate-float-3 {
+    animation: floatGpu3 6.2s ease-in-out infinite 1.2s;
+  }
+  .animate-float-4 {
+    animation: floatGpu4 4.8s ease-in-out infinite 0.3s;
+  }
+  .animate-float-5 {
+    animation: floatGpu5 5.5s ease-in-out infinite 1.5s;
+  }
+  .animate-hub-pulse {
+    animation: hubPulseGpu 3.2s ease-in-out infinite;
+  }
+  .animate-sparkle-spin {
+    animation: sparkleSpinGpu 2.5s ease-in-out infinite;
+  }
+  .animate-thought-bubble {
+    animation: thoughtBubbleGpu 7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes floatGpu1 {
+  0%, 100% { transform: translate3d(0, 0px, 0) rotate(-5deg); }
+  50% { transform: translate3d(0, -9px, 0) rotate(-4deg); }
+}
+
+@keyframes floatGpu2 {
+  0%, 100% { transform: translate3d(0, 0px, 0) rotate(5deg); }
+  50% { transform: translate3d(0, -10px, 0) rotate(6deg); }
+}
+
+@keyframes floatGpu3 {
+  0%, 100% { transform: translate3d(0, 0px, 0) rotate(-3deg); }
+  50% { transform: translate3d(0, -8px, 0) rotate(-2deg); }
+}
+
+@keyframes floatGpu4 {
+  0%, 100% { transform: translate3d(0, 0px, 0) rotate(2deg); }
+  50% { transform: translate3d(0, -10px, 0) rotate(3deg); }
+}
+
+@keyframes floatGpu5 {
+  0%, 100% { transform: translate3d(0, 0px, 0) rotate(4deg); }
+  50% { transform: translate3d(0, -9px, 0) rotate(5deg); }
+}
+
+@keyframes hubPulseGpu {
+  0%, 100% { transform: scale3d(1, 1, 1) rotate(0deg); }
+  50% { transform: scale3d(1.06, 1.06, 1) rotate(1deg); }
+}
+
+@keyframes sparkleSpinGpu {
+  0% { transform: scale3d(0, 0, 1) rotate(0deg); opacity: 0; }
+  25% { transform: scale3d(1.2, 1.2, 1) rotate(90deg); opacity: 1; }
+  50% { transform: scale3d(0.8, 0.8, 1) rotate(180deg); opacity: 0.6; }
+  75% { transform: scale3d(1.2, 1.2, 1) rotate(270deg); opacity: 1; }
+  100% { transform: scale3d(0, 0, 1) rotate(360deg); opacity: 0; }
+}
+
+@keyframes thoughtBubbleGpu {
+  0% { opacity: 0; transform: translate3d(0, 30px, 0) scale(0.85); }
+  12% { opacity: 1; transform: translate3d(0, 0px, 0) scale(1); }
+  85% { opacity: 1; transform: translate3d(0, -60px, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0, -90px, 0) scale(0.9); }
 }

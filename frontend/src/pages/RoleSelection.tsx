@@ -1,27 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import {
   Info,
   Check,
   ArrowRight,
-  X
+  X,
+  Play,
+  Briefcase,
+  Star,
+  Layers,
+  Sparkles,
+  Flame,
+  Zap,
+  Award,
+  Film,
+  Music,
+  Mail,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { AuthBackground } from '../components/auth/AuthBackground';
 import { useDispatch } from 'react-redux';
 import { clearTempSignupData, setTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RoleCategory } from '../api/services/category.service';
 import logo from '../assets/lightlogo.png';
-import LottieComponent from "lottie-react";
+import LottieComponent from 'lottie-react';
+import loaderAnimation from '../assets/lottie/loader.json';
+
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
-import loaderAnimation from "../assets/lottie/loader.json";
-// Import assets for high-fidelity thumbnails
+
+// ── HIGH-FIDELITY THUMBNAILS & OVERLAY ASSETS ──────────────────────────────
 import youtubeThumb from '../assets/categories/youtube.jpg';
 import youtubeIcon from '../assets/categories/youtubeicon.png';
 import clientThumb from '../assets/categories/client.jpg';
+import normalUserIcon from '../assets/categories/normaluser.png';
 import fitnessThumb from '../assets/categories/fitness.jpg';
 import fitnessIcon from '../assets/categories/fitnessicon.png';
 import dancerThumb from '../assets/categories/dancer.jpg';
@@ -35,71 +49,250 @@ import editingIcon from '../assets/categories/editing.png';
 import rentalsThumb from '../assets/categories/rentals.jpg';
 import rentalIcon from '../assets/categories/rental.png';
 import photographerThumb from '../assets/categories/photographer.jpg';
+import photographerIcon from '../assets/categories/photographer copy.png';
 import videographerThumb from '../assets/categories/videographer.jpg';
 import musicianThumb from '../assets/categories/musician.jpg';
 import actorThumb from '../assets/categories/actor.jpg';
+import actorsIcon from '../assets/categories/actors.png';
 
+// Priority ordering for roles
 const CATEGORY_ORDER = [
-  'user',             // Normal User
   'creator',          // YouTube Creator
   'editor',           // Video Editor
   'brand',            // Brand & Sponsor
+  'user',             // Normal User / Client
   'direct_client',    // Legacy Normal User
   'yt_influencer',    // Legacy YouTube
   'video_editor',     // Legacy Video Editor
   'social_promoter',  // Legacy Ads & Promotions
-  'fitness_expert',   // Gym / Fitness Pro
-  'singer',           // Singer
-  'dancer',           // Dance
-  'rent_service',
   'photographer',
   'videographer',
   'musician',
-  'actor'
+  'actor',
+  'singer',
+  'dancer',
+  'fitness_expert',
+  'rent_service',
 ];
 
+interface RolePerksInfo {
+  tagline: string;
+  badge: string;
+  badgeIcon: 'viral' | 'growth' | 'verified' | 'award' | 'film' | 'music' | 'star';
+  perks: string[];
+  group: 'creator' | 'business' | 'talent' | 'all';
+}
+
+const ROLE_METADATA: Record<string, RolePerksInfo> = {
+  creator: {
+    tagline: 'Supercharge your YouTube channel with AI SEO, verified brand sponsorships, and elite video editors.',
+    badge: 'YouTube Certified',
+    badgeIcon: 'verified',
+    perks: ['YouTube API Channel Sync', 'Direct Brand Deal Matching', 'Vetted Video Editor Network', 'Viral Title & SEO Generator'],
+    group: 'creator',
+  },
+  yt_influencer: {
+    tagline: 'Supercharge your YouTube channel with AI SEO, verified brand sponsorships, and elite video editors.',
+    badge: 'YouTube Certified',
+    badgeIcon: 'verified',
+    perks: ['YouTube API Channel Sync', 'Direct Brand Deal Matching', 'Vetted Video Editor Network', 'Viral Title & SEO Generator'],
+    group: 'creator',
+  },
+  editor: {
+    tagline: 'Edit for top YouTube creators, secure long-term monthly retainers, and receive guaranteed escrow payouts.',
+    badge: 'High Demand',
+    badgeIcon: 'growth',
+    perks: ['Direct Creator Contracts', 'Escrow Milestone Protection', 'Portfolio Showcase', 'Project Collaboration Hub'],
+    group: 'creator',
+  },
+  video_editor: {
+    tagline: 'Edit for top YouTube creators, secure long-term monthly retainers, and receive guaranteed escrow payouts.',
+    badge: 'High Demand',
+    badgeIcon: 'growth',
+    perks: ['Direct Creator Contracts', 'Escrow Milestone Protection', 'Portfolio Showcase', 'Project Collaboration Hub'],
+    group: 'creator',
+  },
+  brand: {
+    tagline: 'Launch high-converting influencer campaigns with YouTube creators and track transparent ROI analytics.',
+    badge: 'Enterprise',
+    badgeIcon: 'award',
+    perks: ['Verified Creator Marketplace', 'Custom Campaign Bidding', 'Automated Escrow Contracts', 'Real-time Conversion Analytics'],
+    group: 'business',
+  },
+  social_promoter: {
+    tagline: 'Launch high-converting influencer campaigns with YouTube creators and track transparent ROI analytics.',
+    badge: 'Enterprise',
+    badgeIcon: 'award',
+    perks: ['Verified Creator Marketplace', 'Custom Campaign Bidding', 'Automated Escrow Contracts', 'Real-time Conversion Analytics'],
+    group: 'business',
+  },
+  user: {
+    tagline: 'Hire top-tier creative talent, editors, photographers, and studios for your custom projects.',
+    badge: 'Client & Hirer',
+    badgeIcon: 'star',
+    perks: ['10,000+ Vetted Creatives', 'Milestone-based Payments', 'Fast Turnaround Delivery', '24/7 Dedicated Support'],
+    group: 'business',
+  },
+  direct_client: {
+    tagline: 'Hire top-tier creative talent, editors, photographers, and studios for your custom projects.',
+    badge: 'Client & Hirer',
+    badgeIcon: 'star',
+    perks: ['10,000+ Vetted Creatives', 'Milestone-based Payments', 'Fast Turnaround Delivery', '24/7 Dedicated Support'],
+    group: 'business',
+  },
+  photographer: {
+    tagline: 'Showcase your photography portfolio, book high-value commercial shoots, and collaborate with brands.',
+    badge: 'Photography',
+    badgeIcon: 'award',
+    perks: ['Visual Portfolio Gallery', 'Client Booking Calendar', 'Secure Deposit Protection', 'Commercial Licensing Tools'],
+    group: 'talent',
+  },
+  videographer: {
+    tagline: 'Get booked for music videos, brand commercials, YouTube productions, and documentary shoots.',
+    badge: 'Production',
+    badgeIcon: 'film',
+    perks: ['Production Reel Showcase', 'Crew & Gear Collaboration', 'Milestone Escrow Contracts', 'Direct Client Bidding'],
+    group: 'talent',
+  },
+  musician: {
+    tagline: 'License original tracks, compose for creators and films, and book live studio sessions.',
+    badge: 'Music & Audio',
+    badgeIcon: 'music',
+    perks: ['Audio Track Licensing', 'Custom Beat Bidding', 'Creator Collaboration', 'Royalty Management'],
+    group: 'talent',
+  },
+  actor: {
+    tagline: 'Audition for commercial spots, digital series, brand ads, and creator film projects.',
+    badge: 'Screen Talent',
+    badgeIcon: 'film',
+    perks: ['Headshot & Reel Profile', 'Verified Casting Calls', 'Direct Director Contact', 'Fast-track Booking'],
+    group: 'talent',
+  },
+  singer: {
+    tagline: 'Connect with producers, vocal projects, and brand campaigns for commercial voice & music.',
+    badge: 'Vocal Artist',
+    badgeIcon: 'music',
+    perks: ['Vocal Sample Showcase', 'Commercial Voice Bids', 'Studio Session Bookings', 'Escrow Payments'],
+    group: 'talent',
+  },
+  dancer: {
+    tagline: 'Book music video appearances, choreograph for brands, and collaborate on viral creator content.',
+    badge: 'Dance & Motion',
+    badgeIcon: 'viral',
+    perks: ['Choreography Reels', 'Viral Campaign Auditions', 'Direct Booking Flow', 'Instant Deposits'],
+    group: 'talent',
+  },
+  fitness_expert: {
+    tagline: 'Offer online coaching, partner with nutrition brands, and build your digital wellness business.',
+    badge: 'Fitness Pro',
+    badgeIcon: 'growth',
+    perks: ['Coaching Client Manager', 'Brand Sponsorship Hub', 'Custom Program Delivery', 'Direct Subscription Pay'],
+    group: 'talent',
+  },
+  rent_service: {
+    tagline: 'List your camera gear, studio spaces, and production rentals to verified creators.',
+    badge: 'Studio & Gear',
+    badgeIcon: 'award',
+    perks: ['Gear Inventory Manager', 'Deposit Security & Insurance', 'Instant Booking Requests', 'Verified Renter IDs'],
+    group: 'talent',
+  },
+};
+
+const DEFAULT_METADATA: RolePerksInfo = {
+  tagline: 'Discover tailored opportunities, verified collaborations, and seamless escrow payments on SuviX.',
+  badge: 'Creative Pro',
+  badgeIcon: 'star',
+  perks: ['Verified Identity Badge', 'Direct Client Bidding', 'Escrow Payment Protection', '24/7 Priority Support'],
+  group: 'all',
+};
+
+type FilterTab = 'all' | 'creator' | 'business' | 'talent';
+
+// Framer Motion Animation Variants for Staggered Entrance
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.035,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      damping: 22,
+      stiffness: 280,
+    },
+  },
+};
+
 export default function RoleSelection() {
+  // Initial state: NO role pre-selected
   const [selected, setSelected] = useState<string | null>(null);
   const [infoCategory, setInfoCategory] = useState<RoleCategory | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const navigate = useNavigate();
-  
   const dispatch = useDispatch();
-  const { categories, isLoading, error, refetch } = useCategories();
-  const selectedCategory = categories.find(c => c.id === selected);
 
-  // 🔐 PRODUCTION: Clear ALL stale onboarding data when landing on role selection.
-  // This prevents the stale-state contamination bug where a previous session's
-  // tempSignupData (e.g. yt_influencer role) corrupts a new login attempt.
+  const { categories, isLoading, error, refetch } = useCategories();
+
+  // Clear stale onboarding state on landing
   useEffect(() => {
     dispatch(clearTempSignupData());
   }, [dispatch]);
 
+  const selectedCategory = useMemo(() => {
+    return categories.find((c) => c.id === selected) || null;
+  }, [categories, selected]);
+
+  // Category thumbnail & overlay asset resolver
   const getCategoryAssets = (slug: string) => {
-    switch(slug) {
+    switch (slug) {
       case 'user':
-      case 'direct_client': return { thumb: clientThumb, overlay: null };
+      case 'direct_client':
+        return { thumb: clientThumb, overlay: normalUserIcon };
       case 'creator':
-      case 'yt_influencer': return { thumb: youtubeThumb, overlay: youtubeIcon };
+      case 'yt_influencer':
+        return { thumb: youtubeThumb, overlay: youtubeIcon };
       case 'editor':
-      case 'video_editor': return { thumb: editorThumb, overlay: editingIcon };
+      case 'video_editor':
+        return { thumb: editorThumb, overlay: editingIcon };
       case 'brand':
-      case 'social_promoter': return { thumb: promotionsThumb, overlay: adsIcon };
-      case 'fitness_expert': return { thumb: fitnessThumb, overlay: fitnessIcon };
-      case 'dancer': return { thumb: dancerThumb, overlay: dancerIcon };
-      case 'singer': return { thumb: singerThumb, overlay: singerIcon };
-      case 'rent_service': return { thumb: rentalsThumb, overlay: rentalIcon };
-      case 'photographer': return { thumb: photographerThumb, overlay: null };
-      case 'videographer': return { thumb: videographerThumb, overlay: null };
-      case 'musician': return { thumb: musicianThumb, overlay: null };
-      case 'actor': return { thumb: actorThumb, overlay: null };
-      default: return { thumb: clientThumb, overlay: null };
+      case 'social_promoter':
+        return { thumb: promotionsThumb, overlay: adsIcon };
+      case 'fitness_expert':
+        return { thumb: fitnessThumb, overlay: fitnessIcon };
+      case 'dancer':
+        return { thumb: dancerThumb, overlay: dancerIcon };
+      case 'singer':
+        return { thumb: singerThumb, overlay: singerIcon };
+      case 'rent_service':
+        return { thumb: rentalsThumb, overlay: rentalIcon };
+      case 'photographer':
+        return { thumb: photographerThumb, overlay: photographerIcon };
+      case 'videographer':
+        return { thumb: videographerThumb, overlay: null };
+      case 'musician':
+        return { thumb: musicianThumb, overlay: null };
+      case 'actor':
+        return { thumb: actorThumb, overlay: actorsIcon };
+      default:
+        return { thumb: clientThumb, overlay: null };
     }
   };
 
   /**
-   * Helper to identify role type
+   * Identifies the primary role classification
    */
-  const getRoleType = (cat?: RoleCategory) => {
+  const getRoleType = (cat?: RoleCategory | null) => {
     if (!cat) return 'user';
     const slug = cat.slug || '';
     const mapsTo = cat.maps_to_role || '';
@@ -110,8 +303,7 @@ export default function RoleSelection() {
   };
 
   /**
-   * PRODUCTION: User chose Email signup.
-   * Sets role + step + authMethod in tempSignupData, then navigates to the correct next step.
+   * Handle Email Registration Flow
    */
   const handleEmailSignup = () => {
     if (!selected || !selectedCategory) return;
@@ -136,26 +328,18 @@ export default function RoleSelection() {
     dispatch(setTempSignupData(signupData));
 
     if (roleType === 'creator') {
-      // YouTube creators connect their channel before filling personal details
       navigate('/youtube-connect');
     } else if (roleType === 'editor') {
-      // Video editors pick specializations & software before details
       navigate('/editor-specialization');
     } else if (roleType === 'brand') {
-      // Enterprise Brands & Sponsors configure company profile & industry vertical
       navigate('/brand-details');
     } else {
-      // Normal Users go straight to signup form!
       navigate('/signup');
     }
   };
 
   /**
-   * PRODUCTION: User chose Google signup.
-   * Sets role + intent + authMethod in tempSignupData BEFORE triggering OAuth.
-   * This is the ONLY correct place to trigger Google OAuth for new users.
-   * The intent='register' + categorySlug allows OAuthSuccess to route correctly
-   * without relying on stale localStorage data.
+   * Handle Google OAuth Registration Flow
    */
   const handleGoogleSignup = () => {
     if (!selected || !selectedCategory) return;
@@ -181,318 +365,411 @@ export default function RoleSelection() {
       // ignore
     }
 
-    // Save role context BEFORE redirect
     dispatch(setTempSignupData(signupData));
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 
     if (roleType === 'creator') {
-      // YouTube flow: request YouTube-scoped OAuth
       window.location.href = `${apiUrl}/auth/google/youtube`;
     } else {
-      // Standard profile-scoped OAuth for all other roles (User, Editor, Brand)
       window.location.href = `${apiUrl}/auth/google`;
     }
   };
 
-  const sortedCategories = CATEGORY_ORDER.map(slug => categories.find(c => c.slug === slug)).filter((c): c is RoleCategory => !!c);
-  const remainingCategories = categories.filter(c => !CATEGORY_ORDER.includes(c.slug));
-  const finalDisplayCategories = [...sortedCategories, ...remainingCategories];
+  // Sort and filter categories
+  const sortedCategories = useMemo(() => {
+    const ordered = CATEGORY_ORDER.map((slug) => categories.find((c) => c.slug === slug)).filter(
+      (c): c is RoleCategory => !!c
+    );
+    const remaining = categories.filter((c) => !CATEGORY_ORDER.includes(c.slug));
+    return [...ordered, ...remaining];
+  }, [categories]);
 
-  console.log("Lottie:", Lottie);
-  console.log("Loader:", loaderAnimation);
+  const filteredCategories = useMemo(() => {
+    if (activeFilter === 'all') return sortedCategories;
+    return sortedCategories.filter((cat) => {
+      const meta = ROLE_METADATA[cat.slug] || DEFAULT_METADATA;
+      if (activeFilter === 'creator') return meta.group === 'creator';
+      if (activeFilter === 'business') return meta.group === 'business';
+      if (activeFilter === 'talent') return meta.group === 'talent';
+      return true;
+    });
+  }, [sortedCategories, activeFilter]);
 
   return (
-    <div className="flex h-[100dvh] w-full bg-gray-50 font-sans overflow-hidden relative text-gray-900">
-      {/* Visual Side (Left) */}
-      <div className="hidden lg:flex lg:w-[40%] p-8 bg-white overflow-hidden relative">
-        <AuthBackground />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent z-10" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent z-10" />
-        <div className="absolute inset-y-0 right-0 w-48 bg-gradient-to-l from-gray-50 to-transparent z-10" />
+    <div className="min-h-screen w-full bg-[#fcfcfd] text-zinc-900 flex flex-col relative overflow-x-hidden selection:bg-zinc-900 selection:text-white font-sans">
+      {/* ── ARCHITECTURAL LIGHT CANVAS ────────────────────────────────────── */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Subtle geometric light grid */}
+        <div
+          className="absolute inset-0 opacity-[0.38]"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(228, 228, 231, 0.7) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(228, 228, 231, 0.7) 1px, transparent 1px)
+            `,
+            backgroundSize: '40px 40px',
+          }}
+        />
+
+        {/* Ambient Top Glow */}
+        <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[70rem] h-[28rem] bg-gradient-to-b from-zinc-200/50 via-zinc-100/20 to-transparent rounded-full blur-[130px]" />
       </div>
 
-      {/* Mobile Background */}
-      <div className="lg:hidden absolute inset-0 z-0 bg-gray-50">
-        <AuthBackground />
-        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gray-50 z-10" />
-        <div className="absolute inset-x-0 bottom-[60%] h-48 bg-gradient-to-t from-gray-50 to-transparent z-10" />
-      </div>
+      {/* ── TOP HEADER / LOGO BAR ─────────────────────────────────────────── */}
+      <header className="relative z-50 w-full px-4 sm:px-8 md:px-12 pt-4 pb-2 max-w-7xl mx-auto flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img
+              src={logo}
+              alt="SuviX"
+              className="h-8 sm:h-9 w-auto object-contain opacity-95 cursor-pointer"
+              onClick={() => navigate('/')}
+            />
+          </div>
 
-      {/* Content Side (Right) */}
-      <div 
-        className="flex-1 lg:flex-none lg:w-[60%] flex flex-col h-full overflow-hidden z-20 bg-gray-50 relative"
-      >
-        {/* Header */}
-        <div className="sticky top-0 z-50 pt-6 pb-8 md:pt-8 md:pb-12 px-6 md:px-12 lg:px-16 flex flex-col lg:flex-row lg:items-start justify-between pointer-events-none">
-          {/* Blurred Background with Fade-out Mask */}
-          <div 
-             className="absolute inset-0 bg-white/60 backdrop-blur-md -z-10 pointer-events-none"
-             style={{ 
-               maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)', 
-               WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)' 
-             }}
-          />
-          
-          <div className="space-y-3 pointer-events-auto w-full">
-            {/* Top Row: Logo & Mobile Sign In */}
-            <div className="flex justify-between items-start w-full">
-              <img src={logo} alt="SuviX" className="h-8 md:h-9 lg:h-10 w-auto opacity-95" />
-              
-              {/* Mobile Sign In (Top Right) */}
-              <div className="flex lg:hidden flex-col items-end gap-1">
-                <span className="text-[10px] text-gray-500 font-medium leading-none">Already a member?</span>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="px-4 py-1.5 rounded-lg bg-black text-white text-[11px] font-bold shadow-sm"
-                >
-                  Sign In
-                </button>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-xs font-semibold text-zinc-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
+              <span>Step 1 of 3</span>
             </div>
-            <div className="space-y-1">
-              <h1 className="font-welcome text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight tracking-tight">
-                Start your <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-400">new chapter.</span>
-              </h1>
-              <p className="text-gray-500 text-xs md:text-sm max-w-lg leading-relaxed font-medium">
-                Choose your role first. Everything else follows.
-              </p>
+
+            <div className="flex items-center gap-2">
+              <span className="hidden md:inline text-xs text-zinc-500 font-medium">Already a member?</span>
+              <button
+                onClick={() => navigate('/login')}
+                className="h-9 px-4 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-xs transition-all active:scale-95 shadow-xs cursor-pointer"
+              >
+                Sign In
+              </button>
             </div>
           </div>
-          {/* Link to Login for returning users */}
-          <div className="hidden lg:flex items-center gap-2 mt-2 lg:mt-0 pointer-events-auto">
-            <span className="text-xs text-gray-500 font-medium">Already a member?</span>
+        </div>
+
+        {/* Back Button below logo (Visible on both Mobile & Laptop View) */}
+        <div>
+          <button
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-200/90 text-zinc-700 hover:text-zinc-950 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer group"
+          >
+            <ArrowLeft size={14} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ── MAIN CONTENT CONTAINER ────────────────────────────────────────── */}
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-2 pb-36 sm:pb-32 relative z-10 flex flex-col items-center">
+        
+        {/* Clean, Simple Hero Header */}
+        <div className="text-center space-y-2 mb-6 max-w-xl mx-auto">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-700 text-[11px] font-semibold">
+            <span>Account Setup</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
+            Choose your role to get started
+          </h1>
+
+          <p className="text-zinc-500 text-xs sm:text-sm leading-relaxed font-normal">
+            Select how you want to use SuviX. Your workspace tools and dashboard will adapt to your choice.
+          </p>
+        </div>
+
+        {/* Clean Filter Pills (Scrollbar Hidden) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl bg-white border border-zinc-200 shadow-xs mb-6 overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {(
+            [
+              { id: 'all', label: 'All Roles', icon: Layers },
+              { id: 'creator', label: 'Creators & Media', icon: Play },
+              { id: 'business', label: 'Brands & Business', icon: Briefcase },
+              { id: 'talent', label: 'Talent & Services', icon: Star },
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? 'bg-zinc-950 text-white shadow-xs scale-[1.01]'
+                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                }`}
+              >
+                <Icon size={12} className={isActive ? 'text-white' : 'text-zinc-500'} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── STAGGERED COMPACT ROLE CARDS (Welcome Page Card Architecture) ── */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 w-full bg-white border border-zinc-200 rounded-3xl shadow-xs">
+            <Lottie animationData={loaderAnimation} loop className="w-28 h-28" />
+            <p className="text-zinc-500 font-bold tracking-widest uppercase text-[10px] mt-1">
+              Loading Roles...
+            </p>
+          </div>
+        ) : error || filteredCategories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center w-full bg-white border border-zinc-200 rounded-3xl shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mb-3">
+              <Info className="w-5 h-5 text-rose-500" />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 mb-1">No Roles Found</h3>
+            <p className="text-zinc-500 text-xs max-w-sm mb-4 leading-relaxed">
+              Unable to load categories for this filter. Please refresh or try again.
+            </p>
             <button
-              onClick={() => navigate('/login')}
-              className="px-4 py-2 rounded-xl bg-black text-white text-[11px] font-bold hover:bg-gray-900 transition-colors shadow-sm"
+              onClick={() => refetch()}
+              className="px-4 py-1.5 rounded-xl bg-zinc-950 text-white font-bold text-xs hover:bg-zinc-800 active:scale-95 transition-all shadow-xs"
             >
-              Sign In
+              Reload Roles
             </button>
           </div>
-        </div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5 md:gap-4"
+          >
+            {filteredCategories.map((item) => {
+              const isSelected = selected === item.id;
+              const assets = getCategoryAssets(item.slug);
+              const meta = ROLE_METADATA[item.slug] || DEFAULT_METADATA;
 
-        {/* Categories Grid */}
-        <div className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 pb-48 lg:pb-40 scroll-smooth custom-scrollbar">
-          <div className="max-w-6xl mx-auto py-8">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-24">
-               <Lottie
-                animationData={loaderAnimation}
-                loop
-                className="w-44 h-44"
-              />
-                <p className="text-gray-500 font-bold tracking-widest uppercase text-[10px]">Loading Roles...</p>
-              </div>
-            ) : error || finalDisplayCategories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 px-6 max-w-md mx-auto text-center bg-white border border-gray-200 rounded-[32px] p-8 lg:p-10 shadow-xl">
-                <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-6">
-                  <Info className="w-7 h-7 text-rose-500" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Connection Delayed</h3>
-                <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                  We are having trouble loading the workspace roles from the server. Please check your network connection or try reloading.
-                </p>
-                <button 
-                  onClick={() => refetch()}
-                  className="px-6 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
+              return (
+                <motion.div
+                  key={item.id}
+                  variants={cardVariants}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelected(item.id)}
+                  className={`group cursor-pointer rounded-2xl sm:rounded-3xl overflow-hidden border p-1.5 sm:p-2 flex flex-col justify-between transition-all duration-200 select-none bg-white ${
+                    isSelected
+                      ? 'border-zinc-950 ring-2 ring-zinc-950/20 shadow-lg'
+                      : 'border-zinc-200/90 hover:border-zinc-400 shadow-xs hover:shadow-md'
+                  }`}
                 >
-                  Retry Connection
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 px-3 md:px-0 md:gap-6 lg:gap-8">
-                {finalDisplayCategories.map((item) => {
-                  const isSelected = selected === item.id;
-                  const assets = getCategoryAssets(item.slug);
-                  
-                  return (
-                    <motion.div
-                      key={item.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelected(item.id)}
-                      className={`relative group cursor-pointer aspect-[1/1.1] rounded-2xl overflow-hidden border transition-all duration-300 ${
-                        isSelected 
-                          ? 'border-black ring-4 ring-black/5 shadow-xl' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                  {/* Top Image Container (Welcome Card Visual Style) */}
+                  <div className="relative w-full aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border border-zinc-100/80">
+                    <img
+                      src={assets.thumb}
+                      alt={item.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+
+                    {/* Subtle Gradient for Overlays */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+                    {/* Micro Tag Chip at Top-Left */}
+                    <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs border border-white/20 text-white text-[8px] sm:text-[8.5px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                      {meta.badgeIcon === 'viral' && <Flame size={8} className="text-amber-400 fill-amber-400" />}
+                      {meta.badgeIcon === 'growth' && <Zap size={8} className="text-emerald-400 fill-emerald-400" />}
+                      {meta.badgeIcon === 'verified' && <Sparkles size={8} className="text-red-400" />}
+                      {meta.badgeIcon === 'award' && <Award size={8} className="text-yellow-400" />}
+                      {meta.badgeIcon === 'film' && <Film size={8} className="text-cyan-400" />}
+                      {meta.badgeIcon === 'music' && <Music size={8} className="text-pink-400" />}
+                      {meta.badgeIcon === 'star' && <Star size={8} className="text-amber-400" />}
+                      <span className="truncate max-w-[70px]">{meta.badge}</span>
+                    </div>
+
+                    {/* Top-Right Info Trigger */}
+                    <button
+                      className="absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-black/60 hover:bg-black/85 border border-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setInfoCategory(item);
+                      }}
+                      title="About this role"
                     >
-                      {/* Background Image */}
-                      <img 
-                        src={assets.thumb} 
-                        alt={item.name} 
-                        className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
-                          isSelected ? 'scale-105' : 'group-hover:scale-105'
-                        }`} 
+                      <Info size={10} />
+                    </button>
+
+                    {/* 3D Floating Overlay Badge */}
+                    {assets.overlay && (
+                      <img
+                        src={assets.overlay}
+                        alt=""
+                        className="absolute -bottom-1 -left-2 w-14 h-14 sm:w-16 sm:h-16 object-contain z-10 pointer-events-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)]"
                       />
+                    )}
 
-                      {/* Info Icon - Top Right */}
-                      <button 
-                        className="absolute top-3 right-3 z-20 bg-white/60 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-white hover:bg-white transition-colors"
-                        onClick={(e) => { e.stopPropagation(); setInfoCategory(item); }}
+                    {/* ── WHITE TICK ICON ON CENTER UPON SELECTION (NO BLUR) ── */}
+                    {isSelected && (
+                      <motion.div
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', damping: 22, stiffness: 350 }}
+                        className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none"
                       >
-                        <Info size={16} className="text-gray-700" />
-                      </button>
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-zinc-950/95 border-2 border-white flex items-center justify-center shadow-xl">
+                          <Check size={18} strokeWidth={3.5} className="text-white" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
 
-                      {/* Absolute Icon Overlay */}
-                      {assets.overlay && (
-                        <img 
-                          src={assets.overlay} 
-                          alt="" 
-                          className="absolute -bottom-2 -left-4 w-32 h-32 object-contain z-10 pointer-events-none drop-shadow-lg" 
-                        />
-                      )}
-
-                      {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 z-0 pointer-events-none" />
-
-                      {/* Label */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-5 flex items-center justify-between z-20">
-                        <span className="text-xs lg:text-[15px] font-semibold tracking-tight text-white drop-shadow-md">
-                          {item.name}
-                        </span>
-                        {isSelected && (
-                          <div className="bg-white p-1 rounded-full shadow-lg">
-                            <Check size={10} strokeWidth={3} className="text-black" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Selection State Tint */}
+                  {/* Dedicated Bottom Content Panel (Role Name & Subtitle Below Image) */}
+                  <div className="pt-2 pb-1 px-1 flex flex-col justify-between">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs sm:text-[13px] font-extrabold text-zinc-950 tracking-tight leading-tight truncate">
+                        {item.name}
+                      </span>
                       {isSelected && (
-                        <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-950 shrink-0" />
                       )}
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-zinc-400 truncate mt-0.5">
+                      {meta.tagline}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </main>
+
+      {/* ── BOTTOM ACTION BAR (Clean Responsive Dock with Big Laptop Buttons) ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-3 sm:p-4 md:p-5 bg-white/95 backdrop-blur-xl border-t border-zinc-200 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
+        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 md:gap-6">
+          
+          {/* Status Label */}
+          <div className="flex items-center gap-2.5">
+            <span
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                selectedCategory ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-300'
+              }`}
+            />
+            <span className="text-xs sm:text-sm font-semibold text-zinc-600">
+              {selectedCategory ? (
+                <>
+                  Selected Role: <span className="text-zinc-950 font-black">{selectedCategory.name}</span>
+                </>
+              ) : (
+                'Select a role above to enable signup'
+              )}
+            </span>
           </div>
-        </div>
 
-        {/* Bottom Action Bar — PRODUCTION: Dual CTA (Email + Google) */}
-        <div className="absolute bottom-0 left-0 right-0 pt-20 pb-8 px-6 lg:px-12 z-50 pointer-events-none">
-          <div 
-             className="absolute inset-0 bg-white/70 backdrop-blur-md -z-10 pointer-events-none"
-             style={{ 
-               maskImage: 'linear-gradient(to top, black 50%, transparent 100%)', 
-               WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' 
-             }}
-          />
-          <div className="max-w-4xl mx-auto pointer-events-auto relative">
-            {/* Status indicator */}
-            <div className="flex items-center justify-center mb-4">
-              {selectedCategory ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-gray-500">
-                    Ready to proceed as <span className="text-gray-900 font-extrabold">{selectedCategory.name}</span>
-                  </span>
-                </motion.div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                  <span className="text-xs font-semibold text-gray-400">
-                    Select a role above to continue
-                  </span>
-                </div>
+          {/* Action CTAs (Always Displayed by Default, Disabled When No Role) */}
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+            {/* Google Button */}
+            <Button
+              onClick={handleGoogleSignup}
+              disabled={!selectedCategory}
+              className={`flex-1 sm:flex-none h-11 md:h-13 px-4 sm:px-6 md:px-7 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center justify-center gap-2.5 transition-all ${
+                selectedCategory
+                  ? 'bg-white hover:bg-zinc-50 border border-zinc-300 text-zinc-900 shadow-xs active:scale-95 cursor-pointer'
+                  : 'bg-zinc-100 border border-zinc-200 text-zinc-400 opacity-60 cursor-not-allowed pointer-events-none'
+              }`}
+            >
+              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4 md:w-4.5 md:h-4.5" />
+              <span>Google</span>
+            </Button>
+
+            {/* Email Button */}
+            <Button
+              onClick={handleEmailSignup}
+              disabled={!selectedCategory}
+              className={`flex-1 sm:flex-none h-11 md:h-13 px-5 sm:px-7 md:px-8 rounded-xl md:rounded-2xl text-xs md:text-sm font-extrabold flex items-center justify-center gap-2 transition-all ${
+                selectedCategory
+                  ? 'bg-zinc-950 hover:bg-zinc-800 text-white shadow-md active:scale-95 cursor-pointer group'
+                  : 'bg-zinc-200 border border-zinc-200 text-zinc-400 opacity-60 cursor-not-allowed pointer-events-none'
+              }`}
+            >
+              <Mail size={16} className="md:w-5 md:h-5 shrink-0" />
+              <span>Email</span>
+              {selectedCategory && (
+                <ArrowRight size={15} strokeWidth={2.5} className="group-hover:translate-x-0.5 transition-transform" />
               )}
-            </div>
-
-            {/* Auth Method CTAs */}
-            <AnimatePresence mode="wait">
-              {selectedCategory ? (
-                <motion.div
-                  key="cta-active"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.25 }}
-                  className="flex flex-col sm:flex-row gap-4 sm:gap-5"
-                >
-                  {/* Google Signup */}
-                  <Button
-                    onClick={handleGoogleSignup}
-                    className="flex-1 h-12 rounded-xl bg-white border border-gray-300 text-gray-900 font-semibold text-[13px] flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-400 transition-all active:scale-[0.98] cursor-pointer shadow-sm"
-                  >
-                    <img src="https://www.google.com/favicon.ico" alt="" className="w-4 h-4" />
-                    Continue with Google
-                  </Button>
-
-                  {/* Email Signup — Primary CTA */}
-                  <Button
-                    onClick={handleEmailSignup}
-                    className="flex-1 h-12 rounded-xl bg-black text-white font-bold text-[13px] flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-[0.98] transition-all shadow-xl shadow-black/10 cursor-pointer group"
-                  >
-                    Continue with Email
-                    <ArrowRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1 duration-200" />
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="cta-disabled"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <Button
-                    disabled
-                    className="w-full h-13 rounded-2xl bg-gray-100 text-gray-400 font-bold text-sm cursor-not-allowed opacity-70 border border-gray-200"
-                  >
-                    Select a Role to Continue
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Info Modal */}
+      {/* ── ROLE PERKS & CAPABILITIES MODAL ─────────────────────────────────── */}
       <AnimatePresence>
         {infoCategory && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            {/* Backdrop */}
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setInfoCategory(null)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             />
-            <motion.div 
+
+            {/* Modal Card */}
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-md bg-white border border-gray-100 rounded-[32px] p-8 lg:p-10 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-lg bg-white border border-zinc-200 rounded-3xl p-6 sm:p-7 shadow-2xl overflow-hidden z-10 text-zinc-900"
             >
-              <div className="flex justify-between items-start mb-6">
+              {/* Top Row: Title & Close */}
+              <div className="flex justify-between items-start mb-3.5">
                 <div className="space-y-1">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Role</span>
-                  <h2 className="text-xl font-bold text-gray-900 leading-tight">{infoCategory.name}</h2>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-800 text-[10px] font-bold">
+                    <span>Role Overview</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-950 leading-tight">
+                    {infoCategory.name}
+                  </h2>
                 </div>
-                <button 
+
+                <button
                   onClick={() => setInfoCategory(null)}
-                  className="bg-gray-100 hover:bg-gray-200 p-2 rounded-full text-gray-500 hover:text-gray-900 transition-all"
+                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center text-zinc-600 hover:text-zinc-950 transition-all cursor-pointer"
                 >
-                  <X size={16} />
+                  <X size={15} />
                 </button>
               </div>
 
-              <p className="text-gray-600 text-sm lg:text-base leading-relaxed mb-8">
-                {infoCategory.description || infoCategory.info || "Discover opportunities tailored for your professional growth."}
+              {/* Description */}
+              <p className="text-zinc-600 text-xs sm:text-sm leading-relaxed mb-4">
+                {ROLE_METADATA[infoCategory.slug]?.tagline ||
+                  infoCategory.description ||
+                  'Discover tailored opportunities, verified collaborations, and seamless escrow payments on SuviX.'}
               </p>
 
-              <Button 
-                onClick={() => setInfoCategory(null)}
-                className="w-full h-12 bg-black text-white font-extrabold text-sm rounded-2xl hover:bg-gray-900 active:scale-[0.98] transition-all"
+              {/* Key Features / Perks List */}
+              <div className="space-y-2 mb-5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  Key Capabilities:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(
+                    ROLE_METADATA[infoCategory.slug]?.perks ||
+                    DEFAULT_METADATA.perks
+                  ).map((perk, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 p-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-800"
+                    >
+                      <Check size={13} className="text-emerald-600 shrink-0 stroke-[3]" />
+                      <span className="truncate">{perk}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Confirmation CTA */}
+              <Button
+                onClick={() => {
+                  setSelected(infoCategory.id);
+                  setInfoCategory(null);
+                }}
+                className="w-full h-11 bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs rounded-xl active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
-                Got it
+                Select &amp; Proceed as {infoCategory.name}
               </Button>
             </motion.div>
           </div>

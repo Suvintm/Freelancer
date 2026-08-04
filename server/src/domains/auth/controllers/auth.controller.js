@@ -409,6 +409,29 @@ export const login = asyncHandler(async (req, res) => {
 // ─── Get Role Categories ───────────────────────────────────────────────────
 
 export const getRoles = asyncHandler(async (req, res) => {
+  const REDIS_CACHE_KEY = "cache:role_categories";
+  const CACHE_TTL_SECONDS = 4 * 60 * 60; // 4 Hours (14,400s)
+
+  // 1. Set CDN & Browser Cache-Control headers (4 hours max-age, 1-hour stale-while-revalidate)
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=14400, s-maxage=14400, stale-while-revalidate=3600"
+  );
+
+  // 2. Try Redis Cache Hit
+  try {
+    if (redisAvailable) {
+      const cached = await redis.get(REDIS_CACHE_KEY);
+      if (cached) {
+        res.setHeader("X-Cache", "HIT");
+        return res.status(200).json({ success: true, categories: JSON.parse(cached) });
+      }
+    }
+  } catch (err) {
+    logger.warn(`⚠️ [CACHE-WARN] Failed to read role categories from Redis: ${err.message}`);
+  }
+
+  // 3. Cache Miss: Query Database
   const categories = await prisma.roleCategory.findMany({
     where: { is_active: true },
     select: {
@@ -423,6 +446,17 @@ export const getRoles = asyncHandler(async (req, res) => {
     },
     orderBy: { display_order: "asc" },
   });
+
+  // 4. Save to Redis Cache with 4-hour TTL
+  try {
+    if (redisAvailable && categories?.length > 0) {
+      await redis.set(REDIS_CACHE_KEY, JSON.stringify(categories), "EX", CACHE_TTL_SECONDS);
+    }
+  } catch (err) {
+    logger.warn(`⚠️ [CACHE-WARN] Failed to store role categories into Redis: ${err.message}`);
+  }
+
+  res.setHeader("X-Cache", "MISS");
   res.status(200).json({ success: true, categories });
 });
 
