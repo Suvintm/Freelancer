@@ -278,7 +278,7 @@ export default function EditorSpecialization() {
 
                   <div className="min-w-0">
                     <h2 className="text-base font-bold text-zinc-950 truncate">
-                      {tempSignupData?.name || 'Professional Video Editor'}
+                      {user?.name || tempSignupData?.socialProfile?.name || 'Professional Video Editor'}
                     </h2>
                     <p className="text-xs text-zinc-500 truncate mt-0.5">
                       {selectedSpecs[0] || 'General Post-Production'}
