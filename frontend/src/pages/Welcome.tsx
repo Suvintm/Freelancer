@@ -332,48 +332,89 @@ export default function Welcome() {
                 </motion.div>
               </AnimatePresence>
 
-              {/* ── Integrations Badge (Google & YouTube) ── */}
+              {/* ── Integrations & Mobile App Availability Badges (Google, YouTube, iOS & Android) ── */}
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35, ...EASE }}
-                className="mt-2.5 xs:mt-3.5 sm:mt-4 flex items-center gap-1.5 sm:gap-2.5 flex-wrap"
+                className="mt-2.5 xs:mt-3.5 sm:mt-4 flex flex-col gap-2 w-full"
               >
-                <span className="text-[8px] xs:text-[8.5px] sm:text-[9.5px] font-bold text-white/40 uppercase tracking-[0.18em] pr-0.5 shrink-0">
-                  Compatible with
-                </span>
+                {/* Top Row: Ecosystem Compatibility */}
+                <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
+                  <span className="text-[8px] xs:text-[8.5px] sm:text-[9.5px] font-bold text-white/40 uppercase tracking-[0.18em] pr-0.5 shrink-0">
+                    Compatible with
+                  </span>
 
-                <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-sm shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-3 h-3 sm:w-3.5 sm:h-3.5" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                  <span className="text-white text-[9px] sm:text-[10.5px] font-semibold tracking-tight">Google</span>
+                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-sm shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-3 h-3 sm:w-3.5 sm:h-3.5" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        fill="#EA4335"
+                      />
+                    </svg>
+                    <span className="text-white text-[9px] sm:text-[10.5px] font-semibold tracking-tight">Google</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-sm shrink-0">
+                    <svg viewBox="0 0 28 20" className="w-3.5 h-2.5 sm:w-4 sm:h-3" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5677 5.35042 27.9727 3.12324Z"
+                        fill="#FF0000"
+                      />
+                      <path d="M11.4253 14.2854L18.8485 10.0004L11.4253 5.71533V14.2854Z" fill="white" />
+                    </svg>
+                    <span className="text-white text-[9px] sm:text-[10.5px] font-semibold tracking-tight">YouTube</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-sm shrink-0">
-                  <svg viewBox="0 0 28 20" className="w-3.5 h-2.5 sm:w-4 sm:h-3" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5677 5.35042 27.9727 3.12324Z"
-                      fill="#FF0000"
-                    />
-                    <path d="M11.4253 14.2854L18.8485 10.0004L11.4253 5.71533V14.2854Z" fill="white" />
-                  </svg>
-                  <span className="text-white text-[9px] sm:text-[10.5px] font-semibold tracking-tight">YouTube</span>
+                {/* Bottom Row: Official App Store and Google Play Store Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-white/10 flex-wrap">
+                  {/* Official Apple App Store Button */}
+                  <a
+                    href="https://apps.apple.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-zinc-900/90 border border-white/20 hover:border-white/50 hover:bg-black rounded-xl px-3 py-1.5 transition-all shadow-md shrink-0 cursor-pointer group"
+                  >
+                    <svg className="w-4 h-4 text-white fill-current group-hover:scale-105 transition-transform" viewBox="0 0 24 24">
+                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.66-.8 1.11-1.92.99-3.04-.96.04-2.13.64-2.82 1.44-.61.71-1.14 1.86-1 2.98 1.07.08 2.16-.57 2.83-1.38z"/>
+                    </svg>
+                    <div className="flex flex-col text-left leading-none">
+                      <span className="text-[7.5px] font-medium text-white/50 uppercase tracking-tight">Download on the</span>
+                      <span className="text-[10.5px] font-bold text-white tracking-tight">App Store</span>
+                    </div>
+                  </a>
+
+                  {/* Official Google Play Store Button */}
+                  <a
+                    href="https://play.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-zinc-900/90 border border-white/20 hover:border-white/50 hover:bg-black rounded-xl px-3 py-1.5 transition-all shadow-md shrink-0 cursor-pointer group"
+                  >
+                    <svg className="w-4 h-4 group-hover:scale-105 transition-transform" viewBox="0 0 24 24" fill="none">
+                      <path d="M3.609 1.814L15.392 12 3.609 22.186A1.85 1.85 0 0 1 3 20.8V3.2a1.85 1.85 0 0 1 .609-1.386z" fill="#00E676"/>
+                      <path d="M16.792 13.2l3.41-2.951a1.2 1.2 0 0 1 0 1.902L16.792 13.2z" fill="#FFD600"/>
+                      <path d="M17.492 10.8L5.358 0.3a1.5 1.5 0 0 0-1.749.1L17.492 10.8z" fill="#FF3D00"/>
+                      <path d="M5.358 23.7l12.134-10.5-13.883 10.4a1.5 1.5 0 0 0 1.749.4z" fill="#00B0FF"/>
+                    </svg>
+                    <div className="flex flex-col text-left leading-none">
+                      <span className="text-[7.5px] font-medium text-white/50 uppercase tracking-tight">GET IT ON</span>
+                      <span className="text-[10.5px] font-bold text-white tracking-tight">Google Play</span>
+                    </div>
+                  </a>
                 </div>
               </motion.div>
 
