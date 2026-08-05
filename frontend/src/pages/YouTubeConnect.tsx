@@ -294,6 +294,10 @@ export default function YouTubeConnect() {
       try {
         const res = await api.post('/auth/youtube/channels', { accessToken: token });
         if (res.data.success) {
+          if (!res.data.channels || res.data.channels.length === 0) {
+            setFetchError('No YouTube channel found for this Google account. Please connect another account that has your channel.');
+            return;
+          }
           dispatch(addDiscoveredChannels(res.data.channels));
           const updates: Record<string, unknown> = {};
           if (res.data.discoveryToken) {
@@ -361,6 +365,9 @@ export default function YouTubeConnect() {
           roleGroup: ytCat.roleGroup,
           roleName: ytCat.name,
           onboardingStep: 'role' as const,
+          // Preserve authMethod and intent already set at RoleSelection
+          ...(tempSignupData?.authMethod ? { authMethod: tempSignupData.authMethod } : {}),
+          ...(tempSignupData?.intent ? { intent: tempSignupData.intent } : {}),
         };
         dispatch(setTempSignupData(data));
         try {

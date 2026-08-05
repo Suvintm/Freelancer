@@ -22,14 +22,12 @@ interface SyncStep {
 }
 
 const DEFAULT_STEPS: SyncStep[] = [
-  { id: 'connection', label: 'Connecting to YouTube API', status: 'idle' },
-  { id: 'metadata', label: 'Fetching profile & channel statistics', status: 'idle' },
-  { id: 'videos', label: 'Syncing uploads and video metrics (up to 50)', status: 'idle' },
+  { id: 'videos', label: 'Syncing channel videos & statistics', status: 'idle' },
   { id: 'finalize', label: 'Processing analytics and updating dashboard', status: 'idle' },
 ];
 
 const getStepsForStepId = (currentStepId: string): SyncStep[] => {
-  const stepOrder = ['connection', 'metadata', 'videos', 'finalize', 'complete'];
+  const stepOrder = ['videos', 'finalize', 'complete'];
   const currentIndex = stepOrder.indexOf(currentStepId);
 
   return DEFAULT_STEPS.map((step, idx) => {
@@ -67,6 +65,7 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
     isCompleted.current = true;
     console.log("🎉 [FRONTEND] Sync completed 100%! Navigating to:", nextRoute);
     setIsSuccess(true);
+    setShowFallback(false);
     setProgress(100);
     setSteps(getStepsForStepId('complete'));
     setMessage('Sync completed successfully!');
@@ -75,13 +74,13 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
     setCountdown(3);
   }, [nextRoute]);
 
-  // ── SAFETY FALLBACK TIMER (20s) ───────────────────────────────────────────
+  // ── SAFETY FALLBACK TIMER (60s) ───────────────────────────────────────────
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
       if (!isCompleted.current) {
         setShowFallback(true);
       }
-    }, 20000);
+    }, 60000);
 
     return () => clearTimeout(fallbackTimer);
   }, []);
@@ -121,6 +120,9 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
         console.log("🚀 [FRONTEND] Triggering manual YouTube sync endpoint...");
         const response = await api.post('/youtube-creator/channel/sync-manual');
         console.log("✅ [FRONTEND] Manual sync endpoint responded successfully:", response.data);
+        if (response?.data?.success && isMounted) {
+          completeSync();
+        }
       } catch (error) {
         console.error("❌ [FRONTEND] Manual sync trigger failed:", error);
       }
@@ -134,7 +136,7 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, completeSync]);
 
   // ── HANDLE COUNTDOWN AND REDIRECT ──────────────────────────────────────────
   useEffect(() => {
@@ -204,12 +206,10 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
 
   const getStepIcon = (stepId: string) => {
     switch (stepId) {
-      case 'connection': return <FaLink size={24} className="text-black" />;
-      case 'metadata': return <FaDatabase size={24} className="text-black" />;
       case 'videos': return <FaVideo size={24} className="text-black" />;
       case 'finalize': return <FaCog size={24} className="text-black animate-spin" />;
       case 'complete': return <FaCheckCircle size={24} className="text-green-500" />;
-      default: return <FaLink size={24} className="text-black" />;
+      default: return <FaVideo size={24} className="text-black" />;
     }
   };
 

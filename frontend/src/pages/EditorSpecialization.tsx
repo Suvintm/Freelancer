@@ -171,12 +171,17 @@ export default function EditorSpecialization() {
       // ignore
     }
 
+    const isGoogleFlow = tempSignupData?.authMethod === 'google';
+
     setTimeout(() => {
       setIsSubmitting(false);
-      const isSocial = tempSignupData?.isSocialSignup;
-      if (isSocial) {
-        navigate('/complete-profile');
+      if (isGoogleFlow) {
+        // Google flow: fire Google OAuth now (specialization data is saved in sessionStorage).
+        // OAuthSuccess will merge Google identity and navigate to CompleteProfile for final registration.
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
+        window.location.href = `${apiUrl}/auth/google`;
       } else {
+        // Email flow: go to manual signup form
         navigate('/signup');
       }
     }, 350);

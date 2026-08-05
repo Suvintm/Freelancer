@@ -305,11 +305,9 @@ export default function YouTubeNiche() {
       }
 
       const isEmailFlow = tempSignupData?.authMethod === 'email';
-      const isSocialFlow = tempSignupData?.isSocialSignup || tempSignupData?.authMethod === 'google';
-      const isRegistering = tempSignupData?.intent === 'register' || isEmailFlow || isSocialFlow || !user?.isOnboarded;
 
       // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM DASHBOARD SETTINGS:
-      if (user && user.isOnboarded && !isRegistering) {
+      if (user && user.isOnboarded) {
         for (const ch of youtubeChannels) {
           await api.post('/youtube-creator/channel/link', { channel: ch });
         }
@@ -321,8 +319,11 @@ export default function YouTubeNiche() {
       setTimeout(() => {
         setIsSubmitting(false);
         if (isEmailFlow) {
+          // Email flow: go to manual signup form
           navigate('/signup');
         } else {
+          // Google flow: Google profile (name, email, avatar, googleId) was ALREADY retrieved
+          // during YouTube Channel Connect OAuth. Go directly to complete-profile!
           navigate('/complete-profile');
         }
       }, 700);

@@ -244,9 +244,16 @@ export default function RoleSelection() {
 
   const { categories, isLoading, error, refetch } = useCategories();
 
-  // Clear stale onboarding state on landing
+  // Clear ALL stale onboarding state (Redux + sessionStorage) on landing
   useEffect(() => {
     dispatch(clearTempSignupData());
+    try {
+      sessionStorage.removeItem('suvix_temp_signup_data');
+      sessionStorage.removeItem('youtube_access_token');
+      sessionStorage.removeItem('oauth_intent');
+    } catch {
+      // ignore
+    }
   }, [dispatch]);
 
   const selectedCategory = useMemo(() => {
@@ -340,6 +347,12 @@ export default function RoleSelection() {
 
   /**
    * Handle Google OAuth Registration Flow
+   *
+   * Design rule:
+   *  - Creator  → Fire YouTube-scoped OAuth immediately (needs channel list first)
+   *  - Editor   → Save intent, navigate to EditorSpecialization (OAuth fires there)
+   *  - Brand    → Save intent, navigate to BrandDetails (OAuth fires there)
+   *  - Others   → Fire Google OAuth immediately (no intermediate forms)
    */
   const handleGoogleSignup = () => {
     if (!selected || !selectedCategory) return;
@@ -356,22 +369,28 @@ export default function RoleSelection() {
       onboardingStep: 'role' as const,
     };
 
+    dispatch(setTempSignupData(signupData));
     try {
       sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(signupData));
-      if (roleType === 'creator') {
-        sessionStorage.setItem('oauth_intent', 'connect_youtube');
-      }
     } catch {
       // ignore
     }
 
-    dispatch(setTempSignupData(signupData));
-
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 
     if (roleType === 'creator') {
-      window.location.href = `${apiUrl}/auth/google/youtube`;
+      // Creator navigates to YouTubeConnect first.
+      // The user explicitly clicks "Connect YouTube Channel" there, which fires the YouTube-scoped OAuth.
+      // oauth_intent is set by YouTubeConnect's handleConnect(), not here.
+      navigate('/youtube-connect');
+    } else if (roleType === 'editor') {
+      // Editor fills specializations first; OAuth fires from that page
+      navigate('/editor-specialization');
+    } else if (roleType === 'brand') {
+      // Brand fills company details first; OAuth fires from that page
+      navigate('/brand-details');
     } else {
+      // Normal User / Talent: no intermediate forms, fire OAuth immediately
       window.location.href = `${apiUrl}/auth/google`;
     }
   };
