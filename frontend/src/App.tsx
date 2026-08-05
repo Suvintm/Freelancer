@@ -214,10 +214,10 @@ function App() {
 
           <Route path="/oauth-success" element={<OAuthSuccess />} />
           
-          {/* Public Informational / Legal Pages */}
-          <Route path="/about" element={<AppLayout><About /></AppLayout>} />
-          <Route path="/privacy" element={<AppLayout><PrivacyPolicy /></AppLayout>} />
-          <Route path="/terms" element={<AppLayout><TermsAndConditions /></AppLayout>} />
+          {/* Public Informational / Legal Pages — Standalone Full-Width Layouts */}
+          <Route path="/about" element={<About />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
           
           {/* Authenticated Protected Routes */}
           <Route 
