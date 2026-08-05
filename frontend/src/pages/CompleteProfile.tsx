@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -17,7 +17,7 @@ import {
   X,
   Building2,
 } from 'lucide-react';
-import logo from '../assets/darklogo.png';
+import logo from '../assets/lightlogo.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { setAuth } from '../store/slices/authSlice';
 import type { RootState } from '../store';
@@ -26,6 +26,7 @@ import { useCategories } from '../queries/useCategories';
 import { authService } from '../api/services/auth.service';
 import { api } from '../api/client';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -54,6 +55,7 @@ export default function CompleteProfile() {
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -70,9 +72,12 @@ export default function CompleteProfile() {
 
 
 
+  const isSubmittedRef = useRef(false);
+
   // 🔐 PRODUCTION GUARD: Must have social profile + role before reaching this page.
   // Use replace:true so browser back button doesn't re-enter a completed step.
   useEffect(() => {
+    if (isSubmittedRef.current) return;
     if (!isSocialSignup || !socialProfile?.email) {
       navigate('/login', { replace: true });
       return;
@@ -162,6 +167,7 @@ export default function CompleteProfile() {
           formData.append('discoveryToken', tempSignupData.discoveryToken);
         }
         formData.append('profilePicture', profilePicture);
+        formData.append('turnstileToken', turnstileToken);
         payload = formData;
       } else {
         payload = {
@@ -188,6 +194,7 @@ export default function CompleteProfile() {
           approxBudget: tempSignupData?.approxBudget,
           youtubeChannels: tempSignupData?.youtubeChannels ?? [],
           discoveryToken: tempSignupData?.discoveryToken ?? null,
+          turnstileToken,
         };
       }
 
@@ -195,15 +202,24 @@ export default function CompleteProfile() {
         headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
       });
       if (res.data.success) {
+        isSubmittedRef.current = true;
         // Mark onboarding as complete before clearing (for any analytics/logging)
         dispatch(setAuth({ user: res.data.user, token: res.data.token, refreshToken: res.data.refreshToken }));
         
-        // Show blocking overlay if foreground sync is requested
-        if (res.data.ytSyncMode === 'foreground' && (tempSignupData?.youtubeChannels?.length ?? 0) > 0) {
+        const categorySlug = tempSignupData?.categorySlug;
+        const isBrand = categorySlug === 'brand' || categorySlug === 'social_promoter';
+        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+        const hasChannels = (tempSignupData?.youtubeChannels?.length ?? 0) > 0 || (res.data.user?.youtubeChannels?.length ?? 0) > 0;
+
+        // Show blocking overlay if foreground sync is requested (YouTube creators with connected channels)
+        if (res.data.ytSyncMode === 'foreground' || (isCreator && hasChannels)) {
           setShowSyncOverlay(true);
         } else {
           dispatch(clearTempSignupData());
-          navigate('/onboarding/preferences');
+          try { sessionStorage.removeItem('suvix_temp_signup_data'); } catch { /* ignore */ }
+          // Brand: skip preferences, go straight to home
+          // All others (Creator, Editor, Normal User): go to preferences
+          navigate(isBrand ? '/home' : '/onboarding/preferences');
         }
       }
     } catch (err: unknown) {
@@ -540,10 +556,19 @@ export default function CompleteProfile() {
             </p>
           </div>
 
+          {/* Turnstile Security Widget */}
+          <div className="flex justify-center my-2">
+            <Turnstile
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+              onSuccess={(token) => setTurnstileToken(token)}
+              onError={() => setError('Security check failed. Please refresh and try again.')}
+            />
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={isLoading || userStatus === 'taken'}
+            disabled={isLoading || userStatus === 'taken' || !turnstileToken}
             className="w-full h-12 bg-white text-black rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl shadow-white/10"
           >
             {isLoading

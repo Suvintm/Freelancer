@@ -10,6 +10,7 @@ import { setAuth } from '../store/slices/authSlice';
 import { useQueryClient } from '@tanstack/react-query';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
 import { clearTempSignupData } from '../store/slices/onboardingSlice';
+import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -27,6 +28,8 @@ export default function VerifyEmail() {
   const [success, setSuccess] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [hasSentOnce, setHasSentOnce] = useState(false);
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
+  const [nextRoute, setNextRoute] = useState('/onboarding/preferences');
   
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
@@ -124,16 +127,26 @@ export default function VerifyEmail() {
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
         dispatch(clearTempSignupData());
 
-        // Redirect dynamically based on onboarding and preferences state
-        setTimeout(() => {
-          if (data.user.isOnboarded && data.user.preferencesCompleted) {
-            navigate('/home');
-          } else if (data.user.isOnboarded && !data.user.preferencesCompleted) {
-            navigate('/onboarding/preferences');
-          } else {
-            navigate('/role-selection');
-          }
-        }, 1500);
+        // Redirect dynamically based on onboarding, sync mode, and preferences state
+        const user = data.user;
+        const isCreator = user.role === 'creator' || user.role === 'yt_influencer' || user.primaryRole?.category === 'creator';
+        const isBrand = user.role === 'brand' || user.primaryRole?.category === 'brand';
+        const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0 || (user.channels?.length ?? 0) > 0;
+        const isForeground = data.ytSyncMode === 'foreground' || (isCreator && hasChannels);
+
+        const targetRoute = user.isOnboarded && user.preferencesCompleted
+          ? '/home'
+          : (isBrand ? '/home' : '/onboarding/preferences');
+        
+        setNextRoute(targetRoute);
+
+        if (isForeground) {
+          setShowSyncOverlay(true);
+        } else {
+          setTimeout(() => {
+            navigate(targetRoute, { replace: true });
+          }, 1200);
+        }
       }
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
@@ -169,6 +182,7 @@ export default function VerifyEmail() {
 
   return (
     <div className="relative h-[100dvh] w-full bg-black flex flex-col overflow-hidden font-sans">
+      {showSyncOverlay && <OnboardingSyncOverlay nextRoute={nextRoute} />}
       
       {/* Full Screen Background */}
       <div className="absolute inset-0 z-0">

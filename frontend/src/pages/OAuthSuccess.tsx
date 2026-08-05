@@ -80,13 +80,15 @@ export default function OAuthSuccess() {
         }
 
         const oauthIntent = sessionStorage.getItem('oauth_intent');
-        const intent = tempSignupData?.intent ?? (oauthIntent === 'connect_youtube' ? 'register' : 'login');
+        const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
+        const hasYtToken = !!tokenToUse;
+        const intent = tempSignupData?.intent ?? (oauthIntent === 'connect_youtube' || hasYtToken ? 'register' : 'login');
         const categorySlug = tempSignupData?.categorySlug;
-        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer' || oauthIntent === 'connect_youtube';
+        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer' || oauthIntent === 'connect_youtube' || hasYtToken;
 
         // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
         // Whenever the user is in YouTube onboarding OR explicitly connecting YouTube:
-        if (oauthIntent === 'connect_youtube' || (intent === 'register' && isCreator)) {
+        if (oauthIntent === 'connect_youtube' || hasYtToken || (intent === 'register' && isCreator)) {
           sessionStorage.removeItem('oauth_intent');
           const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
           
@@ -106,13 +108,21 @@ export default function OAuthSuccess() {
           } : undefined);
 
           if (profileData?.email) {
+            // ✅ CRITICAL: Read the ORIGINAL authMethod before overwriting.
+            // Email users connecting YouTube (YouTube Data API OAuth) must keep authMethod:'email'.
+            // Only Google-auth users should get authMethod:'google' and isSocialSignup:true.
+            const existingAuthMethod = tempSignupData?.authMethod;
+            const isGoogleAuthFlow = existingAuthMethod === 'google';
+
             const profileUpdate = {
               socialProfile: {
                 name: profileData.name || '',
                 email: profileData.email,
                 picture: profileData.picture || undefined,
                 googleId: profileData.googleId || '',
-              }
+              },
+              // Only overwrite these for actual Google-auth users, not email users
+              ...(isGoogleAuthFlow ? { isSocialSignup: true, authMethod: 'google' as const } : {}),
             };
             dispatch(setTempSignupData(profileUpdate));
             try {
@@ -137,50 +147,49 @@ export default function OAuthSuccess() {
 
           if (intent === 'login') {
             // User clicked Google on the Login page but has no account.
-            // Do NOT create an account — send them to signup with an error.
             navigate('/login?error=no_account');
             return;
           }
 
-          // intent === 'register': proceed with onboarding
+          // intent === 'register': Merge Google identity into tempSignupData.
+          // ✅ DO NOT call /auth/register-full here — that happens at CompleteProfile.
           const { socialProfile } = response.data;
-          const currentData = (store.getState() as RootState).onboarding.tempSignupData;
-          const isEmailFlow = currentData?.authMethod === 'email';
 
-          // Merge social profile into temp data (preserving role/intent already set)
-          dispatch(setTempSignupData({ 
-            isSocialSignup: !isEmailFlow,
-            ...(!isEmailFlow ? {
+          dispatch(setTempSignupData({
+            isSocialSignup: true,
+            authMethod: 'google' as const,
+            socialProfile: {
+              name: socialProfile.name,
+              email: socialProfile.email,
+              picture: socialProfile.picture,
+              googleId: socialProfile.googleId,
+            }
+          }));
+
+          try {
+            const raw = sessionStorage.getItem('suvix_temp_signup_data');
+            const current = raw ? JSON.parse(raw) : {};
+            sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({
+              ...current,
+              isSocialSignup: true,
+              authMethod: 'google',
               socialProfile: {
                 name: socialProfile.name,
                 email: socialProfile.email,
                 picture: socialProfile.picture,
                 googleId: socialProfile.googleId,
               }
-            } : {})
-          }));
-
-          const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
-          const isBrand = categorySlug === 'brand' || categorySlug === 'social_promoter';
-
-          // Video Editor flow: select specializations & tools
-          if (isEditor) {
-            navigate('/editor-specialization');
-            return;
+            }));
+          } catch {
+            // ignore
           }
 
-          // Brand / Sponsor flow: set up company profile & industry
-          if (isBrand) {
-            navigate('/brand-details');
-            return;
-          }
-
-          // All other roles (Normal User): go straight to complete profile!
+          // All roles (Editor / Brand / Normal User / Creator post-niche) go to CompleteProfile
+          // where the SINGLE server call POST /auth/register-full happens with ALL data.
           const currentOnboardingStore = (store.getState() as RootState).onboarding;
           if (currentOnboardingStore.tempSignupData?.categoryId) {
             navigate('/complete-profile');
           } else {
-            // No role data — send back to role selection to start fresh
             navigate('/role-selection');
           }
           return;

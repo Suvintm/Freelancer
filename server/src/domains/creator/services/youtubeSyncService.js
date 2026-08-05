@@ -365,15 +365,13 @@ export const executeManualSync = async (userId, channelIds, triggerReason = "man
     };
 
     try {
-      emitProgress(10, "connection", "Connecting to YouTube API...");
+      emitProgress(50, "videos", "Fetching channel videos & stats...");
 
       const channelMetadata = await youtubeApiService.getChannelPublicData({
         identifier: channelId,
         type: "id",
       });
       channelName = channelMetadata.title || channelName;
-
-      emitProgress(45, "metadata", "Fetching channel profile & stats...");
 
       if (channelMetadata.uploadsPlaylistId) {
         channelMetadata.videos = await youtubeApiService.getPlaylistVideos(
@@ -382,20 +380,17 @@ export const executeManualSync = async (userId, channelIds, triggerReason = "man
         );
       }
 
-      emitProgress(75, "videos", "Syncing video library (up to 50 videos)...");
+      emitProgress(75, "finalize", "Saving analytics & generating dashboard...");
 
       await persistYouTubeContent(userId, channelMetadata, triggerReason);
 
-      emitProgress(95, "finalize", "Saving analytics & generating dashboard...");
-
       processedCount++;
-      const progress = Math.round((processedCount / totalChannels) * 100);
 
       emitToUser(userId, "notification:new", {
         type: "SYNC_PROGRESS",
         metadata: {
           userId,
-          progress,
+          progress: 100,
           channelId,
           channelName,
           step: "complete",

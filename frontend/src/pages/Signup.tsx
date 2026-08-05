@@ -114,6 +114,9 @@ export default function Signup() {
 
   const navigate = useNavigate();
   const isBrandClient = tempSignupData?.categorySlug === 'brand' || tempSignupData?.categorySlug === 'social_promoter';
+  // ✅ FIX: A user is a Google/social user ONLY if authMethod is explicitly 'google'.
+  // Don't rely on socialProfile presence — stale sessionStorage can pollute that.
+  const isSocialUser = tempSignupData?.authMethod === 'google' && !!socialProfile;
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
   // If tempSignupData has no categoryId, attempt sessionStorage recovery before redirecting.
@@ -187,7 +190,7 @@ export default function Signup() {
     form.username.trim() &&
     form.email.trim() &&
     form.phone.trim() &&
-    (socialProfile || form.password.trim()) &&
+    (isSocialUser || form.password.trim()) &&
     (!isBrandClient || form.website.trim()) &&
     userStatus === 'available' &&
     turnstileToken
@@ -200,7 +203,7 @@ export default function Signup() {
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
 
-    if (!socialProfile && !form.password) { setError('Password is required.'); return; }
+    if (!isSocialUser && !form.password) { setError('Password is required.'); return; }
 
     setIsLoading(true);
     setError(null);
@@ -232,8 +235,8 @@ export default function Signup() {
         approxBudget: tempSignupData?.approxBudget,
         youtubeChannels: selectedChannels,
         discoveryToken: tempSignupData?.discoveryToken ?? null,
-        googleId: socialProfile?.googleId,
-        authProvider: socialProfile ? 'google' : 'local',
+        googleId: isSocialUser ? socialProfile?.googleId : undefined,
+        authProvider: isSocialUser ? 'google' : 'local',
         profilePicture,
         pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined,
         turnstileToken
@@ -244,12 +247,12 @@ export default function Signup() {
         return;
       }
 
-      // Show blocking overlay if foreground sync is requested
+      // For instant authenticated signups (if any):
       if (response?.ytSyncMode === 'foreground' && selectedChannels.length > 0) {
         setShowSyncOverlay(true);
       } else {
-        // Clear ALL onboarding state after successful registration
         dispatch(clearTempSignupData());
+        try { sessionStorage.removeItem('suvix_temp_signup_data'); } catch { /* ignore */ }
         navigate('/home');
       }
     } catch (err: unknown) {
@@ -272,7 +275,7 @@ export default function Signup() {
 
   return (
     <div className="relative h-[100dvh] w-full bg-black flex flex-col overflow-hidden font-sans">
-      {showSyncOverlay && <OnboardingSyncOverlay />}
+      {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/home" />}
       
       {/* Full Screen Background */}
       <div className="absolute inset-0 z-0">
@@ -517,7 +520,7 @@ export default function Signup() {
                 )}
 
                 {/* Password (email signup only) / Security note (Google signup) */}
-                {!socialProfile ? (
+                {!isSocialUser ? (
                   <div className="space-y-1">
                     <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Password</label>
                     <div className="relative">
@@ -528,7 +531,7 @@ export default function Signup() {
                         placeholder="••••••••"
                         value={form.password}
                         onChange={handleChange}
-                        required={!socialProfile}
+                        required={!isSocialUser}
                         className="suvix-input !h-10 !pl-11 pr-12 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400"
                       />
                       <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors">
