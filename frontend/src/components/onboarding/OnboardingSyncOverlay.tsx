@@ -12,7 +12,7 @@ const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent 
 
 import planeAnimation from '../../assets/lottie/plane.json';
 import progressAnimation from '../../assets/lottie/progress.json';
-import { FaLink, FaDatabase, FaVideo, FaCog, FaCheckCircle } from 'react-icons/fa';
+import { FaVideo, FaCog, FaCheckCircle } from 'react-icons/fa';
 import logo from '../../assets/blackbglogo.png';
 
 interface SyncStep {

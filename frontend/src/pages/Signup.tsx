@@ -110,7 +110,6 @@ export default function Signup() {
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [enableNotifications, setEnableNotifications] = useState(false);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
-  const [syncNextRoute, setSyncNextRoute] = useState('/home');
   const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   const navigate = useNavigate();
@@ -276,7 +275,7 @@ export default function Signup() {
 
   return (
     <div className="relative h-[100dvh] w-full bg-black flex flex-col overflow-hidden font-sans">
-      {showSyncOverlay && <OnboardingSyncOverlay nextRoute={syncNextRoute} />}
+      {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/home" />}
       
       {/* Full Screen Background */}
       <div className="absolute inset-0 z-0">
