@@ -86,11 +86,18 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       }
     }
 
-    // 3. Ensure CreatorProfile exists
+    // 3. Ensure CreatorProfile exists & update status
     const creatorProfile = await tx.creatorProfile.upsert({
       where: { userId },
-      update: {},
-      create: { userId },
+      update: {
+        channel_link_status: "VERIFIED",
+        channel_linked_at: new Date(),
+      },
+      create: {
+        userId,
+        channel_link_status: "VERIFIED",
+        channel_linked_at: new Date(),
+      },
     });
 
     // 4. Safety Check: Verify ownership
@@ -136,6 +143,13 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     } else {
       youtubeChannel = await tx.youTubeChannel.create({
         data: { ...profileData, channel_id: channelId },
+      });
+    }
+
+    if (!creatorProfile.primary_channel_id) {
+      await tx.creatorProfile.update({
+        where: { id: creatorProfile.id },
+        data: { primary_channel_id: youtubeChannel.id },
       });
     }
 

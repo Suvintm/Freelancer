@@ -78,11 +78,33 @@ export const RightSidebar = () => {
     fetchConvs();
   }, []);
 
-  const hasYoutube = user?.youtubeProfile && user.youtubeProfile.length > 0;
+  const roleStr = (user?.role || '').toLowerCase();
+  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
+  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
+
+  const isCreator =
+    roleStr === 'creator' ||
+    roleStr === 'yt_influencer' ||
+    categoryStr === 'creator' ||
+    categoryStr === 'youtube creator' ||
+    categoryStr === 'yt_influencer' ||
+    categorySlugStr === 'creator' ||
+    categorySlugStr === 'yt_influencer' ||
+    !!user?.creatorProfile;
+
+  const isClientCategory =
+    roleStr === 'user' ||
+    roleStr === 'brand' ||
+    roleStr === 'direct_client' ||
+    categoryStr.includes('brand') ||
+    categoryStr.includes('user') ||
+    categorySlugStr.includes('user') ||
+    categorySlugStr.includes('brand');
+
+  const hasYoutube = Boolean(user?.youtubeProfile && user.youtubeProfile.length > 0);
 
   const menuItems = useMemo(() => {
     let items = [...NAV_ITEMS];
-    const isClientCategory = ['user', 'brand', 'social_promoter', 'direct_client'].includes(user?.primaryRole?.category || user?.role || '');
     if (isClientCategory) {
       items = items.filter(item => item.path !== '/upload-portal' && item.path !== '/reels');
     }
@@ -95,7 +117,7 @@ export const RightSidebar = () => {
       }
     }
     return items;
-  }, [hasYoutube, user?.primaryRole?.category, user?.role]);
+  }, [hasYoutube, isClientCategory]);
 
   const visibleConvs = conversations.slice(activeCardIndex, activeCardIndex + 3);
 
@@ -277,7 +299,7 @@ export const RightSidebar = () => {
         )}
 
         {/* YouTube Analytics Callout Widget */}
-        {user?.primaryRole?.category === 'yt_influencer' && !hasYoutube && (
+        {isCreator && !hasYoutube && (
           <div className={`p-4 rounded-[20px] border flex flex-col gap-2 ${
             isDarkMode 
               ? 'bg-gradient-to-br from-amber-500/10 via-zinc-950/20 to-zinc-950 border-amber-500/20' 

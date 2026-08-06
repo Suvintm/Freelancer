@@ -25,7 +25,19 @@ const Community = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
-  const isCreator = user?.primaryRole?.category === 'yt_influencer';
+  const roleStr = (user?.role || '').toLowerCase();
+  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
+  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
+
+  const isCreator =
+    roleStr === 'creator' ||
+    roleStr === 'yt_influencer' ||
+    categoryStr === 'creator' ||
+    categoryStr === 'youtube creator' ||
+    categoryStr === 'yt_influencer' ||
+    categorySlugStr === 'creator' ||
+    categorySlugStr === 'yt_influencer' ||
+    !!user?.creatorProfile;
   const [activeTab, setActiveTab] = useState('Discover');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 

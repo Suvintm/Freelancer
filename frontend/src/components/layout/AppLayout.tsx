@@ -10,6 +10,9 @@ import { useState } from 'react';
 import { SyncProgressBar } from './SyncProgressBar';
 import { GlobalUploadProgress } from './GlobalUploadProgress';
 
+import { UnlinkedChannelBanner } from '../yt_creator/UnlinkedChannelBanner';
+import { UnlinkedChannelModal } from '../yt_creator/UnlinkedChannelModal';
+
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -29,12 +32,18 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="h-screen w-full bg-page flex flex-col font-sans overflow-hidden">
+      {/* Unlinked Creator Persistent Lock Modal */}
+      <UnlinkedChannelModal />
+
       {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore/Notifications/Profile/Nearby */}
       <div className={(isFullPage || isProfilePage || isNearbyPage) ? "hidden lg:block" : "block"}>
         <GlobalHeader onMenuPress={() => setIsMobileMenuOpen(true)} />
       </div>
 
       <MobileSidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+
+      {/* Unlinked Creator Warning Banner */}
+      <UnlinkedChannelBanner />
 
       <div className="flex-1 flex overflow-hidden relative">
         {/* 1. Left Column: Identity Sidebar (Desktop Only) */}

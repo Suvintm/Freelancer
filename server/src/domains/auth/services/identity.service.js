@@ -151,6 +151,7 @@ export const formatAuthResponse = (user, subscription = null) => {
 
     // Specialized role profiles
     creatorProfile: user.creatorProfile || null,
+    channelLinkStatus: user.creatorProfile?.channel_link_status || (formattedChannels.length > 0 ? "VERIFIED" : "UNLINKED"),
     youtubeProfile: formattedChannels, // Backward compatibility for existing UI
     youtubeChannels: formattedChannels,
     editorProfile: user.editorProfile || null,

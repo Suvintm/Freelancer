@@ -129,10 +129,12 @@ export default function VerifyEmail() {
 
         // Redirect dynamically based on onboarding, sync mode, and preferences state
         const user = data.user;
-        const isCreator = user.role === 'creator' || user.role === 'yt_influencer' || user.primaryRole?.category === 'creator';
-        const isBrand = user.role === 'brand' || user.primaryRole?.category === 'brand';
+        const roleStr = (user.role || '').toLowerCase();
+        const categoryStr = (user.primaryRole?.category || '').toLowerCase();
+        const isCreator = roleStr === 'creator' || categoryStr === 'creator' || categoryStr === 'youtube creator' || categoryStr === 'yt_influencer';
+        const isBrand = roleStr === 'brand' || categoryStr === 'brand' || categoryStr === 'social_promoter';
         const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0 || (user.channels?.length ?? 0) > 0;
-        const isForeground = data.ytSyncMode === 'foreground' || (isCreator && hasChannels);
+        const showSync = isCreator && hasChannels;
 
         const targetRoute = user.isOnboarded && user.preferencesCompleted
           ? '/home'
@@ -140,7 +142,7 @@ export default function VerifyEmail() {
         
         setNextRoute(targetRoute);
 
-        if (isForeground) {
+        if (showSync) {
           setShowSyncOverlay(true);
         } else {
           setTimeout(() => {

@@ -269,23 +269,26 @@ model UserStats {
 
 // ─── 1. Creator Profile (1:1 with User) ─────────────────────────────────────
 model CreatorProfile {
-  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                String           @unique @map("user_id") @db.Uuid
-  primary_channel_id    String?          @map("primary_channel_id") @db.Uuid
-  business_email        String?          @map("business_email") @db.VarChar(255)
-  accepting_sponsorships Boolean         @default(true) @map("accepting_sponsorships")
-  rate_currency         String           @default("INR") @map("rate_currency") @db.VarChar(10)
-  rate_dedicated_video  Decimal?         @map("rate_dedicated_video") @db.Decimal(12, 2)
-  rate_integrated_video Decimal?         @map("rate_integrated_video") @db.Decimal(12, 2)
-  rate_short            Decimal?         @map("rate_short") @db.Decimal(12, 2)
-  created_at            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at            DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String            @unique @map("user_id") @db.Uuid
+  primary_channel_id    String?           @map("primary_channel_id") @db.Uuid
+  business_email        String?           @map("business_email") @db.VarChar(255)
+  channel_link_status   ChannelLinkStatus @default(UNLINKED) @map("channel_link_status")
+  channel_linked_at     DateTime?         @map("channel_linked_at") @db.Timestamptz(6)
+  accepting_sponsorships Boolean          @default(true) @map("accepting_sponsorships")
+  rate_currency         String            @default("INR") @map("rate_currency") @db.VarChar(10)
+  rate_dedicated_video  Decimal?          @map("rate_dedicated_video") @db.Decimal(12, 2)
+  rate_integrated_video Decimal?          @map("rate_integrated_video") @db.Decimal(12, 2)
+  rate_short            Decimal?          @map("rate_short") @db.Decimal(12, 2)
+  created_at            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   channels              YouTubeChannel[]
 
   @@index([accepting_sponsorships])
+  @@index([channel_link_status])
   @@map("creator_profiles")
 }
 
@@ -1300,6 +1303,13 @@ enum ChannelStatus {
   suspended
   terminated
   deactivated
+}
+
+enum ChannelLinkStatus {
+  UNLINKED
+  PENDING_SYNC
+  VERIFIED
+  SYNC_FAILED
 }
 
 enum SyncStatus {

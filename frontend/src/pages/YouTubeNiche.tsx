@@ -35,8 +35,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setTempSignupData } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
-import { selectUser } from '../store/slices/authSlice';
+import { selectUser, updateUser } from '../store/slices/authSlice';
+import { useQueryClient } from '@tanstack/react-query';
+import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
 import { api } from '../api/client';
+import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 import logo from '../assets/lightlogo.png';
 
 const formatCount = (n: number | string): string => {
@@ -221,12 +224,14 @@ function LatestVideosCarousel({ videos }: VideoCarouselProps) {
 export default function YouTubeNiche() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const { categories } = useCategories();
   const user = useSelector(selectUser);
 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
 
   const youtubeCategory = categories.find(
@@ -306,13 +311,15 @@ export default function YouTubeNiche() {
 
       const isEmailFlow = tempSignupData?.authMethod === 'email';
 
-      // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM DASHBOARD SETTINGS:
-      if (user && user.isOnboarded) {
+      // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM DASHBOARD / POPOVER:
+      if (user && (user.id || user.isOnboarded)) {
+        setShowSyncOverlay(true);
         for (const ch of youtubeChannels) {
-          await api.post('/youtube-creator/channel/link', { channel: ch });
+          await api.post('/youtube-creator/channel/link', { channel: ch }).catch(() => {});
         }
-        setIsSubmitting(false);
-        navigate('/youtube-dashboard');
+        dispatch(updateUser({ channelLinkStatus: 'VERIFIED', youtubeChannels }));
+        queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ['my_profile'] });
         return;
       }
 
@@ -335,6 +342,7 @@ export default function YouTubeNiche() {
 
   return (
     <div className="min-h-screen w-full bg-[#fcfcfd] text-zinc-900 flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-white font-sans">
+      {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/home" />}
       
       {/* ── ARCHITECTURAL GRID BACKGROUND ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">

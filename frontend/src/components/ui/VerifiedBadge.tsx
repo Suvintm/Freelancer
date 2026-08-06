@@ -17,11 +17,14 @@ export function VerifiedBadge({ isVerified, role, className = "w-[16px] h-[16px]
   if (
     normalizedRole.includes('CLIENT') || 
     normalizedRole.includes('BRAND') ||
-    normalizedRole.includes('DIRECT')
+    normalizedRole.includes('DIRECT') ||
+    normalizedRole.includes('PROMOTER')
   ) {
     badgeSrc = brandBadge;
   } else if (normalizedRole.includes('EDITOR')) {
     badgeSrc = editorBadge;
+  } else if (normalizedRole.includes('CREATOR') || normalizedRole.includes('INFLUENCER') || normalizedRole.includes('YOUTUBE')) {
+    badgeSrc = ytBadge;
   }
 
   if (!badgeSrc) return null;

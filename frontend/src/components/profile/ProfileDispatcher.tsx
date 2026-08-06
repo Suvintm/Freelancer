@@ -6,7 +6,7 @@ import { YTCreatorProfile } from '../../pages/yt_creator/profile/YTCreatorProfil
 import { GymMain } from './main/GymMain';
 import { SingerMain } from './main/SingerMain';
 
-export type UserRole = 'yt_creator' | 'gym' | 'singer' | 'default';
+export type UserRole = 'creator' | 'yt_creator' | 'editor' | 'brand' | 'user' | 'gym' | 'singer' | 'default';
 
 interface ProfileDispatcherProps {
   role: UserRole;
@@ -30,6 +30,7 @@ export const ProfileDispatcher: React.FC<ProfileDispatcherProps> = ({
   
   if (viewType === 'home') {
     switch (role) {
+      case 'creator':
       case 'yt_creator':
         return <YTCreatorHome data={data} onViewFull={onViewFull || (() => {})} />;
       case 'gym':
@@ -48,6 +49,7 @@ export const ProfileDispatcher: React.FC<ProfileDispatcherProps> = ({
 
   // viewType === 'main'
   switch (role) {
+    case 'creator':
     case 'yt_creator':
       return <YTCreatorProfile />;
     case 'gym':

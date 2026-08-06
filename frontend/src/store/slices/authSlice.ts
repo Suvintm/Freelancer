@@ -17,6 +17,8 @@ export interface AuthUser {
     category: string;
     subCategory: string;
   };
+  channelLinkStatus?: string;
+  youtubeChannels?: any[];
   youtubeProfile?: Array<{
     id: string;
     channel_id: string;
