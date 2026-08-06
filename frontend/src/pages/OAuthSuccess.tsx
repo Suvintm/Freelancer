@@ -82,8 +82,6 @@ export default function OAuthSuccess() {
         const oauthIntent = sessionStorage.getItem('oauth_intent');
         const isExplicitYoutubeConnect = oauthIntent === 'connect_youtube';
         const intent = tempSignupData?.intent ?? (isExplicitYoutubeConnect ? 'register' : 'login');
-        const categorySlug = tempSignupData?.categorySlug;
-        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
 
         // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
         // ONLY trigger YouTube channel fetch if user explicitly clicked "Connect YouTube"

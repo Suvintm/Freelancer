@@ -28,7 +28,7 @@ export const UnlinkedChannelBanner: React.FC = () => {
 
   const isUnlinked =
     user.channelLinkStatus === 'UNLINKED' ||
-    (user as any)?.channel_link_status === 'UNLINKED' ||
+    (user as Record<string, unknown>)?.channel_link_status === 'UNLINKED' ||
     (!user.youtubeChannels?.length && !user.youtubeProfile?.length);
 
   if (!isUnlinked) {
