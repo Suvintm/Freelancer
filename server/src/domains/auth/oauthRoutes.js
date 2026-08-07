@@ -79,10 +79,20 @@ router.get(
 // Google OAuth callback (Web)
 router.get(
     "/google/callback",
-    passport.authenticate("google", {
-        failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`,
-        session: false,
-    }),
+    (req, res, next) => {
+        passport.authenticate("google", { session: false }, (err, user, info) => {
+            const host = req.get('host') || '';
+            const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+            const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+
+            if (err || !user) {
+                logger.error(`❌ [OAuth] Google callback error: ${err?.message || 'No user returned from Google'}`);
+                return res.redirect(`${redirectBase}/login?error=google_auth_failed`);
+            }
+            req.user = user;
+            next();
+        })(req, res, next);
+    },
     async (req, res) => {
         try {
             const user = req.user;

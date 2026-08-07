@@ -414,7 +414,7 @@ function App() {
             path="/upload-portal" 
             element={
               <AuthGuard>
-                <RoleGuard allowedCategories={['yt_influencer', 'video_editor', 'singer', 'dancer', 'videographer', 'photographer', 'actor', 'musician', 'fitness_expert', 'rent_service']}>
+                <RoleGuard allowedCategories={['creator', 'editor', 'yt_influencer', 'video_editor', 'singer', 'dancer', 'videographer', 'photographer', 'actor', 'musician', 'fitness_expert', 'rent_service']}>
                   <AppLayout>
                     <TempUploadPortal />
                   </AppLayout>
@@ -426,7 +426,7 @@ function App() {
             path="/youtube-dashboard" 
             element={
               <AuthGuard>
-                <RoleGuard allowedCategories={['yt_influencer']}>
+                <RoleGuard allowedCategories={['creator', 'yt_influencer']}>
                   <AppLayout>
                     <YTDashboard />
                   </AppLayout>
@@ -438,7 +438,7 @@ function App() {
             path="/youtube-dashboard/:channelId" 
             element={
               <AuthGuard>
-                <RoleGuard allowedCategories={['yt_influencer']}>
+                <RoleGuard allowedCategories={['creator', 'yt_influencer']}>
                   <AppLayout>
                     <YTDashboard />
                   </AppLayout>

@@ -80,15 +80,12 @@ export default function OAuthSuccess() {
         }
 
         const oauthIntent = sessionStorage.getItem('oauth_intent');
-        const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
-        const hasYtToken = !!tokenToUse;
-        const intent = tempSignupData?.intent ?? (oauthIntent === 'connect_youtube' || hasYtToken ? 'register' : 'login');
-        const categorySlug = tempSignupData?.categorySlug;
-        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer' || oauthIntent === 'connect_youtube' || hasYtToken;
+        const isExplicitYoutubeConnect = oauthIntent === 'connect_youtube';
+        const intent = tempSignupData?.intent ?? (isExplicitYoutubeConnect ? 'register' : 'login');
 
         // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
-        // Whenever the user is in YouTube onboarding OR explicitly connecting YouTube:
-        if (oauthIntent === 'connect_youtube' || hasYtToken || (intent === 'register' && isCreator)) {
+        // ONLY trigger YouTube channel fetch if user explicitly clicked "Connect YouTube"
+        if (isExplicitYoutubeConnect) {
           sessionStorage.removeItem('oauth_intent');
           const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
           

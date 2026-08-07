@@ -38,7 +38,19 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
-  const isCreator = ['creator', 'yt_influencer'].includes(user?.primaryRole?.category || user?.role || '');
+  const roleStr = (user?.role || '').toLowerCase();
+  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
+  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
+
+  const isCreator =
+    roleStr === 'creator' ||
+    roleStr === 'yt_influencer' ||
+    categoryStr === 'creator' ||
+    categoryStr === 'youtube creator' ||
+    categoryStr === 'yt_influencer' ||
+    categorySlugStr === 'creator' ||
+    categorySlugStr === 'yt_influencer' ||
+    !!user?.creatorProfile;
   const hasYoutube = isCreator && user?.youtubeProfile && user.youtubeProfile.length > 0;
 
   const menuItems = useMemo(() => {

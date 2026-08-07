@@ -9,7 +9,10 @@
     "server": "node server.js",
     "lint": "eslint .",
     "test": "vitest run",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:deploy": "prisma generate && prisma migrate deploy && node prisma/seed.js",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -106,7 +109,7 @@
     "nodemailer": "^9.0.1",
     "vite": "^8.0.16",
     "ws": "^8.21.0",
-    "js-yaml": "^4.2.0",
+    "js-yaml": "^4.3.1",
     "fast-uri": "^3.1.4",
     "fast-xml-builder": "^1.1.7",
     "qs": "^6.15.2",

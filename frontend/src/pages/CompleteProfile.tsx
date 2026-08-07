@@ -206,19 +206,20 @@ export default function CompleteProfile() {
         // Mark onboarding as complete before clearing (for any analytics/logging)
         dispatch(setAuth({ user: res.data.user, token: res.data.token, refreshToken: res.data.refreshToken }));
         
-        const categorySlug = tempSignupData?.categorySlug;
-        const isBrand = categorySlug === 'brand' || categorySlug === 'social_promoter';
-        const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+        const userRole = (res.data.user?.role || tempSignupData?.role || '').toLowerCase();
+        const categorySlug = (tempSignupData?.categorySlug || res.data.user?.primaryRole?.category || '').toLowerCase();
+        const isBrand = userRole === 'brand' || categorySlug === 'brand' || categorySlug === 'social_promoter';
+        const isCreator = userRole === 'creator' || categorySlug === 'creator' || categorySlug === 'yt_influencer' || categorySlug === 'youtube creator';
         const hasChannels = (tempSignupData?.youtubeChannels?.length ?? 0) > 0 || (res.data.user?.youtubeChannels?.length ?? 0) > 0;
 
-        // Show blocking overlay if foreground sync is requested (YouTube creators with connected channels)
-        if (res.data.ytSyncMode === 'foreground' || (isCreator && hasChannels)) {
+        // Show blocking overlay ONLY for YouTube creators with connected channels
+        if (isCreator && hasChannels) {
           setShowSyncOverlay(true);
         } else {
           dispatch(clearTempSignupData());
           try { sessionStorage.removeItem('suvix_temp_signup_data'); } catch { /* ignore */ }
           // Brand: skip preferences, go straight to home
-          // All others (Creator, Editor, Normal User): go to preferences
+          // All others (Editor, Normal User): go to preferences
           navigate(isBrand ? '/home' : '/onboarding/preferences');
         }
       }

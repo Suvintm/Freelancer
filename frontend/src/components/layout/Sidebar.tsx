@@ -42,14 +42,34 @@ export const Sidebar = () => {
   const { isDarkMode } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
-  const isClientCategory = ['user', 'brand', 'social_promoter', 'direct_client'].includes(user?.primaryRole?.category || user?.role || '');
-  const isCreator = ['creator', 'yt_influencer'].includes(user?.primaryRole?.category || user?.role || '');
+  const roleStr = (user?.role || '').toLowerCase();
+  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
+  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
+
+  const isCreator =
+    roleStr === 'creator' ||
+    roleStr === 'yt_influencer' ||
+    categoryStr === 'creator' ||
+    categoryStr === 'youtube creator' ||
+    categoryStr === 'yt_influencer' ||
+    categorySlugStr === 'creator' ||
+    categorySlugStr === 'yt_influencer' ||
+    !!user?.creatorProfile;
+
+  const isClientCategory =
+    roleStr === 'user' ||
+    roleStr === 'brand' ||
+    roleStr === 'direct_client' ||
+    categoryStr.includes('brand') ||
+    categoryStr.includes('user') ||
+    categorySlugStr.includes('user') ||
+    categorySlugStr.includes('brand');
 
   const userCategory = user?.primaryRole?.category || user?.role || '';
   let activeLottie = verifyLottieAnimation;
-  if (isClientCategory || userCategory.includes('client') || userCategory.includes('brand')) {
+  if (isClientCategory || userCategory.toLowerCase().includes('client') || userCategory.toLowerCase().includes('brand')) {
     activeLottie = verifyLottieBlue;
-  } else if (userCategory.includes('editor')) {
+  } else if (userCategory.toLowerCase().includes('editor')) {
     activeLottie = verifyLottiePurple;
   }
   const CHANNEL = {

@@ -165,22 +165,21 @@ export const registerFullUser = async (userData) => {
           });
         }
 
-        let assignedRole = role;
-        if (!assignedRole) {
-          assignedRole = selectedCategory?.maps_to_role || "user";
+        let assignedRole = selectedCategory?.maps_to_role || role;
+        if (!assignedRole || assignedRole === "suvix_user" || assignedRole === "user") {
+          if (categorySlug === "creator" || categorySlug === "yt_influencer" || role === "creator" || role === "yt_influencer") {
+            assignedRole = "creator";
+          } else if (selectedCategory?.maps_to_role) {
+            assignedRole = selectedCategory.maps_to_role;
+          } else {
+            assignedRole = "user";
+          }
         }
 
-        const isCreator = assignedRole === "creator" || selectedCategory?.slug === "creator";
+        const isCreator = assignedRole === "creator" || selectedCategory?.slug === "creator" || categorySlug === "creator" || categorySlug === "yt_influencer";
 
         let normalizedChannels = [];
-        if (isCreator) {
-          if (!youtubeChannels?.length) {
-            throw new ApiError(
-              400,
-              "YouTube creator onboarding requires at least one connected channel."
-            );
-          }
-
+        if (isCreator && youtubeChannels && Array.isArray(youtubeChannels) && youtubeChannels.length > 0) {
           normalizedChannels = youtubeChannels
             .map((ch, index) => {
               const channelId = String(ch.channelId || ch.channel_id || ch.id || "").trim();
@@ -206,10 +205,6 @@ export const registerFullUser = async (userData) => {
               };
             })
             .filter(Boolean);
-
-          if (!normalizedChannels.length) {
-            throw new ApiError(400, "Connected YouTube channels are invalid.");
-          }
         }
 
         // Step A: Create User
@@ -244,10 +239,13 @@ export const registerFullUser = async (userData) => {
 
         // Step C: Create Role-Specific Profile
         if (isCreator) {
+          const channelLinkStatus = normalizedChannels.length > 0 ? "VERIFIED" : "UNLINKED";
           const creatorProfile = await tx.creatorProfile.create({
             data: {
               userId: newUser.id,
               business_email: normalizedEmail,
+              channel_link_status: channelLinkStatus,
+              channel_linked_at: normalizedChannels.length > 0 ? new Date() : null,
             },
           });
 

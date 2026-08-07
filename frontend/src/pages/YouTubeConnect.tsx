@@ -26,6 +26,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTempSignupData, addDiscoveredChannels } from '../store/slices/onboardingSlice';
+import { selectUser } from '../store/slices/authSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
 import { api } from '../api/client';
@@ -253,9 +254,11 @@ function FloatingCreatorShowcase() {
 }
 
 export default function YouTubeConnect() {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+
+  const user = useSelector(selectUser);
   const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const youtubeDiscovery = useSelector((state: RootState) => state.onboarding.youtubeDiscovery);
   const { categories, isLoading: categoriesLoading } = useCategories();
@@ -425,6 +428,36 @@ export default function YouTubeConnect() {
     }
 
     navigate('/youtube-niche');
+  };
+
+  const handleSkipYoutube = () => {
+    const ytCat = categories.find((c) => c.slug === 'yt_influencer' || c.slug === 'creator');
+    const isEmailFlow = tempSignupData?.authMethod === 'email' || !tempSignupData?.socialProfile;
+
+    const updatePayload = {
+      ...tempSignupData,
+      role: 'creator' as const,
+      categoryId: tempSignupData?.categoryId || ytCat?.id || 'creator',
+      categorySlug: 'creator' as const,
+      youtubeChannels: [],
+      skippedYoutube: true,
+      onboardingStep: 'role' as const,
+    };
+
+    dispatch(setTempSignupData(updatePayload));
+    try {
+      const raw = sessionStorage.getItem('suvix_temp_signup_data');
+      const cur = raw ? JSON.parse(raw) : {};
+      sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({ ...cur, ...updatePayload }));
+    } catch {
+      // ignore
+    }
+
+    if (isEmailFlow) {
+      navigate('/signup');
+    } else {
+      navigate('/complete-profile');
+    }
   };
 
   if (categoriesLoading) {
@@ -650,6 +683,19 @@ export default function YouTubeConnect() {
                   </>
                 )}
               </Button>
+
+              {!connected && !user?.id && !user?.isOnboarded && (
+                <button
+                  type="button"
+                  onClick={handleSkipYoutube}
+                  className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm text-zinc-700 hover:text-zinc-950 bg-zinc-100/90 hover:bg-zinc-200/90 border border-zinc-200 transition-all flex items-center justify-center gap-2.5 shadow-xs active:scale-[0.99]"
+                >
+                  <span>Skip YouTube Connect for Now</span>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    Set up Profile First
+                  </span>
+                </button>
+              )}
 
               {/* OAuth Trust & Security Notice */}
               <div className="flex items-center justify-center lg:justify-start gap-2 pt-1 text-[11px] font-medium text-zinc-500">

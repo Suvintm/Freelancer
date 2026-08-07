@@ -48,6 +48,11 @@ export default function Login() {
   React.useEffect(() => {
     dispatch(clearTempSignupData());
     dispatch(resetYoutubeDiscovery());
+
+    // 🛡️ Clean URL query string immediately so lingering ?error=... never persists or flashes
+    if (window.location.search.includes('error=')) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,11 +86,17 @@ export default function Login() {
    *  - New user → redirect to /login?error=no_account (NOT create an account) ✅
    */
   const handleGoogleLogin = () => {
-    // Step 1: Nuke all stale data
+    // Step 1: Clear error state and URL query string
+    setError(null);
+    if (window.location.search) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    // Step 2: Nuke all stale data
     dispatch(clearTempSignupData());
     dispatch(resetYoutubeDiscovery());
 
-    // Step 2: Set login intent so OAuthSuccess routes correctly
+    // Step 3: Set login intent so OAuthSuccess routes correctly
     dispatch(setTempSignupData({ intent: 'login' }));
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';

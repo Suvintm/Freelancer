@@ -220,6 +220,8 @@ export default function Signup() {
       // Build complete registration payload from tempSignupData + form data
       const response = await signupMutation({
         ...form,
+        role: tempSignupData?.role || 'creator',
+        categorySlug: tempSignupData?.categorySlug || 'creator',
         categoryId: tempSignupData?.categoryId,
         roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
         specializations: tempSignupData?.specializations ?? [],
@@ -247,8 +249,10 @@ export default function Signup() {
         return;
       }
 
-      // For instant authenticated signups (if any):
-      if (response?.ytSyncMode === 'foreground' && selectedChannels.length > 0) {
+      const isCreator = tempSignupData?.categorySlug === 'creator' || tempSignupData?.categorySlug === 'yt_influencer' || tempSignupData?.role === 'creator';
+      const hasChannels = selectedChannels.length > 0;
+
+      if (isCreator && hasChannels) {
         setShowSyncOverlay(true);
       } else {
         dispatch(clearTempSignupData());

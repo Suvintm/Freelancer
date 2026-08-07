@@ -16,7 +16,12 @@ export interface AuthUser {
     group: 'CLIENT' | 'PROVIDER';
     category: string;
     subCategory: string;
+    categorySlug?: string;
   };
+  channelLinkStatus?: string;
+  channel_link_status?: string;
+  creatorProfile?: Record<string, unknown> | null;
+  youtubeChannels?: Record<string, unknown>[];
   youtubeProfile?: Array<{
     id: string;
     channel_id: string;
@@ -58,6 +63,8 @@ export interface SignupPayload {
   phone?: string;
   motherTongue?: string;
   categoryId?: string;
+  categorySlug?: string;
+  role?: string;
   roleSubCategoryIds?: string[];
   specializations?: string[];
   softwareUsed?: string[];
