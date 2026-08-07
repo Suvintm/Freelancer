@@ -23,6 +23,7 @@ export interface TempSignupData {
   authMethod?: 'email' | 'google';
   categoryId?: string;
   categorySlug?: string;
+  role?: string;
   roleGroup?: 'CLIENT' | 'PROVIDER';
   roleName?: string;
   roleSubCategoryIds?: string[];
