@@ -117,11 +117,77 @@ export default function About() {
           </div>
         </motion.section>
 
-        {/* ── VERIFIED CORPORATE PROFILE & IDENTITY ── */}
+        {/* ── FOUNDER & LEAD DEVELOPER SPOTLIGHT ── */}
         <motion.section 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
+          className="bg-gradient-to-br from-zinc-900 via-zinc-950 to-black text-white rounded-3xl p-6 sm:p-10 space-y-6 shadow-xl border border-zinc-800"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold uppercase tracking-wider mb-2">
+                <Sparkles size={14} />
+                <span>Founder &amp; Chief Architect</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Suvin T M</h2>
+              <p className="text-xs sm:text-sm text-zinc-400 font-medium">Founder, CEO &amp; Lead Developer of SuviX (suvix.in)</p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              {/* Founder LinkedIn */}
+              <a 
+                href="https://www.linkedin.com/in/suvintm/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md active:scale-95 group"
+              >
+                <Linkedin size={16} className="group-hover:scale-110 transition-transform" />
+                <span>Founder LinkedIn</span>
+              </a>
+
+              {/* Founder Instagram */}
+              <a 
+                href="https://www.instagram.com/su_vin_tm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:opacity-90 text-white px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md active:scale-95 group"
+              >
+                <Instagram size={16} className="group-hover:scale-110 transition-transform" />
+                <span>Founder Instagram</span>
+              </a>
+            </div>
+          </div>
+
+          <p className="text-sm sm:text-base text-zinc-300 leading-relaxed">
+            Suvin T M is the founder and lead software architect behind SuviX (<a href="https://suvix.in" className="text-rose-400 font-bold hover:underline">suvix.in</a>). Headquartered in Bengaluru, Karnataka, India, Suvin engineered SuviX from the ground up to empower YouTubers, singers, editors, and digital creators with AI-driven matching tools, secure milestone contracts, and next-generation collaboration workflows.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-medium pt-2">
+            <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+              <span className="text-[10px] uppercase font-bold text-zinc-500 block">Role</span>
+              <span className="text-white font-bold text-sm">Founder &amp; Developer</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+              <span className="text-[10px] uppercase font-bold text-zinc-500 block">Location</span>
+              <span className="text-white font-bold text-sm">Bengaluru, India</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+              <span className="text-[10px] uppercase font-bold text-zinc-500 block">Primary Web Domain</span>
+              <span className="text-rose-400 font-bold text-sm">suvix.in</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+              <span className="text-[10px] uppercase font-bold text-zinc-500 block">Platform</span>
+              <span className="text-emerald-400 font-bold text-sm">SuviX AI Platform</span>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ── VERIFIED CORPORATE PROFILE & IDENTITY ── */}
+        <motion.section 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
           className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-5">
@@ -130,7 +196,7 @@ export default function About() {
                 <UserCheck size={22} className="text-rose-600" />
                 Verified Entity Profile
               </h2>
-              <p className="text-xs text-zinc-500 font-mono mt-0.5">Corporate Identity &amp; Governance</p>
+              <p className="text-xs text-zinc-500 font-mono mt-0.5">Corporate Governance &amp; Official Accounts</p>
             </div>
 
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
@@ -141,7 +207,7 @@ export default function About() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-left">
             <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Founder &amp; CEO</p>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Founder &amp; Developer</p>
               <p className="text-base font-bold text-zinc-900 mt-1">Suvin T M</p>
             </div>
 
@@ -154,7 +220,7 @@ export default function About() {
             </div>
 
             <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Official Portal</p>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Official Web Domain</p>
               <a href="https://suvix.in" className="text-base font-bold text-rose-600 hover:underline mt-1 flex items-center gap-1.5">
                 <Globe size={15} className="shrink-0" />
                 suvix.in
@@ -165,19 +231,30 @@ export default function About() {
               <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Status</p>
               <p className="text-base font-bold text-emerald-600 mt-1 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
-                Active Platform
+                Active Enterprise
               </p>
             </div>
           </div>
 
-          {/* ── OFFICIAL BRAND CHANNELS & OFFICIAL STORE BUTTONS ── */}
+          {/* ── OFFICIAL BRAND CHANNELS ── */}
           <div className="pt-6 border-t border-zinc-200 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Official Channels &amp; Mobile Applications
+              Official SuviX Brand Channels
             </h3>
 
             <div className="flex flex-wrap gap-3">
-              {/* LinkedIn */}
+              {/* SuviX Official Instagram */}
+              <a 
+                href="https://www.instagram.com/suvix_official/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-zinc-100 hover:bg-pink-50 border border-zinc-200 hover:border-pink-200 px-4 py-2.5 rounded-2xl text-xs font-bold text-zinc-800 hover:text-pink-600 transition-all shadow-xs group cursor-pointer"
+              >
+                <Instagram size={17} className="text-pink-600 group-hover:scale-110 transition-transform" />
+                <span>SuviX Instagram (@suvix_official)</span>
+              </a>
+
+              {/* SuviX Official LinkedIn */}
               <a 
                 href="https://www.linkedin.com/company/suvix/"
                 target="_blank"
@@ -185,18 +262,7 @@ export default function About() {
                 className="flex items-center gap-2 bg-zinc-100 hover:bg-blue-50 border border-zinc-200 hover:border-blue-200 px-4 py-2.5 rounded-2xl text-xs font-bold text-zinc-800 hover:text-blue-600 transition-all shadow-xs group cursor-pointer"
               >
                 <Linkedin size={17} className="text-blue-600 group-hover:scale-110 transition-transform" />
-                <span>LinkedIn</span>
-              </a>
-
-              {/* Instagram */}
-              <a 
-                href="https://www.instagram.com/suvix_official?igsh=eTJnamYzdzRra3Fv"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-zinc-100 hover:bg-pink-50 border border-zinc-200 hover:border-pink-200 px-4 py-2.5 rounded-2xl text-xs font-bold text-zinc-800 hover:text-pink-600 transition-all shadow-xs group cursor-pointer"
-              >
-                <Instagram size={17} className="text-pink-600 group-hover:scale-110 transition-transform" />
-                <span>Instagram</span>
+                <span>SuviX LinkedIn Company</span>
               </a>
 
               {/* Twitter / X */}
@@ -210,41 +276,6 @@ export default function About() {
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
                 <span>X (@suvix_official)</span>
-              </a>
-
-              {/* Official Apple App Store Button */}
-              <a 
-                href="https://apps.apple.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2.5 bg-zinc-900 hover:bg-black px-4 py-2 rounded-2xl text-white transition-all shadow-md cursor-pointer group"
-              >
-                <svg className="w-5 h-5 fill-current text-white group-hover:scale-105 transition-transform" viewBox="0 0 24 24">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.66-.8 1.11-1.92.99-3.04-.96.04-2.13.64-2.82 1.44-.61.71-1.14 1.86-1 2.98 1.07.08 2.16-.57 2.83-1.38z"/>
-                </svg>
-                <div className="flex flex-col text-left leading-none">
-                  <span className="text-[8px] font-medium text-zinc-400 uppercase tracking-tight">Download on the</span>
-                  <span className="text-xs font-bold text-white tracking-tight">App Store</span>
-                </div>
-              </a>
-
-              {/* Official Google Play Store Button */}
-              <a 
-                href="https://play.google.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2.5 bg-zinc-900 hover:bg-black px-4 py-2 rounded-2xl text-white transition-all shadow-md cursor-pointer group"
-              >
-                <svg className="w-5 h-5 group-hover:scale-105 transition-transform" viewBox="0 0 24 24" fill="none">
-                  <path d="M3.609 1.814L15.392 12 3.609 22.186A1.85 1.85 0 0 1 3 20.8V3.2a1.85 1.85 0 0 1 .609-1.386z" fill="#00E676"/>
-                  <path d="M16.792 13.2l3.41-2.951a1.2 1.2 0 0 1 0 1.902L16.792 13.2z" fill="#FFD600"/>
-                  <path d="M17.492 10.8L5.358 0.3a1.5 1.5 0 0 0-1.749.1L17.492 10.8z" fill="#FF3D00"/>
-                  <path d="M5.358 23.7l12.134-10.5-13.883 10.4a1.5 1.5 0 0 0 1.749.4z" fill="#00B0FF"/>
-                </svg>
-                <div className="flex flex-col text-left leading-none">
-                  <span className="text-[8px] font-medium text-zinc-400 uppercase tracking-tight">GET IT ON</span>
-                  <span className="text-xs font-bold text-white tracking-tight">Google Play</span>
-                </div>
               </a>
             </div>
           </div>
@@ -261,21 +292,40 @@ export default function About() {
             <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-600">
               <HelpCircle size={22} />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">Frequently Asked Questions</h2>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">Entity Disambiguation &amp; FAQ</h2>
+              <p className="text-xs text-zinc-500 font-mono">Google Knowledge Base Disambiguation Statement</p>
+            </div>
           </div>
 
           <div className="space-y-6 divide-y divide-zinc-200 text-sm">
             <div className="pt-4 first:pt-0 space-y-1.5">
-              <h3 className="font-bold text-base text-zinc-900">What is SuviX?</h3>
+              <h3 className="font-bold text-base text-zinc-900">What is SuviX and who created it?</h3>
               <p className="text-zinc-600 leading-relaxed">
-                SuviX (<a href="https://suvix.in" className="text-rose-600 font-semibold hover:underline">suvix.in</a>) is an AI creator growth platform founded by Suvin T M in Bengaluru, Karnataka, India. It provides matching tools for YouTubers, singers, editors, and digital professionals.
+                SuviX (<a href="https://suvix.in" className="text-rose-600 font-semibold hover:underline">suvix.in</a>) is an AI creator growth &amp; collaboration platform founded and developed by Suvin T M in Bengaluru, Karnataka, India. It connects YouTubers, singers, editors, and digital creators with talent matching and AI workflow tools.
               </p>
             </div>
 
             <div className="pt-4 space-y-1.5">
-              <h3 className="font-bold text-base text-zinc-900">Is SuviX affiliated with Suvix Technology Private Limited?</h3>
+              <h3 className="font-bold text-base text-zinc-900">Who is Suvin T M?</h3>
               <p className="text-zinc-600 leading-relaxed">
-                No. SuviX (<a href="https://suvix.in" className="text-rose-600 font-semibold hover:underline">suvix.in</a>) is an independent AI creator growth platform headquartered in Bengaluru, Karnataka, India, and is distinct from any separate entities.
+                Suvin T M is the Founder, CEO, and Lead Developer of SuviX (<a href="https://suvix.in" className="text-rose-600 font-semibold hover:underline">suvix.in</a>). Official founder profiles: <a href="https://www.linkedin.com/in/suvintm/" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline">LinkedIn (suvintm)</a> and <a href="https://www.instagram.com/su_vin_tm" target="_blank" rel="noopener noreferrer" className="text-pink-600 font-semibold hover:underline">Instagram (su_vin_tm)</a>.
+              </p>
+            </div>
+
+            <div className="pt-4 space-y-1.5">
+              <h3 className="font-bold text-base text-zinc-900">Is SuviX affiliated with Suvix Technology Private Limited in Tamil Nadu?</h3>
+              <p className="text-zinc-600 leading-relaxed">
+                No. SuviX (<a href="https://suvix.in" className="text-rose-600 font-semibold hover:underline">suvix.in</a>) is an independent AI creator growth platform headquartered in Bengaluru, Karnataka, India, founded and developed by Suvin T M. It is distinct from and not affiliated with any separate company registrees or legacy entities in Tamil Nadu or other regions.
+              </p>
+            </div>
+
+            <div className="pt-4 space-y-1.5">
+              <h3 className="font-bold text-base text-zinc-900">What are the official links for SuviX?</h3>
+              <p className="text-zinc-600 leading-relaxed">
+                Official Website: <a href="https://suvix.in" className="text-rose-600 font-semibold hover:underline">https://suvix.in</a><br />
+                Official Instagram: <a href="https://www.instagram.com/suvix_official/" target="_blank" rel="noopener noreferrer" className="text-pink-600 font-semibold hover:underline">instagram.com/suvix_official/</a><br />
+                Official LinkedIn: <a href="https://www.linkedin.com/company/suvix/" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline">linkedin.com/company/suvix/</a>
               </p>
             </div>
           </div>
