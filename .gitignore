@@ -97,6 +97,8 @@ cloudinary_temp/
 
 # Confidential / Private Documents
 PRICING_AND_COSTS.md
+*.postman_collection.json
+SuviX_Auth_Onboarding.postman_collection.json
 
 # ─── Java Payment Microservice ────────────────────────────────────────────────
 # Secrets file — NEVER commit this! Use Render env vars in production

@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   title: 'SuviX',
   description: 'Identity gateway for SuviX Administrative Console.',
   icons: {
-    icon: '/favicon.png',
+    icon: '/officiallogo.png',
+    shortcut: '/officiallogo.png',
+    apple: '/officiallogo.png',
   },
 };
 
