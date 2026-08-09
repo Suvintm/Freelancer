@@ -5,7 +5,7 @@ import defaultProfile from '../../assets/defaultprofile.png';
 
 interface Post {
   id: string | number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any-
   user: string | any;
   location: string;
   img: string;
