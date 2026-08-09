@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch } from 'react-redux';
-import { clearTempSignupData, setTempSignupData } from '../store/slices/onboardingSlice';
+import { clearTempSignupData, setTempSignupData, selectRoleAction, setAuthMethodAction } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RoleCategory } from '../api/services/category.service';
 import logo from '../assets/lightlogo.png';
@@ -317,6 +317,14 @@ export default function RoleSelection() {
 
     const roleType = getRoleType(selectedCategory);
 
+    dispatch(selectRoleAction({
+      id: selected,
+      name: selectedCategory.name,
+      slug: selectedCategory.slug,
+      roleGroup: selectedCategory.roleGroup,
+    }));
+    dispatch(setAuthMethodAction('email'));
+
     const signupData = {
       categoryId: selected,
       categorySlug: selectedCategory.slug,
@@ -347,17 +355,19 @@ export default function RoleSelection() {
 
   /**
    * Handle Google OAuth Registration Flow
-   *
-   * Design rule:
-   *  - Creator  → Fire YouTube-scoped OAuth immediately (needs channel list first)
-   *  - Editor   → Save intent, navigate to EditorSpecialization (OAuth fires there)
-   *  - Brand    → Save intent, navigate to BrandDetails (OAuth fires there)
-   *  - Others   → Fire Google OAuth immediately (no intermediate forms)
    */
   const handleGoogleSignup = () => {
     if (!selected || !selectedCategory) return;
 
     const roleType = getRoleType(selectedCategory);
+
+    dispatch(selectRoleAction({
+      id: selected,
+      name: selectedCategory.name,
+      slug: selectedCategory.slug,
+      roleGroup: selectedCategory.roleGroup,
+    }));
+    dispatch(setAuthMethodAction('google'));
 
     const signupData = {
       categoryId: selected,

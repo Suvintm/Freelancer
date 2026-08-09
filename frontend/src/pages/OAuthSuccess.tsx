@@ -8,7 +8,7 @@ const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent 
 import { useDispatch } from 'react-redux';
 import { useQueryClient } from '@tanstack/react-query';
 import { setAuth, setIsAddingAccount } from '../store/slices/authSlice';
-import { setTempSignupData } from '../store/slices/onboardingSlice';
+import { setTempSignupData, resetYoutubeDiscovery } from '../store/slices/onboardingSlice';
 import { store } from '../store';
 import type { RootState } from '../store';
 import { api } from '../api/client';
@@ -31,19 +31,26 @@ export default function OAuthSuccess() {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const exchangeStarted = useRef(false);
+  const codeRef = useRef<string | null>(null);
 
   useEffect(() => {
     // 🛡️ Support both URL fragment (#code=...) and query (?code=...)
-    let code = searchParams.get('code');
-    if (!code && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      code = hashParams.get('code');
+    if (!codeRef.current) {
+      let extractedCode = searchParams.get('code');
+      if (!extractedCode && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        extractedCode = hashParams.get('code');
+      }
+      if (extractedCode) {
+        codeRef.current = extractedCode;
+        // Clean URL fragment/query immediately so OTC never lingers in URL bar
+        if (window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
     }
-    
-    // Clean URL fragment/query immediately so OTC never lingers in URL bar
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+
+    const code = codeRef.current;
 
     if (!code) {
       navigate('/login?error=no_code');
@@ -79,14 +86,15 @@ export default function OAuthSuccess() {
           }
         }
 
-        const oauthIntent = sessionStorage.getItem('oauth_intent');
-        const isExplicitYoutubeConnect = oauthIntent === 'connect_youtube';
+        const oauthIntent = sessionStorage.getItem('oauth_intent') || (window.location.search.includes('connect_youtube') ? 'connect_youtube' : null);
+        const isExplicitYoutubeConnect = Boolean(response.data.isExplicitYoutubeConnect) || oauthIntent === 'connect_youtube' || Boolean(sessionStorage.getItem('youtube_access_token'));
         const intent = tempSignupData?.intent ?? (isExplicitYoutubeConnect ? 'register' : 'login');
 
         // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
         // ONLY trigger YouTube channel fetch if user explicitly clicked "Connect YouTube"
         if (isExplicitYoutubeConnect) {
           sessionStorage.removeItem('oauth_intent');
+          dispatch(resetYoutubeDiscovery());
           const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
           
           if (tokenToUse) {

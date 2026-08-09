@@ -42,11 +42,15 @@ const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Austra
 export default function CompleteProfile() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const onboarding = useSelector((state: RootState) => state.onboarding);
+  const tempSignupData = onboarding.tempSignupData;
+  const selectedRole = onboarding.selectedRole;
+  const authMethod = onboarding.authMethod || tempSignupData?.authMethod;
+  const youtubeDiscovery = onboarding.youtubeDiscovery;
   const { categories } = useCategories();
 
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
-  const isSocialSignup = tempSignupData?.isSocialSignup as boolean | undefined;
+  const isSocialSignup = (authMethod === 'google') || (tempSignupData?.isSocialSignup as boolean | undefined);
 
   const [form, setForm] = useState({ username: '', phone: '', motherTongue: 'English', country: 'India' });
   const [error, setError] = useState<string | null>(null);
@@ -70,27 +74,24 @@ export default function CompleteProfile() {
     setProfilePicturePreview(socialProfile?.picture || null);
   };
 
-
-
   const isSubmittedRef = useRef(false);
 
   // 🔐 PRODUCTION GUARD: Must have social profile + role before reaching this page.
-  // Use replace:true so browser back button doesn't re-enter a completed step.
   useEffect(() => {
     if (isSubmittedRef.current) return;
     if (!isSocialSignup || !socialProfile?.email) {
       navigate('/login', { replace: true });
       return;
     }
-    if (!tempSignupData?.categoryId) {
+    if (!selectedRole && !tempSignupData?.categoryId) {
       navigate('/role-selection', { replace: true });
     }
-  }, [isSocialSignup, socialProfile, tempSignupData?.categoryId, navigate]);
+  }, [isSocialSignup, socialProfile, selectedRole, tempSignupData?.categoryId, navigate]);
 
   // Resolve real category name from store
   const selectedCategory = useMemo(() =>
-    categories.find(c => c.id === (tempSignupData?.categoryId as string)),
-    [categories, tempSignupData?.categoryId]
+    categories.find(c => c.id === (selectedRole?.id || tempSignupData?.categoryId as string)),
+    [categories, selectedRole, tempSignupData?.categoryId]
   );
 
   // Resolve real subcategory names from store
@@ -100,7 +101,7 @@ export default function CompleteProfile() {
     return selectedCategory.subCategories.filter(s => ids.includes(s.id));
   }, [selectedCategory, tempSignupData?.roleSubCategoryIds]);
 
-  const youtubeChannels = tempSignupData?.youtubeChannels;
+  const youtubeChannels = youtubeDiscovery.channels.length > 0 ? youtubeDiscovery.channels : tempSignupData?.youtubeChannels;
   const hasYouTubeChannels = !!youtubeChannels?.length;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -444,9 +445,9 @@ export default function CompleteProfile() {
                   <p className="text-white text-sm font-bold truncate">{ch.channelName as string}</p>
                   <p className="text-zinc-500 text-[10px] font-medium">
                     {Number(ch.subscriberCount || 0).toLocaleString()} subscribers
-                    {ch.subCategorySlug && (
+                    {Boolean((ch as unknown as Record<string, string>).subCategorySlug) && (
                       <span className="ml-2 text-zinc-600">
-                        · {(ch.subCategorySlug as string).replace(/_/g, ' ')}
+                        · {String((ch as unknown as Record<string, string>).subCategorySlug).replace(/_/g, ' ')}
                       </span>
                     )}
                   </p>

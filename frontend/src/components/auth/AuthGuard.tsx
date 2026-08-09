@@ -135,19 +135,21 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   // If already logged in and fully onboarded, don't show login/signup pages
   // UNLESS they explicitly want to add an account
   if (isAuthenticated && user?.isOnboarded && !isAddingAccount) {
+    console.log('🚨 [PublicRoute] Redirecting authenticated user to /home');
     return <Navigate to="/home" replace />;
   }
 
   // If logged in but NOT onboarded, only redirect if they are trying to access /login or /signup
   const authEntryPaths = ['/login', '/signup', '/'];
   if (isAuthenticated && !user?.isOnboarded && authEntryPaths.includes(location.pathname)) {
+    console.log('🚨 [PublicRoute] Redirecting un-onboarded user to /role-selection');
     return <Navigate to="/role-selection" replace />;
   }
 
   return <>{children}</>;
 };
 
-const STEP_ORDER = ['role', 'specialization', 'brand', 'subcategory', 'youtube', 'details', 'complete'] as const;
+const STEP_ORDER = ['welcome', 'role', 'specialization', 'brand', 'subcategory', 'youtube', 'details', 'complete'] as const;
 type OnboardingStep = typeof STEP_ORDER[number];
 
 interface OnboardingGuardProps {

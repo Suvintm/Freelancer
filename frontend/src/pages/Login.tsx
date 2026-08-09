@@ -48,6 +48,11 @@ export default function Login() {
   React.useEffect(() => {
     dispatch(clearTempSignupData());
     dispatch(resetYoutubeDiscovery());
+    try {
+      sessionStorage.removeItem('suvix_temp_signup_data');
+    } catch {
+      // ignore
+    }
 
     // 🛡️ Clean URL query string immediately so lingering ?error=... never persists or flashes
     if (window.location.search.includes('error=')) {
@@ -117,7 +122,7 @@ export default function Login() {
         {/* Top Left Global Redirect Button */}
         <div className="absolute top-6 left-6 lg:top-10 lg:left-10 z-50">
           <Link 
-            to="/"
+            to="/role-selection"
             className="flex items-center gap-2 px-4 py-2 lg:px-5 lg:py-2.5 bg-white border border-gray-200 lg:border-black rounded-full text-black text-[11px] lg:text-sm font-bold transition-all shadow-md hover:scale-105"
           >
             <ArrowLeft size={14} className="lg:w-4 lg:h-4" />
@@ -275,7 +280,7 @@ export default function Login() {
               {/* Footer */}
               <p className="mt-5 text-center text-[13px] text-zinc-500 font-medium pb-1">
                 Don't have an account?{' '}
-                <Link to="/" className="font-bold text-black hover:opacity-70 transition-opacity">
+                <Link to="/role-selection" className="font-bold text-black hover:opacity-70 transition-opacity">
                   Join SuviX
                 </Link>
               </p>
