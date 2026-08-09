@@ -472,17 +472,28 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
 
   if (channels && channels.length > 0) {
     try {
-      const channelIds = channels.map((ch) => ch.channelId);
+      const channelIds = channels.map((ch) => String(ch.channelId || '').trim()).filter(Boolean);
+      logger.info(`🔍 [YT-GUARD] Checking claimed status for channelIds: ${JSON.stringify(channelIds)}`);
+      
       const claimedChannels = await prisma.youTubeChannel.findMany({
-        where: { channel_id: { in: channelIds } },
-        select: { channel_id: true },
+        where: {
+          OR: channelIds.map((id) => ({
+            channel_id: { equals: id, mode: "insensitive" },
+          })),
+        },
+        select: { channel_id: true, channel_name: true },
       });
-      const claimedSet = new Set(claimedChannels.map((p) => p.channel_id));
+      
+      const claimedSet = new Set(claimedChannels.map((p) => String(p.channel_id || '').trim().toLowerCase()));
+      logger.info(`🔍 [YT-GUARD] Claimed channels found in DB: ${claimedChannels.length} (${JSON.stringify(claimedChannels)})`);
+
       channels.forEach((ch) => {
-        ch.isClaimed = claimedSet.has(ch.channelId);
+        const cleanId = String(ch.channelId || '').trim().toLowerCase();
+        ch.isClaimed = claimedSet.has(cleanId);
+        logger.info(`🔍 [YT-GUARD] Channel ${ch.channelName} (${cleanId}) -> isClaimed: ${ch.isClaimed}`);
       });
     } catch (ytError) {
-      logger.error(`⚠️ [YT-GUARD] Duplicate check failed: ${ytError.message}`);
+      logger.error(`⚠️ [YT-GUARD] Duplicate check failed: ${ytError.message}`, { stack: ytError.stack });
       channels.forEach((ch) => (ch.isClaimed = false));
     }
   }

@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { console.log(await prisma.youTubeChannel.findMany({ where: { channel_id: { equals: 'UCgg7Kthhdy5uyeFoMwXthWA', mode: 'insensitive' } }, select: { channel_id: true } })); } main().catch(console.error).finally(() => prisma.$disconnect());

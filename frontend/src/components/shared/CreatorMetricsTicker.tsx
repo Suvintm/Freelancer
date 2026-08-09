@@ -119,31 +119,15 @@ export const ViewsGrowthWidget = React.memo(function ViewsGrowthWidget({
               <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
             </linearGradient>
           </defs>
-          <motion.path
+          <path
             d="M0,20 Q15,18 30,12 T60,8 T85,4 T100,2 L100,24 L0,24 Z"
             fill="url(#viewsGradFlank)"
-            animate={{
-              d: [
-                "M0,20 Q15,18 30,12 T60,8 T85,4 T100,2 L100,24 L0,24 Z",
-                "M0,22 Q15,14 30,8 T60,14 T85,2 T100,1 L100,24 L0,24 Z",
-                "M0,20 Q15,18 30,12 T60,8 T85,4 T100,2 L100,24 L0,24 Z",
-              ],
-            }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <motion.path
+          <path
             d="M0,20 Q15,18 30,12 T60,8 T85,4 T100,2"
             stroke="#ffffff"
             strokeWidth={isFlank ? "1.8" : "2.2"}
             strokeLinecap="round"
-            animate={{
-              d: [
-                "M0,20 Q15,18 30,12 T60,8 T85,4 T100,2",
-                "M0,22 Q15,14 30,8 T60,14 T85,2 T100,1",
-                "M0,20 Q15,18 30,12 T60,8 T85,4 T100,2",
-              ],
-            }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           />
           <circle cx="98" cy="3" r="1.8" fill="#ffffff" />
         </svg>

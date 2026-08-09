@@ -90,8 +90,14 @@ export default function Signup() {
   const [showPass, setShowPass] = useState(false);
   const dispatch = useDispatch();
   const { mutateAsync: signupMutation } = useSignup();
-  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const onboarding = useSelector((state: RootState) => state.onboarding);
+  const tempSignupData = onboarding.tempSignupData;
+  const selectedRole = onboarding.selectedRole;
+  const authMethod = onboarding.authMethod || tempSignupData?.authMethod;
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
+
+  const roleSlug = selectedRole?.slug || tempSignupData?.categorySlug || 'creator';
+  const roleName = selectedRole?.name || tempSignupData?.roleName || 'Creator';
 
   const [form, setForm] = useState({
     fullName: tempSignupData?.companyName || socialProfile?.name || '',
@@ -113,15 +119,12 @@ export default function Signup() {
   const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   const navigate = useNavigate();
-  const isBrandClient = tempSignupData?.categorySlug === 'brand' || tempSignupData?.categorySlug === 'social_promoter';
-  // ✅ FIX: A user is a Google/social user ONLY if authMethod is explicitly 'google'.
-  // Don't rely on socialProfile presence — stale sessionStorage can pollute that.
-  const isSocialUser = tempSignupData?.authMethod === 'google' && !!socialProfile;
+  const isBrandClient = roleSlug === 'brand' || roleSlug === 'social_promoter' || tempSignupData?.categorySlug === 'brand';
+  const isSocialUser = authMethod === 'google' && !!socialProfile;
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
-  // If tempSignupData has no categoryId, attempt sessionStorage recovery before redirecting.
   useEffect(() => {
-    if (!tempSignupData?.categoryId) {
+    if (!selectedRole && !tempSignupData?.categoryId) {
       try {
         const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
         if (rawBackup) {
@@ -136,7 +139,7 @@ export default function Signup() {
       }
       navigate('/role-selection', { replace: true });
     }
-  }, [tempSignupData?.categoryId, dispatch, navigate]);
+  }, [selectedRole, tempSignupData?.categoryId, dispatch, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -325,7 +328,7 @@ export default function Signup() {
                     Create your account.
                   </h1>
                   <p className="text-zinc-500 text-[10px] lg:text-xs font-medium">
-                    As <span className="text-black font-bold">{tempSignupData?.roleName || 'Creator'}</span> — enter your details.
+                    As <span className="text-black font-bold">{roleName}</span> — enter your details.
                   </p>
                 </div>
               </motion.header>

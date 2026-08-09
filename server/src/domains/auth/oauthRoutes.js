@@ -73,6 +73,7 @@ router.get(
         scope: ["profile", "email", "https://www.googleapis.com/auth/youtube.readonly"],
         prompt: "select_account",
         session: false,
+        state: "connect_youtube",
     })
 );
 
@@ -111,10 +112,13 @@ router.get(
                 return res.redirect(`${redirectBase}/login?error=no_user`);
             }
 
+            const isExplicitYoutubeConnect = req.query.state === 'connect_youtube';
+
             // [NEW] Handle Discovery Flow for Unregistered Users
             if (user.isNewUser) {
                 const otc = await generateOTC({
                     isNewUser: true,
+                    isExplicitYoutubeConnect,
                     socialProfile: {
                         email: user.email,
                         name: user.name,
@@ -132,6 +136,7 @@ router.get(
                 role: user.role,
                 isOnboarded: user.is_onboarded,
                 isVerified: user.is_verified,
+                isExplicitYoutubeConnect,
                 accessToken: user.accessToken
             });
 
@@ -191,6 +196,7 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
             return res.status(200).json({
                 success: true,
                 isNewUser: true,
+                isExplicitYoutubeConnect: Boolean(data.isExplicitYoutubeConnect),
                 socialProfile: data.socialProfile,
                 googleAccessToken: data.socialProfile.accessToken
             });
@@ -243,6 +249,7 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
 
         res.status(200).json({
             success: true,
+            isExplicitYoutubeConnect: Boolean(data.isExplicitYoutubeConnect),
             token: accessToken,
             refreshToken,
             googleAccessToken,

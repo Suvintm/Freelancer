@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
-import { setTempSignupData, addDiscoveredChannels } from '../store/slices/onboardingSlice';
+import { setTempSignupData, addDiscoveredChannels, resetYoutubeDiscovery } from '../store/slices/onboardingSlice';
 import { selectUser } from '../store/slices/authSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
@@ -274,11 +274,12 @@ export default function YouTubeConnect() {
     undefined;
 
   const connected = youtubeDiscovery.channels.length > 0;
-  const hasUnclaimedChannel = youtubeDiscovery.channels.some((c) => !c.isClaimed);
 
   const handleConnect = () => {
     // Flag so OAuthSuccess knows we are ONLY fetching channels, not logging in
     sessionStorage.setItem('oauth_intent', 'connect_youtube');
+    dispatch(resetYoutubeDiscovery());
+    sessionStorage.removeItem('youtube_access_token');
     if (tempSignupData?.categoryId) {
       try {
         sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(tempSignupData));
@@ -291,8 +292,10 @@ export default function YouTubeConnect() {
   };
 
   const fetchChannels = useCallback(
-    async (token: string) => {
-      setIsLoading(true);
+    async (token: string, showOverlay = true) => {
+      if (showOverlay) {
+        setIsLoading(true);
+      }
       setFetchError(null);
       try {
         const res = await api.post('/auth/youtube/channels', { accessToken: token });
@@ -324,8 +327,11 @@ export default function YouTubeConnect() {
               // ignore
             }
           }
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 2000);
+          const hasUnclaimed = res.data.channels.some((c: any) => !c.isClaimed);
+          if (showOverlay && hasUnclaimed) {
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 2000);
+          }
         } else {
           throw new Error(res.data.message || 'Failed to fetch channels');
         }
@@ -389,9 +395,11 @@ export default function YouTubeConnect() {
     const token = rawToken;
     if (token && youtubeDiscovery.channels.length === 0 && !fetchStarted.current) {
       fetchStarted.current = true;
-      fetchChannels(token);
+      // Only show full loading/success overlays on new Google OAuth callback redirects
+      const hasFreshToken = Boolean(location.state?.googleAccessToken);
+      fetchChannels(token, hasFreshToken);
     }
-  }, [rawToken, fetchChannels, youtubeDiscovery.channels.length]);
+  }, [rawToken, fetchChannels, location.state, youtubeDiscovery.channels.length]);
 
   /**
    * Save channel data (without niche — that comes next) and go to niche selection page.
@@ -432,7 +440,8 @@ export default function YouTubeConnect() {
 
   const handleSkipYoutube = () => {
     const ytCat = categories.find((c) => c.slug === 'yt_influencer' || c.slug === 'creator');
-    const isEmailFlow = tempSignupData?.authMethod === 'email' || !tempSignupData?.socialProfile;
+    const isEmailFlow = tempSignupData?.authMethod === 'email';
+    const hasSocialProfile = Boolean(tempSignupData?.socialProfile);
 
     const updatePayload = {
       ...tempSignupData,
@@ -454,9 +463,16 @@ export default function YouTubeConnect() {
     }
 
     if (isEmailFlow) {
+      // Email signup route
       navigate('/signup');
-    } else {
+    } else if (hasSocialProfile) {
+      // Google user whose social profile is already attached
       navigate('/complete-profile');
+    } else {
+      // Google auth method selected, but YouTube OAuth skipped:
+      // Trigger standard Google OAuth to retrieve profile & redirect to /complete-profile
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
+      window.location.href = `${apiUrl}/auth/google`;
     }
   };
 
@@ -517,7 +533,11 @@ export default function YouTubeConnect() {
           </div>
 
           <button
-            onClick={() => navigate('/role-selection')}
+            onClick={() => {
+              dispatch(resetYoutubeDiscovery());
+              sessionStorage.removeItem('youtube_access_token');
+              navigate('/role-selection');
+            }}
             className="h-10 px-4 rounded-xl border border-zinc-200/90 bg-white/80 backdrop-blur-md text-zinc-700 hover:text-zinc-950 hover:bg-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 group active:scale-95"
           >
             <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
@@ -580,17 +600,26 @@ export default function YouTubeConnect() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Verified</span>
-                    </div>
+                    {youtubeDiscovery.channels.some((c) => c.isClaimed) ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-[11px] font-bold">
+                        <AlertCircle size={12} className="text-red-400" />
+                        <span>Already Registered</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Verified</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Channel Details */}
                   {youtubeDiscovery.channels.map((channel) => (
                     <div
                       key={channel.channelId}
-                      className="p-3.5 rounded-2xl bg-black/25 backdrop-blur-md border border-white/15 space-y-3 relative z-10"
+                      className={`p-3.5 rounded-2xl bg-black/25 backdrop-blur-md border space-y-3 relative z-10 ${
+                        channel.isClaimed ? 'border-red-500/40 bg-red-950/20' : 'border-white/15'
+                      }`}
                     >
                       {/* Identity Row */}
                       <div className="flex items-center gap-3">
@@ -643,15 +672,35 @@ export default function YouTubeConnect() {
                     </div>
                   ))}
 
+                  {/* Warning if all connected channels are already claimed */}
+                  {!youtubeDiscovery.channels.some((c) => !c.isClaimed) && (
+                    <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs font-bold flex items-start gap-2.5 relative z-10">
+                      <AlertCircle size={16} className="shrink-0 text-red-400 mt-0.5" />
+                      <span>
+                        This YouTube channel is already registered on SuviX. You cannot register it twice. Please connect a different YouTube account or log in to your existing account.
+                      </span>
+                    </div>
+                  )}
+
                   {/* Continue Button */}
                   <div className="pt-1 relative z-10">
-                    <Button
-                      onClick={handleNext}
-                      className="w-full h-12 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
-                    >
-                      <span>Continue to Select Niche</span>
-                      <ArrowRight size={15} />
-                    </Button>
+                    {youtubeDiscovery.channels.some((c) => !c.isClaimed) ? (
+                      <Button
+                        onClick={handleNext}
+                        className="w-full h-12 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
+                      >
+                        <span>Continue to Select Niche</span>
+                        <ArrowRight size={15} />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleConnect}
+                        className="w-full h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
+                      >
+                        <span>Connect Different YouTube Account</span>
+                        <ArrowRight size={15} />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -779,17 +828,26 @@ export default function YouTubeConnect() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-xs font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Verified</span>
-                  </div>
+                  {youtubeDiscovery.channels.some((c) => c.isClaimed) ? (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-[11px] font-bold">
+                      <AlertCircle size={12} className="text-red-400" />
+                      <span>Already Registered</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-xs font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Verified</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Channel Details */}
                 {youtubeDiscovery.channels.map((channel) => (
                   <div
                     key={channel.channelId}
-                    className="p-4 rounded-2xl bg-black/25 backdrop-blur-md border border-white/15 space-y-3.5 relative z-10"
+                    className={`p-4 rounded-2xl bg-black/25 backdrop-blur-md border space-y-3.5 relative z-10 ${
+                      channel.isClaimed ? 'border-red-500/40 bg-red-950/20' : 'border-white/15'
+                    }`}
                   >
                     {/* Identity Row */}
                     <div className="flex items-center gap-3.5">
@@ -842,15 +900,35 @@ export default function YouTubeConnect() {
                   </div>
                 ))}
 
+                {/* Warning if all connected channels are already claimed */}
+                {!youtubeDiscovery.channels.some((c) => !c.isClaimed) && (
+                  <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs font-bold flex items-start gap-2.5 relative z-10">
+                    <AlertCircle size={16} className="shrink-0 text-red-400 mt-0.5" />
+                    <span>
+                      This YouTube channel is already registered on SuviX. You cannot register it twice. Please connect a different YouTube account or log in to your existing account.
+                    </span>
+                  </div>
+                )}
+
                 {/* Continue Button */}
                 <div className="pt-1 relative z-10">
-                  <Button
-                    onClick={handleNext}
-                    className="w-full h-13 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
-                  >
-                    <span>Continue to Select Niche</span>
-                    <ArrowRight size={16} />
-                  </Button>
+                  {youtubeDiscovery.channels.some((c) => !c.isClaimed) ? (
+                    <Button
+                      onClick={handleNext}
+                      className="w-full h-13 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
+                    >
+                      <span>Continue to Select Niche</span>
+                      <ArrowRight size={16} />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleConnect}
+                      className="w-full h-13 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 cursor-pointer transition-all"
+                    >
+                      <span>Connect Different YouTube Account</span>
+                      <ArrowRight size={16} />
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -867,28 +945,47 @@ export default function YouTubeConnect() {
         <div className="fixed bottom-6 inset-x-4 md:bottom-8 z-50 flex justify-center pointer-events-none">
           <div className="w-full max-w-xl bg-white/90 backdrop-blur-xl border border-zinc-200/90 p-4 rounded-2xl flex items-center justify-between gap-4 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
             <div className="flex items-center gap-3 pl-2">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
-                <Check size={18} strokeWidth={3} />
-              </div>
+              {!youtubeDiscovery.channels.some((c) => !c.isClaimed) ? (
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 border border-red-200 flex items-center justify-center">
+                  <AlertCircle size={18} strokeWidth={3} />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                  <Check size={18} strokeWidth={3} />
+                </div>
+              )}
               <div>
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Channel Status</p>
                 <p className="text-xs font-bold text-zinc-900">
-                  {hasUnclaimedChannel
-                    ? `${youtubeDiscovery.channels.filter((c) => !c.isClaimed).length} Channel ready to link`
-                    : 'All channels claimed'}
+                  {!youtubeDiscovery.channels.some((c) => !c.isClaimed)
+                    ? 'Channel already registered on SuviX'
+                    : youtubeDiscovery.channels.length > 1
+                    ? `${youtubeDiscovery.channels.length} Channels verified & ready`
+                    : 'Channel verified & ready'}
                 </p>
               </div>
             </div>
 
-            <Button
-              size="md"
-              disabled={!hasUnclaimedChannel}
-              onClick={handleNext}
-              className="h-11 px-6 rounded-xl font-bold text-xs bg-zinc-950 hover:bg-zinc-800 text-white flex items-center gap-2 shadow-md transition-all active:scale-95"
-            >
-              <span>Next: Choose Niche</span>
-              <ArrowRight size={14} />
-            </Button>
+            {youtubeDiscovery.channels.some((c) => !c.isClaimed) ? (
+              <Button
+                size="md"
+                disabled={!connected}
+                onClick={handleNext}
+                className="h-11 px-6 rounded-xl font-bold text-xs bg-zinc-950 hover:bg-zinc-800 text-white flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>Next: Choose Niche</span>
+                <ArrowRight size={14} />
+              </Button>
+            ) : (
+              <Button
+                size="md"
+                onClick={handleConnect}
+                className="h-11 px-6 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                <span>Connect Another Account</span>
+                <ArrowRight size={14} />
+              </Button>
+            )}
           </div>
         </div>
       )}

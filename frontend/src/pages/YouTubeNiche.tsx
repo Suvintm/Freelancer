@@ -225,7 +225,10 @@ export default function YouTubeNiche() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
-  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const onboarding = useSelector((state: RootState) => state.onboarding);
+  const tempSignupData = onboarding.tempSignupData;
+  const youtubeDiscovery = onboarding.youtubeDiscovery;
+  const authMethod = onboarding.authMethod || tempSignupData?.authMethod;
   const { categories } = useCategories();
   const user = useSelector(selectUser);
 
@@ -237,7 +240,9 @@ export default function YouTubeNiche() {
   const youtubeCategory = categories.find(
     (c) => c.slug === 'yt_influencer' || c.slug === 'creator' || c.maps_to_role === 'creator'
   );
-  const channel = tempSignupData?.youtubeChannels?.[0];
+  
+  // Resolve channel from youtubeDiscovery first, fallback to tempSignupData
+  const channel = youtubeDiscovery.channels[0] || tempSignupData?.youtubeChannels?.[0];
 
   const availableNiches: NicheItem[] = useMemo(() => {
     if (youtubeCategory?.subCategories && youtubeCategory.subCategories.length > 0) {
@@ -287,7 +292,9 @@ export default function YouTubeNiche() {
     try {
       const matched = availableNiches.find((s) => s.id === selectedNiche);
       const nicheName = matched?.name || selectedNiche;
-      const youtubeChannels = (tempSignupData?.youtubeChannels ?? []).map((ch) => ({
+      
+      const rawChannels = youtubeDiscovery.channels.length > 0 ? youtubeDiscovery.channels : (tempSignupData?.youtubeChannels ?? []);
+      const youtubeChannels = rawChannels.map((ch) => ({
         ...ch,
         niche: nicheName,
         subCategoryId: selectedNiche,
@@ -309,7 +316,7 @@ export default function YouTubeNiche() {
         // ignore
       }
 
-      const isEmailFlow = tempSignupData?.authMethod === 'email';
+      const isEmailFlow = authMethod === 'email';
 
       // IF USER IS ALREADY AN ONBOARDED USER LINKING A CHANNEL FROM DASHBOARD / POPOVER:
       if (user && (user.id || user.isOnboarded)) {
@@ -329,8 +336,7 @@ export default function YouTubeNiche() {
           // Email flow: go to manual signup form
           navigate('/signup');
         } else {
-          // Google flow: Google profile (name, email, avatar, googleId) was ALREADY retrieved
-          // during YouTube Channel Connect OAuth. Go directly to complete-profile!
+          // Google flow: Go to complete-profile
           navigate('/complete-profile');
         }
       }, 700);

@@ -75,7 +75,10 @@ const EXPERIENCE_TIERS = [
 export default function EditorSpecialization() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const onboarding = useSelector((state: RootState) => state.onboarding);
+  const tempSignupData = onboarding.tempSignupData;
+  const selectedRole = onboarding.selectedRole;
+  const authMethod = onboarding.authMethod || tempSignupData?.authMethod;
   const user = useSelector(selectUser);
 
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>(
@@ -101,11 +104,10 @@ export default function EditorSpecialization() {
       return;
     }
 
-    const categoryId = tempSignupData?.categoryId;
-    const categorySlug = tempSignupData?.categorySlug;
-    const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
+    const roleSlug = selectedRole?.slug || tempSignupData?.categorySlug;
+    const isEditor = roleSlug === 'editor' || roleSlug === 'video_editor';
 
-    if (!categoryId && !isEditor) {
+    if (!selectedRole && !isEditor) {
       try {
         const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
         if (rawBackup) {
@@ -120,7 +122,7 @@ export default function EditorSpecialization() {
       }
       navigate('/role-selection', { replace: true });
     }
-  }, [tempSignupData, user, navigate, dispatch]);
+  }, [selectedRole, tempSignupData, user, navigate, dispatch]);
 
   const toggleSpec = (name: string) => {
     setSelectedSpecs((prev) =>
@@ -171,13 +173,12 @@ export default function EditorSpecialization() {
       // ignore
     }
 
-    const isGoogleFlow = tempSignupData?.authMethod === 'google';
+    const isGoogleFlow = authMethod === 'google';
 
     setTimeout(() => {
       setIsSubmitting(false);
       if (isGoogleFlow) {
-        // Google flow: fire Google OAuth now (specialization data is saved in sessionStorage).
-        // OAuthSuccess will merge Google identity and navigate to CompleteProfile for final registration.
+        // Google flow: fire Google OAuth or go to complete-profile
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
         window.location.href = `${apiUrl}/auth/google`;
       } else {
