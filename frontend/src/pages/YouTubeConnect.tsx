@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
-import { setTempSignupData, addDiscoveredChannels, resetYoutubeDiscovery } from '../store/slices/onboardingSlice';
+import { setTempSignupData, addDiscoveredChannels, resetYoutubeDiscovery, type YouTubeChannel } from '../store/slices/onboardingSlice';
 import { selectUser } from '../store/slices/authSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
