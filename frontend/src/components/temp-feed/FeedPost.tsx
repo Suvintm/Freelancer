@@ -5,8 +5,13 @@ import defaultProfile from '../../assets/defaultprofile.png';
 
 interface Post {
   id: string | number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any-
-  user: string | any;
+  user: string | {
+    username?: string;
+    profile?: {
+      name?: string;
+      avatar?: string;
+    };
+  };
   location: string;
   img: string;
   likes: string | number;

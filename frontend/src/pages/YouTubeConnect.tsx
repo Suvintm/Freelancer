@@ -327,7 +327,7 @@ export default function YouTubeConnect() {
               // ignore
             }
           }
-          const hasUnclaimed = res.data.channels.some((c: any) => !c.isClaimed);
+          const hasUnclaimed = res.data.channels.some((c: YouTubeChannel) => !c.isClaimed);
           if (showOverlay && hasUnclaimed) {
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 2000);
