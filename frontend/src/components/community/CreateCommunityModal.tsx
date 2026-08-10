@@ -8,7 +8,7 @@ import { api } from '../../api/client'; // Corrected named import
 interface CreateCommunityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-anyy
   onSuccess?: (community: any) => void;
 }
 
