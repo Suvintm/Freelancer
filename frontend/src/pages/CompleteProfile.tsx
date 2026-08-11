@@ -164,6 +164,7 @@ export default function CompleteProfile() {
         if (tempSignupData?.designation) formData.append('designation', tempSignupData.designation);
         if (tempSignupData?.approxBudget) formData.append('approxBudget', String(tempSignupData.approxBudget));
         formData.append('youtubeChannels', JSON.stringify(tempSignupData?.youtubeChannels || []));
+        formData.append('instagramAccounts', JSON.stringify(tempSignupData?.instagramAccounts || []));
         if (tempSignupData?.discoveryToken) {
           formData.append('discoveryToken', tempSignupData.discoveryToken);
         }
@@ -192,8 +193,9 @@ export default function CompleteProfile() {
           industry: tempSignupData?.industry,
           companySize: tempSignupData?.companySize,
           designation: tempSignupData?.designation,
-          approxBudget: tempSignupData?.approxBudget,
+          approxBudget: tempSignupData?.approxBudget ?? undefined,
           youtubeChannels: tempSignupData?.youtubeChannels ?? [],
+          instagramAccounts: tempSignupData?.instagramAccounts ?? [],
           discoveryToken: tempSignupData?.discoveryToken ?? null,
           turnstileToken,
         };

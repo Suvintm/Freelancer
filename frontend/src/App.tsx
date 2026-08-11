@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Welcome from './pages/Welcome';
-import YouTubeConnect from './pages/YouTubeConnect';
+import ConnectSocials from './pages/ConnectSocials';
 import OAuthSuccess from './pages/OAuthSuccess';
 import { AppLayout } from './components/layout/AppLayout';
 import { useAuthInit } from './queries/useCurrentUser';
@@ -19,7 +19,6 @@ const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const RoleSelection = lazy(() => import('./pages/RoleSelection'));
 const EditorSpecialization = lazy(() => import('./pages/EditorSpecialization'));
 const BrandDetails = lazy(() => import('./pages/BrandDetails'));
-const YouTubeNiche = lazy(() => import('./pages/YouTubeNiche'));
 const Home = lazy(() => import('./pages/Home'));
 const Explore = lazy(() => import('./pages/Explore'));
 const CommunicationHub = lazy(() => import('./pages/CommunicationHub'));
@@ -162,22 +161,12 @@ function App() {
             }
           />
 
-          {/* youtube-connect requires role = yt_influencer to be selected */}
+          {/* connect-socials replaces youtube-connect */}
           <Route
-            path="/youtube-connect"
+            path="/connect-socials"
             element={
               <OnboardingGuard requiredStep="role">
-                <YouTubeConnect />
-              </OnboardingGuard>
-            }
-          />
-
-          {/* youtube-niche: niche selection after channel is fetched */}
-          <Route
-            path="/youtube-niche"
-            element={
-              <OnboardingGuard requiredStep="youtube">
-                <YouTubeNiche />
+                <ConnectSocials />
               </OnboardingGuard>
             }
           />

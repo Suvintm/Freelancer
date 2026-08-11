@@ -16,7 +16,7 @@ export const authService = {
       Object.entries(data as unknown as Record<string, unknown>).forEach(([key, value]) => {
         if (value === undefined || value === null) return;
         
-        if (key === 'youtubeChannels' || key === 'roleSubCategoryIds') {
+        if (key === 'youtubeChannels' || key === 'instagramAccounts' || key === 'roleSubCategoryIds') {
           formData.append(key, JSON.stringify(value));
         } else if (value instanceof File) {
           formData.append(key, value);

@@ -19,7 +19,8 @@ export const USER_INCLUDE = {
       category: true,
     },
   },
-  creatorProfile: {
+  creatorProfile: true,
+  youtubeProfile: {
     include: {
       channels: {
         include: {
@@ -31,12 +32,9 @@ export const USER_INCLUDE = {
       },
     },
   },
-  youtubeChannels: {
+  instagramProfile: {
     include: {
-      videos: {
-        orderBy: { published_at: "desc" },
-        take: 25,
-      },
+      accounts: true,
     },
   },
   stats: true,
@@ -98,10 +96,8 @@ export const formatAuthResponse = (user, subscription = null) => {
   const name = user.profile?.name || user.displayName || "";
   const username = user.profile?.username || user.username || "";
 
-  // YouTube channels data — resolve from creatorProfile.channels or direct relation
-  const rawChannels = user.creatorProfile?.channels?.length
-    ? user.creatorProfile.channels
-    : user.youtubeChannels || [];
+  // YouTube channels data
+  const rawChannels = user.youtubeProfile?.channels || [];
 
   const formattedChannels = rawChannels.map((ch) => ({
     ...ch,
@@ -151,9 +147,10 @@ export const formatAuthResponse = (user, subscription = null) => {
 
     // Specialized role profiles
     creatorProfile: user.creatorProfile || null,
-    channelLinkStatus: user.creatorProfile?.channel_link_status || (formattedChannels.length > 0 ? "VERIFIED" : "UNLINKED"),
+    channelLinkStatus: user.youtubeProfile?.status || (formattedChannels.length > 0 ? "LINKED" : "UNLINKED"),
     youtubeProfile: formattedChannels, // Backward compatibility for existing UI
     youtubeChannels: formattedChannels,
+    instagramProfile: user.instagramProfile || null,
     editorProfile: user.editorProfile || null,
     brandProfile: user.brandProfile || null,
 

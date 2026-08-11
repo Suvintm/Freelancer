@@ -140,9 +140,9 @@ export default function OAuthSuccess() {
           }
 
           if (tokenToUse) {
-            navigate('/youtube-connect', { state: { googleAccessToken: tokenToUse } });
+            navigate('/connect-socials', { state: { googleAccessToken: tokenToUse } });
           } else {
-            navigate('/youtube-connect?error=no_token');
+            navigate('/connect-socials?error=no_token');
           }
           return; // Early return prevents unwanted redirect to /role-selection or /home!
         }

@@ -239,6 +239,7 @@ export default function Signup() {
         designation: tempSignupData?.designation,
         approxBudget: tempSignupData?.approxBudget,
         youtubeChannels: selectedChannels,
+        instagramAccounts: tempSignupData?.instagramAccounts ?? [],
         discoveryToken: tempSignupData?.discoveryToken ?? null,
         googleId: isSocialUser ? socialProfile?.googleId : undefined,
         authProvider: isSocialUser ? 'google' : 'local',
@@ -272,7 +273,7 @@ export default function Signup() {
   const handleBack = () => {
     const slug = tempSignupData?.categorySlug;
     if (slug === 'creator' || slug === 'yt_influencer') {
-      navigate('/youtube-niche');
+      navigate('/connect-socials');
     } else if (slug === 'editor' || slug === 'video_editor') {
       navigate('/editor-specialization');
     } else {

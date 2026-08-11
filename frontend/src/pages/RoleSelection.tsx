@@ -343,7 +343,7 @@ export default function RoleSelection() {
     dispatch(setTempSignupData(signupData));
 
     if (roleType === 'creator') {
-      navigate('/youtube-connect');
+      navigate('/connect-socials');
     } else if (roleType === 'editor') {
       navigate('/editor-specialization');
     } else if (roleType === 'brand') {
@@ -392,7 +392,7 @@ export default function RoleSelection() {
       // Creator navigates to YouTubeConnect first.
       // The user explicitly clicks "Connect YouTube Channel" there, which fires the YouTube-scoped OAuth.
       // oauth_intent is set by YouTubeConnect's handleConnect(), not here.
-      navigate('/youtube-connect');
+      navigate('/connect-socials');
     } else if (roleType === 'editor') {
       // Editor fills specializations first; OAuth fires from that page
       navigate('/editor-specialization');

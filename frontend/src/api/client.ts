@@ -135,6 +135,9 @@ api.interceptors.response.use(
         // 🛡️ CRITICAL: Never clear onboarding data or force-redirect if user is currently onboarding!
         const isOnboardingOrAuthRoute = 
           window.location.pathname.startsWith('/role-selection') ||
+          window.location.pathname.startsWith('/connect-socials') ||
+          window.location.pathname.startsWith('/complete-profile') ||
+          window.location.pathname.startsWith('/onboarding') ||
           window.location.pathname.startsWith('/youtube-') ||
           window.location.pathname.startsWith('/signup') ||
           window.location.pathname.startsWith('/login') ||
