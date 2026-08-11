@@ -1031,6 +1031,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     token: accessToken,
     refreshToken,
     accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+    ytSyncMode: process.env.YT_SYNC_MODE || 'background',
   });
 });
 

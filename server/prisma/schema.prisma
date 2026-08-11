@@ -336,9 +336,14 @@ model YouTubeChannel {
   avg_views        Float  @default(0.0) @map("avg_views")
   engagement_rate  Float  @default(0.0) @map("engagement_rate")
   authority_score  Float  @default(0.0) @map("authority_score")
-
-  uploads_playlist_id String? @map("uploads_playlist_id") @db.VarChar(100)
-  made_for_kids       Boolean @default(false) @map("made_for_kids")
+  published_at            DateTime?  @map("published_at") @db.Timestamptz(6)
+  hidden_subscriber_count Boolean    @default(false) @map("hidden_subscriber_count")
+  topic_categories        String[]   @default([]) @map("topic_categories")
+  keywords                String?    @map("keywords")
+  last_synced_at          DateTime?  @map("last_synced_at") @db.Timestamptz(6)
+  sync_status             SyncStatus @default(idle) @map("sync_status")
+  uploads_playlist_id     String?    @map("uploads_playlist_id") @db.VarChar(100)
+  made_for_kids           Boolean    @default(false) @map("made_for_kids")
 
   is_primary  Boolean       @default(false) @map("is_primary")
   is_verified Boolean       @default(false) @map("is_verified")

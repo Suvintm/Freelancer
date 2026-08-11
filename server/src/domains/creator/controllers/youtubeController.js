@@ -213,9 +213,9 @@ export const deleteChannel = async (req, res, next) => {
     const remainingChannels = user.youtubeChannels || [];
 
     if (remainingChannels.length === 0) {
-      await prisma.creatorProfile.updateMany({
+      await prisma.youTubeProfile.updateMany({
         where: { userId },
-        data: { channel_link_status: "UNLINKED", primary_channel_id: null },
+        data: { status: "REVOKED" },
       });
     }
 

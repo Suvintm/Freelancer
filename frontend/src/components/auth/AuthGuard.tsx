@@ -135,8 +135,11 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   // If already logged in and fully onboarded, don't show login/signup pages
   // UNLESS they explicitly want to add an account
   if (isAuthenticated && user?.isOnboarded && !isAddingAccount) {
-    console.log('🚨 [PublicRoute] Redirecting authenticated user to /home');
-    return <Navigate to="/home" replace />;
+    // Allow VerifyEmail to handle its own redirect (e.g. for YouTube Sync Overlay)
+    if (location.pathname !== '/verify-email') {
+      console.log('🚨 [PublicRoute] Redirecting authenticated user to /home');
+      return <Navigate to="/home" replace />;
+    }
   }
 
   // If logged in but NOT onboarded, only redirect if they are trying to access /login or /signup

@@ -198,14 +198,20 @@ function LiveIdentityCard({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-900 relative z-10">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-zinc-100 animate-pulse" />
+            <span className={`w-2 h-2 rounded-full animate-pulse ${primaryChannel.isClaimed ? 'bg-red-500' : 'bg-zinc-100'}`} />
             <span className="text-[10px] font-black tracking-wider uppercase text-zinc-500">
               Live Identity Card
             </span>
           </div>
-          <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] font-black uppercase tracking-wider">
-            YouTube Linked
-          </span>
+          {primaryChannel.isClaimed ? (
+            <span className="px-2.5 py-0.5 rounded-full bg-red-950 border border-red-900 text-red-400 text-[10px] font-black uppercase tracking-wider animate-pulse">
+              Already Linked
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] font-black uppercase tracking-wider">
+              YouTube Linked
+            </span>
+          )}
         </div>
 
         {/* Info */}
@@ -248,57 +254,72 @@ function LiveIdentityCard({
           </div>
         </div>
 
-        {/* Niche Selector in the Card */}
-        <div className="space-y-2 relative z-10">
-          <label className="block text-[10px] font-black text-zinc-455 uppercase tracking-wider flex items-center gap-1.5">
-            <Compass size={12} className="text-zinc-405" />
-            Channel Niche / Primary Category
-          </label>
-          <div className="relative">
-            <select
-              value={selectedNiche}
-              onChange={(e) => setSelectedNiche(e.target.value)}
-              className="w-full h-10 sm:h-11 pl-3 sm:pl-4 pr-8 sm:pr-10 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-xs sm:text-sm font-bold focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all cursor-pointer appearance-none"
-            >
-              <option value="" disabled className="bg-zinc-955 text-zinc-500">
-                Select Niche / Category...
-              </option>
-              {availableNiches.map((niche) => (
-                <option key={niche} value={niche} className="bg-zinc-955 text-white">
-                  {niche}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-500">
-              <Compass size={14} />
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Uploads Grid in Card */}
-        {primaryChannel.videos && primaryChannel.videos.length > 0 && (
-          <div className="space-y-2 pt-1 relative z-10 border-t border-zinc-900">
-            <p className="text-[10px] font-black text-zinc-550 uppercase tracking-wider flex items-center gap-1">
-              <Eye size={12} className="text-zinc-600" /> Recent Uploads Preview
+        {primaryChannel.isClaimed ? (
+          <div className="p-4 rounded-xl bg-red-950/20 border border-red-900/50 text-red-200 text-xs font-semibold space-y-2 relative z-10">
+            <p className="font-extrabold text-sm text-red-400">⚠️ Channel Linked Elsewhere</p>
+            <p className="text-[11px] leading-relaxed text-zinc-450">
+              This YouTube channel is already connected to another creator profile on SuviX. To continue:
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              {primaryChannel.videos.slice(0, 3).map((v) => (
-                <div key={v.id} className="group rounded-lg overflow-hidden border border-zinc-900 bg-zinc-955 filter grayscale hover:grayscale-0 transition-all duration-350">
-                  <div className="aspect-video relative bg-zinc-955 overflow-hidden">
-                    <img
-                      src={v.thumbnail}
-                      alt={v.title}
-                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/45 group-hover:bg-transparent transition-colors" />
-                  </div>
-                  <p className="p-1.5 text-[9px] font-bold text-zinc-350 line-clamp-1 leading-tight">
-                    {v.title}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <ul className="list-disc pl-4 text-[11px] text-zinc-450 space-y-1">
+              <li>Link a different YouTube account/channel using the Link button.</li>
+              <li>Or select "Skip and setup manually" to proceed without connecting.</li>
+            </ul>
           </div>
+        ) : (
+          <>
+            {/* Niche Selector in the Card */}
+            <div className="space-y-2 relative z-10">
+              <label className="block text-[10px] font-black text-zinc-455 uppercase tracking-wider flex items-center gap-1.5">
+                <Compass size={12} className="text-zinc-405" />
+                Channel Niche / Primary Category
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedNiche}
+                  onChange={(e) => setSelectedNiche(e.target.value)}
+                  className="w-full h-10 sm:h-11 pl-3 sm:pl-4 pr-8 sm:pr-10 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-xs sm:text-sm font-bold focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all cursor-pointer appearance-none"
+                >
+                  <option value="" disabled className="bg-zinc-955 text-zinc-500">
+                    Select Niche / Category...
+                  </option>
+                  {availableNiches.map((niche) => (
+                    <option key={niche} value={niche} className="bg-zinc-955 text-white">
+                      {niche}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-500">
+                  <Compass size={14} />
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Uploads Grid in Card */}
+            {primaryChannel.videos && primaryChannel.videos.length > 0 && (
+              <div className="space-y-2 pt-1 relative z-10 border-t border-zinc-900">
+                <p className="text-[10px] font-black text-zinc-550 uppercase tracking-wider flex items-center gap-1">
+                  <Eye size={12} className="text-zinc-600" /> Recent Uploads Preview
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {primaryChannel.videos.slice(0, 3).map((v) => (
+                    <div key={v.id} className="group rounded-lg overflow-hidden border border-zinc-900 bg-zinc-955 filter grayscale hover:grayscale-0 transition-all duration-350">
+                      <div className="aspect-video relative bg-zinc-955 overflow-hidden">
+                        <img
+                          src={v.thumbnail}
+                          alt={v.title}
+                          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/45 group-hover:bg-transparent transition-colors" />
+                      </div>
+                      <p className="p-1.5 text-[9px] font-bold text-zinc-350 line-clamp-1 leading-tight">
+                        {v.title}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -458,6 +479,7 @@ export default function ConnectSocials() {
 
   const connected = youtubeDiscovery.channels.length > 0;
   const primaryChannel = youtubeDiscovery.channels[0];
+  const isChannelClaimed = connected && Boolean(primaryChannel?.isClaimed);
 
   const handleConnectYoutube = () => {
     sessionStorage.setItem('oauth_intent', 'connect_youtube');
@@ -742,53 +764,63 @@ export default function ConnectSocials() {
             </div>
 
             {/* ── CONNECTOR CARDS HUB ────────────────────────────────────────── */}
-            <div className="w-full space-y-4 pt-2">
+            <div className="w-full space-y-3 pt-1">
               
               {/* 1. YOUTUBE CONNECTOR */}
-              <div className={`w-full rounded-2xl border p-4 sm:p-5 transition-all duration-350 ${
-                connected 
-                  ? 'bg-red-50/20 border-red-200/90 shadow-sm' 
-                  : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-sm'
+              <div className={`w-full rounded-2xl border p-3.5 sm:p-5 transition-all duration-350 ${
+                isChannelClaimed
+                  ? 'bg-red-50/40 border-red-200/90 shadow-sm'
+                  : connected 
+                    ? 'bg-red-50/20 border-red-200/90 shadow-sm' 
+                    : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-sm'
               }`}>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 text-left">
-                    <div className="w-11 h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
-                      <Play size={18} className="fill-white ml-0.5" />
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3.5 sm:gap-4">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
+                      <Play size={16} className="fill-white ml-0.5" />
                     </div>
                     <div>
-                      <h3 className="text-sm sm:text-base font-black text-zinc-950 flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5 flex-wrap">
                         YouTube Channel
-                        {connected ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-black">
-                            <Check size={12} strokeWidth={3.5} /> Connected
+                        {isChannelClaimed ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-650 text-[10px] sm:text-xs font-black uppercase tracking-wider">
+                            Already Linked
+                          </span>
+                        ) : connected ? (
+                          <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] sm:text-xs font-black">
+                            <Check size={10} strokeWidth={4} /> Connected
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[9px] font-black uppercase tracking-wider animate-pulse">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[8px] sm:text-[9px] font-black uppercase tracking-wider animate-pulse">
                             Link Required
                           </span>
                         )}
                       </h3>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {connected ? `${primaryChannel.channelName} (${formatCount(primaryChannel.subscriberCount)} subs)` : 'Sync subscriber analytics, recent uploads & verify your identity.'}
+                      <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
+                        {isChannelClaimed
+                          ? `The channel "${primaryChannel.channelName}" is already linked to another user.`
+                          : connected 
+                            ? `${primaryChannel.channelName} (${formatCount(primaryChannel.subscriberCount)} subs)` 
+                            : 'Sync subscriber analytics, recent uploads & verify your identity.'}
                       </p>
                     </div>
                   </div>
 
-                  {!connected ? (
+                  {(!connected || isChannelClaimed) ? (
                     <Button
                       onClick={handleConnectYoutube}
                       disabled={isLoading}
-                      className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shrink-0 active:scale-95 transition-all cursor-pointer"
+                      className="h-8.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] sm:text-xs sm:h-10 sm:px-4 sm:rounded-xl flex items-center justify-center gap-1.5 shadow-sm shrink-0 active:scale-95 transition-all cursor-pointer w-full xs:w-auto"
                     >
-                      <Play size={12} className="fill-white" />
-                      <span>Link YouTube</span>
+                      <Play size={10} className="fill-white" />
+                      <span>{isChannelClaimed ? 'Link Another' : 'Link YouTube'}</span>
                     </Button>
                   ) : (
                     <button
                       onClick={handleConnectYoutube}
-                      className="h-8 px-3 rounded-lg border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                      className="h-7 px-2.5 rounded-lg border border-zinc-200 hover:border-zinc-300 text-zinc-650 hover:text-zinc-900 text-[10px] sm:text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer w-full xs:w-auto justify-center"
                     >
-                      <RefreshCw size={11} />
+                      <RefreshCw size={10} />
                       <span>Switch</span>
                     </button>
                   )}
@@ -796,32 +828,34 @@ export default function ConnectSocials() {
               </div>
 
               {/* 2. INSTAGRAM CONNECTOR (Optional / Multi-Platform) */}
-              <div className="w-full rounded-2xl border border-zinc-200/90 bg-white p-4 sm:p-5 shadow-sm flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5 text-left">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-md shrink-0">
-                    <Instagram size={18} />
+              <div className="w-full rounded-2xl border border-zinc-200/90 bg-white p-3.5 sm:p-5 shadow-sm">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3.5 sm:gap-4">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-md shrink-0">
+                      <Instagram size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5">
+                        Instagram Profile
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500 text-[8px] sm:text-[9px] font-bold">
+                          Optional
+                        </span>
+                      </h3>
+                      <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
+                        Sync Reels engagement, follower demographics & rate cards.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-black text-zinc-950 flex items-center gap-2">
-                      Instagram Profile
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 text-[9px] font-bold">
-                        Optional
-                      </span>
-                    </h3>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Sync Reels engagement, follower demographics & rate cards.
-                    </p>
-                  </div>
-                </div>
 
-                <Button
-                  variant="outline"
-                  onClick={() => alert("Instagram OAuth integration is in beta. You can link this later from your Creator Dashboard settings!")}
-                  className="h-10 px-4 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                >
-                  <Plus size={12} />
-                  <span>Link Instagram</span>
-                </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => alert("Instagram OAuth integration is in beta. You can link this later from your Creator Dashboard settings!")}
+                    className="h-8.5 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-bold text-[10px] sm:text-xs sm:h-10 sm:px-4 sm:rounded-xl flex items-center justify-center gap-1.5 shrink-0 cursor-pointer w-full xs:w-auto"
+                  >
+                    <Plus size={10} />
+                    <span>Link Instagram</span>
+                  </Button>
+                </div>
               </div>
 
               {fetchError && (
@@ -850,9 +884,9 @@ export default function ConnectSocials() {
               <div className="space-y-3">
                 <Button
                   onClick={handleProceedToSignup}
-                  disabled={!connected || (connected && !selectedNiche)}
+                  disabled={!connected || isChannelClaimed || (connected && !selectedNiche)}
                   className={`w-full h-13 sm:h-15 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-all ${
-                    (!connected || (connected && !selectedNiche))
+                    (!connected || isChannelClaimed || (connected && !selectedNiche))
                       ? 'bg-zinc-100 border border-zinc-250 text-zinc-400 cursor-not-allowed'
                       : 'bg-zinc-950 hover:bg-zinc-800 text-white shadow-xl shadow-zinc-950/10 cursor-pointer active:scale-[0.99]'
                   }`}
@@ -861,14 +895,18 @@ export default function ConnectSocials() {
                   <ArrowRight size={18} strokeWidth={2.5} />
                 </Button>
 
-                {connected && !selectedNiche && (
+                {isChannelClaimed ? (
+                  <p className="text-center text-xs font-semibold text-red-655 animate-pulse">
+                    ⚠️ The connected YouTube channel is already linked to another SuviX user. Please connect a different account.
+                  </p>
+                ) : connected && !selectedNiche ? (
                   <p className="text-center text-xs font-semibold text-amber-600 animate-pulse">
                     ⚠️ Please select your channel niche in the preview card to continue.
                   </p>
-                )}
+                ) : null}
 
-                {/* Skip button: visible ONLY before connecting any channel */}
-                {!connected && (
+                {/* Skip button: visible before connecting or if connected channel is claimed */}
+                {(!connected || isChannelClaimed) && (
                   <button
                     type="button"
                     onClick={handleSkipAllConnections}

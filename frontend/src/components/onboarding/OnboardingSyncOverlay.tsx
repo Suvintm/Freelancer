@@ -63,15 +63,12 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
   const completeSync = useCallback(() => {
     if (isCompleted.current) return; // Guard against double-firing
     isCompleted.current = true;
-    console.log("🎉 [FRONTEND] Sync completed 100%! Navigating to:", nextRoute);
+    console.log("🎉 [FRONTEND] Sync completed 100%! Ready for navigation to:", nextRoute);
     setIsSuccess(true);
     setShowFallback(false);
     setProgress(100);
     setSteps(getStepsForStepId('complete'));
     setMessage('Sync completed successfully!');
-    
-    // Start 3 second countdown instead of immediate timeout
-    setCountdown(3);
   }, [nextRoute]);
 
   // ── SAFETY FALLBACK TIMER (60s) ───────────────────────────────────────────
@@ -283,11 +280,12 @@ export const OnboardingSyncOverlay = ({ nextRoute = '/home' }: { nextRoute?: str
           {isSuccess ? (
             <button 
               onClick={() => {
-                setCountdown(0);
+                dispatch(clearTempSignupData());
+                navigate(nextRoute, { replace: true });
               }}
               className="px-8 py-4 rounded-xl bg-black hover:bg-zinc-800 text-white font-bold text-sm w-full transition-colors flex items-center justify-center gap-2 shadow-lg cursor-pointer"
             >
-              Continue to Dashboard ({countdown}s)
+              Continue to Dashboard
             </button>
           ) : showFallback ? (
             <div className="flex flex-col items-center gap-3">
