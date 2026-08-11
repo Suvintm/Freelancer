@@ -16,8 +16,7 @@ import {
   Instagram,
   Compass,
   RefreshCw,
-  Eye,
-  Youtube
+  Eye
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
@@ -25,7 +24,8 @@ import {
   setTempSignupData,
   addDiscoveredChannels,
   resetYoutubeDiscovery,
-  type YouTubeChannel
+  type YouTubeChannel,
+  type TempSignupData
 } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
@@ -180,7 +180,7 @@ interface LiveIdentityCardProps {
   selectedNiche: string;
   setSelectedNiche: (s: string) => void;
   availableNiches: string[];
-  tempSignupData: any;
+  tempSignupData: TempSignupData | null;
 }
 
 function LiveIdentityCard({
