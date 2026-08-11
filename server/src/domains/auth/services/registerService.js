@@ -28,6 +28,7 @@ export const registerFullUser = async (userData) => {
     categoryId, // RoleCategory UUID or slug
     categorySlug,
     youtubeChannels = [],
+    instagramAccounts = [],
     skills = [],
     softwareUsed = [],
     specializations = [],
@@ -98,8 +99,10 @@ export const registerFullUser = async (userData) => {
       }
 
       const claimedChannels = await prisma.youTubeChannel.findMany({
-        where: { channel_id: { in: channelIds } },
-        select: { channel_name: true },
+        where: {
+          channel_id: { in: channelIds },
+        },
+        select: { channel_name: true, channel_id: true },
       });
 
       if (claimedChannels.length > 0) {
@@ -207,6 +210,30 @@ export const registerFullUser = async (userData) => {
             .filter(Boolean);
         }
 
+        let normalizedInstagramAccounts = [];
+        if (isCreator && instagramAccounts && Array.isArray(instagramAccounts) && instagramAccounts.length > 0) {
+          normalizedInstagramAccounts = instagramAccounts
+            .map((acc, index) => {
+              const accountId = String(acc.accountId || acc.account_id || acc.id || "").trim();
+              const handle = String(acc.handle || acc.username || "").trim();
+              if (!accountId || !handle) return null;
+              return {
+                account_id: accountId,
+                handle: handle,
+                name: acc.name || null,
+                profile_picture_url: acc.profilePictureUrl || acc.profile_picture_url || null,
+                follower_count: Number.isFinite(Number(acc.followerCount || acc.follower_count))
+                  ? Number(acc.followerCount || acc.follower_count)
+                  : 0,
+                media_count: Number.isFinite(Number(acc.mediaCount || acc.media_count))
+                  ? Number(acc.mediaCount || acc.media_count)
+                  : 0,
+                is_primary: acc.isPrimary === true || index === 0,
+              };
+            })
+            .filter(Boolean);
+        }
+
         // Step A: Create User
         const newUser = await tx.user.create({
           data: {
@@ -239,51 +266,69 @@ export const registerFullUser = async (userData) => {
 
         // Step C: Create Role-Specific Profile
         if (isCreator) {
-          const channelLinkStatus = normalizedChannels.length > 0 ? "VERIFIED" : "UNLINKED";
-          const creatorProfile = await tx.creatorProfile.create({
+          await tx.creatorProfile.create({
             data: {
               userId: newUser.id,
               business_email: normalizedEmail,
-              channel_link_status: channelLinkStatus,
-              channel_linked_at: normalizedChannels.length > 0 ? new Date() : null,
             },
           });
 
-          let primaryChannelId = null;
-
-          for (const [index, channel] of normalizedChannels.entries()) {
-            const thumb =
-              index === 0 && preMirroredYoutubeAvatar
-                ? preMirroredYoutubeAvatar
-                : channel.thumbnail_url;
-
-            const createdChannel = await tx.youTubeChannel.create({
+          if (normalizedChannels.length > 0) {
+            const ytProfile = await tx.youTubeProfile.create({
               data: {
-                creatorProfileId: creatorProfile.id,
                 userId: newUser.id,
-                channel_id: channel.channel_id,
-                channel_name: channel.channel_name,
-                thumbnail_url: thumb,
-                subscriber_count: channel.subscriber_count,
-                video_count: channel.video_count,
-                uploads_playlist_id: channel.uploads_playlist_id,
-                niche: channel.niche,
-                language: channel.language,
-                country: channel.country,
-                is_primary: channel.isPrimary,
-              },
+                status: 'LINKED',
+                connected_at: new Date(),
+              }
             });
+            for (const [index, channel] of normalizedChannels.entries()) {
+              const thumb =
+                index === 0 && preMirroredYoutubeAvatar
+                  ? preMirroredYoutubeAvatar
+                  : channel.thumbnail_url;
 
-            if (channel.isPrimary && !primaryChannelId) {
-              primaryChannelId = createdChannel.id;
+              await tx.youTubeChannel.create({
+                data: {
+                  youtubeProfileId: ytProfile.id,
+                  userId: newUser.id,
+                  channel_id: channel.channel_id,
+                  channel_name: channel.channel_name,
+                  thumbnail_url: thumb,
+                  subscriber_count: channel.subscriber_count,
+                  video_count: channel.video_count,
+                  is_primary: channel.isPrimary,
+                  uploads_playlist_id: channel.uploads_playlist_id,
+                  niche: channel.niche,
+                  language: channel.language,
+                  country: channel.country,
+                },
+              });
             }
           }
 
-          if (primaryChannelId) {
-            await tx.creatorProfile.update({
-              where: { id: creatorProfile.id },
-              data: { primary_channel_id: primaryChannelId },
+          if (normalizedInstagramAccounts.length > 0) {
+            const igProfile = await tx.instagramProfile.create({
+              data: {
+                userId: newUser.id,
+                status: 'LINKED',
+                connected_at: new Date(),
+              }
             });
+            for (const acc of normalizedInstagramAccounts) {
+              await tx.instagramAccount.create({
+                data: {
+                  instagramProfileId: igProfile.id,
+                  userId: newUser.id,
+                  account_id: acc.account_id,
+                  handle: acc.handle,
+                  name: acc.name,
+                  profile_picture_url: acc.profile_picture_url,
+                  follower_count: acc.follower_count,
+                  media_count: acc.media_count,
+                  is_primary: acc.is_primary,
+                },
+              });
+            }
           }
         } else if (assignedRole === "editor") {
           const parsedExp = typeof experienceYears === "number"
@@ -355,6 +400,7 @@ export const registerFullUser = async (userData) => {
           ...newUser,
           profile,
           _deferredYoutubeChannels: isCreator ? normalizedChannels : null,
+          _deferredInstagramAccounts: isCreator ? normalizedInstagramAccounts : null,
         };
       },
       {

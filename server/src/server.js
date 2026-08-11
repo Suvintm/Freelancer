@@ -96,8 +96,8 @@ const startServer = async () => {
   // 7. Start HTTP & WebSocket Server
   initSocket(server);
 
-  server.listen(PORT, "0.0.0.0", () => {
-    logger.info(`✅ Modular Monolith Server running on port ${PORT} (reachable at http://0.0.0.0:${PORT})`);
+  server.listen(PORT, "::", () => {
+    logger.info(`✅ Modular Monolith Server running on port ${PORT} (reachable at http://localhost:${PORT})`);
   });
 
   // Graceful shutdown

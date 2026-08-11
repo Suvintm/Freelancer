@@ -96,6 +96,15 @@ export interface SignupPayload {
       publishedAt: string;
     }>;
   }>;
+  instagramAccounts?: Array<{
+    accountId: string;
+    handle: string;
+    name?: string;
+    profilePictureUrl?: string;
+    followerCount?: number | string;
+    mediaCount?: number | string;
+    isPrimary?: boolean;
+  }>;
   googleId?: string;
   authProvider?: string;
   profilePicture?: File | string | null;

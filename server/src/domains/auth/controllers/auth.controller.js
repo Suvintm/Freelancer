@@ -413,10 +413,17 @@ export const getRoles = asyncHandler(async (req, res) => {
   const CACHE_TTL_SECONDS = 4 * 60 * 60; // 4 Hours (14,400s)
 
   // 1. Set CDN & Browser Cache-Control headers (4 hours max-age, 1-hour stale-while-revalidate)
-  res.setHeader(
-    "Cache-Control",
-    "public, max-age=14400, s-maxage=14400, stale-while-revalidate=3600"
-  );
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=14400, s-maxage=14400, stale-while-revalidate=3600"
+    );
+  } else {
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+  }
 
   // 2. Try Redis Cache Hit
   try {
@@ -542,6 +549,7 @@ export const registerFull = asyncHandler(async (req, res) => {
     categoryId,
     categorySlug,
     youtubeChannels,
+    instagramAccounts,
     skills,
     softwareUsed,
     specializations,
@@ -565,6 +573,15 @@ export const registerFull = asyncHandler(async (req, res) => {
       parsedYoutubeChannels = JSON.parse(youtubeChannels);
     } catch {
       parsedYoutubeChannels = [];
+    }
+  }
+
+  let parsedInstagramAccounts = instagramAccounts;
+  if (typeof instagramAccounts === "string" && instagramAccounts) {
+    try {
+      parsedInstagramAccounts = JSON.parse(instagramAccounts);
+    } catch {
+      parsedInstagramAccounts = [];
     }
   }
 
@@ -611,6 +628,9 @@ export const registerFull = asyncHandler(async (req, res) => {
     categorySlug,
     youtubeChannels: Array.isArray(parsedYoutubeChannels)
       ? parsedYoutubeChannels
+      : [],
+    instagramAccounts: Array.isArray(parsedInstagramAccounts)
+      ? parsedInstagramAccounts
       : [],
     skills: Array.isArray(parsedSkills) ? parsedSkills : [],
     softwareUsed: Array.isArray(parsedSoftwareUsed) ? parsedSoftwareUsed : [],

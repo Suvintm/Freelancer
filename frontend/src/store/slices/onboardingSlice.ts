@@ -18,6 +18,16 @@ export interface YouTubeChannel {
   }>;
 }
 
+export interface InstagramAccount {
+  accountId: string;
+  handle: string;
+  name?: string;
+  profilePictureUrl?: string;
+  followerCount: number | string;
+  mediaCount: number | string;
+  isPrimary?: boolean;
+}
+
 export interface CreatorData {
   channels: YouTubeChannel[];
   selectedChannelIds: string[];
@@ -73,6 +83,7 @@ export interface TempSignupData {
   isSocialSignup?: boolean;
   socialProfile?: SocialProfile;
   youtubeChannels?: DiscoveredYouTubeChannel[];
+  instagramAccounts?: InstagramAccount[];
   discoveryToken?: string | null;
 }
 
