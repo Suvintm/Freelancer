@@ -87,16 +87,28 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
     }
 
     // 3. Ensure CreatorProfile exists & update status
+    // 3. Ensure CreatorProfile exists
     const creatorProfile = await tx.creatorProfile.upsert({
       where: { userId },
+      update: {},
+      create: {
+        userId,
+      },
+    });
+
+    // Ensure YouTubeProfile status is marked as LINKED
+    const ytProfile = await tx.youTubeProfile.upsert({
+      where: { userId },
       update: {
-        channel_link_status: "VERIFIED",
-        channel_linked_at: new Date(),
+        status: "LINKED",
+        connected_at: new Date(),
+        last_synced_at: new Date(),
       },
       create: {
         userId,
-        channel_link_status: "VERIFIED",
-        channel_linked_at: new Date(),
+        status: "LINKED",
+        connected_at: new Date(),
+        last_synced_at: new Date(),
       },
     });
 
@@ -110,27 +122,32 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       throw new ApiError(409, `YouTube channel ${channelId} is already owned by another user.`);
     }
 
+    // Check if this user already has a primary youtube channel
+    const primaryExists = await tx.youTubeChannel.findFirst({
+      where: { userId, is_primary: true },
+      select: { id: true },
+    });
+
     // 5. Upsert YouTube Channel
     const profileData = {
-      creatorProfileId: creatorProfile.id,
       channel_name: channelName,
       thumbnail_url: mirroredAvatar || thumbnailUrl,
       subscriber_count: subscriberCount,
       video_count: videoCount,
       view_count: BigInt(viewCount || "0"),
-      custom_url: customUrl,
-      banner_url: mirroredBanner || bannerUrl,
+      custom_url: customUrl || null,
+      banner_url: mirroredBanner || bannerUrl || null,
+      country: country || null,
+      language: language || null,
+      niche: niche || null,
+      description: description || null,
+      uploads_playlist_id: uploadsPlaylistId || null,
+      made_for_kids: madeForKids || false,
       published_at: publishedAt ? new Date(publishedAt) : null,
-      country: country,
-      keywords: keywords,
-      uploads_playlist_id: uploadsPlaylistId,
+      hidden_subscriber_count: hiddenSubscriberCount || false,
+      topic_categories: topicCategories || [],
+      keywords: keywords || null,
       last_synced_at: new Date(),
-      userId: userId,
-      niche: niche,
-      language: language,
-      hidden_subscriber_count: hiddenSubscriberCount,
-      made_for_kids: madeForKids,
-      topic_categories: topicCategories,
       sync_status: "idle",
     };
 
@@ -142,14 +159,13 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
       });
     } else {
       youtubeChannel = await tx.youTubeChannel.create({
-        data: { ...profileData, channel_id: channelId },
-      });
-    }
-
-    if (!creatorProfile.primary_channel_id) {
-      await tx.creatorProfile.update({
-        where: { id: creatorProfile.id },
-        data: { primary_channel_id: youtubeChannel.id },
+        data: {
+          ...profileData,
+          channel_id: channelId,
+          userId: userId,
+          is_primary: !primaryExists,
+          youtubeProfile: { connect: { id: ytProfile.id } },
+        },
       });
     }
 
@@ -237,7 +253,7 @@ export const persistYouTubeContent = async (userId, channelData, triggerReason =
               where: { id: youtubeChannel.id },
               data: {
                 engagement_rate: parseFloat(engagementRate.toFixed(4)),
-                avg_views_per_video: parseFloat(avgViewsPerVideo.toFixed(2)),
+                avg_views: parseFloat(avgViewsPerVideo.toFixed(2)),
               },
             });
             logger.info(

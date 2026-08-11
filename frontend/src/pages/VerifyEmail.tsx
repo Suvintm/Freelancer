@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
 import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
+import { api } from '../api/client';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -133,8 +134,10 @@ export default function VerifyEmail() {
         const categoryStr = (user.primaryRole?.category || '').toLowerCase();
         const isCreator = roleStr === 'creator' || categoryStr === 'creator' || categoryStr === 'youtube creator' || categoryStr === 'yt_influencer';
         const isBrand = roleStr === 'brand' || categoryStr === 'brand' || categoryStr === 'social_promoter';
-        const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0 || (user.channels?.length ?? 0) > 0;
+        const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (Array.isArray(user.youtubeProfile) ? user.youtubeProfile.length : 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0;
         const showSync = isCreator && hasChannels;
+
+        console.log("VerifyEmail Route Decision:", { roleStr, categoryStr, isCreator, hasChannels, showSync, ytSyncMode: data.ytSyncMode });
 
         const targetRoute = user.isOnboarded && user.preferencesCompleted
           ? '/home'
@@ -143,7 +146,19 @@ export default function VerifyEmail() {
         setNextRoute(targetRoute);
 
         if (showSync) {
-          setShowSyncOverlay(true);
+          const syncMode = data.ytSyncMode || 'background';
+          if (syncMode === 'background') {
+            // Trigger sync in background, do not wait or show overlay
+            api.post('/youtube-creator/channel/sync-manual').catch(err => {
+              console.error('Failed to trigger background sync:', err);
+            });
+            setTimeout(() => {
+              navigate(targetRoute, { replace: true });
+            }, 1200);
+          } else {
+            // Foreground sync: show overlay page
+            setShowSyncOverlay(true);
+          }
         } else {
           setTimeout(() => {
             navigate(targetRoute, { replace: true });

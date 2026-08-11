@@ -370,7 +370,7 @@ export const getFeed = async (req, res) => {
           include: {
             user: USER_SELECT,
             media: MEDIA_SELECT,
-            youtube_channel: {
+            youtubeChannel: {
               select: { id: true, channel_id: true, channel_name: true, thumbnail_url: true, custom_url: true },
             },
           },
@@ -400,8 +400,15 @@ export const getFeed = async (req, res) => {
         }),
         ...youtubePosts.map((y) => {
           if (y.user?.profile?.profile_picture) y.user.profile.profile_picture = resolveAvatarUrl(y.user.id, y.user.profile.profile_picture);
-          if (y.youtube_channel?.thumbnail_url) y.youtube_channel.thumbnail_url = resolveAvatarUrl(y.youtube_channel.id, y.youtube_channel.thumbnail_url);
-          return { ...y, contentType: "YOUTUBE_POST", media: y.media.map(resolveMediaForApi) };
+          const channel = y.youtubeChannel;
+          if (channel?.thumbnail_url) channel.thumbnail_url = resolveAvatarUrl(channel.id, channel.thumbnail_url);
+          return {
+            ...y,
+            youtubeChannel: undefined,
+            youtube_channel: channel,
+            contentType: "YOUTUBE_POST",
+            media: y.media.map(resolveMediaForApi)
+          };
         }),
         ...polls.map((p) => {
           if (p.user?.profile?.profile_picture) p.user.profile.profile_picture = resolveAvatarUrl(p.user.id, p.user.profile.profile_picture);
@@ -514,7 +521,7 @@ export const getYoutubeFeed = async (req, res) => {
         include: {
           user: USER_SELECT,
           media: MEDIA_SELECT,
-          youtube_channel: {
+          youtubeChannel: {
             select: { id: true, channel_id: true, channel_name: true, thumbnail_url: true, custom_url: true },
           },
         },
@@ -524,8 +531,15 @@ export const getYoutubeFeed = async (req, res) => {
 
       const tagged = youtubePosts.map((y) => {
         if (y.user?.profile?.profile_picture) y.user.profile.profile_picture = resolveAvatarUrl(y.user.id, y.user.profile.profile_picture);
-        if (y.youtube_channel?.thumbnail_url) y.youtube_channel.thumbnail_url = resolveAvatarUrl(y.youtube_channel.id, y.youtube_channel.thumbnail_url);
-        return { ...y, contentType: "YOUTUBE_POST", media: y.media.map(resolveMediaForApi) };
+        const channel = y.youtubeChannel;
+        if (channel?.thumbnail_url) channel.thumbnail_url = resolveAvatarUrl(channel.id, channel.thumbnail_url);
+        return {
+          ...y,
+          youtubeChannel: undefined,
+          youtube_channel: channel,
+          contentType: "YOUTUBE_POST",
+          media: y.media.map(resolveMediaForApi)
+        };
       });
 
       const nextCursor = tagged.length === take ? new Date(tagged[tagged.length - 1].created_at).toISOString() : null;
