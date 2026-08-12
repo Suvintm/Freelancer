@@ -16,7 +16,6 @@ import {
   Instagram,
   Compass,
   RefreshCw,
-  Eye
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
@@ -25,7 +24,6 @@ import {
   addDiscoveredChannels,
   resetYoutubeDiscovery,
   type YouTubeChannel,
-  type TempSignupData
 } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
@@ -175,189 +173,6 @@ const SOCIAL_PROOF_AVATARS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&h=80&fit=crop&crop=faces',
 ];
 
-interface LiveIdentityCardProps {
-  primaryChannel: YouTubeChannel;
-  selectedNiche: string;
-  setSelectedNiche: (s: string) => void;
-  availableNiches: string[];
-  tempSignupData: TempSignupData | null;
-}
-
-function LiveIdentityCard({
-  primaryChannel,
-  selectedNiche,
-  setSelectedNiche,
-  availableNiches,
-  tempSignupData,
-}: LiveIdentityCardProps) {
-  return (
-    <div className="w-full space-y-4">
-      {/* Minimalist Premium Black & White YouTube Snapshot Card (SuviX themed) */}
-      <div className="w-full max-w-md bg-black rounded-3xl border border-zinc-850 shadow-[0_25px_60px_rgba(0,0,0,0.5)] p-5 sm:p-6 space-y-5 sm:space-y-6 text-left relative overflow-hidden text-white">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-900 relative z-10">
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full animate-pulse ${primaryChannel.isClaimed ? 'bg-red-500' : 'bg-zinc-100'}`} />
-            <span className="text-[10px] font-black tracking-wider uppercase text-zinc-500">
-              Live Identity Card
-            </span>
-          </div>
-          {primaryChannel.isClaimed ? (
-            <span className="px-2.5 py-0.5 rounded-full bg-red-950 border border-red-900 text-red-400 text-[10px] font-black uppercase tracking-wider animate-pulse">
-              Already Linked
-            </span>
-          ) : (
-            <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] font-black uppercase tracking-wider">
-              YouTube Linked
-            </span>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="space-y-4 relative z-10">
-          <div className="flex items-center gap-4">
-            <img
-              src={primaryChannel.thumbnailUrl || 'https://via.placeholder.com/80'}
-              alt={primaryChannel.channelName}
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-zinc-800 shadow-md shrink-0 filter grayscale hover:grayscale-0 transition-all duration-300"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <h4 className="text-sm sm:text-base font-extrabold text-white truncate leading-tight">
-                  {primaryChannel.channelName}
-                </h4>
-                <div className="w-4.5 h-4.5 rounded-full bg-white flex items-center justify-center shrink-0">
-                  <Check size={11} className="text-black" strokeWidth={4} />
-                </div>
-              </div>
-              <p className="text-xs text-zinc-400 font-medium truncate mt-0.5">
-                {primaryChannel.channelHandle || '@creator'}
-              </p>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-900">
-              <p className="text-[9px] font-black text-zinc-505 uppercase tracking-widest">Subscribers</p>
-              <p className="text-sm sm:text-base font-black text-white mt-0.5">
-                {formatCount(primaryChannel.subscriberCount)}
-              </p>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-900">
-              <p className="text-[9px] font-black text-zinc-505 uppercase tracking-widest">Videos</p>
-              <p className="text-sm sm:text-base font-black text-white mt-0.5">
-                {formatCount(primaryChannel.videoCount)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {primaryChannel.isClaimed ? (
-          <div className="p-4 rounded-xl bg-red-950/20 border border-red-900/50 text-red-200 text-xs font-semibold space-y-2 relative z-10">
-            <p className="font-extrabold text-sm text-red-400">⚠️ Channel Linked Elsewhere</p>
-            <p className="text-[11px] leading-relaxed text-zinc-450">
-              This YouTube channel is already connected to another creator profile on SuviX. To continue:
-            </p>
-            <ul className="list-disc pl-4 text-[11px] text-zinc-450 space-y-1">
-              <li>Link a different YouTube account/channel using the Link button.</li>
-              <li>Or select "Skip and setup manually" to proceed without connecting.</li>
-            </ul>
-          </div>
-        ) : (
-          <>
-            {/* Niche Selector in the Card */}
-            <div className="space-y-2 relative z-10">
-              <label className="block text-[10px] font-black text-zinc-455 uppercase tracking-wider flex items-center gap-1.5">
-                <Compass size={12} className="text-zinc-405" />
-                Channel Niche / Primary Category
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedNiche}
-                  onChange={(e) => setSelectedNiche(e.target.value)}
-                  className="w-full h-10 sm:h-11 pl-3 sm:pl-4 pr-8 sm:pr-10 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-xs sm:text-sm font-bold focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all cursor-pointer appearance-none"
-                >
-                  <option value="" disabled className="bg-zinc-955 text-zinc-500">
-                    Select Niche / Category...
-                  </option>
-                  {availableNiches.map((niche) => (
-                    <option key={niche} value={niche} className="bg-zinc-955 text-white">
-                      {niche}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-500">
-                  <Compass size={14} />
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Uploads Grid in Card */}
-            {primaryChannel.videos && primaryChannel.videos.length > 0 && (
-              <div className="space-y-2 pt-1 relative z-10 border-t border-zinc-900">
-                <p className="text-[10px] font-black text-zinc-550 uppercase tracking-wider flex items-center gap-1">
-                  <Eye size={12} className="text-zinc-600" /> Recent Uploads Preview
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {primaryChannel.videos.slice(0, 3).map((v) => (
-                    <div key={v.id} className="group rounded-lg overflow-hidden border border-zinc-900 bg-zinc-955 filter grayscale hover:grayscale-0 transition-all duration-350">
-                      <div className="aspect-video relative bg-zinc-955 overflow-hidden">
-                        <img
-                          src={v.thumbnail}
-                          alt={v.title}
-                          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-black/45 group-hover:bg-transparent transition-colors" />
-                      </div>
-                      <p className="p-1.5 text-[9px] font-bold text-zinc-350 line-clamp-1 leading-tight">
-                        {v.title}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Connected Instagram Profile Card Placeholder */}
-      {tempSignupData?.instagramAccounts && tempSignupData.instagramAccounts.length > 0 && (
-        <div className="w-full max-w-md bg-black rounded-3xl border border-zinc-850 shadow-[0_25px_60px_rgba(0,0,0,0.5)] p-5 sm:p-6 space-y-4 text-left relative overflow-hidden text-white animate-fadeIn">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-900">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-zinc-100 animate-pulse" />
-              <span className="text-[10px] font-black tracking-wider uppercase text-zinc-500">
-                Instagram Profile
-              </span>
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] font-black uppercase tracking-wider">
-              Connected
-            </span>
-          </div>
-          {tempSignupData.instagramAccounts.map((account) => (
-            <div key={account.accountId} className="flex items-center gap-4">
-              <img
-                src={account.profilePictureUrl || 'https://via.placeholder.com/80'}
-                alt={account.name || account.handle}
-                className="w-12 h-12 rounded-2xl object-cover border border-zinc-800 filter grayscale"
-              />
-              <div>
-                <h4 className="text-xs sm:text-sm font-extrabold text-white">@{account.handle}</h4>
-                <p className="text-xs text-zinc-450">{account.name}</p>
-                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mt-1">
-                  {formatCount(account.followerCount || 0)} Followers
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function FloatingCreatorShowcase() {
   return (
@@ -729,10 +544,16 @@ export default function ConnectSocials() {
               sessionStorage.removeItem('youtube_access_token');
               navigate('/role-selection');
             }}
-            className="h-10 px-4 rounded-xl border border-zinc-200/90 bg-white/80 backdrop-blur-md text-zinc-700 hover:text-zinc-950 hover:bg-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 group active:scale-95 cursor-pointer"
+            className="group relative h-9 sm:h-10 pl-1.5 pr-3 sm:pr-4 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-600 hover:text-zinc-900 text-[10px] sm:text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-2 active:scale-95 cursor-pointer overflow-hidden"
           >
-            <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Change Role</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            
+            <div className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-zinc-100 group-hover:bg-white shadow-inner flex items-center justify-center border border-zinc-200/50 group-hover:shadow-sm transition-all duration-300">
+                 <ChevronLeft size={14} strokeWidth={2.5} className="text-zinc-500 group-hover:text-zinc-900 group-hover:-translate-x-0.5 transition-transform duration-300" />
+              </div>
+              <span className="tracking-wide uppercase sm:normal-case font-black sm:font-bold">Change Role</span>
+            </div>
           </button>
         </div>
       </header>
@@ -746,83 +567,169 @@ export default function ConnectSocials() {
             initial={{ opacity: 0, x: -25 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 lg:space-y-8 max-w-2xl mx-auto lg:mx-0 w-full"
+            className="lg:col-span-7 flex flex-col items-start text-left space-y-6 lg:space-y-8 max-w-2xl mx-auto lg:mx-0 w-full"
           >
-            {/* Main Headline */}
-            <div className="space-y-2">
-              <h1 className="text-2xl xs:text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-zinc-950 leading-[1.15]">
-                Connect Your{' '}
-                <span className="relative inline-block text-zinc-950">
-                  Creator Accounts
-                  <span className="absolute left-0 bottom-1 w-full h-3 bg-amber-400/35 -z-10 rounded-sm transform -rotate-1" />
-                </span>
-              </h1>
+            {/* Main Headline & Mobile Animation (50:50 Split) */}
+            <div className="flex items-center justify-between gap-4 w-full">
               
-              <p className="text-xs sm:text-sm md:text-base text-zinc-650 font-normal leading-relaxed">
-                Link your channels and social profiles to verify your audience, unlock direct brand sponsorships, and auto-match with vetted video editors.
-              </p>
+              {/* Left Side: Headline */}
+              <div className="w-[55%] lg:w-full space-y-2">
+                <h1 className="text-xl xs:text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-zinc-950 leading-[1.15]">
+                  Connect Your{' '}
+                  <span className="relative inline-block text-zinc-950">
+                    Creator Accounts
+                    <span className="absolute left-0 bottom-1 w-full h-2 sm:h-3 bg-amber-400/35 -z-10 rounded-sm transform -rotate-1" />
+                  </span>
+                </h1>
+                
+                <p className="text-[10px] xs:text-[11px] sm:text-sm md:text-base text-zinc-650 font-medium leading-relaxed">
+                  Link your channels and social profiles to verify your audience, unlock direct brand sponsorships, and auto-match with vetted video editors.
+                </p>
+              </div>
+
+              {/* Right Side: Mobile-only Card Animation */}
+              <div className="w-[45%] lg:hidden relative flex items-center justify-end min-h-[120px]">
+                <div className="absolute right-[-10px] xs:right-0 top-1/2 -translate-y-1/2 w-[260px] xs:w-[300px] sm:w-[380px] transform scale-[0.6] xs:scale-[0.65] sm:scale-[0.75] origin-right pointer-events-none">
+                  <FloatingCreatorShowcase />
+                </div>
+              </div>
+              
             </div>
 
             {/* ── CONNECTOR CARDS HUB ────────────────────────────────────────── */}
             <div className="w-full space-y-3 pt-1">
               
               {/* 1. YOUTUBE CONNECTOR */}
-              <div className={`w-full rounded-2xl border p-3.5 sm:p-5 transition-all duration-350 ${
+              <div className={`w-full rounded-2xl border transition-all duration-350 overflow-hidden ${
                 isChannelClaimed
                   ? 'bg-red-50/40 border-red-200/90 shadow-sm'
                   : connected 
-                    ? 'bg-red-50/20 border-red-200/90 shadow-sm' 
+                    ? 'bg-white border-zinc-200/90 shadow-sm' 
                     : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-sm'
               }`}>
-                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3.5 sm:gap-4">
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
-                      <Play size={16} className="fill-white ml-0.5" />
+                <div className="flex flex-col lg:grid lg:grid-cols-10 gap-0">
+                  
+                  {/* Left Side (60%) */}
+                  <div className="lg:col-span-6 p-3.5 sm:p-5 flex flex-col justify-between gap-4">
+                    <div className="flex items-start gap-3 text-left">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
+                        <Play size={16} className="fill-white ml-0.5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5 flex-wrap">
+                          YouTube Channel
+                          {isChannelClaimed ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-650 text-[10px] sm:text-xs font-black uppercase tracking-wider">
+                              Already Linked
+                            </span>
+                          ) : connected ? (
+                            <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] sm:text-xs font-black">
+                              <Check size={10} strokeWidth={4} /> Connected
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[8px] sm:text-[9px] font-black uppercase tracking-wider animate-pulse">
+                              Link Required
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
+                          {isChannelClaimed
+                            ? `The channel "${primaryChannel?.channelName}" is already linked to another user.`
+                            : connected 
+                              ? `Connected to Google Account successfully.` 
+                              : 'Sync subscriber analytics, recent uploads & verify your identity.'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5 flex-wrap">
-                        YouTube Channel
-                        {isChannelClaimed ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-650 text-[10px] sm:text-xs font-black uppercase tracking-wider">
-                            Already Linked
-                          </span>
-                        ) : connected ? (
-                          <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] sm:text-xs font-black">
-                            <Check size={10} strokeWidth={4} /> Connected
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[8px] sm:text-[9px] font-black uppercase tracking-wider animate-pulse">
-                            Link Required
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
-                        {isChannelClaimed
-                          ? `The channel "${primaryChannel.channelName}" is already linked to another user.`
-                          : connected 
-                            ? `${primaryChannel.channelName} (${formatCount(primaryChannel.subscriberCount)} subs)` 
-                            : 'Sync subscriber analytics, recent uploads & verify your identity.'}
-                      </p>
+
+                    <div className="flex items-center gap-2">
+                      {!primaryChannel ? (
+                        <Button
+                          onClick={handleConnectYoutube}
+                          disabled={isLoading}
+                          className="h-8.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] sm:text-xs sm:h-10 sm:px-5 sm:rounded-xl flex items-center justify-center gap-2 shadow-sm shrink-0 active:scale-95 transition-all cursor-pointer w-full sm:w-auto"
+                        >
+                          <Play size={12} className="fill-white" />
+                          <span>Link YouTube</span>
+                        </Button>
+                      ) : (
+                        <button
+                          onClick={handleConnectYoutube}
+                          className={`h-8.5 sm:h-10 px-3 sm:px-5 rounded-lg sm:rounded-xl border bg-white text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0 w-full sm:w-auto ${isChannelClaimed ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-zinc-200 text-zinc-700 hover:bg-zinc-50'}`}
+                        >
+                          <RefreshCw size={12} strokeWidth={2.5} />
+                          <span>{isChannelClaimed ? 'Link Another' : 'Switch Account'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {(!connected || isChannelClaimed) ? (
-                    <Button
-                      onClick={handleConnectYoutube}
-                      disabled={isLoading}
-                      className="h-8.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] sm:text-xs sm:h-10 sm:px-4 sm:rounded-xl flex items-center justify-center gap-1.5 shadow-sm shrink-0 active:scale-95 transition-all cursor-pointer w-full xs:w-auto"
-                    >
-                      <Play size={10} className="fill-white" />
-                      <span>{isChannelClaimed ? 'Link Another' : 'Link YouTube'}</span>
-                    </Button>
-                  ) : (
-                    <button
-                      onClick={handleConnectYoutube}
-                      className="h-7 px-2.5 rounded-lg border border-zinc-200 hover:border-zinc-300 text-zinc-650 hover:text-zinc-900 text-[10px] sm:text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer w-full xs:w-auto justify-center"
-                    >
-                      <RefreshCw size={10} />
-                      <span>Switch</span>
-                    </button>
+                  {/* Right Side (40%) - Fetched Channel Details */}
+                  {primaryChannel && (
+                    <div className={`lg:col-span-4 p-3.5 sm:p-5 border-t lg:border-t-0 lg:border-l flex flex-col gap-3 justify-center ${isChannelClaimed ? 'bg-red-50/50 border-red-200/70' : 'bg-zinc-50/50 border-zinc-200/70'}`}>
+                      
+                      {/* Premium Mini Card */}
+                      <div className={`flex flex-col gap-2 p-2.5 sm:p-3 rounded-xl shadow-sm border bg-white relative overflow-hidden ${isChannelClaimed ? 'border-red-200' : 'border-zinc-200'}`}>
+                        {isChannelClaimed && (
+                          <div className="absolute top-0 right-0 w-0 h-0 border-t-[28px] border-l-[28px] border-t-red-500 border-l-transparent">
+                             <span className="absolute -top-[26px] -left-[12px] text-white text-[9px] font-black">!</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2.5">
+                          <img 
+                            src={primaryChannel.thumbnailUrl || 'https://via.placeholder.com/40'}
+                            alt={primaryChannel.channelName}
+                            className={`w-8 h-8 rounded-full object-cover border shadow-sm shrink-0 ${isChannelClaimed ? 'border-red-200' : 'border-zinc-200'}`} 
+                          />
+                          <div className="flex flex-col text-left min-w-0 flex-1">
+                            <span className={`text-[11px] sm:text-xs font-extrabold leading-tight truncate ${isChannelClaimed ? 'text-red-950' : 'text-zinc-900'}`}>
+                              {primaryChannel.channelName}
+                            </span>
+                            <span className="text-[9px] text-zinc-500 font-semibold tracking-wide">
+                              {formatCount(primaryChannel.subscriberCount)} subs
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Recent Videos Grid */}
+                        {primaryChannel.videos && primaryChannel.videos.length > 0 && (
+                          <div className="grid grid-cols-3 gap-1.5 mt-1">
+                            {primaryChannel.videos.slice(0, 3).map((v, i) => (
+                              <div key={i} className="aspect-video bg-zinc-100 rounded-md overflow-hidden border border-zinc-200/50 relative group">
+                                <img src={v.thumbnail || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                   <Play size={8} className="text-white fill-white" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Niche Selector */}
+                      {!isChannelClaimed && (
+                        <div className="w-full space-y-1 mt-0.5">
+                          <label className="text-[9px] font-black text-zinc-500 uppercase tracking-wider flex items-center gap-1 text-left">
+                            <Compass size={10} className="text-amber-500" />
+                            Select Niche
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={selectedNiche}
+                              onChange={(e) => setSelectedNiche(e.target.value)}
+                              className="w-full h-8 sm:h-9 pl-2.5 pr-8 rounded-lg border border-zinc-200 bg-white text-zinc-800 text-[10px] sm:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-all cursor-pointer appearance-none shadow-sm"
+                            >
+                              <option value="" disabled className="text-zinc-400">Choose...</option>
+                              {availableNiches.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-400">
+                              <Compass size={12} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
                   )}
                 </div>
               </div>
@@ -866,18 +773,7 @@ export default function ConnectSocials() {
               )}
             </div>
 
-            {/* Mobile-only Live Identity Card (renders above action controls on mobile) */}
-            {connected && primaryChannel && (
-              <div className="w-full lg:hidden pt-2 pb-4">
-                <LiveIdentityCard
-                  primaryChannel={primaryChannel}
-                  selectedNiche={selectedNiche}
-                  setSelectedNiche={setSelectedNiche}
-                  availableNiches={availableNiches}
-                  tempSignupData={tempSignupData}
-                />
-              </div>
-            )}
+            {/* Removed Mobile-only Live Identity Card - it now renders inside the connector */}
 
             {/* ── ACTION CONTROLS: CONTINUE & SKIP ───────────────────────────── */}
             <div className="w-full pt-2 space-y-3">
@@ -958,21 +854,10 @@ export default function ConnectSocials() {
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="w-full lg:col-span-5 flex flex-col items-center justify-center relative py-4"
           >
-            {connected && primaryChannel ? (
-              <div className="hidden lg:block w-full space-y-4 animate-fadeIn">
-                <LiveIdentityCard
-                  primaryChannel={primaryChannel}
-                  selectedNiche={selectedNiche}
-                  setSelectedNiche={setSelectedNiche}
-                  availableNiches={availableNiches}
-                  tempSignupData={tempSignupData}
-                />
-              </div>
-            ) : (
-              <div className="hidden lg:block w-full">
-                <FloatingCreatorShowcase />
-              </div>
-            )}
+            {/* Always show FloatingCreatorShowcase regardless of connection status */}
+            <div className="hidden lg:block w-full">
+              <FloatingCreatorShowcase />
+            </div>
           </motion.div>
 
         </div>

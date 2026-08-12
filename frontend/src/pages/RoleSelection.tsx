@@ -479,10 +479,16 @@ export default function RoleSelection() {
         <div>
           <button
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-200/90 text-zinc-700 hover:text-zinc-950 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer group"
+            className="group relative h-9 sm:h-10 pl-1.5 pr-3 sm:pr-4 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-600 hover:text-zinc-900 text-[10px] sm:text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-2 active:scale-95 cursor-pointer overflow-hidden inline-flex"
           >
-            <ArrowLeft size={14} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            
+            <div className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-zinc-100 group-hover:bg-white shadow-inner flex items-center justify-center border border-zinc-200/50 group-hover:shadow-sm transition-all duration-300">
+                 <ArrowLeft size={14} strokeWidth={2.5} className="text-zinc-500 group-hover:text-zinc-900 group-hover:-translate-x-0.5 transition-transform duration-300" />
+              </div>
+              <span className="tracking-wide uppercase sm:normal-case font-black sm:font-bold">Back</span>
+            </div>
           </button>
         </div>
       </header>
