@@ -33,6 +33,13 @@ import { SuccessOverlay } from '../../components/shared/SuccessOverlay';
 import logo from '../../assets/lightlogo.png';
 import brandLogo from '../../assets/logo.png';
 
+// ── Local Showcase Video Assets ───────────────────────────────────────────
+import video1V from '../../assets/cardassets/video1V.mp4';
+import video2V from '../../assets/cardassets/video2V.mp4';
+import video3V from '../../assets/cardassets/video3V.mp4';
+import video5H from '../../assets/cardassets/video5H.mp4';
+import video6H from '../../assets/cardassets/video6H.mp4';
+
 const formatCount = (n: number | string): string => {
   const num = Number(n);
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
@@ -66,6 +73,7 @@ interface CreatorCardData {
   subscribers: string;
   avatar: string;
   mediaUrl: string;
+  videoUrl?: string;
   mediaType: 'short' | 'video';
   tag?: string;
   badgeIcon?: 'growth' | 'verified' | 'viral';
@@ -85,6 +93,7 @@ const SHOWCASE_CARDS: CreatorCardData[] = [
     subscribers: '954K subscribers',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=faces',
     mediaUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&h=650&fit=crop',
+    videoUrl: video1V,
     mediaType: 'short',
     tag: '⚡ Top Educator',
     badgeIcon: 'verified',
@@ -102,6 +111,7 @@ const SHOWCASE_CARDS: CreatorCardData[] = [
     subscribers: '9M subscribers',
     avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&h=120&fit=crop&crop=faces',
     mediaUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=500&h=750&fit=crop',
+    videoUrl: video2V,
     mediaType: 'short',
     tag: '🔥 100M+ Monthly Views',
     badgeIcon: 'viral',
@@ -119,6 +129,7 @@ const SHOWCASE_CARDS: CreatorCardData[] = [
     subscribers: '655K subscribers',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=faces',
     mediaUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600&h=400&fit=crop',
+    videoUrl: video5H,
     mediaType: 'video',
     tag: '🍳 Studio Creator',
     badgeIcon: 'growth',
@@ -136,6 +147,7 @@ const SHOWCASE_CARDS: CreatorCardData[] = [
     subscribers: '80K subscribers',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop&crop=faces',
     mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=500&h=650&fit=crop',
+    videoUrl: video3V,
     mediaType: 'short',
     tag: '📈 +310% YoY',
     badgeIcon: 'growth',
@@ -153,6 +165,7 @@ const SHOWCASE_CARDS: CreatorCardData[] = [
     subscribers: '6.4M subscribers',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=faces',
     mediaUrl: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop',
+    videoUrl: video6H,
     mediaType: 'video',
     tag: '🎬 4K Action Films',
     badgeIcon: 'verified',
@@ -173,6 +186,62 @@ const SOCIAL_PROOF_AVATARS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&h=80&fit=crop&crop=faces',
 ];
 
+
+function ShowcaseVideo({ videoUrl, poster, alt }: { videoUrl: string; poster: string; alt: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+
+    const playVideo = () => {
+      video.play().catch(() => {
+        // Fallback for browsers that require user gesture on first load
+        const retry = () => {
+          video.play().catch(() => {});
+          window.removeEventListener('touchstart', retry);
+          window.removeEventListener('click', retry);
+        };
+        window.addEventListener('touchstart', retry, { once: true });
+        window.addEventListener('click', retry, { once: true });
+      });
+    };
+
+    if (video.readyState >= 2) {
+      playVideo();
+    } else {
+      video.addEventListener('loadeddata', playVideo, { once: true });
+      video.addEventListener('canplay', playVideo, { once: true });
+    }
+
+    return () => {
+      video.removeEventListener('loadeddata', playVideo);
+      video.removeEventListener('canplay', playVideo);
+    };
+  }, [videoUrl]);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden">
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        poster={poster}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-label={alt}
+        className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
+      />
+    </div>
+  );
+}
 
 function FloatingCreatorShowcase() {
   return (
@@ -202,12 +271,16 @@ function FloatingCreatorShowcase() {
             className="relative w-full h-full group cursor-pointer"
           >
             <div className="relative w-full h-full rounded-[1.6rem] overflow-hidden border-[3.5px] border-white bg-white shadow-[0_20px_50px_rgba(0,0,0,0.14),0_6px_15px_rgba(0,0,0,0.08)] transition-all duration-300 group-hover:shadow-[0_28px_65px_rgba(0,0,0,0.22)] group-hover:border-zinc-50">
-              <img
-                src={card.mediaUrl}
-                alt={card.name}
-                className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              {card.videoUrl ? (
+                <ShowcaseVideo videoUrl={card.videoUrl} poster={card.mediaUrl} alt={card.name} />
+              ) : (
+                <img
+                  src={card.mediaUrl}
+                  alt={card.name}
+                  className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
 
               {card.tag && (
                 <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md border border-white/20 text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
@@ -348,9 +421,9 @@ export default function ConnectSocials() {
             }
           }
           const hasUnclaimed = res.data.channels.some((c: YouTubeChannel) => !c.isClaimed);
-          if (showOverlay && hasUnclaimed) {
+          if (showOverlay && (hasUnclaimed || res.data.channels.length > 0)) {
             setShowSuccess(true);
-            setTimeout(() => setShowSuccess(false), 2000);
+            setTimeout(() => setShowSuccess(false), 2400);
           }
         } else {
           throw new Error(res.data.message || 'Failed to fetch channels');
@@ -414,10 +487,9 @@ export default function ConnectSocials() {
     const token = rawToken;
     if (token && youtubeDiscovery.channels.length === 0 && !fetchStarted.current) {
       fetchStarted.current = true;
-      const hasFreshToken = Boolean(location.state?.googleAccessToken);
-      fetchChannels(token, hasFreshToken);
+      fetchChannels(token, true);
     }
-  }, [rawToken, fetchChannels, location.state, youtubeDiscovery.channels.length]);
+  }, [rawToken, fetchChannels, youtubeDiscovery.channels.length]);
 
   /**
    * Complete Social Account Linking and Proceed to Sign Up
@@ -523,8 +595,13 @@ export default function ConnectSocials() {
         />
       </div>
 
-      <LoadingOverlay isVisible={isLoading} theme="youtube" message="Verifying YouTube Channel with Google..." />
-      <SuccessOverlay isVisible={showSuccess} type="youtube" title="Channel Verified!" message="YouTube identity synced successfully." />
+      <LoadingOverlay isVisible={isLoading} theme="youtube" message="Connecting to YouTube..." />
+      <SuccessOverlay
+        isVisible={showSuccess}
+        type="youtube"
+        title="Channel Found!"
+        message={primaryChannel?.channelName ? `Discovered and verified "${primaryChannel.channelName}"` : "Your YouTube channel was discovered and verified."}
+      />
 
       {/* ── TOP NAVIGATION ────────────────────────────────────────────────── */}
       <header className="relative z-50 w-full px-6 py-6 md:px-12 md:py-8 max-w-7xl mx-auto flex items-center justify-between">
