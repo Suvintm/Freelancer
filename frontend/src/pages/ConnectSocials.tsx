@@ -16,7 +16,6 @@ import {
   Instagram,
   Compass,
   RefreshCw,
-  Eye
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
@@ -25,7 +24,6 @@ import {
   addDiscoveredChannels,
   resetYoutubeDiscovery,
   type YouTubeChannel,
-  type TempSignupData
 } from '../store/slices/onboardingSlice';
 import { useCategories } from '../queries/useCategories';
 import type { RootState } from '../store';
