@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import LottieComponent from 'lottie-react';
 import securityLoaderAnimation from '../assets/lottie/security_loader.json';
 
@@ -226,17 +227,43 @@ export default function OAuthSuccess() {
   }, [searchParams, navigate, dispatch, queryClient]);
 
   return (
-    <div className="h-screen w-full bg-black flex flex-col items-center justify-center gap-4">
-      <div className="w-48 h-48 flex items-center justify-center">
-        <Lottie 
-          animationData={securityLoaderAnimation} 
-          loop={true} 
-          style={{ width: '100%', height: '100%' }} 
-        />
-      </div>
-      <div className="text-center space-y-2 -mt-4">
-        <h2 className="text-2xl font-bold text-white uppercase tracking-widest font-display">Securing Session</h2>
-        <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">Finalizing your secure login...</p>
+    <div className="h-screen w-full bg-[#FAFAFA] flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
+      {/* Subtle Ambient Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
+
+      {/* Main Card Container */}
+      <div className="relative z-10 flex flex-col items-center max-w-sm w-full">
+        <div className="w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center">
+          <Lottie 
+            animationData={securityLoaderAnimation} 
+            loop={true} 
+            style={{ width: '100%', height: '100%' }} 
+          />
+        </div>
+
+        <div className="text-center space-y-1.5 mt-2">
+          <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight">
+            Signing you in
+          </h2>
+          <p className="text-xs sm:text-sm text-neutral-500 font-normal leading-relaxed">
+            Verifying your identity and setting up your workspace...
+          </p>
+        </div>
+
+        {/* Minimalist indeterminate loader bar */}
+        <div className="w-48 h-1 bg-neutral-200 rounded-full overflow-hidden mt-6 relative">
+          <motion.div
+            animate={{
+              x: ['-100%', '100%']
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.2,
+              ease: 'easeInOut'
+            }}
+            className="w-1/2 h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+          />
+        </div>
       </div>
     </div>
   );

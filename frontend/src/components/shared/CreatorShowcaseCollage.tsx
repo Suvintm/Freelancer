@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Flame, Zap, Award, Film, Music } from 'lucide-react';
 import logo from '../../assets/logo.png';
+
+// ── Local Showcase Video Assets ───────────────────────────────────────────
+import video1V from '../../assets/cardassets/video1V.mp4';
+import video2V from '../../assets/cardassets/video2V.mp4';
+import video3V from '../../assets/cardassets/video3V.mp4';
+import video4V from '../../assets/cardassets/video4V.mp4';
+import video5H from '../../assets/cardassets/video5H.mp4';
+import video6H from '../../assets/cardassets/video6H.mp4';
 
 interface CreatorCardData {
   id: string;
@@ -10,6 +18,7 @@ interface CreatorCardData {
   subscribers: string;
   avatar: string;
   mediaUrl: string;
+  videoUrl?: string;
   mediaType: 'short' | 'video';
   tag?: string;
   badgeIcon?: 'growth' | 'verified' | 'viral' | 'award' | 'film' | 'music';
@@ -83,6 +92,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '954K subs',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=520&auto=format&fit=crop&q=75',
+      videoUrl: video1V,
       mediaType: 'short',
       tag: '⚡ Top Educator',
       badgeIcon: 'verified',
@@ -99,6 +109,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '9.2M subs',
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400&h=580&auto=format&fit=crop&q=75',
+      videoUrl: video2V,
       mediaType: 'short',
       tag: '🔥 100M+ Views',
       badgeIcon: 'viral',
@@ -115,6 +126,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '655K subs',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=450&h=300&auto=format&fit=crop&q=75',
+      videoUrl: video5H,
       mediaType: 'video',
       tag: '🍳 Studio Creator',
       badgeIcon: 'growth',
@@ -131,6 +143,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '120K subs',
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&h=520&auto=format&fit=crop&q=75',
+      videoUrl: video3V,
       mediaType: 'short',
       tag: '📈 +310% YoY',
       badgeIcon: 'growth',
@@ -147,6 +160,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '6.4M subs',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
+      videoUrl: video6H,
       mediaType: 'video',
       tag: '🎬 4K Action Films',
       badgeIcon: 'film',
@@ -167,6 +181,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '2.8M subs',
       avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&h=520&auto=format&fit=crop&q=75',
+      videoUrl: video4V,
       mediaType: 'short',
       tag: '🎥 Commercial VFX',
       badgeIcon: 'award',
@@ -183,6 +198,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '1.6M subs',
       avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=580&auto=format&fit=crop&q=75',
+      videoUrl: video1V,
       mediaType: 'short',
       tag: '🌊 Drone & Travel',
       badgeIcon: 'viral',
@@ -199,6 +215,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '5.9M subs',
       avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=450&h=300&auto=format&fit=crop&q=75',
+      videoUrl: video6H,
       mediaType: 'video',
       tag: '☕ Storytelling',
       badgeIcon: 'verified',
@@ -215,6 +232,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '1.3M subs',
       avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=400&h=520&auto=format&fit=crop&q=75',
+      videoUrl: video2V,
       mediaType: 'short',
       tag: '⚡ Premiere VFX',
       badgeIcon: 'growth',
@@ -231,6 +249,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '2.5M subs',
       avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?w=450&h=300&auto=format&fit=crop&q=75',
+      videoUrl: video5H,
       mediaType: 'video',
       tag: '✨ Motion Design',
       badgeIcon: 'film',
@@ -251,6 +270,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '18.5M subs',
       avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=520&auto=format&fit=crop&q=75',
+      videoUrl: video3V,
       mediaType: 'short',
       tag: '📱 Tech Elite',
       badgeIcon: 'award',
@@ -267,6 +287,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '5.4M subs',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400&h=580&auto=format&fit=crop&q=75',
+      videoUrl: video4V,
       mediaType: 'short',
       tag: '🚀 Growth Systems',
       badgeIcon: 'growth',
@@ -283,6 +304,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '2.4M subs',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=450&h=300&auto=format&fit=crop&q=75',
+      videoUrl: video5H,
       mediaType: 'video',
       tag: '🎵 Music Production',
       badgeIcon: 'music',
@@ -299,6 +321,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '920K subs',
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=520&auto=format&fit=crop&q=75',
+      videoUrl: video1V,
       mediaType: 'short',
       tag: '🎙️ Creative Studio',
       badgeIcon: 'verified',
@@ -315,6 +338,7 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
       subscribers: '1.2M subs',
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&auto=format&fit=crop&crop=faces&q=75',
       mediaUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=450&h=300&auto=format&fit=crop&q=75',
+      videoUrl: video6H,
       mediaType: 'video',
       tag: '💎 Monetization',
       badgeIcon: 'viral',
@@ -326,6 +350,62 @@ const SHOWCASE_SETS: CreatorCardData[][] = [
     },
   ],
 ];
+
+// ── Showcase Video Component with Reliable Autoplay ────────────────────────
+function ShowcaseVideo({ videoUrl, poster, alt }: { videoUrl: string; poster: string; alt: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+
+    const playVideo = () => {
+      video.play().catch(() => {
+        const retry = () => {
+          video.play().catch(() => {});
+          window.removeEventListener('touchstart', retry);
+          window.removeEventListener('click', retry);
+        };
+        window.addEventListener('touchstart', retry, { once: true });
+        window.addEventListener('click', retry, { once: true });
+      });
+    };
+
+    if (video.readyState >= 2) {
+      playVideo();
+    } else {
+      video.addEventListener('loadeddata', playVideo, { once: true });
+      video.addEventListener('canplay', playVideo, { once: true });
+    }
+
+    return () => {
+      video.removeEventListener('loadeddata', playVideo);
+      video.removeEventListener('canplay', playVideo);
+    };
+  }, [videoUrl]);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden">
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        poster={poster}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-label={alt}
+        className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
+      />
+    </div>
+  );
+}
 
 // ── INDIVIDUAL CARD SLOT WITH INDEPENDENT 10-SECOND TIMER ───────────────────
 interface CreatorCardSlotProps {
@@ -414,13 +494,17 @@ const CreatorCardSlot = React.memo(function CreatorCardSlot({
                   : 'border-white bg-white group-hover:shadow-[0_20px_45px_rgba(0,0,0,0.22)]'
               }`}
             >
-              <img
-                src={card.mediaUrl}
-                alt={card.name}
-                loading="eager"
-                decoding="async"
-                className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
-              />
+              {card.videoUrl ? (
+                <ShowcaseVideo videoUrl={card.videoUrl} poster={card.mediaUrl} alt={card.name} />
+              ) : (
+                <img
+                  src={card.mediaUrl}
+                  alt={card.name}
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent pointer-events-none" />
 
               {/* Tag / Micro Badge on Image */}
