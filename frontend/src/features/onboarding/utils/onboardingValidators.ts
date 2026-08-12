@@ -1,9 +1,9 @@
 import type { OnboardingSliceState, OnboardingStep } from '../types/onboarding.types';
 
 export interface OnboardingValidationState {
-  selectedRole?: { slug: string; name?: string } | null;
+  selectedRole?: { slug?: string; name?: string } | null;
   authMethod?: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export const canNavigateToStep = (
