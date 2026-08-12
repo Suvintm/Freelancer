@@ -1,111 +1,36 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { AuthMethod, OnboardingRoleGroup, OnboardingRoleSlug, DiscoveredYouTubeChannel, SocialProfile } from '../../features/onboarding/types/onboarding.types';
+import type { RootState } from '../index';
+import type {
+  AuthMethod,
+  OnboardingRoleGroup,
+  OnboardingRoleSlug,
+  YouTubeChannel,
+  InstagramAccount,
+  CreatorData,
+  EditorData,
+  BrandData,
+  GoogleIdentity,
+  SelectedRole,
+  TempSignupData,
+  OnboardingSliceState,
+} from '../../features/onboarding/types';
 
-export interface YouTubeChannel {
-  channelId: string;
-  channelName: string;
-  thumbnailUrl: string;
-  subscriberCount: number | string;
-  videoCount: number | string;
-  channelHandle?: string;
-  isClaimed?: boolean;
-  videos?: Array<{
-    id: string;
-    title: string;
-    thumbnail: string;
-    publishedAt: string;
-  }>;
-}
-
-export interface InstagramAccount {
-  accountId: string;
-  handle: string;
-  name?: string;
-  profilePictureUrl?: string;
-  followerCount: number | string;
-  mediaCount: number | string;
-  isPrimary?: boolean;
-}
-
-export interface CreatorData {
-  channels: YouTubeChannel[];
-  selectedChannelIds: string[];
-  selectedNiches: string[];
-  discoveryToken: string | null;
-}
-
-export interface EditorData {
-  specializations: string[];
-  softwareUsed: string[];
-  portfolioUrl: string;
-  experienceYears: number;
-}
-
-export interface BrandData {
-  companyName: string;
-  companyWebsite: string;
-  designation: string;
-  industry: string;
-  companySize: string;
-  approxBudget: string;
-}
-
-export interface GoogleIdentity {
-  email: string;
-  googleId: string;
-  name: string;
-  picture?: string;
-}
-
-export interface TempSignupData {
-  intent?: 'login' | 'register';
-  onboardingStep?: 'welcome' | 'role' | 'specialization' | 'brand' | 'subcategory' | 'youtube' | 'details' | 'complete';
-  authMethod?: AuthMethod;
-  categoryId?: string;
-  categorySlug?: OnboardingRoleSlug;
-  role?: string;
-  roleGroup?: OnboardingRoleGroup;
-  roleName?: string;
-  roleSubCategoryIds?: string[];
-  specializations?: string[];
-  softwareUsed?: string[];
-  skills?: string[];
-  portfolioUrl?: string;
-  experienceYears?: number;
-  companyName?: string;
-  companyWebsite?: string;
-  industry?: string;
-  companySize?: string;
-  designation?: string;
-  approxBudget?: string | number;
-  targetRegions?: string[];
-  isSocialSignup?: boolean;
-  socialProfile?: SocialProfile;
-  youtubeChannels?: DiscoveredYouTubeChannel[];
-  instagramAccounts?: InstagramAccount[];
-  discoveryToken?: string | null;
-}
-
-export interface OnboardingSliceState {
-  tempSignupData: TempSignupData;
-  selectedRole: {
-    id: string;
-    name: string;
-    slug: OnboardingRoleSlug;
-    roleGroup?: OnboardingRoleGroup;
-  } | null;
-  authMethod: AuthMethod | null;
-  creatorData: CreatorData;
-  editorData: EditorData;
-  brandData: BrandData;
-  googleIdentity: GoogleIdentity | null;
-  youtubeDiscovery: {
-    channels: YouTubeChannel[];
-    selectedChannelIds: string[];
-    categorizations: Record<string, string>;
-  };
-}
+// Re-export types for backward compatibility
+export type {
+  AuthMethod,
+  OnboardingRoleGroup,
+  OnboardingRoleSlug,
+  YouTubeChannel,
+  InstagramAccount,
+  CreatorData,
+  EditorData,
+  BrandData,
+  GoogleIdentity,
+  SelectedRole,
+  TempSignupData,
+  OnboardingSliceState,
+};
 
 const initialState: OnboardingSliceState = {
   tempSignupData: {},
@@ -264,5 +189,16 @@ export const {
   setYoutubeChannelCategory,
   resetYoutubeDiscovery,
 } = onboardingSlice.actions;
+
+// --- Selectors ---
+export const selectOnboarding = (state: RootState) => state.onboarding;
+export const selectTempSignupData = (state: RootState) => state.onboarding?.tempSignupData;
+export const selectSelectedRole = (state: RootState) => state.onboarding?.selectedRole;
+export const selectAuthMethod = (state: RootState) => state.onboarding?.authMethod;
+export const selectCreatorData = (state: RootState) => state.onboarding?.creatorData;
+export const selectEditorData = (state: RootState) => state.onboarding?.editorData;
+export const selectBrandData = (state: RootState) => state.onboarding?.brandData;
+export const selectGoogleIdentity = (state: RootState) => state.onboarding?.googleIdentity;
+export const selectYoutubeDiscovery = (state: RootState) => state.onboarding?.youtubeDiscovery;
 
 export const onboardingReducer = onboardingSlice.reducer;

@@ -281,11 +281,15 @@ export const getProfilesByCategory = async (categorySlug) => {
       category: true,
       user: {
         include: {
-          youtubeChannels: {
+          youtubeProfile: {
             include: {
-              videos: {
-                orderBy: { published_at: "desc" },
-                take: 3,
+              channels: {
+                include: {
+                  videos: {
+                    orderBy: { published_at: "desc" },
+                    take: 3,
+                  },
+                },
               },
             },
           },
@@ -310,7 +314,7 @@ export const getProfilesByCategory = async (categorySlug) => {
       bio: profile.bio,
       location: `${profile.location_city || ""}, ${profile.location_country || ""}`.replace(/^,\s*/, ""),
       category: profile.category?.name,
-      youtubeProfiles: (profile.user?.youtubeChannels || []).map((ytProfile) => ({
+      youtubeProfiles: (profile.user?.youtubeProfile?.channels || []).map((ytProfile) => ({
         channelId: ytProfile.channel_id,
         channelName: ytProfile.channel_name,
         thumbnailUrl: smartResolveMediaUrl(ytProfile.thumbnail_url),
@@ -355,11 +359,15 @@ export const getChannelDetails = async (channelId) => {
               category: true,
             },
           },
-          youtubeChannels: {
+          youtubeProfile: {
             include: {
-              videos: {
-                orderBy: { published_at: "desc" },
-                take: 3,
+              channels: {
+                include: {
+                  videos: {
+                    orderBy: { published_at: "desc" },
+                    take: 3,
+                  },
+                },
               },
             },
           },

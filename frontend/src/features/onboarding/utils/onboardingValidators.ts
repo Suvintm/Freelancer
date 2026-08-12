@@ -1,6 +1,15 @@
-import type { OnboardingState, OnboardingStep } from '../types/onboarding.types';
+import type { OnboardingSliceState, OnboardingStep } from '../types/onboarding.types';
 
-export const canNavigateToStep = (state: OnboardingState, targetStep: OnboardingStep): { allowed: boolean; redirectStep?: string } => {
+export interface OnboardingValidationState {
+  selectedRole?: { slug?: string; name?: string } | null;
+  authMethod?: string | null;
+  [key: string]: unknown;
+}
+
+export const canNavigateToStep = (
+  state: OnboardingValidationState | OnboardingSliceState,
+  targetStep: OnboardingStep
+): { allowed: boolean; redirectStep?: string } => {
   // Step 1: Welcome is always accessible
   if (targetStep === 'welcome') return { allowed: true };
 
@@ -17,7 +26,7 @@ export const canNavigateToStep = (state: OnboardingState, targetStep: Onboarding
     return { allowed: false, redirectStep: '/role-selection' };
   }
 
-  const roleSlug = state.selectedRole.slug.toLowerCase();
+  const roleSlug = state.selectedRole.slug?.toLowerCase() || '';
 
   // Role-specific step access validation
   if (targetStep === 'specialization') {

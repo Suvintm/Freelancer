@@ -152,8 +152,23 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   return <>{children}</>;
 };
 
-const STEP_ORDER = ['welcome', 'role', 'specialization', 'brand', 'subcategory', 'youtube', 'details', 'complete'] as const;
-type OnboardingStep = typeof STEP_ORDER[number];
+import type { OnboardingStep } from '../../features/onboarding/types';
+
+const STEP_ORDER: OnboardingStep[] = [
+  'welcome',
+  'role',
+  'auth_method',
+  'specialization',
+  'brand',
+  'subcategory',
+  'youtube',
+  'youtube_connect',
+  'youtube_niche',
+  'brand_details',
+  'details',
+  'complete',
+  'complete_profile',
+];
 
 interface OnboardingGuardProps {
   children: ReactNode;
