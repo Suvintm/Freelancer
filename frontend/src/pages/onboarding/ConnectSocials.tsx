@@ -17,21 +17,21 @@ import {
   Compass,
   RefreshCw,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { Button } from '../../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setTempSignupData,
   addDiscoveredChannels,
   resetYoutubeDiscovery,
   type YouTubeChannel,
-} from '../store/slices/onboardingSlice';
-import { useCategories } from '../queries/useCategories';
-import type { RootState } from '../store';
-import { api } from '../api/client';
-import { LoadingOverlay } from '../components/shared/LoadingOverlay';
-import { SuccessOverlay } from '../components/shared/SuccessOverlay';
-import logo from '../assets/lightlogo.png';
-import brandLogo from '../assets/logo.png';
+} from '../../store/slices/onboardingSlice';
+import { useCategories } from '../../queries/useCategories';
+import type { RootState } from '../../store';
+import { api } from '../../api/client';
+import { LoadingOverlay } from '../../components/shared/LoadingOverlay';
+import { SuccessOverlay } from '../../components/shared/SuccessOverlay';
+import logo from '../../assets/lightlogo.png';
+import brandLogo from '../../assets/logo.png';
 
 const formatCount = (n: number | string): string => {
   const num = Number(n);

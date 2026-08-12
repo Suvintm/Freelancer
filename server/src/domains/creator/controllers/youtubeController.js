@@ -202,15 +202,19 @@ export const deleteChannel = async (req, res, next) => {
       where: { id: userId },
       include: {
         profile: true,
-        youtubeChannels: {
+        youtubeProfile: {
           include: {
-            videos: { orderBy: { published_at: "desc" }, take: 25 },
+            channels: {
+              include: {
+                videos: { orderBy: { published_at: "desc" }, take: 25 },
+              },
+            },
           },
         },
       },
     });
 
-    const remainingChannels = user.youtubeChannels || [];
+    const remainingChannels = user?.youtubeProfile?.channels || [];
 
     if (remainingChannels.length === 0) {
       await prisma.youTubeProfile.updateMany({
@@ -350,16 +354,20 @@ export const linkOAuthChannel = async (req, res, next) => {
       where: { id: userId },
       include: {
         profile: true,
-        youtubeChannels: {
+        youtubeProfile: {
           include: {
-            videos: { orderBy: { published_at: "desc" }, take: 25 },
+            channels: {
+              include: {
+                videos: { orderBy: { published_at: "desc" }, take: 25 },
+              },
+            },
           },
         },
       },
     });
 
     if (updatedUser) {
-      const remainingChannels = updatedUser.youtubeChannels || [];
+      const remainingChannels = updatedUser.youtubeProfile?.channels || [];
       emitToUser(userId, "user:profile_updated", {
         id: updatedUser.id,
         name: updatedUser.profile?.name,
@@ -420,11 +428,15 @@ export const getUserVideos = async (req, res, next) => {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
-          youtubeChannels: {
+          youtubeProfile: {
             include: {
-              videos: {
-                orderBy: { published_at: "desc" },
-                take: 50,
+              channels: {
+                include: {
+                  videos: {
+                    orderBy: { published_at: "desc" },
+                    take: 50,
+                  },
+                },
               },
             },
           },
@@ -435,7 +447,7 @@ export const getUserVideos = async (req, res, next) => {
         throw new ApiError(404, "User not found");
       }
 
-      return (user.youtubeChannels || [])
+      return (user.youtubeProfile?.channels || [])
         .flatMap((p) =>
           (p.videos || []).map((v) => {
             const rawThumb = v.thumbnail || v.thumbnail_url || v.thumbnailUrl;

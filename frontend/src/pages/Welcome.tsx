@@ -332,21 +332,22 @@ export default function Welcome() {
                 </motion.div>
               </AnimatePresence>
 
-              {/* ── Integrations & Mobile App Availability Badges (Google, YouTube, iOS & Android) ── */}
+              {/* ── Integrations & Mobile App Availability Badges (Google, YouTube, Meta, Instagram, iOS & Android) ── */}
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35, ...EASE }}
                 className="mt-2.5 xs:mt-3.5 sm:mt-4 flex flex-col gap-2 w-full"
               >
-                {/* Top Row: Ecosystem Compatibility */}
-                <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
-                  <span className="text-[8px] xs:text-[8.5px] sm:text-[9.5px] font-bold text-white/40 uppercase tracking-[0.18em] pr-0.5 shrink-0">
+                {/* Top Row: Ecosystem Compatibility (All in One Single Line) */}
+                <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar py-0.5 w-full">
+                  <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-bold text-white/40 uppercase tracking-[0.14em] sm:tracking-[0.18em] shrink-0 whitespace-nowrap">
                     Compatible with
                   </span>
 
-                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-sm shrink-0">
-                    <svg viewBox="0 0 24 24" className="w-3 h-3 sm:w-3.5 sm:h-3.5" xmlns="http://www.w3.org/2000/svg">
+                  {/* Google */}
+                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-1.5 py-0.5 sm:px-2 sm:py-0.5 shadow-sm shrink-0 whitespace-nowrap">
+                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5" xmlns="http://www.w3.org/2000/svg">
                       <path
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                         fill="#4285F4"
@@ -364,18 +365,72 @@ export default function Welcome() {
                         fill="#EA4335"
                       />
                     </svg>
-                    <span className="text-white text-[9px] sm:text-[10.5px] font-semibold tracking-tight">Google</span>
+                    <span className="text-white text-[8.5px] xs:text-[9px] sm:text-[10px] font-semibold tracking-tight">Google</span>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-sm shrink-0">
-                    <svg viewBox="0 0 28 20" className="w-3.5 h-2.5 sm:w-4 sm:h-3" xmlns="http://www.w3.org/2000/svg">
+                  {/* YouTube */}
+                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-1.5 py-0.5 sm:px-2 sm:py-0.5 shadow-sm shrink-0 whitespace-nowrap">
+                    <svg viewBox="0 0 28 20" className="w-3 h-2 xs:w-3.5 xs:h-2.5 sm:w-4 sm:h-3" xmlns="http://www.w3.org/2000/svg">
                       <path
                         d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5677 5.35042 27.9727 3.12324Z"
                         fill="#FF0000"
                       />
                       <path d="M11.4253 14.2854L18.8485 10.0004L11.4253 5.71533V14.2854Z" fill="white" />
                     </svg>
-                    <span className="text-white text-[9px] sm:text-[10.5px] font-semibold tracking-tight">YouTube</span>
+                    <span className="text-white text-[8.5px] xs:text-[9px] sm:text-[10px] font-semibold tracking-tight">YouTube</span>
+                  </div>
+
+                  {/* Meta */}
+                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-1.5 py-0.5 sm:px-2 sm:py-0.5 shadow-sm shrink-0 whitespace-nowrap">
+                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        fillRule="evenodd"
+                        clipRule="evenodd"
+                        d="M12.0001 8.16782C10.6385 6.70282 9.20875 5.86243 7.50293 5.86243C4.13543 5.86243 1.5 8.7183 1.5 12.3023C1.5 15.8863 4.13543 18.7422 7.50293 18.7422C9.20875 18.7422 10.6385 17.9018 12.0001 16.4368C13.3616 17.9018 14.7914 18.7422 16.4972 18.7422C19.8647 18.7422 22.5001 15.8863 22.5001 12.3023C22.5001 8.7183 19.8647 5.86243 16.4972 5.86243C14.7914 5.86243 13.3616 6.70282 12.0001 8.16782ZM7.50293 8.36243C5.51868 8.36243 3.99998 10.0898 3.99998 12.3023C3.99998 14.5148 5.51868 16.2422 7.50293 16.2422C8.68367 16.2422 9.69747 15.4745 10.7491 13.9877C10.027 12.7533 9.47543 11.2359 8.95669 9.80872C8.52985 8.63462 8.04944 8.36243 7.50293 8.36243ZM16.4972 8.36243C15.9507 8.36243 15.4703 8.63462 15.0435 9.80872C14.5247 11.2359 13.9732 12.7533 13.2511 13.9877C14.3027 15.4745 15.3165 16.2422 16.4972 16.2422C18.4815 16.2422 20 14.5148 20 12.3023C20 10.0898 18.4815 8.36243 16.4972 8.36243Z"
+                        fill="url(#meta-grad)"
+                      />
+                      <defs>
+                        <linearGradient id="meta-grad" x1="1.5" y1="12.3023" x2="22.5001" y2="12.3023" gradientUnits="userSpaceOnUse">
+                          <stop stopColor="#0064E0" />
+                          <stop offset="0.4" stopColor="#0082FB" />
+                          <stop offset="0.8" stopColor="#0064E0" />
+                          <stop offset="1" stopColor="#0082FB" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <span className="text-white text-[8.5px] xs:text-[9px] sm:text-[10px] font-semibold tracking-tight">Meta</span>
+                  </div>
+
+                  {/* Instagram */}
+                  <div className="flex items-center gap-1 bg-white/10 border border-white/10 rounded-full px-1.5 py-0.5 sm:px-2 sm:py-0.5 shadow-sm shrink-0 whitespace-nowrap">
+                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <radialGradient id="ig-grad-welcome" cx="30%" cy="107%" r="150%">
+                          <stop offset="0%" stopColor="#fdf497" />
+                          <stop offset="5%" stopColor="#fdf497" />
+                          <stop offset="45%" stopColor="#fd5949" />
+                          <stop offset="60%" stopColor="#d6249f" />
+                          <stop offset="90%" stopColor="#285AEB" />
+                        </radialGradient>
+                      </defs>
+                      <rect x="1.5" y="1.5" width="21" height="21" rx="5.5" fill="url(#ig-grad-welcome)" />
+                      <path
+                        d="M12 6.5C8.96 6.5 6.5 8.96 6.5 12C6.5 15.04 8.96 17.5 12 17.5C15.04 17.5 17.5 15.04 17.5 12C17.5 8.96 15.04 6.5 12 6.5ZM12 15.5C10.07 15.5 8.5 13.93 8.5 12C8.5 10.07 10.07 8.5 12 8.5C13.93 8.5 15.5 10.07 15.5 12C15.5 13.93 13.93 15.5 12 15.5Z"
+                        fill="#ffffff"
+                      />
+                      <circle cx="16.7" cy="7.3" r="1.1" fill="#ffffff" />
+                      <rect
+                        x="3.2"
+                        y="3.2"
+                        width="17.6"
+                        height="17.6"
+                        rx="4.2"
+                        fill="none"
+                        stroke="#ffffff"
+                        strokeWidth="1.6"
+                      />
+                    </svg>
+                    <span className="text-white text-[8.5px] xs:text-[9px] sm:text-[10px] font-semibold tracking-tight">Instagram</span>
                   </div>
                 </div>
 
@@ -469,7 +524,7 @@ export default function Welcome() {
       {/* ── LEGAL DISCLAIMER FOOTER ───────────────────────────────────────── */}
       <footer className="relative z-20 pb-2 sm:pb-4 text-center px-4">
         <p className="text-[7.5px] sm:text-[9.5px] text-white/35 font-medium tracking-wide max-w-2xl mx-auto leading-relaxed">
-          SuviX is an independent creator platform connecting creators, video editors, and brands. Google and YouTube are trademarks of Google LLC.
+          SuviX is an independent creator platform connecting creators, video editors, and brands. Google and YouTube are trademarks of Google LLC. Meta and Instagram are trademarks of Meta Platforms, Inc.
         </p>
       </footer>
     </div>

@@ -19,41 +19,41 @@ import {
   Mail,
   ArrowLeft
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { Button } from '../../components/ui/Button';
 import { useDispatch } from 'react-redux';
-import { clearTempSignupData, setTempSignupData, selectRoleAction, setAuthMethodAction } from '../store/slices/onboardingSlice';
-import { useCategories } from '../queries/useCategories';
-import type { RoleCategory } from '../api/services/category.service';
-import logo from '../assets/lightlogo.png';
+import { clearTempSignupData, setTempSignupData, selectRoleAction, setAuthMethodAction } from '../../store/slices/onboardingSlice';
+import { useCategories } from '../../queries/useCategories';
+import type { RoleCategory } from '../../api/services/category.service';
+import logo from '../../assets/lightlogo.png';
 import LottieComponent from 'lottie-react';
-import loaderAnimation from '../assets/lottie/loader.json';
+import loaderAnimation from '../../assets/lottie/loader.json';
 
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 // ── HIGH-FIDELITY THUMBNAILS & OVERLAY ASSETS ──────────────────────────────
-import youtubeThumb from '../assets/categories/youtube.jpg';
-import youtubeIcon from '../assets/categories/youtubeicon.png';
-import clientThumb from '../assets/categories/client.jpg';
-import normalUserIcon from '../assets/categories/normaluser.png';
-import fitnessThumb from '../assets/categories/fitness.jpg';
-import fitnessIcon from '../assets/categories/fitnessicon.png';
-import dancerThumb from '../assets/categories/dancer.jpg';
-import dancerIcon from '../assets/categories/danceicon.png';
-import singerThumb from '../assets/categories/singer.jpg';
-import singerIcon from '../assets/categories/singericon.png';
-import promotionsThumb from '../assets/categories/promotions.jpg';
-import adsIcon from '../assets/categories/ads.png';
-import editorThumb from '../assets/categories/editor.jpg';
-import editingIcon from '../assets/categories/editing.png';
-import rentalsThumb from '../assets/categories/rentals.jpg';
-import rentalIcon from '../assets/categories/rental.png';
-import photographerThumb from '../assets/categories/photographer.jpg';
-import photographerIcon from '../assets/categories/photographer copy.png';
-import videographerThumb from '../assets/categories/videographer.jpg';
-import musicianThumb from '../assets/categories/musician.jpg';
-import actorThumb from '../assets/categories/actor.jpg';
-import actorsIcon from '../assets/categories/actors.png';
+import youtubeThumb from '../../assets/categories/youtube.jpg';
+import youtubeIcon from '../../assets/categories/youtubeicon.png';
+import clientThumb from '../../assets/categories/client.jpg';
+import normalUserIcon from '../../assets/categories/normaluser.png';
+import fitnessThumb from '../../assets/categories/fitness.jpg';
+import fitnessIcon from '../../assets/categories/fitnessicon.png';
+import dancerThumb from '../../assets/categories/dancer.jpg';
+import dancerIcon from '../../assets/categories/danceicon.png';
+import singerThumb from '../../assets/categories/singer.jpg';
+import singerIcon from '../../assets/categories/singericon.png';
+import promotionsThumb from '../../assets/categories/promotions.jpg';
+import adsIcon from '../../assets/categories/ads.png';
+import editorThumb from '../../assets/categories/editor.jpg';
+import editingIcon from '../../assets/categories/editing.png';
+import rentalsThumb from '../../assets/categories/rentals.jpg';
+import rentalIcon from '../../assets/categories/rental.png';
+import photographerThumb from '../../assets/categories/photographer.jpg';
+import photographerIcon from '../../assets/categories/photographer copy.png';
+import videographerThumb from '../../assets/categories/videographer.jpg';
+import musicianThumb from '../../assets/categories/musician.jpg';
+import actorThumb from '../../assets/categories/actor.jpg';
+import actorsIcon from '../../assets/categories/actors.png';
 
 // Priority ordering for roles
 const CATEGORY_ORDER = [
