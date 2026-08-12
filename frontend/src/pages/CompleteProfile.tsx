@@ -7,6 +7,7 @@ import {
   Globe,
   Shield,
   ArrowRight,
+  ArrowLeft,
   Loader2,
   CheckCircle2,
   User,
@@ -52,7 +53,13 @@ export default function CompleteProfile() {
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
   const isSocialSignup = (authMethod === 'google') || (tempSignupData?.isSocialSignup as boolean | undefined);
 
-  const [form, setForm] = useState({ username: '', phone: '', motherTongue: 'English', country: 'India' });
+  const [form, setForm] = useState({
+    fullName: socialProfile?.name || '',
+    username: '',
+    phone: '',
+    motherTongue: 'English',
+    country: 'India',
+  });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -142,7 +149,7 @@ export default function CompleteProfile() {
 
       if (profilePicture) {
         const formData = new FormData();
-        formData.append('fullName', socialProfile!.name);
+        formData.append('fullName', form.fullName.trim() || socialProfile!.name);
         formData.append('username', form.username);
         formData.append('email', socialProfile!.email);
         formData.append('phone', form.phone);
@@ -173,7 +180,7 @@ export default function CompleteProfile() {
         payload = formData;
       } else {
         payload = {
-          fullName: socialProfile!.name,
+          fullName: form.fullName.trim() || socialProfile!.name,
           username: form.username,
           email: socialProfile!.email,
           phone: form.phone,
@@ -237,353 +244,444 @@ export default function CompleteProfile() {
   if (!socialProfile) return null;
 
   return (
-    <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center px-4 py-12 font-sans relative overflow-hidden">
+    <div className="min-h-screen w-full bg-[#FAFAFA] text-zinc-900 flex flex-col relative selection:bg-zinc-900 selection:text-white font-sans">
       {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/onboarding/preferences" />}
-      {/* Ambient glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] h-[40vh] bg-white/[0.03] blur-[120px] rounded-full" />
+
+      {/* ── SUBTLE ENTERPRISE GRID PATTERN ─────────────────────────────────── */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.55]"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(228, 228, 231, 0.6) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(228, 228, 231, 0.6) 1px, transparent 1px)
+            `,
+            backgroundSize: '48px 48px',
+          }}
+        />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: EASE }}
-        className="w-full max-w-[420px] relative z-10"
-      >
-        {/* Header */}
-        <div className="text-center mb-8">
-          <img src={logo} alt="SuviX" className="h-9 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-2">Finalize Your Profile</h1>
-          <p className="text-zinc-500 text-sm font-medium">Almost there — just a couple more details.</p>
+      {/* ── TOP HEADER / NAVIGATION BAR ────────────────────────────────────── */}
+      <header className="relative z-50 w-full px-4 py-3.5 sm:px-8 sm:py-4.5 md:px-12 max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img
+            src={logo}
+            alt="SuviX"
+            className="h-7 sm:h-8 md:h-8.5 w-auto object-contain cursor-pointer"
+            onClick={() => navigate('/')}
+          />
         </div>
 
-        {/* ── Google Identity Card ── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: EASE, delay: 0.08 }}
-          className="flex items-center gap-4 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mb-3"
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm truncate">{socialProfile.name}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Mail size={11} className="text-zinc-500 flex-shrink-0" />
-              <p className="text-zinc-400 text-xs font-medium truncate">{socialProfile.email}</p>
-            </div>
+        {/* Step Indicator & Back Button */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-zinc-200 shadow-2xs text-xs font-medium text-zinc-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
+            <span>Step 3 of 3 • Complete Profile</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 flex-shrink-0">
-            <CheckCircle2 size={12} className="text-green-500" />
-            <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Google Verified</span>
-          </div>
-        </motion.div>
 
-        {/* ── Profile Picture Upload ── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
-          className="flex items-center gap-4 p-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mb-3"
-        >
-          <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
-              {profilePicturePreview ? (
-                <img src={profilePicturePreview} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <User size={24} className="text-zinc-600" />
-              )}
-            </div>
-            <label className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-white flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-transform">
-              <Camera size={14} className="text-black" />
-              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-            </label>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-white tracking-tight">Profile Picture</p>
-            {profilePicture ? (
-              <button
-                type="button"
-                onClick={handleRemoveCustomPicture}
-                className="text-[10px] text-red-400 font-bold hover:text-red-300 flex items-center gap-1 mt-0.5 cursor-pointer"
-              >
-                <X size={10} /> Revert to Google avatar
-              </button>
-            ) : (
-              <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Google avatar synced. Upload to change.</p>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ── Role & Niche Summary Card ── */}
-        {selectedCategory && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: EASE, delay: 0.14 }}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden mb-3"
+          <button
+            onClick={() => {
+              const isEditor = selectedCategory?.slug === 'editor' || selectedCategory?.slug === 'video_editor';
+              const isCreator = selectedCategory?.slug === 'creator' || selectedCategory?.slug === 'yt_influencer';
+              const isBrand = selectedCategory?.slug === 'brand' || selectedCategory?.slug === 'social_promoter';
+              if (isCreator) navigate('/connect-socials');
+              else if (isEditor) navigate('/editor-specialization');
+              else if (isBrand) navigate('/brand-details');
+              else navigate('/role-selection');
+            }}
+            className="group relative h-9 sm:h-10 pl-1.5 pr-3 sm:pr-4 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-600 hover:text-zinc-900 text-[10px] sm:text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-2 active:scale-95 cursor-pointer overflow-hidden inline-flex"
           >
-            {/* Role row */}
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-800/60">
-              <div className="w-7 h-7 rounded-lg bg-white/5 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-                <Briefcase size={13} className="text-zinc-300" />
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-zinc-100 group-hover:bg-white shadow-inner flex items-center justify-center border border-zinc-200/50 group-hover:shadow-sm transition-all duration-300">
+                <ArrowLeft size={14} strokeWidth={2.5} className="text-zinc-500 group-hover:text-zinc-900 group-hover:-translate-x-0.5 transition-transform duration-300" />
+              </div>
+              <span className="tracking-wide uppercase sm:normal-case font-black sm:font-bold">Back</span>
+            </div>
+          </button>
+        </div>
+      </header>
+
+      {/* ── MAIN CONTENT: 2-COLUMN DESKTOP SPLIT ───────────────────────────── */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-12 pt-2 sm:pt-4 pb-28 relative z-10">
+        {/* Mobile Header */}
+        <div className="lg:hidden mb-6 text-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-700 text-[11px] font-semibold uppercase tracking-wider mb-2">
+            Final Step
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
+            Finalize Your Profile
+          </h1>
+          <p className="text-zinc-600 text-xs sm:text-sm font-medium mt-1">
+            Review your verified credentials and setup your handle.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start">
+          {/* ── LEFT COLUMN: STICKY OVERVIEW & SUMMARY (5 Cols) ───────────── */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="lg:col-span-5 flex flex-col gap-5 sticky top-8"
+          >
+            {/* Desktop Headline */}
+            <div className="hidden lg:block space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-800 text-xs font-semibold uppercase tracking-wider">
+                Final Step
+              </span>
+              <h1 className="text-3xl lg:text-4xl font-black text-zinc-950 tracking-tight leading-tight">
+                Finalize Your Profile
+              </h1>
+              <p className="text-zinc-600 text-sm font-medium leading-relaxed">
+                Almost there! Review your linked accounts, verified credentials, and finalize your identity on SuviX.
+              </p>
+            </div>
+
+            {/* Google Identity Card */}
+            <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-zinc-200/90 bg-white shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700 font-bold shrink-0">
+                {socialProfile.name ? socialProfile.name.charAt(0).toUpperCase() : <User size={18} />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-0.5">Role</p>
-                <p className="text-white text-sm font-bold truncate">{selectedCategory.name}</p>
+                <p className="text-zinc-950 font-bold text-sm truncate">{socialProfile.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Mail size={11} className="text-zinc-400 shrink-0" />
+                  <p className="text-zinc-500 text-xs font-medium truncate">{socialProfile.email}</p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const isEditor = selectedCategory.slug === 'editor' || selectedCategory.slug === 'video_editor';
-                  const isCreator = selectedCategory.slug === 'creator' || selectedCategory.slug === 'yt_influencer';
-                  const isBrand = selectedCategory.slug === 'brand' || selectedCategory.slug === 'social_promoter';
-                  if (isCreator) navigate('/youtube-niche');
-                  else if (isEditor) navigate('/editor-specialization');
-                  else if (isBrand) navigate('/brand-details');
-                  else navigate('/role-selection');
-                }}
-                className="text-[10px] font-bold text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded-md bg-white/5 border border-zinc-800"
-              >
-                Change
-              </button>
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 shrink-0">
+                <CheckCircle2 size={12} className="text-emerald-600" />
+                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Verified</span>
+              </div>
             </div>
 
-            {/* Brand Details row */}
-            {tempSignupData?.companyName && (
-              <div className="flex items-start gap-3 px-4 py-3.5 border-b border-zinc-800/40">
-                <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Building2 size={13} className="text-blue-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">
-                    Company & Industry
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-bold text-white">
-                      {tempSignupData.companyName}
-                    </span>
-                    {tempSignupData.industry && (
-                      <span className="px-2 py-0.5 rounded-md bg-blue-950/50 border border-blue-500/30 text-[11px] font-semibold text-blue-300">
-                        {tempSignupData.industry}
-                      </span>
-                    )}
-                    {tempSignupData.companySize && (
-                      <span className="px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] text-zinc-400">
-                        {tempSignupData.companySize}
-                      </span>
-                    )}
+            {/* Role & Details Summary Card */}
+            {selectedCategory && (
+              <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-sm">
+                {/* Role Row */}
+                <div className="flex items-center justify-between p-4 border-b border-zinc-100">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
+                      <Briefcase size={14} className="text-zinc-700" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Selected Role</p>
+                      <p className="text-zinc-950 text-sm font-bold truncate">{selectedCategory.name}</p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isEditor = selectedCategory.slug === 'editor' || selectedCategory.slug === 'video_editor';
+                      const isCreator = selectedCategory.slug === 'creator' || selectedCategory.slug === 'yt_influencer';
+                      const isBrand = selectedCategory.slug === 'brand' || selectedCategory.slug === 'social_promoter';
+                      if (isCreator) navigate('/connect-socials');
+                      else if (isEditor) navigate('/editor-specialization');
+                      else if (isBrand) navigate('/brand-details');
+                      else navigate('/role-selection');
+                    }}
+                    className="text-[11px] font-bold text-zinc-600 hover:text-zinc-950 px-2.5 py-1 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 transition-all cursor-pointer"
+                  >
+                    Change
+                  </button>
                 </div>
-              </div>
-            )}
 
-            {/* Editor Specializations row */}
-            {((tempSignupData?.specializations && tempSignupData.specializations.length > 0) || selectedSubCategories.length > 0) && (
-              <div className="flex items-start gap-3 px-4 py-3.5 border-b border-zinc-800/40">
-                <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Tag size={13} className="text-purple-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                    Specializations
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(tempSignupData?.specializations ?? selectedSubCategories.map(s => s.name)).map(name => (
-                      <span
-                        key={name}
-                        className="px-2.5 py-1 rounded-full bg-purple-950/40 border border-purple-500/30 text-[11px] font-semibold text-purple-300"
-                      >
-                        {name}
-                      </span>
-                    ))}
+                {/* Company Details */}
+                {tempSignupData?.companyName && (
+                  <div className="p-4 border-b border-zinc-100 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 mt-0.5">
+                      <Building2 size={14} className="text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Company</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs font-bold text-zinc-950">{tempSignupData.companyName}</span>
+                        {tempSignupData.industry && (
+                          <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[10px] font-semibold text-blue-700">
+                            {tempSignupData.industry}
+                          </span>
+                        )}
+                        {tempSignupData.companySize && (
+                          <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-[10px] text-zinc-600">
+                            {tempSignupData.companySize}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Editor Software Tools row */}
-            {tempSignupData?.softwareUsed && tempSignupData.softwareUsed.length > 0 && (
-              <div className="flex items-start gap-3 px-4 py-3.5">
-                <div className="w-7 h-7 rounded-lg bg-zinc-800/80 border border-zinc-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Briefcase size={13} className="text-zinc-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                    Software & Tools
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {tempSignupData.softwareUsed.map(name => (
-                      <span
-                        key={name}
-                        className="px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-[11px] font-semibold text-zinc-300"
-                      >
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* ── YouTube Channels (YT Creator flow only) ── */}
-        {hasYouTubeChannels && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: EASE, delay: 0.2 }}
-            className="mb-3 space-y-2"
-          >
-            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] px-1">Linked Channel</p>
-            {youtubeChannels!.map((ch) => (
-              <div
-                key={ch.channelId as string}
-                className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/40"
-              >
-                {ch.thumbnailUrl && (
-                  <img src={ch.thumbnailUrl as string} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                 )}
+
+                {/* Specializations */}
+                {((tempSignupData?.specializations && tempSignupData.specializations.length > 0) || selectedSubCategories.length > 0) && (
+                  <div className="p-4 border-b border-zinc-100 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0 mt-0.5">
+                      <Tag size={14} className="text-purple-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Specializations</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(tempSignupData?.specializations ?? selectedSubCategories.map(s => s.name)).map(name => (
+                          <span
+                            key={name}
+                            className="px-2.5 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-[10px] font-bold text-purple-700"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Software / Tools */}
+                {tempSignupData?.softwareUsed && tempSignupData.softwareUsed.length > 0 && (
+                  <div className="p-4 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0 mt-0.5">
+                      <Briefcase size={14} className="text-zinc-700" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Software &amp; Tools</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {tempSignupData.softwareUsed.map(name => (
+                          <span
+                            key={name}
+                            className="px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-[10px] font-semibold text-zinc-700"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* YouTube Channels Preview */}
+            {hasYouTubeChannels && (
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm space-y-2.5">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Linked Channel</p>
+                {youtubeChannels!.map((ch) => (
+                  <div
+                    key={ch.channelId as string}
+                    className="flex items-center gap-3 p-2.5 rounded-xl border border-zinc-200/80 bg-zinc-50/70"
+                  >
+                    {ch.thumbnailUrl && (
+                      <img src={ch.thumbnailUrl as string} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 border border-zinc-200 shadow-2xs" />
+                    )}
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-zinc-950 text-xs font-bold truncate">{ch.channelName as string}</p>
+                      <p className="text-zinc-500 text-[10px] font-medium">
+                        {Number(ch.subscriberCount || 0).toLocaleString()} subscribers
+                      </p>
+                    </div>
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* ── RIGHT COLUMN: INTERACTIVE FORM (7 Cols) ────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
+            className="lg:col-span-7 w-full flex flex-col gap-6"
+          >
+            <div className="rounded-2xl border border-zinc-200/90 bg-white p-6 sm:p-8 shadow-sm space-y-6">
+              
+              {/* Profile Picture Upload Section */}
+              <div className="flex items-center gap-4 pb-6 border-b border-zinc-100">
+                <div className="relative shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-zinc-100 border border-zinc-200 flex items-center justify-center overflow-hidden shadow-sm">
+                    {profilePicturePreview ? (
+                      <img src={profilePicturePreview} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={24} className="text-zinc-400" />
+                    )}
+                  </div>
+                  <label className="absolute -bottom-2 -right-2 w-7 h-7 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white flex items-center justify-center cursor-pointer shadow-md transition-transform active:scale-90">
+                    <Camera size={13} />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  </label>
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-bold truncate">{ch.channelName as string}</p>
-                  <p className="text-zinc-500 text-[10px] font-medium">
-                    {Number(ch.subscriberCount || 0).toLocaleString()} subscribers
-                    {Boolean((ch as unknown as Record<string, string>).subCategorySlug) && (
-                      <span className="ml-2 text-zinc-600">
-                        · {String((ch as unknown as Record<string, string>).subCategorySlug).replace(/_/g, ' ')}
+                  <p className="text-sm font-bold text-zinc-950 tracking-tight">Profile Photo</p>
+                  {profilePicture ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCustomPicture}
+                      className="text-[11px] text-red-600 font-bold hover:underline flex items-center gap-1 mt-0.5 cursor-pointer"
+                    >
+                      <X size={11} /> Revert to Google avatar
+                    </button>
+                  ) : (
+                    <p className="text-[11px] text-zinc-500 font-medium mt-0.5">Google avatar synced. Upload a new photo to change.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold text-center">
+                  {error}
+                </div>
+              )}
+
+              {/* The Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Full Name */}
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-bold text-zinc-800 tracking-wide uppercase flex items-center justify-between">
+                    <span>Full Name</span>
+                    <span className="text-[10px] font-semibold text-zinc-400">Synced from Google</span>
+                  </label>
+                  <div className="relative">
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      name="fullName"
+                      placeholder="Your full name"
+                      value={form.fullName}
+                      onChange={handleChange}
+                      required
+                      autoComplete="name"
+                      className="w-full h-11 sm:h-12 pl-10 pr-4 bg-zinc-50/70 border border-zinc-200 rounded-xl text-zinc-950 text-sm font-semibold placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/5 transition-all shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Username */}
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-bold text-zinc-800 tracking-wide uppercase flex items-center justify-between">
+                    <span>Choose a Handle</span>
+                    <span className="text-[10px] font-semibold text-zinc-400 lowercase">@handle</span>
+                  </label>
+                  <div className="relative">
+                    <AtSign size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      name="username"
+                      placeholder="your_handle"
+                      value={form.username}
+                      onChange={handleChange}
+                      onBlur={handleUsernameBlur}
+                      required
+                      autoComplete="username"
+                      className={`w-full h-11 sm:h-12 pl-10 pr-16 bg-zinc-50/70 border rounded-xl text-zinc-950 text-sm font-semibold placeholder:text-zinc-400 focus:bg-white focus:outline-none transition-all shadow-2xs ${
+                        userStatus === 'available' ? 'border-emerald-500 ring-2 ring-emerald-500/10' :
+                        userStatus === 'taken'     ? 'border-red-500 ring-2 ring-red-500/10' :
+                                                    'border-zinc-200 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/5'
+                      }`}
+                    />
+                    {userStatus !== 'idle' && (
+                      <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-black uppercase tracking-wider ${
+                        userStatus === 'checking'  ? 'text-zinc-400' :
+                        userStatus === 'available' ? 'text-emerald-600' : 'text-red-600'
+                      }`}>
+                        {userStatus === 'checking' ? 'Checking...' : userStatus === 'available' ? '✓ Free' : '✗ Taken'}
                       </span>
                     )}
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-bold text-zinc-800 tracking-wide uppercase">
+                    Mobile Number
+                  </label>
+                  <div className="relative">
+                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      name="phone"
+                      type="tel"
+                      placeholder="+91 99999 99999"
+                      value={form.phone}
+                      onChange={handleChange}
+                      required
+                      className="w-full h-11 sm:h-12 pl-10 pr-4 bg-zinc-50/70 border border-zinc-200 rounded-xl text-zinc-950 text-sm font-semibold placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/5 transition-all shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Language & Country Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Language */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-bold text-zinc-800 tracking-wide uppercase">
+                      Primary Language
+                    </label>
+                    <div className="relative">
+                      <Globe size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <select
+                        name="motherTongue"
+                        value={form.motherTongue}
+                        onChange={handleChange}
+                        className="w-full h-11 sm:h-12 pl-10 pr-8 bg-zinc-50/70 border border-zinc-200 rounded-xl text-zinc-950 text-sm font-semibold focus:bg-white focus:outline-none focus:border-zinc-950 transition-all cursor-pointer appearance-none shadow-2xs"
+                      >
+                        {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-400">
+                        <Globe size={13} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Country */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-bold text-zinc-800 tracking-wide uppercase">
+                      Country
+                    </label>
+                    <div className="relative">
+                      <Globe size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <select
+                        name="country"
+                        value={form.country}
+                        onChange={handleChange}
+                        className="w-full h-11 sm:h-12 pl-10 pr-8 bg-zinc-50/70 border border-zinc-200 rounded-xl text-zinc-950 text-sm font-semibold focus:bg-white focus:outline-none focus:border-zinc-950 transition-all cursor-pointer appearance-none shadow-2xs"
+                      >
+                        {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-400">
+                        <Globe size={13} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Note */}
+                <div className="flex items-start gap-3 p-3.5 rounded-xl border border-zinc-200 bg-zinc-50/70 text-left">
+                  <Shield size={15} className="text-zinc-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-zinc-600 font-medium leading-relaxed">
+                    Your account is secured via Google OAuth. No password is required.
                   </p>
                 </div>
-                <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
-              </div>
-            ))}
+
+                {/* Turnstile Security Widget */}
+                <div className="flex justify-center pt-2">
+                  <Turnstile
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setError('Security check failed. Please refresh and try again.')}
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading || userStatus === 'taken' || !turnstileToken}
+                  className="w-full h-12 bg-zinc-950 hover:bg-zinc-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-md cursor-pointer mt-2"
+                >
+                  {isLoading
+                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : <><span>Complete Profile &amp; Continue</span><ArrowRight size={16} strokeWidth={2.5} /></>
+                  }
+                </button>
+              </form>
+            </div>
           </motion.div>
-        )}
-
-        {/* ── Error ── */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold text-center"
-          >
-            {error}
-          </motion.div>
-        )}
-
-        {/* ── Form ── */}
-        <form onSubmit={handleSubmit} className="space-y-3 mt-4">
-          {/* Username */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">Choose a Handle</label>
-            <div className="relative">
-              <AtSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                name="username"
-                placeholder="your_handle"
-                value={form.username}
-                onChange={handleChange}
-                onBlur={handleUsernameBlur}
-                required
-                autoComplete="username"
-                className={`w-full h-12 pl-10 pr-16 bg-zinc-900 border rounded-xl text-white text-sm font-medium placeholder:text-zinc-600 focus:outline-none transition-colors ${
-                  userStatus === 'available' ? 'border-green-500/50 focus:border-green-500' :
-                  userStatus === 'taken'     ? 'border-red-500/50 focus:border-red-500' :
-                                              'border-zinc-800 focus:border-zinc-600'
-                }`}
-              />
-              {userStatus !== 'idle' && (
-                <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
-                  userStatus === 'checking'  ? 'text-zinc-500' :
-                  userStatus === 'available' ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {userStatus === 'checking' ? '...' : userStatus === 'available' ? '✓ free' : '✗ taken'}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Phone */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">Mobile Number</label>
-            <div className="relative">
-              <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                name="phone"
-                type="tel"
-                placeholder="+91 99999 99999"
-                value={form.phone}
-                onChange={handleChange}
-                required
-                className="w-full h-12 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm font-medium placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Language */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">Primary Language</label>
-            <div className="relative">
-              <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <select
-                name="motherTongue"
-                value={form.motherTongue}
-                onChange={handleChange}
-                className="w-full h-12 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm font-medium focus:outline-none focus:border-zinc-600 transition-colors appearance-none"
-              >
-                {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Country */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">Country</label>
-            <div className="relative">
-              <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <select
-                name="country"
-                value={form.country}
-                onChange={handleChange}
-                className="w-full h-12 pl-10 pr-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm font-medium focus:outline-none focus:border-zinc-600 transition-colors appearance-none"
-              >
-                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Security note */}
-          <div className="flex items-start gap-3 p-3 rounded-xl border border-zinc-800/50 bg-zinc-900/30">
-            <Shield size={14} className="text-zinc-600 mt-0.5 flex-shrink-0" />
-            <p className="text-[11px] text-zinc-600 font-medium leading-relaxed">
-              Your account is secured via Google. No password needed.
-            </p>
-          </div>
-
-          {/* Turnstile Security Widget */}
-          <div className="flex justify-center my-2">
-            <Turnstile
-              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
-              onSuccess={(token) => setTurnstileToken(token)}
-              onError={() => setError('Security check failed. Please refresh and try again.')}
-            />
-          </div>
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={isLoading || userStatus === 'taken' || !turnstileToken}
-            className="w-full h-12 bg-white text-black rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl shadow-white/10"
-          >
-            {isLoading
-              ? <Loader2 className="w-5 h-5 animate-spin" />
-              : <><span>Create Account</span><ArrowRight size={18} strokeWidth={2.5} /></>
-            }
-          </button>
-        </form>
-
-        <p className="text-center text-[10px] text-zinc-600 font-medium mt-8">© 2026 SuviX Inc. All rights reserved.</p>
-      </motion.div>
+        </div>
+      </main>
     </div>
   );
 }
