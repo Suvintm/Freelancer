@@ -23,6 +23,7 @@ import type { RoleCategory } from '../../api/services/category.service';
 import logo from '../../assets/lightlogo.png';
 import LottieComponent from 'lottie-react';
 import loaderAnimation from '../../assets/lottie/loader.json';
+import { ROLE_SHOWCASE_CONFIG, DEFAULT_ROLE_SHOWCASE } from '../../features/onboarding/data/roleCardData';
 // Lazy load the heavy 3D device card
 const RoleDeviceCard = lazy(() => import('../../components/onboarding/RoleDeviceCard').then(module => ({ default: module.RoleDeviceCard })));
 // Handle ESM/CJS interop for lottie-react
@@ -533,7 +534,7 @@ export default function RoleSelection() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {(
                     (ROLE_SHOWCASE_CONFIG[infoCategory.slug] || DEFAULT_ROLE_SHOWCASE).perks
-                  ).map((perk, idx) => (
+                  ).map((perk: string, idx: number) => (
                     <div
                       key={idx}
                       className="flex items-center gap-2.5 p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/80 text-xs font-bold text-zinc-800"

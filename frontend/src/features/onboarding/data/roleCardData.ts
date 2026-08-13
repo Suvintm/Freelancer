@@ -14,7 +14,7 @@ export interface PopoutWidget {
 export interface SecondaryPill {
   title: string;
   price?: string;
-  iconType: 'calendar' | 'book' | 'shield' | 'check' | 'creditCard' | 'file' | 'camera' | 'music' | 'activity';
+  iconType: 'calendar' | 'book' | 'shield' | 'check' | 'creditCard' | 'file' | 'camera' | 'music' | 'activity' | 'video';
 }
 
 export interface OrbitalBadge {
