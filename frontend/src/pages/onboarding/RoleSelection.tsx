@@ -14,9 +14,6 @@ import {
   Sparkles,
   Mail,
   ArrowLeft,
-  ChevronRight,
-  TrendingUp,
-  Award,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useDispatch } from 'react-redux';
@@ -28,41 +25,8 @@ import LottieComponent from 'lottie-react';
 import loaderAnimation from '../../assets/lottie/loader.json';
 // Lazy load the heavy 3D device card
 const RoleDeviceCard = lazy(() => import('../../components/onboarding/RoleDeviceCard').then(module => ({ default: module.RoleDeviceCard })));
-import { ROLE_SHOWCASE_CONFIG, DEFAULT_ROLE_SHOWCASE } from '../../features/onboarding/data/roleCardData';
-
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
-
-// ── HIGH-FIDELITY THUMBNAILS & OVERLAY ASSETS ──────────────────────────────
-import youtubeThumb from '../../assets/categories/youtube.jpg';
-import youtubeIcon from '../../assets/categories/youtubeicon.png';
-import clientThumb from '../../assets/categories/client.jpg';
-import normalUserIcon from '../../assets/categories/normaluser.png';
-import fitnessThumb from '../../assets/categories/fitness.jpg';
-import fitnessIcon from '../../assets/categories/fitnessicon.png';
-import dancerThumb from '../../assets/categories/dancer.jpg';
-import dancerIcon from '../../assets/categories/danceicon.png';
-import singerThumb from '../../assets/categories/singer.jpg';
-import singerIcon from '../../assets/categories/singericon.png';
-import promotionsThumb from '../../assets/categories/promotions.jpg';
-import adsIcon from '../../assets/categories/ads.png';
-import editorThumb from '../../assets/categories/editor.jpg';
-import editingIcon from '../../assets/categories/editing.png';
-import rentalsThumb from '../../assets/categories/rentals.jpg';
-import rentalIcon from '../../assets/categories/rental.png';
-import photographerThumb from '../../assets/categories/photographer.jpg';
-import photographerIcon from '../../assets/categories/photographer copy.png';
-import videographerThumb from '../../assets/categories/videographer.jpg';
-import musicianThumb from '../../assets/categories/musician.jpg';
-import actorThumb from '../../assets/categories/actor.jpg';
-import actorsIcon from '../../assets/categories/actors.png';
-
-import video1V from '../../assets/cardassets/video1V.mp4';
-import video2V from '../../assets/cardassets/video2V.mp4';
-import video3V from '../../assets/cardassets/video3V.mp4';
-import video4V from '../../assets/cardassets/video4V.mp4';
-
-const VERTICAL_VIDEOS = [video1V, video2V, video3V, video4V];
 
 // Priority ordering for roles
 const CATEGORY_ORDER = [
@@ -155,42 +119,6 @@ export default function RoleSelection() {
   const selectedCategory = useMemo(() => {
     return categories.find((c) => c.id === selected) || null;
   }, [categories, selected]);
-
-  // Category thumbnail & overlay asset resolver
-  const getCategoryAssets = (slug: string) => {
-    switch (slug) {
-      case 'user':
-      case 'direct_client':
-        return { thumb: clientThumb, overlay: normalUserIcon };
-      case 'creator':
-      case 'yt_influencer':
-        return { thumb: youtubeThumb, overlay: youtubeIcon };
-      case 'editor':
-      case 'video_editor':
-        return { thumb: editorThumb, overlay: editingIcon };
-      case 'brand':
-      case 'social_promoter':
-        return { thumb: promotionsThumb, overlay: adsIcon };
-      case 'fitness_expert':
-        return { thumb: fitnessThumb, overlay: fitnessIcon };
-      case 'dancer':
-        return { thumb: dancerThumb, overlay: dancerIcon };
-      case 'singer':
-        return { thumb: singerThumb, overlay: singerIcon };
-      case 'rent_service':
-        return { thumb: rentalsThumb, overlay: rentalIcon };
-      case 'photographer':
-        return { thumb: photographerThumb, overlay: photographerIcon };
-      case 'videographer':
-        return { thumb: videographerThumb, overlay: null };
-      case 'musician':
-        return { thumb: musicianThumb, overlay: null };
-      case 'actor':
-        return { thumb: actorThumb, overlay: actorsIcon };
-      default:
-        return { thumb: clientThumb, overlay: null };
-    }
-  };
 
   /**
    * Identifies the primary role classification

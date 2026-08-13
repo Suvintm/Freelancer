@@ -2,20 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
 import {
   Check,
-  Calendar,
-  Download,
-  GraduationCap,
-  ShieldCheck,
-  Camera,
-  Music,
-  Video,
   Play,
-  Zap,
-  Sparkles,
-  BookOpen,
   Film,
   Activity,
-  FileText,
   ChevronLeft,
   ArrowLeft,
   Circle,
@@ -28,15 +17,7 @@ import {
   Clock,
   Send,
 } from 'lucide-react';
-import {
-  FaYoutube,
-  FaTiktok,
-  FaTwitter,
-  FaLinkedin,
-  FaInstagram,
-} from 'react-icons/fa';
 import type { RoleCategory } from '../../api/services/category.service';
-import { ROLE_SHOWCASE_CONFIG, DEFAULT_ROLE_SHOWCASE } from '../../features/onboarding/data/roleCardData';
 import video1V from '../../assets/cardassets/video1V.mp4';
 import video2V from '../../assets/cardassets/video2V.mp4';
 import video3V from '../../assets/cardassets/video3V.mp4';
