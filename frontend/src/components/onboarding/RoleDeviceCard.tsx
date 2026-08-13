@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
 import {
   Check,
-  Star,
-  ArrowRight,
-  Info,
   Calendar,
   Download,
   GraduationCap,
@@ -15,7 +12,6 @@ import {
   Play,
   Zap,
   Sparkles,
-  Award,
   BookOpen,
   Film,
   Activity,
@@ -27,7 +23,6 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  TrendingUp,
   Target,
   Users,
   Clock,
@@ -528,26 +523,17 @@ const ReelCarousel = () => {
 
 interface RoleDeviceCardProps {
   category: RoleCategory;
-  thumbImage: string;
-  videoAsset?: string;
-  overlayBadge?: string | null;
   isSelected: boolean;
   index: number;
   onSelect: () => void;
-  onOpenInfo: (category: RoleCategory) => void;
 }
 
 export const RoleDeviceCard = React.memo(function RoleDeviceCard({
   category,
-  thumbImage,
-  videoAsset,
-  overlayBadge,
   isSelected,
   index,
   onSelect,
-  onOpenInfo,
 }: RoleDeviceCardProps) {
-  const config = ROLE_SHOWCASE_CONFIG[category.slug] || DEFAULT_ROLE_SHOWCASE;
 
   // 3D Magnetic Mouse Tilt Physics (Disabled on mobile touch for battery/smoothness)
   const x = useMotionValue(0);
@@ -578,67 +564,6 @@ export const RoleDeviceCard = React.memo(function RoleDeviceCard({
   const handleMouseLeave = () => {
     x.set(0);
     y.set(0);
-  };
-
-  const renderSocialIcon = (network: string, key: number) => {
-    switch (network) {
-      case 'youtube':
-        return <FaYoutube key={key} size={11} className="text-red-500 hover:scale-110 transition-transform" />;
-      case 'tiktok':
-        return <FaTiktok key={key} size={10} className="text-zinc-800 hover:scale-110 transition-transform" />;
-      case 'twitter':
-        return <FaTwitter key={key} size={10} className="text-sky-500 hover:scale-110 transition-transform" />;
-      case 'linkedin':
-        return <FaLinkedin key={key} size={10} className="text-blue-600 hover:scale-110 transition-transform" />;
-      case 'instagram':
-        return <FaInstagram key={key} size={11} className="text-pink-500 hover:scale-110 transition-transform" />;
-      default:
-        return null;
-    }
-  };
-
-  const renderOrbitalIcon = (iconType: string) => {
-    switch (iconType) {
-      case 'calendar':
-        return <Calendar size={13} className="text-white" />;
-      case 'download':
-        return <Download size={13} className="text-white" />;
-      case 'courses':
-        return <GraduationCap size={15} className="text-white" />;
-      case 'shield':
-        return <ShieldCheck size={13} className="text-white" />;
-      case 'camera':
-        return <Camera size={13} className="text-white" />;
-      case 'music':
-        return <Music size={13} className="text-white" />;
-      case 'video':
-        return <Video size={13} className="text-white" />;
-      case 'zap':
-        return <Zap size={13} className="text-white" />;
-      default:
-        return <Sparkles size={13} className="text-white" />;
-    }
-  };
-
-  const renderSecondaryIcon = (iconType: string) => {
-    switch (iconType) {
-      case 'calendar':
-        return <Calendar size={12} className="text-blue-500" />;
-      case 'book':
-        return <BookOpen size={12} className="text-amber-500" />;
-      case 'shield':
-        return <ShieldCheck size={12} className="text-emerald-500" />;
-      case 'file':
-        return <FileText size={12} className="text-violet-500" />;
-      case 'music':
-        return <Music size={12} className="text-pink-500" />;
-      case 'video':
-        return <Video size={12} className="text-purple-500" />;
-      case 'activity':
-        return <Activity size={12} className="text-rose-500" />;
-      default:
-        return <Check size={12} className="text-emerald-500" />;
-    }
   };
 
   return (

@@ -14,8 +14,9 @@ import {
   Sparkles,
   Mail,
   ArrowLeft,
-  Flame,
-  Zap,
+  ChevronRight,
+  TrendingUp,
+  Award,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useDispatch } from 'react-redux';
@@ -467,20 +468,14 @@ export default function RoleSelection() {
             }>
               {filteredCategories.map((item, index) => {
               const isSelected = selected === item.id;
-              const assets = getCategoryAssets(item.slug);
-              const videoAsset = VERTICAL_VIDEOS[index % VERTICAL_VIDEOS.length];
 
               return (
                 <motion.div key={item.id} variants={cardVariants} className="flex justify-center">
                   <RoleDeviceCard
                     category={item}
                     index={index}
-                    thumbImage={assets.thumb}
-                    videoAsset={videoAsset}
-                    overlayBadge={assets.overlay}
                     isSelected={isSelected}
                     onSelect={() => setSelected(item.id)}
-                    onOpenInfo={(cat) => setInfoCategory(cat)}
                   />
                 </motion.div>
               );
