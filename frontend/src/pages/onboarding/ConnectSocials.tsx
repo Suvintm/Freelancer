@@ -23,7 +23,10 @@ import {
   setTempSignupData,
   addDiscoveredChannels,
   resetYoutubeDiscovery,
+  setInstagramAccounts,
+  resetInstagramAccounts,
   type YouTubeChannel,
+  type InstagramAccount,
 } from '../../store/slices/onboardingSlice';
 import { useCategories } from '../../queries/useCategories';
 import type { RootState } from '../../store';
@@ -341,12 +344,16 @@ export default function ConnectSocials() {
 
   const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
   const youtubeDiscovery = useSelector((state: RootState) => state.onboarding.youtubeDiscovery);
+  const instagramAccounts = useSelector((state: RootState) => state.onboarding.creatorData?.instagramAccounts || []);
   const { categories, isLoading: categoriesLoading } = useCategories();
 
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showInstaSuccess, setShowInstaSuccess] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [instaFetchError, setInstaFetchError] = useState<string | null>(null);
   const fetchStarted = useRef(false);
+  const instaFetchStarted = useRef(false);
 
   // Selected Niche State for YouTube channels
   const [selectedNiche, setSelectedNiche] = useState<string>('');
@@ -365,12 +372,38 @@ export default function ConnectSocials() {
     sessionStorage.getItem('youtube_access_token') ||
     undefined;
 
+  const isInstaOAuthPending = 
+    localStorage.getItem('instagram_oauth_pending') === 'true' || 
+    sessionStorage.getItem('oauth_intent') === 'connect_instagram';
+
+  const rawInstaToken = isInstaOAuthPending
+    ? (sessionStorage.getItem('instagram_access_token') || localStorage.getItem('instagram_access_token') || undefined)
+    : (location.state?.instagramAccessToken as string | undefined);
+
+
   const connected = youtubeDiscovery.channels.length > 0;
   const primaryChannel = youtubeDiscovery.channels[0];
   const isChannelClaimed = connected && Boolean(primaryChannel?.isClaimed);
 
+  const freshChannels = youtubeDiscovery.channels.filter((c) => !c.isClaimed);
+  const hasFreshYoutube = freshChannels.length > 0;
+  const hasFreshInstagram = instagramAccounts.length > 0;
+  const hasAnyValidSocial = hasFreshYoutube || hasFreshInstagram;
+  const isContinueDisabled = !hasAnyValidSocial || (hasFreshYoutube && !selectedNiche);
+
+  const instaConnected = instagramAccounts.length > 0;
+  const primaryInstaAccount = instagramAccounts[0];
+
   const handleConnectYoutube = () => {
     sessionStorage.setItem('oauth_intent', 'connect_youtube');
+    // Preserve any currently connected Instagram accounts across the redirect
+    if (instagramAccounts && instagramAccounts.length > 0) {
+      try {
+        sessionStorage.setItem('suvix_saved_instagram_accounts', JSON.stringify(instagramAccounts));
+      } catch {
+        // ignore
+      }
+    }
     dispatch(resetYoutubeDiscovery());
     sessionStorage.removeItem('youtube_access_token');
     if (tempSignupData?.categoryId) {
@@ -382,6 +415,34 @@ export default function ConnectSocials() {
     }
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
     window.location.href = `${apiUrl}/auth/google/youtube`;
+  };
+
+  const handleConnectInstagram = () => {
+    sessionStorage.setItem('oauth_intent', 'connect_instagram');
+    // Save to localStorage so it survives the full-page navigation to Instagram and back
+    localStorage.setItem('instagram_oauth_pending', 'true');
+    // Preserve any currently connected YouTube channels across the redirect
+    if (youtubeDiscovery.channels && youtubeDiscovery.channels.length > 0) {
+      try {
+        sessionStorage.setItem('suvix_saved_youtube_channels', JSON.stringify(youtubeDiscovery.channels));
+      } catch {
+        // ignore
+      }
+    }
+    dispatch(resetInstagramAccounts());
+    sessionStorage.removeItem('instagram_access_token');
+    localStorage.removeItem('instagram_access_token');
+    if (tempSignupData?.categoryId) {
+      try {
+        sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(tempSignupData));
+        // Also persist to localStorage so OnboardingGuard can recover it on return
+        localStorage.setItem('suvix_temp_signup_data_backup', JSON.stringify(tempSignupData));
+      } catch {
+        // ignore
+      }
+    }
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
+    window.location.href = `${apiUrl}/auth/meta/instagram`;
   };
 
   const fetchChannels = useCallback(
@@ -398,6 +459,11 @@ export default function ConnectSocials() {
             return;
           }
           dispatch(addDiscoveredChannels(res.data.channels));
+          try {
+            sessionStorage.setItem('suvix_saved_youtube_channels', JSON.stringify(res.data.channels));
+          } catch {
+            // ignore
+          }
           const updates: Record<string, unknown> = {};
           if (res.data.discoveryToken) {
             updates.discoveryToken = res.data.discoveryToken;
@@ -438,7 +504,67 @@ export default function ConnectSocials() {
     [dispatch]
   );
 
-  // 1. Session Storage State Recovery
+  const fetchInstagramAccounts = useCallback(
+    async (token: string, showOverlay = true) => {
+      if (showOverlay) setIsLoading(true);
+      setInstaFetchError(null);
+      try {
+        const res = await api.post('/auth/instagram/accounts', { accessToken: token });
+        if (res.data.success) {
+          if (!res.data.accounts || res.data.accounts.length === 0) {
+            setInstaFetchError('No Instagram account found. Please ensure it is a Creator or Business account.');
+            return;
+          }
+          dispatch(setInstagramAccounts(res.data.accounts));
+          try {
+            sessionStorage.setItem('suvix_saved_instagram_accounts', JSON.stringify(res.data.accounts));
+          } catch {
+            // ignore
+          }
+          
+          if (showOverlay) {
+            setShowInstaSuccess(true);
+            setTimeout(() => setShowInstaSuccess(false), 2400);
+          }
+        } else {
+          throw new Error(res.data.message || 'Failed to fetch Instagram accounts');
+        }
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } }; message?: string };
+        sessionStorage.removeItem('instagram_access_token');
+        localStorage.removeItem('instagram_access_token');
+        localStorage.removeItem('instagram_oauth_pending');
+        sessionStorage.removeItem('oauth_intent');
+        setInstaFetchError(error.response?.data?.message || error.message || 'Unable to connect. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [dispatch]
+  );
+
+  // Intercept instaToken from hash if returning from backend OAuth redirect
+  // NOTE: must be defined AFTER fetchInstagramAccounts to avoid ReferenceError
+  useEffect(() => {
+    if (window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const instaTokenFromHash = hashParams.get('instaToken');
+      if (instaTokenFromHash) {
+        // Save to BOTH storages for reliability
+        sessionStorage.setItem('instagram_access_token', instaTokenFromHash);
+        localStorage.setItem('instagram_access_token', instaTokenFromHash);
+        // Clear the pending flag
+        localStorage.removeItem('instagram_oauth_pending');
+        // Clear hash from URL cleanly
+        window.history.replaceState(null, '', window.location.pathname);
+        // Trigger the fetch directly without a reload — no redirect needed
+        instaFetchStarted.current = false;
+        fetchInstagramAccounts(instaTokenFromHash, true);
+      }
+    }
+  }, [fetchInstagramAccounts]);
+
+  // 1. Session Storage State Recovery (Temp signup data, Instagram accounts, and YouTube channels)
   useEffect(() => {
     if (!tempSignupData?.categoryId) {
       try {
@@ -453,7 +579,33 @@ export default function ConnectSocials() {
         // ignore
       }
     }
-  }, [tempSignupData, dispatch]);
+
+    // Recover persisted Instagram accounts across full-page OAuth redirects
+    try {
+      const savedInsta = sessionStorage.getItem('suvix_saved_instagram_accounts');
+      if (savedInsta && instagramAccounts.length === 0) {
+        const parsed = JSON.parse(savedInsta);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          dispatch(setInstagramAccounts(parsed));
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Recover persisted YouTube channels across full-page OAuth redirects
+    try {
+      const savedYt = sessionStorage.getItem('suvix_saved_youtube_channels');
+      if (savedYt && youtubeDiscovery.channels.length === 0) {
+        const parsed = JSON.parse(savedYt);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          dispatch(addDiscoveredChannels(parsed));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [tempSignupData, instagramAccounts.length, youtubeDiscovery.channels.length, dispatch]);
 
   // 2. Category Auto-heal
   useEffect(() => {
@@ -491,34 +643,50 @@ export default function ConnectSocials() {
     }
   }, [rawToken, fetchChannels, youtubeDiscovery.channels.length]);
 
+  // 4. Instagram Account Fetch on Token Arrival
+  useEffect(() => {
+    const token = rawInstaToken;
+    if (token && instagramAccounts.length === 0 && !instaFetchStarted.current) {
+      instaFetchStarted.current = true;
+      fetchInstagramAccounts(token, true);
+    }
+  }, [rawInstaToken, fetchInstagramAccounts, instagramAccounts.length]);
+
   /**
    * Complete Social Account Linking and Proceed to Sign Up
    */
   const handleProceedToSignup = () => {
     const ytCat = categories.find((c) => c.slug === 'creator' || c.slug === 'yt_influencer');
 
-    // Attach Niche directly to connected channels
-    const formattedYoutubeChannels = youtubeDiscovery.channels
-      .filter((c) => !c.isClaimed)
-      .map((channel, index: number) => ({
-        channelId: channel.channelId,
-        channelName: channel.channelName,
-        thumbnailUrl: channel.thumbnailUrl || null,
-        subscriberCount: Number(channel.subscriberCount || 0),
-        videoCount: Number(channel.videoCount || 0),
-        isPrimary: index === 0,
-        isVerified: true,
-        niche: selectedNiche,
-        subCategoryName: selectedNiche,
-        videos: channel.videos || [],
-      }));
+    // Only forward fresh, unclaimed YouTube channels
+    const validYoutubeChannels = youtubeDiscovery.channels.filter((c) => !c.isClaimed);
+
+    const formattedYoutubeChannels = validYoutubeChannels.map((channel, index: number) => ({
+      channelId: channel.channelId,
+      channelName: channel.channelName,
+      thumbnailUrl: channel.thumbnailUrl || null,
+      subscriberCount: Number(channel.subscriberCount || 0),
+      videoCount: Number(channel.videoCount || 0),
+      isPrimary: index === 0,
+      isVerified: true,
+      niche: selectedNiche,
+      subCategoryName: selectedNiche,
+      videos: channel.videos || [],
+    }));
+
+    // If YouTube channel was claimed, clear it from session storage and Redux so it is completely dropped
+    if (isChannelClaimed && validYoutubeChannels.length === 0) {
+      sessionStorage.removeItem('suvix_saved_youtube_channels');
+      sessionStorage.removeItem('youtube_access_token');
+      dispatch(resetYoutubeDiscovery());
+    }
 
     const updatePayload = {
       role: 'creator' as const,
       categoryId: tempSignupData?.categoryId || ytCat?.id || 'creator',
       categorySlug: ytCat?.slug ?? 'creator',
       youtubeChannels: formattedYoutubeChannels,
-      instagramAccounts: tempSignupData?.instagramAccounts || [],
+      instagramAccounts: instagramAccounts,
       onboardingStep: 'details' as const,
     };
 
@@ -617,8 +785,21 @@ export default function ConnectSocials() {
 
           <button
             onClick={() => {
-              dispatch(resetYoutubeDiscovery());
-              sessionStorage.removeItem('youtube_access_token');
+              dispatch(clearTempSignupData());
+              try {
+                sessionStorage.removeItem('suvix_temp_signup_data');
+                sessionStorage.removeItem('suvix_saved_instagram_accounts');
+                sessionStorage.removeItem('suvix_saved_youtube_channels');
+                sessionStorage.removeItem('instagram_access_token');
+                sessionStorage.removeItem('instagram_oauth_pending');
+                sessionStorage.removeItem('youtube_access_token');
+                sessionStorage.removeItem('youtube_oauth_pending');
+                sessionStorage.removeItem('oauth_intent');
+                sessionStorage.removeItem('suvix_oauth_role');
+                sessionStorage.removeItem('suvix_oauth_category');
+              } catch {
+                // ignore
+              }
               navigate('/role-selection');
             }}
             className="group relative h-9 sm:h-10 pl-1.5 pr-3 sm:pr-4 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-600 hover:text-zinc-900 text-[10px] sm:text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-2 active:scale-95 cursor-pointer overflow-hidden"
@@ -812,35 +993,129 @@ export default function ConnectSocials() {
               </div>
 
               {/* 2. INSTAGRAM CONNECTOR (Optional / Multi-Platform) */}
-              <div className="w-full rounded-2xl border border-zinc-200/90 bg-white p-3.5 sm:p-5 shadow-sm">
-                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3.5 sm:gap-4">
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-md shrink-0">
-                      <Instagram size={16} />
+              <div className={`w-full rounded-2xl border transition-all duration-350 overflow-hidden ${
+                  instaConnected 
+                    ? 'bg-white border-zinc-200/90 shadow-sm' 
+                    : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-sm'
+                }`}>
+                <div className="flex flex-col lg:grid lg:grid-cols-10 gap-0">
+                  
+                  {/* Left Side (60%) */}
+                  <div className="lg:col-span-6 p-3.5 sm:p-5 flex flex-col justify-between gap-4">
+                    <div className="flex items-start gap-3 text-left">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-md shrink-0">
+                        <Instagram size={16} />
+                      </div>
+                      <div>
+                        <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5 flex-wrap">
+                          Instagram Profile
+                          {instaConnected ? (
+                            <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] sm:text-xs font-black">
+                              <Check size={10} strokeWidth={4} /> Connected
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500 text-[8px] sm:text-[9px] font-bold">
+                              Optional
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
+                          {instaConnected 
+                            ? 'Connected to Meta Account successfully.' 
+                            : 'Sync Reels engagement, follower demographics & rate cards.'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5">
-                        Instagram Profile
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500 text-[8px] sm:text-[9px] font-bold">
-                          Optional
-                        </span>
-                      </h3>
-                      <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
-                        Sync Reels engagement, follower demographics & rate cards.
-                      </p>
+
+                    <div className="flex items-center gap-2">
+                      {!instaConnected ? (
+                        <Button
+                          onClick={handleConnectInstagram}
+                          disabled={isLoading}
+                          className="h-8.5 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-bold text-[10px] sm:text-xs sm:h-10 sm:px-4 sm:rounded-xl flex items-center justify-center gap-1.5 shrink-0 cursor-pointer w-full sm:w-auto"
+                        >
+                          <Plus size={10} />
+                          <span>Link Instagram</span>
+                        </Button>
+                      ) : (
+                        <button
+                          onClick={handleConnectInstagram}
+                          className="h-8.5 sm:h-10 px-3 sm:px-5 rounded-lg sm:rounded-xl border bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0 w-full sm:w-auto"
+                        >
+                          <RefreshCw size={12} strokeWidth={2.5} />
+                          <span>Switch Account</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => alert("Instagram OAuth integration is in beta. You can link this later from your Creator Dashboard settings!")}
-                    className="h-8.5 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-bold text-[10px] sm:text-xs sm:h-10 sm:px-4 sm:rounded-xl flex items-center justify-center gap-1.5 shrink-0 cursor-pointer w-full xs:w-auto"
-                  >
-                    <Plus size={10} />
-                    <span>Link Instagram</span>
-                  </Button>
+                  {/* Right Side (40%) - Fetched Account Details */}
+                  {instaConnected && primaryInstaAccount && (
+                    <div className="lg:col-span-4 p-3.5 sm:p-5 border-t lg:border-t-0 lg:border-l flex flex-col gap-3 justify-center bg-zinc-50/50 border-zinc-200/70">
+                      
+                      {/* Premium Mini Card */}
+                      <div className="flex flex-col gap-2 p-2.5 sm:p-3 rounded-xl shadow-sm border bg-white relative overflow-hidden border-zinc-200">
+                        <div className="flex items-center gap-2.5">
+                          <img 
+                            src={primaryInstaAccount.profilePictureUrl || 'https://via.placeholder.com/40'}
+                            alt={primaryInstaAccount.handle}
+                            className="w-8 h-8 rounded-full object-cover border shadow-sm shrink-0 border-zinc-200" 
+                          />
+                          <div className="flex flex-col text-left min-w-0 flex-1">
+                            <span className="text-[11px] sm:text-xs font-extrabold leading-tight truncate text-zinc-900">
+                              @{primaryInstaAccount.handle}
+                            </span>
+                            <span className="text-[9px] text-zinc-500 font-semibold tracking-wide flex items-center gap-2">
+                              <span>{formatCount(primaryInstaAccount.followerCount)} followers</span>
+                              <span>•</span>
+                              <span>{formatCount(primaryInstaAccount.mediaCount)} posts</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Bio snippet if available */}
+                        {primaryInstaAccount.bio && (
+                          <p className="text-[9px] text-zinc-600 line-clamp-1 text-left">
+                            {primaryInstaAccount.bio}
+                          </p>
+                        )}
+
+                        {/* Recent Media Thumbnails Grid (Up to 3 thumbnails preview) */}
+                        {primaryInstaAccount.recentMedia && primaryInstaAccount.recentMedia.length > 0 && (
+                          <div className="grid grid-cols-3 gap-1.5 mt-1">
+                            {primaryInstaAccount.recentMedia.slice(0, 3).map((m, i) => (
+                              <a
+                                key={m.id || i}
+                                href={m.permalink || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="aspect-square bg-zinc-100 rounded-md overflow-hidden border border-zinc-200/50 relative group block"
+                              >
+                                <img
+                                  src={m.thumbnailUrl || 'https://via.placeholder.com/150'}
+                                  alt={m.caption || 'Instagram Post'}
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
+                                  ❤️ {formatCount(m.likeCount || 0)}
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {instaFetchError && (
+                <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-red-600 text-xs font-medium">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                  <span>{instaFetchError}</span>
+                </div>
+              )}
 
               {fetchError && (
                 <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-red-600 text-xs font-medium">
@@ -857,9 +1132,9 @@ export default function ConnectSocials() {
               <div className="space-y-3">
                 <Button
                   onClick={handleProceedToSignup}
-                  disabled={!connected || isChannelClaimed || (connected && !selectedNiche)}
+                  disabled={isContinueDisabled}
                   className={`w-full h-13 sm:h-15 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-all ${
-                    (!connected || isChannelClaimed || (connected && !selectedNiche))
+                    isContinueDisabled
                       ? 'bg-zinc-100 border border-zinc-250 text-zinc-400 cursor-not-allowed'
                       : 'bg-zinc-950 hover:bg-zinc-800 text-white shadow-xl shadow-zinc-950/10 cursor-pointer active:scale-[0.99]'
                   }`}
@@ -868,18 +1143,22 @@ export default function ConnectSocials() {
                   <ArrowRight size={18} strokeWidth={2.5} />
                 </Button>
 
-                {isChannelClaimed ? (
-                  <p className="text-center text-xs font-semibold text-red-655 animate-pulse">
-                    ⚠️ The connected YouTube channel is already linked to another SuviX user. Please connect a different account.
+                {isChannelClaimed && !hasFreshInstagram ? (
+                  <p className="text-center text-xs font-semibold text-red-600 animate-pulse">
+                    ⚠️ The connected YouTube channel is already linked to another SuviX user. Please connect another channel or link your Instagram.
                   </p>
-                ) : connected && !selectedNiche ? (
+                ) : isChannelClaimed && hasFreshInstagram ? (
+                  <p className="text-center text-xs font-semibold text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                    ℹ️ Note: Your already-linked YouTube channel will be omitted, and only your verified Instagram account will be connected.
+                  </p>
+                ) : hasFreshYoutube && !selectedNiche ? (
                   <p className="text-center text-xs font-semibold text-amber-600 animate-pulse">
                     ⚠️ Please select your channel niche in the preview card to continue.
                   </p>
                 ) : null}
 
-                {/* Skip button: visible before connecting or if connected channel is claimed */}
-                {(!connected || isChannelClaimed) && (
+                {/* Skip button: visible if no valid social account has been linked */}
+                {!hasAnyValidSocial && (
                   <button
                     type="button"
                     onClick={handleSkipAllConnections}

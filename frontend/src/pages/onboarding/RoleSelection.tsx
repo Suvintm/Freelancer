@@ -91,8 +91,15 @@ export default function RoleSelection() {
     dispatch(clearTempSignupData());
     try {
       sessionStorage.removeItem('suvix_temp_signup_data');
+      sessionStorage.removeItem('suvix_saved_instagram_accounts');
+      sessionStorage.removeItem('suvix_saved_youtube_channels');
+      sessionStorage.removeItem('instagram_access_token');
+      sessionStorage.removeItem('instagram_oauth_pending');
       sessionStorage.removeItem('youtube_access_token');
+      sessionStorage.removeItem('youtube_oauth_pending');
       sessionStorage.removeItem('oauth_intent');
+      sessionStorage.removeItem('suvix_oauth_role');
+      sessionStorage.removeItem('suvix_oauth_category');
     } catch {
       // ignore
     }
@@ -165,7 +172,11 @@ export default function RoleSelection() {
     } catch {
       // ignore
     }
-    dispatch(setTempSignupData(signupData));
+    // Clear any previous stale OAuth tokens from storage
+    sessionStorage.removeItem('instagram_access_token');
+    localStorage.removeItem('instagram_access_token');
+    localStorage.removeItem('instagram_oauth_pending');
+    sessionStorage.removeItem('youtube_access_token');
 
     if (roleType === 'creator') {
       navigate('/connect-socials');
@@ -210,6 +221,12 @@ export default function RoleSelection() {
     } catch {
       // ignore
     }
+
+    // Clear any previous stale OAuth tokens from storage
+    sessionStorage.removeItem('instagram_access_token');
+    localStorage.removeItem('instagram_access_token');
+    localStorage.removeItem('instagram_oauth_pending');
+    sessionStorage.removeItem('youtube_access_token');
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
 

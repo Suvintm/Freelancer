@@ -33,15 +33,21 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
   const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
 
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const createDropdownRef = useRef<HTMLDivElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   // Click outside to close create dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (createDropdownRef.current && !createDropdownRef.current.contains(e.target as Node)) {
         setIsCreateDropdownOpen(false);
+      }
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target as Node)) {
+        setIsProfileDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -86,17 +92,19 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   };
 
   return (
-    <header className={`h-14 w-full shrink-0 border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative ${isDarkMode ? 'bg-[#000000]' : 'bg-nav'}`}>
+    <header className={`h-14 w-full shrink-0 border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative ${isDarkMode ? 'bg-[#000000]' : 'bg-white'}`}>
 
       {/* ── Mobile layout ─────────────────────────────────────────── */}
       <div className="lg:hidden flex items-center justify-between w-full gap-3">
         {/* Mobile Search Overlay */}
         {isMobileSearchExpanded && (
-          <div className="absolute inset-0 px-4 flex items-center gap-3 bg-page z-50 rounded-lg animate-in fade-in duration-200">
+          <div className={`absolute inset-0 px-4 flex items-center gap-3 ${isDarkMode ? 'bg-[#000000]' : 'bg-white'} z-50 rounded-lg animate-in fade-in duration-200`}>
             <div className="relative flex-1">
               <Search
                 size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+                  isDarkMode ? 'text-zinc-500' : 'text-zinc-400'
+                }`}
               />
               <input
                 type="text"
@@ -106,7 +114,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
                 onChange={(e) => setQuery(e.target.value)}
                 className={`
                   w-full h-9 rounded-full pl-9 pr-10 text-[13px] focus:outline-none border
-                  ${isDarkMode ? 'bg-[#0f0f12] border-zinc-800 text-white' : 'bg-white border-black text-zinc-955'}
+                  ${isDarkMode ? 'bg-white border-transparent text-black placeholder:text-zinc-500' : 'bg-black border-transparent text-white placeholder:text-zinc-400'}
                 `}
               />
               {query && (
@@ -226,7 +234,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
       </div>
 
       {/* ── Desktop layout ─────────────────────────────────────────── */}
-      <div className="hidden lg:grid lg:grid-cols-[296px_1fr_232px] items-center w-full">
+      <div className="hidden lg:grid lg:grid-cols-[160px_1fr_auto] items-center w-full gap-4">
 
         {/* 1. Logo — aligns with left sidebar */}
         <div className="flex items-center pl-2">
@@ -238,14 +246,14 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
         </div>
 
         {/* 2. Search bar with Power-User Hint */}
-        <div className="flex items-center gap-4 px-6">
-          <div ref={searchContainerRef} className="relative w-full max-w-md group">
+        <div className="flex items-center w-full">
+          <div ref={searchContainerRef} className="relative w-full max-w-[750px] group">
             <Search
               size={14}
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+              className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors z-10 ${
                 isDarkMode 
-                  ? 'text-text-muted group-focus-within:text-text-main' 
-                  : 'text-zinc-500 group-focus-within:text-zinc-700'
+                  ? 'text-zinc-500 group-focus-within:text-black' 
+                  : 'text-zinc-400 group-focus-within:text-white'
               }`}
             />
             <input
@@ -258,17 +266,17 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               className={`
                 w-full h-9 rounded-full pl-9 pr-12 text-[13px]
                 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500
-                transition-all border
+                transition-all border relative z-0
                 ${isDarkMode 
-                  ? 'bg-[#0f0f12] border-zinc-850 text-white placeholder:text-zinc-650 focus:border-zinc-700' 
-                  : 'bg-white border-black text-zinc-950 placeholder:text-zinc-400 focus:border-zinc-350'
+                  ? 'bg-white border-transparent text-black placeholder:text-zinc-500 focus:border-zinc-300' 
+                  : 'bg-black border-transparent text-white placeholder:text-zinc-400 focus:border-zinc-700'
                 }
               `}
             />
-            <div className={`absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded border opacity-40 group-focus-within:opacity-100 transition-opacity ${
+            <div className={`absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded border opacity-40 group-focus-within:opacity-100 transition-opacity z-10 ${
               isDarkMode 
-                ? 'border-zinc-800 bg-zinc-900 text-zinc-400' 
-                : 'border-zinc-200 bg-zinc-50 text-zinc-500'
+                ? 'border-zinc-300 bg-zinc-200 text-zinc-600' 
+                : 'border-zinc-700 bg-zinc-800 text-zinc-300'
             }`}>
               <span className="text-[10px] font-bold">⌘</span>
               <span className="text-[10px] font-bold">K</span>
@@ -418,8 +426,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
               className="
                 inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full
-                bg-gradient-to-r from-orange-500 to-rose-500
-                hover:from-orange-600 hover:to-rose-600
+                bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90
                 text-[13.5px] font-semibold text-white cursor-pointer
                 shadow-sm active:scale-[0.98] transition-all shrink-0
               "
@@ -506,8 +513,55 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             <p className={`text-[15.5px] font-semibold leading-tight ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>{userData.name}</p>
             <p className={`text-[13px] font-medium opacity-70 leading-tight ${isDarkMode ? 'text-zinc-400' : 'text-[#213130]'}`}>@{userData.username}</p>
           </div>
-          <div className="w-8 h-8 rounded-full border border-border-main overflow-hidden cursor-pointer hover:ring-2 hover:ring-border-main transition-all relative">
-            <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
+          
+          <div className="relative" ref={profileDropdownRef}>
+            <div 
+              className="w-8 h-8 rounded-full border border-border-main overflow-hidden cursor-pointer hover:ring-2 hover:ring-border-main transition-all relative"
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+            >
+              <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
+            </div>
+
+            {isProfileDropdownOpen && (
+              <div className={`absolute right-0 top-full mt-2 w-48 rounded-xl border overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200 z-50 ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
+                <div className="flex flex-col py-1">
+                  <button 
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      navigate('/profile');
+                    }}
+                    className={`px-4 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}
+                  >
+                    View Personal Profile
+                  </button>
+                  
+                  {(user?.role === 'creator' || user?.role === 'editor') && (
+                    <button 
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        navigate(`/${user.username}`);
+                      }}
+                      className={`px-4 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}
+                    >
+                      View Public Profile
+                    </button>
+                  )}
+                  
+                  <div className={`h-px w-full my-1 ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                  
+                  <button 
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      // TODO: Logout handler if needed, or navigate to settings
+                      navigate('/settings');
+                    }}
+                    className={`px-4 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}
+                  >
+                    Settings
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

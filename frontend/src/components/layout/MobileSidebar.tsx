@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
-  LogOut, Plus, Moon, X, Youtube, MessageSquare, BarChart3
+  LogOut, Plus, Moon, X, MessageSquare, BarChart3, Check
 } from 'lucide-react';
+import { FaYoutube, FaInstagram, FaMeta } from 'react-icons/fa6';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -13,16 +14,18 @@ import defaultProfile from '../../assets/defaultprofile.png';
 import { AccountSwitcher } from '../profile/AccountSwitcher';
 
 const NAV_ITEMS = [
-  { icon: Home,       label: 'Feed',      path: '/home'    },
-  { icon: Search,     label: 'Explore',   path: '/explore' },
-  { icon: Compass,    label: 'Discover',  path: '/discover'},
-  { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
-  { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
-  { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
-  { icon: MessageSquare, label: 'Chats',  path: '/communication-hub' },
-  { icon: PlusSquare, label: 'Create', path: '/create' },
-  { icon: Settings,   label: 'Settings',  path: '/settings'},
-  { icon: User,       label: 'Profile',   path: '/profile' }
+  { icon: Home,         label: 'Feed',        path: '/home'    },
+  { icon: Search,       label: 'Explore',     path: '/explore' },
+  { icon: FaYoutube,    label: 'YouTube',     path: '/youtube-dashboard', company: 'Google' },
+  { icon: FaInstagram,  label: 'Instagram',   path: '/reels',             company: 'Meta' },
+  { icon: Compass,      label: 'Discover',    path: '/discover'},
+  { icon: MapPin,       label: 'Nearby',      path: '/nearby'  },
+  { icon: PlaySquare,   label: 'Reels',       path: '/reels'   },
+  { icon: Briefcase,    label: 'Jobs',        path: '/jobs'    },
+  { icon: MessageSquare,label: 'Chats',       path: '/communication-hub' },
+  { icon: PlusSquare,   label: 'Create',      path: '/create' },
+  { icon: Settings,     label: 'Settings',    path: '/settings'},
+  { icon: User,         label: 'Profile',     path: '/profile' }
 ];
 
 interface MobileSidebarProps {
@@ -38,33 +41,21 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
+  const hasYoutube = Boolean(
+    (Array.isArray(user?.youtubeChannels) && user.youtubeChannels.length > 0) ||
+    (Array.isArray(user?.youtubeProfile) && user.youtubeProfile.length > 0) ||
+    user?.channelLinkStatus === 'LINKED' ||
+    Boolean(user?.creatorProfile?.channels && user.creatorProfile.channels.length > 0)
+  );
 
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    !!user?.creatorProfile;
-  const hasYoutube = isCreator && user?.youtubeProfile && user.youtubeProfile.length > 0;
+  const hasInstagram = Boolean(
+    user?.instagramProfile ||
+    (Array.isArray(user?.instagramAccounts) && user.instagramAccounts.length > 0)
+  );
 
   const menuItems = useMemo(() => {
-    const items = [...NAV_ITEMS];
-    if (hasYoutube) {
-      const settingsIndex = items.findIndex(item => item.path === '/settings');
-      if (settingsIndex !== -1) {
-        items.splice(settingsIndex, 0, { icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
-      } else {
-        items.push({ icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
-      }
-    }
-    return items;
-  }, [hasYoutube]);
+    return [...NAV_ITEMS];
+  }, []);
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -161,9 +152,66 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                       }
                     `}
                   >
-                    <item.icon size={19} strokeWidth={isActive ? 2.5 : 2} />
-                    <span className="text-[14px] flex-1 text-left font-semibold">
-                      {item.label}
+                    {item.label === 'YouTube' ? (
+                      <div className="relative w-[19px] h-[19px] flex items-center justify-center">
+                        <FaYoutube className="text-[#FF0000] text-[19px]" />
+                        {hasYoutube ? (
+                          <div 
+                            title="YouTube Connected" 
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 text-white flex items-center justify-center ring-1 ring-white dark:ring-[#121214] shadow-2xs"
+                          >
+                            <Check size={5.5} strokeWidth={4} />
+                          </div>
+                        ) : (
+                          <div 
+                            title="YouTube Not Connected" 
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 text-black font-black text-[7px] flex items-center justify-center ring-1 ring-white dark:ring-[#121214] shadow-2xs leading-none"
+                          >
+                            !
+                          </div>
+                        )}
+                      </div>
+                    ) : item.label === 'Instagram' ? (
+                      <div className="relative w-[19px] h-[19px] rounded-[5px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center p-0.5 shadow-sm">
+                        <FaInstagram className="text-white text-[12px]" />
+                        {hasInstagram ? (
+                          <div 
+                            title="Instagram Connected" 
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 text-white flex items-center justify-center ring-1 ring-white dark:ring-[#121214] shadow-2xs"
+                          >
+                            <Check size={5.5} strokeWidth={4} />
+                          </div>
+                        ) : (
+                          <div 
+                            title="Instagram Not Connected" 
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 text-black font-black text-[7px] flex items-center justify-center ring-1 ring-white dark:ring-[#121214] shadow-2xs leading-none"
+                          >
+                            !
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <item.icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                    )}
+                    <span className="text-[14px] flex-1 text-left font-semibold flex items-center gap-1.5">
+                      <span>{item.label}</span>
+                      {item.label === 'YouTube' && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-2xs">
+                          <svg className="w-2.5 h-2.5" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"/>
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                          </svg>
+                          <span className="text-[8.5px] font-bold text-zinc-500 dark:text-zinc-400">Google</span>
+                        </span>
+                      )}
+                      {item.label === 'Instagram' && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-2xs">
+                          <FaMeta className="text-[#0081FB] text-[10px]" />
+                          <span className="text-[8.5px] font-bold text-zinc-500 dark:text-zinc-400">Meta</span>
+                        </span>
+                      )}
                     </span>
                   </button>
                 );

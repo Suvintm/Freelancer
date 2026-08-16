@@ -41,6 +41,17 @@ export const youtubeSyncQueue = createQueue("youtube-sync", {
 });
 
 /**
+ * Instagram Sync Queue
+ * Multi-platform creator post & reel thumbnail mirroring
+ */
+export const instagramSyncQueue = createQueue("instagram-sync", {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 4000 }, // 4s → 8s → 16s
+  removeOnComplete: { age: 300, count: 200 },
+  removeOnFail: { age: 86400, count: 50 },
+});
+
+/**
  * Media Processing Queue
  * Media is user-visible — keep some history, higher priority
  */
@@ -133,6 +144,53 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
   );
 
   logger.info(`📅 [Queue] YouTube Sync scheduled. JobId: ${jobId}`);
+  return job;
+}
+
+// ─── HELPER: INSTAGRAM SYNC ENQUEUER ──────────────────────────────────────────
+
+/**
+ * Schedule an Instagram sync with dual-mode dispatcher (Background BullMQ vs Foreground Direct Execution).
+ *
+ * @param {string} userId
+ * @param {object[]} accounts
+ * @param {string} triggerReason - "onboarding" | "manual" | "scheduled"
+ */
+export async function scheduleInstagramSync(userId, accounts, triggerReason = "manual") {
+  const isForeground =
+    process.env.INSTA_SYNC_MODE === "foreground" ||
+    process.env.YT_SYNC_MODE === "foreground" ||
+    process.env.SYNC_MODE === "foreground";
+
+  // If foreground mode or Redis is disconnected, execute directly in Node.js process
+  if (isForeground || !instagramSyncQueue) {
+    logger.info(`⚡ [Queue] Instagram sync running in foreground mode for user ${userId}`);
+    try {
+      const { persistInstagramContent } = await import(
+        "../../../domains/creator/services/instagramSyncService.js"
+      );
+      for (const acc of accounts || []) {
+        await persistInstagramContent(userId, acc, triggerReason);
+      }
+      return { success: true, mode: "foreground" };
+    } catch (fgErr) {
+      logger.error(`❌ [Queue] Foreground Instagram sync error: ${fgErr.message}`);
+      return null;
+    }
+  }
+
+  const jobId = `ig_sync_${userId}_${triggerReason}_${Date.now()}`;
+
+  const job = await instagramSyncQueue.add(
+    "sync-instagram",
+    { userId, accounts, triggerReason, requestedAt: Date.now() },
+    {
+      jobId,
+      priority: triggerReason === "onboarding" ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+    }
+  );
+
+  logger.info(`📅 [Queue] Instagram Sync scheduled. JobId: ${jobId}`);
   return job;
 }
 

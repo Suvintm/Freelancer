@@ -300,6 +300,10 @@ const redisProxy = {
     if (!redisAvailable || !client) return Promise.resolve(0);
     return client.rpush(key, ...values);
   },
+  lpop: (key) => {
+    if (!redisAvailable || !client) return Promise.resolve(null);
+    return client.lpop(key);
+  },
   lrange: (key, start, stop) => {
     if (!redisAvailable || !client) return Promise.resolve([]);
     return client.lrange(key, start, stop);

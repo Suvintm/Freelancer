@@ -152,6 +152,60 @@ router.get(
     }
 );
 
+// ============ META / INSTAGRAM OAUTH (WEB) ============
+
+// Initiate Meta/Instagram OAuth
+router.get("/meta/instagram", authLimiter, (req, res) => {
+    const appId = process.env.META_APP_ID;
+    const redirectUri = process.env.META_REDIRECT_URI;
+    
+    if (!appId || !redirectUri) {
+        logger.error("[Meta OAuth] Missing META_APP_ID or META_REDIRECT_URI in env");
+        return res.status(500).json({ success: false, message: "Instagram integration is not configured." });
+    }
+
+    // Standard Instagram Graph API Auth URL (requires Instagram Creator/Business account)
+    const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish`;
+    
+    logger.info(`[Meta OAuth] Redirecting to: ${authUrl}`);
+    res.redirect(authUrl);
+});
+
+// Meta/Instagram OAuth Callback
+router.get("/meta/instagram/callback", async (req, res) => {
+    try {
+        const { code, error, error_description } = req.query;
+        const host = req.get('host') || '';
+        const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+        const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+
+        if (error) {
+            logger.error(`❌ [Meta OAuth] Callback error: ${error_description}`);
+            return res.redirect(`${redirectBase}/connect-socials?error=meta_auth_failed`);
+        }
+
+        if (!code) {
+            logger.error(`❌ [Meta OAuth] No code provided`);
+            return res.redirect(`${redirectBase}/connect-socials?error=no_code_provided`);
+        }
+
+        // Import dynamically to avoid circular dependencies
+        const { instagramApiService } = await import("../creator/services/instagramApiService.js");
+        
+        // Exchange code for short-lived token
+        const accessToken = await instagramApiService.exchangeCodeForToken(code);
+
+        // Redirect back to frontend Connect Socials page, dropping the token in the URL hash
+        res.redirect(`${redirectBase}/connect-socials#instaToken=${accessToken}`);
+    } catch (err) {
+        logger.error(`[Meta OAuth] Error during callback: ${err.message}`);
+        const host = req.get('host') || '';
+        const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+        const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+        res.redirect(`${redirectBase}/connect-socials?error=meta_exchange_failed`);
+    }
+});
+
 // ============ ONE-TIME CODE EXCHANGE (Secure POST) ============
 
 /**
@@ -543,6 +597,30 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                     create: { userId: newUser.id }
                 });
             }
+
+            // Initialize Public Profile (Link-in-bio)
+            const hasSocials = youtubeChannels && Array.isArray(youtubeChannels) && youtubeChannels.length > 0;
+            
+            let initialBlocks = [];
+            if (hasSocials) {
+                initialBlocks.push({
+                    type: "YOUTUBE_CHANNEL",
+                    title: youtubeChannels[0].channelName || youtubeChannels[0].channel_name || "My YouTube Channel",
+                    url: `https://youtube.com/channel/${youtubeChannels[0].channelId || youtubeChannels[0].id}`,
+                    order_index: 0
+                });
+            }
+
+            await tx.publicProfile.create({
+                data: {
+                    userId: newUser.id,
+                    is_active: false,
+                    is_eligible: hasSocials,
+                    blocks: initialBlocks.length > 0 ? {
+                        create: initialBlocks
+                    } : undefined
+                }
+            });
 
             return await tx.user.findUnique({
                 where: { id: newUser.id },

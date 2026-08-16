@@ -221,14 +221,21 @@ export const registerFullUser = async (userData) => {
                 account_id: accountId,
                 handle: handle,
                 name: acc.name || null,
+                biography: acc.bio || acc.biography || null,
+                website: acc.website || null,
+                account_type: acc.accountType || acc.account_type || "CREATOR",
                 profile_picture_url: acc.profilePictureUrl || acc.profile_picture_url || null,
                 follower_count: Number.isFinite(Number(acc.followerCount || acc.follower_count))
                   ? Number(acc.followerCount || acc.follower_count)
+                  : 0,
+                following_count: Number.isFinite(Number(acc.followingCount || acc.following_count))
+                  ? Number(acc.followingCount || acc.following_count)
                   : 0,
                 media_count: Number.isFinite(Number(acc.mediaCount || acc.media_count))
                   ? Number(acc.mediaCount || acc.media_count)
                   : 0,
                 is_primary: acc.isPrimary === true || index === 0,
+                recentMedia: Array.isArray(acc.recentMedia) ? acc.recentMedia : [],
               };
             })
             .filter(Boolean);
@@ -315,19 +322,45 @@ export const registerFullUser = async (userData) => {
               }
             });
             for (const acc of normalizedInstagramAccounts) {
-              await tx.instagramAccount.create({
+              const createdAcc = await tx.instagramAccount.create({
                 data: {
                   instagramProfileId: igProfile.id,
                   userId: newUser.id,
                   account_id: acc.account_id,
-                  handle: acc.handle,
-                  name: acc.name,
+                  username: acc.handle,
+                  display_name: acc.name,
+                  biography: acc.biography,
+                  website: acc.website,
+                  account_type: acc.account_type,
                   profile_picture_url: acc.profile_picture_url,
-                  follower_count: acc.follower_count,
+                  followers_count: acc.follower_count,
+                  following_count: acc.following_count,
                   media_count: acc.media_count,
                   is_primary: acc.is_primary,
                 },
               });
+
+              // Seed initial posts if available in signup payload
+              if (acc.recentMedia && acc.recentMedia.length > 0) {
+                const initialPosts = acc.recentMedia.slice(0, 15).map((m) => ({
+                  post_id: String(m.id || m.post_id),
+                  instagramAccountId: createdAcc.id,
+                  userId: newUser.id,
+                  media_type: String(m.mediaType || m.media_type || "IMAGE").toUpperCase(),
+                  thumbnail_url: m.thumbnailUrl || m.thumbnail_url || m.mediaUrl || m.media_url || null,
+                  media_url: m.mediaUrl || m.media_url || null,
+                  permalink: m.permalink || `https://instagram.com/p/${m.id}`,
+                  caption: m.caption || null,
+                  like_count: Number(m.likeCount || m.like_count || 0),
+                  comment_count: Number(m.commentsCount || m.comment_count || 0),
+                  timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+                }));
+
+                await tx.instagramPost.createMany({
+                  data: initialPosts,
+                  skipDuplicates: true,
+                });
+              }
             }
           }
         } else if (assignedRole === "editor") {
@@ -393,6 +426,41 @@ export const registerFullUser = async (userData) => {
               is_active: true,
               device_name: "SuviX Mobile App",
             },
+          });
+        }
+
+        // Step F: Initialize Public Profile (Link-in-bio) for creators and editors only
+        if (assignedRole === "creator" || assignedRole === "editor") {
+          const hasSocials = normalizedChannels.length > 0 || normalizedInstagramAccounts.length > 0;
+          
+          let initialBlocks = [];
+          let orderIdx = 0;
+          if (normalizedChannels.length > 0) {
+            initialBlocks.push({
+              type: "YOUTUBE_CHANNEL",
+              title: normalizedChannels[0].channel_name || "My YouTube Channel",
+              url: `https://youtube.com/channel/${normalizedChannels[0].channel_id}`,
+              order_index: orderIdx++
+            });
+          }
+          if (normalizedInstagramAccounts.length > 0) {
+            initialBlocks.push({
+              type: "INSTAGRAM_PROFILE",
+              title: normalizedInstagramAccounts[0].handle ? `@${normalizedInstagramAccounts[0].handle}` : "My Instagram",
+              url: `https://instagram.com/${normalizedInstagramAccounts[0].handle}`,
+              order_index: orderIdx++
+            });
+          }
+
+          await tx.publicProfile.create({
+            data: {
+              userId: newUser.id,
+              is_active: hasSocials,
+              is_eligible: hasSocials,
+              blocks: initialBlocks.length > 0 ? {
+                create: initialBlocks
+              } : undefined
+            }
           });
         }
 

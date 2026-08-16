@@ -5,6 +5,7 @@ import {
   login, 
   getRoles,
   getYouTubeChannels,
+  getInstagramAccounts,
   refresh,
   logout,
   logoutAll,
@@ -33,6 +34,7 @@ router.post("/refresh-token", authLimiter, refresh); // Advanced Rotation + Rate
 router.post("/logout", logout); // Clear Sessions
 router.get("/roles", getRoles);
 router.post("/youtube/channels", getYouTubeChannels);
+router.post("/instagram/accounts", getInstagramAccounts);
 router.get("/check-username/:username", checkUsername);
 router.post("/validate-signup", validateSignup);
 router.post("/validate-vault", validateVault); // Sanitizer for mobile app

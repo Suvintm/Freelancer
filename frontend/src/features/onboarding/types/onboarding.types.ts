@@ -52,14 +52,30 @@ export interface DiscoveredYouTubeChannel {
   videos?: YouTubeVideoItem[];
 }
 
+export interface InstagramMediaItem {
+  id: string;
+  caption?: string;
+  mediaType: string;
+  thumbnailUrl: string | null;
+  permalink?: string;
+  likeCount?: number;
+  commentsCount?: number;
+  timestamp?: string;
+}
+
 export interface InstagramAccount {
   accountId: string;
   handle: string;
   name?: string;
+  bio?: string;
+  website?: string;
   profilePictureUrl?: string;
   followerCount: number | string;
+  followingCount?: number | string;
   mediaCount: number | string;
+  accountType?: string;
   isPrimary?: boolean;
+  recentMedia?: InstagramMediaItem[];
 }
 
 export interface SocialProfile {
@@ -79,6 +95,8 @@ export interface GoogleIdentity {
 export interface CreatorData {
   channels: YouTubeChannel[];
   selectedChannelIds: string[];
+  instagramAccounts?: InstagramAccount[];
+  selectedInstagramAccountIds?: string[];
   selectedNiches: string[];
   discoveryToken: string | null;
   primarySubCategoryId?: string;

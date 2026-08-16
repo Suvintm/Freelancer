@@ -1,56 +1,31 @@
-import { ReactLenis }    from 'lenis/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, Users, MapPin, PlusSquare, Youtube, MessageSquare, Plus, Heart, ArrowRight
+  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, ChevronDown,
+  Link as LinkIcon, Check
 } from 'lucide-react';
+import { FaYoutube, FaInstagram, FaMeta } from 'react-icons/fa6';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useTheme } from '../../hooks/useTheme';
 import defaultProfile from '../../assets/defaultprofile.png';
-import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../../api/client';
-import LottieComponent from 'lottie-react';
-import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
-import { OnboardingSyncOverlay } from '../onboarding/OnboardingSyncOverlay';
-
-const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
+import { useLogout } from '../../mutations/useLogout';
 
 const NAV_ITEMS = [
-  { icon: Home,       label: 'Feed',      path: '/home'    },
-  { icon: Search,     label: 'Explore',   path: '/explore' },
-  { icon: Compass,    label: 'Discover',  path: '/discover'},
-  { icon: MapPin,     label: 'Nearby',    path: '/nearby'  },
-  { icon: PlaySquare, label: 'Reels',     path: '/reels'   },
-  { icon: Briefcase,  label: 'Jobs',      path: '/jobs'    },
-  { icon: MessageSquare, label: 'Chats',   path: '/communication-hub' },
-  { icon: PlusSquare, label: 'Create', path: '/create' },
-  { icon: Settings,   label: 'Settings',  path: '/settings'},
-  { icon: User,       label: 'Profile',   path: '/profile' }
+  { icon: Home,         label: 'Feed',        path: '/home'    },
+  { icon: Search,       label: 'Explore',     path: '/explore' },
+  { icon: FaYoutube,    label: 'YouTube',     path: '/youtube-dashboard', company: 'Google' },
+  { icon: FaInstagram,  label: 'Instagram',   path: '/reels',             company: 'Meta' },
+  { icon: Compass,      label: 'Discover',    path: '/discover'},
+  { icon: MapPin,       label: 'Nearby',      path: '/nearby'  },
+  { icon: PlaySquare,   label: 'Reels',       path: '/reels'   },
+  { icon: Briefcase,    label: 'Jobs',        path: '/jobs'    },
+  { icon: MessageSquare,label: 'Chats',       path: '/communication-hub' },
+  { icon: PlusSquare,   label: 'Create',      path: '/create'  },
+  { icon: Settings,     label: 'Settings',    path: '/settings'},
+  { icon: User,         label: 'Profile',     path: '/profile' }
 ];
-
-function formatTimeAgo(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
-}
-
-interface SidebarConversation {
-  user: {
-    id: string;
-    name: string;
-    profilePicture?: string;
-  };
-  lastMessage: {
-    createdAt: string;
-    content: string;
-  };
-}
 
 export const RightSidebar = () => {
   const location = useLocation();
@@ -58,39 +33,53 @@ export const RightSidebar = () => {
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
   const avatarUrl = user?.profilePicture || defaultProfile;
+  const { mutateAsync: logout } = useLogout();
 
-  const [conversations, setConversations] = useState<SidebarConversation[]>([]);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
-  const [likedConvs, setLikedConvs] = useState<Record<string, boolean>>({});
-  const [showTestSync, setShowTestSync] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+
+  const hasYoutube = Boolean(
+    (Array.isArray(user?.youtubeChannels) && user.youtubeChannels.length > 0) ||
+    (Array.isArray(user?.youtubeProfile) && user.youtubeProfile.length > 0) ||
+    user?.channelLinkStatus === 'LINKED' ||
+    Boolean(user?.creatorProfile?.channels && user.creatorProfile.channels.length > 0)
+  );
+
+  const hasInstagram = Boolean(
+    user?.instagramProfile ||
+    (Array.isArray(user?.instagramAccounts) && user.instagramAccounts.length > 0)
+  );
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const canScroll = scrollHeight > clientHeight;
+      const reachedBottom = scrollTop + clientHeight >= scrollHeight - 10;
+      setShowScrollIndicator(canScroll && !reachedBottom);
+    }
+  };
 
   useEffect(() => {
-    const fetchConvs = async () => {
-      try {
-        const res = await api.get('/messages/conversations');
-        if (res.data?.success && res.data.data) {
-          setConversations(res.data.data);
-        }
-      } catch {
-        // silently fail
-      }
+    const timer = setTimeout(checkScroll, 100);
+    return () => clearTimeout(timer);
+  }, [user]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    el.addEventListener('scroll', checkScroll);
+    window.addEventListener('resize', checkScroll);
+    
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
     };
-    fetchConvs();
   }, []);
 
   const roleStr = (user?.role || '').toLowerCase();
   const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
   const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    !!user?.creatorProfile;
 
   const isClientCategory =
     roleStr === 'user' ||
@@ -101,281 +90,213 @@ export const RightSidebar = () => {
     categorySlugStr.includes('user') ||
     categorySlugStr.includes('brand');
 
-  const hasYoutube = Boolean(user?.youtubeProfile && user.youtubeProfile.length > 0);
-
   const menuItems = useMemo(() => {
     let items = [...NAV_ITEMS];
-    if (isClientCategory) {
-      items = items.filter(item => item.path !== '/upload-portal' && item.path !== '/reels');
+    
+    // Insert Link in Bio under Search (Explore)
+    const searchIndex = items.findIndex(item => item.path === '/explore');
+    if (searchIndex !== -1) {
+      items.splice(searchIndex + 1, 0, {
+        icon: LinkIcon,
+        label: 'Link in Bio',
+        path: '/link-in-bio'
+      });
     }
-    if (hasYoutube) {
-      const settingsIndex = items.findIndex(item => item.path === '/settings');
-      if (settingsIndex !== -1) {
-        items.splice(settingsIndex, 0, { icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
-      } else {
-        items.push({ icon: Youtube, label: 'YT Dashboard', path: '/youtube-dashboard' });
-      }
+
+    if (isClientCategory) {
+      items = items.filter(item => item.path !== '/upload-portal');
     }
     return items;
-  }, [hasYoutube, isClientCategory]);
-
-  const visibleConvs = conversations.slice(activeCardIndex, activeCardIndex + 3);
+  }, [isClientCategory, user?.username]);
 
   return (
-    <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
-      <div className="flex flex-col flex-1 px-4 py-6 gap-4">
-
-        {/* ── Community Link ── */}
-        <div
-          onClick={() => navigate('/community')}
-          className={`w-full py-2 rounded-xl text-xs font-community font-bold shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer border ${
-            isDarkMode 
-              ? 'bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800' 
-              : 'bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50'
-          }`}
-        >
-          <Users size={14} />
-          Community
-        </div>
-
-        {/* ── Test Sync Button ── */}
-        <button
-          onClick={() => setShowTestSync(true)}
-          className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-colors"
-        >
-          <Youtube size={14} />
-          Test Sync UI
-        </button>
-        {showTestSync && <OnboardingSyncOverlay nextRoute="/home" />}
-
-        {/* ── Creator Tools Promotion Widget ── */}
+    <div 
+      onMouseEnter={checkScroll}
+      className={`
+        absolute top-0 left-0 h-full w-[80px] hover:w-[280px] 
+        group transition-[width,box-shadow] duration-[250ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width] flex flex-col overflow-hidden 
+        border-r shadow-2xl z-[60]
+        ${isDarkMode 
+          ? 'bg-black border-border-main text-white' 
+          : 'bg-white border-zinc-200 text-zinc-900'}
+      `}
+    >
+      {/* 1. Header (Logo / Platform Title) */}
+      <div className="h-[80px] flex items-center px-6 flex-shrink-0 relative">
         <div 
-          onClick={() => navigate('/creator-tools')}
-          className={`w-full rounded-2xl overflow-hidden mb-2 flex flex-col cursor-pointer transition-all border ${
-            isDarkMode ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
-          }`}
+          onClick={() => navigate('/home')}
+          className={`
+            w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm cursor-pointer transition-transform duration-200 hover:scale-105
+            ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'}
+          `}
         >
-          <div className="w-full aspect-video flex items-center justify-center p-4">
-            <Lottie 
-              animationData={sidebarLottieAnimation} 
-              loop={true} 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-            />
-          </div>
-          <div className="w-full p-3 pt-0 flex justify-center">
-            <button className={`w-full text-xs font-bold uppercase tracking-wider py-2.5 rounded-xl shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-1.5 ${
-              isDarkMode 
-                ? 'bg-white text-black hover:bg-zinc-200' 
-                : 'bg-black text-white hover:bg-zinc-800'
-            }`}>
-              Explore Tools
-              <ArrowRight size={14} />
-            </button>
-          </div>
+          {/* SuviX Cube Logo */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
         </div>
-
-        {/* ── Latest Messages Widget ── */}
-        {visibleConvs.length > 0 && (
-          <div className="w-full flex flex-col gap-1.5">
-            <p className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-1">
-              Messages
-            </p>
-            <div className="relative w-full h-[98px] select-none">
-              <AnimatePresence mode="popLayout">
-                {visibleConvs.map((conv, idx) => {
-                  const isTop = idx === 0;
-                  const isLiked = likedConvs[conv.user.id] || false;
-                  return (
-                    <motion.div
-                      key={conv.user.id}
-                      style={{
-                        position: 'absolute',
-                        width: '100%',
-                        height: '76px',
-                        top: '16px',
-                        left: 0,
-                        pointerEvents: isTop ? 'auto' : 'none',
-                      }}
-                      initial={{ opacity: 0, scale: 0.9, y: 15 }}
-                      animate={{
-                        opacity: 1 - idx * 0.25,
-                        scale: 1 - idx * 0.04,
-                        y: idx * 5,
-                        zIndex: 30 - idx,
-                      }}
-                      exit={{
-                        x: 240,
-                        opacity: 0,
-                        scale: 0.85,
-                        transition: { duration: 0.25 },
-                      }}
-                      transition={{ type: 'spring', stiffness: 350, damping: 26 }}
-                      onClick={() => {
-                        if (isTop) navigate(`/communication-hub?userId=${conv.user.id}`);
-                      }}
-                      className={`flex items-center gap-3 p-3 rounded-[20px] border shadow-lg cursor-pointer ${
-                        isDarkMode
-                          ? 'bg-[#0c0c0e] border-white/10 text-white shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
-                          : 'bg-white border-zinc-200/80 text-zinc-950 shadow-[0_8px_30px_rgba(0,0,0,0.06)]'
-                      }`}
-                    >
-                      {/* Left: highly rounded profile style avatar */}
-                      <img
-                        src={conv.user.profilePicture || defaultProfile}
-                        alt={conv.user.name}
-                        className="w-12 h-12 rounded-[16px] object-cover shadow-sm shrink-0 border dark:border-white/10 border-zinc-200/60"
-                      />
-
-                      {/* Middle: text layout */}
-                      <div className="min-w-0 flex-1 flex flex-col justify-center h-full">
-                        <h4 className={`text-xs font-bold truncate leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
-                          {conv.user.name}
-                        </h4>
-                        <p className={`text-[10px] truncate mt-1 leading-tight flex items-center gap-1 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                          <span>{formatTimeAgo(conv.lastMessage.createdAt)} ago</span>
-                          <span>•</span>
-                          <span className="truncate">{conv.lastMessage.content}</span>
-                        </p>
-                      </div>
-
-                      {/* Top-Right: Hanging squircle buttons */}
-                      {isTop && (
-                        <div 
-                          className="absolute -top-3.5 right-4 flex items-center gap-1.5 z-40"
-                          onClick={(e) => e.stopPropagation()} // Prevent card click navigation
-                        >
-                          {/* Chat button */}
-                          <button
-                            onClick={() => navigate(`/communication-hub?userId=${conv.user.id}`)}
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border ${
-                              isDarkMode
-                                ? 'bg-[#18181b] border-white/10 text-white hover:bg-zinc-800'
-                                : 'bg-white border-zinc-200 text-zinc-950 hover:bg-zinc-50'
-                            }`}
-                            title="Message"
-                          >
-                            <MessageSquare size={14} />
-                          </button>
-
-                          {/* Heart/Like button */}
-                          <button
-                            onClick={() => {
-                              setLikedConvs(prev => ({ ...prev, [conv.user.id]: !prev[conv.user.id] }));
-                            }}
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border ${
-                              isDarkMode
-                                ? 'bg-[#18181b] border-white/10 text-white hover:bg-zinc-800'
-                                : 'bg-white border-zinc-200 text-zinc-950 hover:bg-zinc-50'
-                            }`}
-                            title="Favorite"
-                          >
-                            <Heart 
-                              size={14} 
-                              className={isLiked ? "text-rose-500 fill-rose-500 transition-colors" : "text-current transition-colors"} 
-                            />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Top-Left: Dismiss close button */}
-                      {isTop && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveCardIndex(prev => prev + 1);
-                          }}
-                          className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-rose-500 text-white shadow-sm hover:scale-110 active:scale-95 transition-all cursor-pointer z-50 flex items-center justify-center"
-                          title="Dismiss"
-                        >
-                          <Plus size={10} className="rotate-45" />
-                        </button>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-
-        {/* YouTube Analytics Callout Widget */}
-        {isCreator && !hasYoutube && (
-          <div className={`p-4 rounded-[20px] border flex flex-col gap-2 ${
-            isDarkMode 
-              ? 'bg-gradient-to-br from-amber-500/10 via-zinc-950/20 to-zinc-950 border-amber-500/20' 
-              : 'bg-gradient-to-br from-amber-50/60 via-white to-white border-amber-200 shadow-sm'
-          }`}>
-            <div className="flex items-center gap-1.5 text-amber-500">
-              <Youtube size={14} className="fill-current stroke-none" />
-              <p className="text-[10px] font-black uppercase tracking-wider">
-                Boost Sponsorships
-              </p>
-            </div>
-            <p className={`text-[11px] font-medium leading-normal ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
-              Connect your YouTube Analytics to display verified stats and **get sponsors 10x faster**!
-            </p>
-            <button 
-              onClick={() => navigate('/youtube-dashboard')}
-              className="w-full mt-1.5 py-2 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-black font-bold text-[11px] rounded-xl transition-all cursor-pointer shadow-sm shadow-amber-500/20 flex items-center justify-center gap-1"
-            >
-              Connect Now
-            </button>
-          </div>
-        )}
-
-        {/* Navigation Card */}
-        <div className={`rounded-[24px] border p-4 transition-all duration-300 ${isDarkMode ? 'bg-black border-border-main' : 'bg-zinc-50/50 border-zinc-950 border-[1.5px] shadow-sm hover:shadow-md'} flex flex-col flex-1`}>
-          <p className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-2 mb-3">
-            Navigation
-          </p>
-
-          <nav className="space-y-1 flex-1">
-            {menuItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              const isProfile = item.label === 'Profile';
-
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={[
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all border',
-                    isDarkMode
-                      ? (isActive 
-                          ? 'bg-text-main text-container font-semibold border-transparent' 
-                          : 'text-text-muted hover:bg-border-secondary hover:text-text-main border-transparent')
-                      : (isActive 
-                          ? 'bg-zinc-950 text-white font-semibold border-zinc-950 shadow-sm' 
-                          : 'text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-950 border-transparent hover:border-zinc-300')
-                  ].join(' ')}
-                >
-                  {isProfile ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Profile"
-                      className="w-4 h-4 rounded-full object-cover border border-current"
-                    />
-                  ) : (
-                    <item.icon
-                      size={16}
-                      strokeWidth={isActive ? 2.5 : 1.75}
-                    />
-                  )}
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-border-main' : 'border-zinc-200'}`}>
-            <button className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-rose-500 hover:bg-rose-500/8 transition-colors w-full border border-transparent ${!isDarkMode && 'hover:border-rose-200 hover:bg-rose-50/50 cursor-pointer'}`}>
-              <LogOut size={16} strokeWidth={1.75} />
-              Log out
-            </button>
-          </div>
+        <div className="ml-4 flex flex-col opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-[200ms] ease-[cubic-bezier(0.16,1,0.3,1)] translate-x-2 group-hover:translate-x-0 whitespace-nowrap overflow-hidden">
+          <span className="text-[14px] font-black tracking-tight leading-none">SuviX</span>
+          <span className="text-[10px] text-text-muted mt-0.5 font-medium uppercase tracking-wider">Untitled UI</span>
         </div>
-
       </div>
-    </ReactLenis>
+
+      {/* 2. Primary Navigation List */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 flex flex-col gap-1.5 py-4 overflow-y-auto overflow-x-hidden scrollbar-hide px-4"
+      >
+        {menuItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          const isProfile = item.label === 'Profile';
+
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`
+                flex items-center h-11 rounded-xl transition-all duration-200 cursor-pointer flex-shrink-0 relative group/item
+                ${isActive 
+                  ? (isDarkMode 
+                      ? 'bg-white text-black font-semibold' 
+                      : 'bg-black text-white font-semibold')
+                  : (isDarkMode 
+                      ? 'text-zinc-400 hover:bg-zinc-900/60 hover:text-white' 
+                      : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950')}
+              `}
+            >
+              {/* Icon Container (Strictly centered inside 48px width) */}
+              <div className="w-[48px] h-11 flex items-center justify-center flex-shrink-0">
+                {isProfile ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className={`w-6 h-6 rounded-full object-cover border-2 transition-all ${
+                      isActive ? 'border-current' : (isDarkMode ? 'border-zinc-800' : 'border-zinc-200')
+                    }`}
+                  />
+                ) : item.label === 'YouTube' ? (
+                  <div className="relative w-6 h-6 flex items-center justify-center transition-transform duration-200 group-hover/item:scale-110">
+                    <FaYoutube className="text-[#FF0000] text-[21px] drop-shadow-sm" />
+                    {hasYoutube ? (
+                      <div 
+                        title="YouTube Connected" 
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 text-white flex items-center justify-center ring-1 ring-white dark:ring-black shadow-2xs"
+                      >
+                        <Check size={6} strokeWidth={4} />
+                      </div>
+                    ) : (
+                      <div 
+                        title="YouTube Not Connected" 
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 text-black font-black text-[7.5px] flex items-center justify-center ring-1 ring-white dark:ring-black shadow-2xs leading-none"
+                      >
+                        !
+                      </div>
+                    )}
+                  </div>
+                ) : item.label === 'Instagram' ? (
+                  <div className="relative w-[22px] h-[22px] rounded-[6px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center shadow-sm transition-transform duration-200 group-hover/item:scale-110">
+                    <FaInstagram className="text-white text-[13px]" />
+                    {hasInstagram ? (
+                      <div 
+                        title="Instagram Connected" 
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 text-white flex items-center justify-center ring-1 ring-white dark:ring-black shadow-2xs"
+                      >
+                        <Check size={6} strokeWidth={4} />
+                      </div>
+                    ) : (
+                      <div 
+                        title="Instagram Not Connected" 
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 text-black font-black text-[7.5px] flex items-center justify-center ring-1 ring-white dark:ring-black shadow-2xs leading-none"
+                      >
+                        !
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-200 group-hover/item:scale-105" />
+                )}
+              </div>
+              
+              {/* Text Label with Parent Company Logo (Hidden until hovered) */}
+              <div 
+                className={`
+                  flex items-center gap-1.5 text-[13px] font-semibold tracking-wide whitespace-nowrap 
+                  opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-[200ms] ease-[cubic-bezier(0.16,1,0.3,1)]
+                  translate-x-2 group-hover:translate-x-0
+                  ${isActive ? 'text-current font-bold' : 'text-text-muted group-hover/item:text-text-main'}
+                `}
+              >
+                <span>{item.label}</span>
+                
+                {item.label === 'YouTube' && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
+                    <svg className="w-2.5 h-2.5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"/>
+                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    <span className="text-[8.5px] font-bold text-zinc-500 dark:text-zinc-400">Google</span>
+                  </span>
+                )}
+
+                {item.label === 'Instagram' && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
+                    <FaMeta className="text-[#0081FB] text-[10px]" />
+                    <span className="text-[8.5px] font-bold text-zinc-500 dark:text-zinc-400">Meta</span>
+                  </span>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Floating scroll indicator */}
+      {showScrollIndicator && (
+        <div 
+          className="absolute bottom-[84px] left-1/2 -translate-x-1/2 z-[70] pointer-events-none flex flex-col items-center justify-center"
+        >
+          <div 
+            className={`
+              p-1.5 rounded-full shadow-lg border animate-bounce flex items-center justify-center
+              ${isDarkMode 
+                ? 'bg-white border-zinc-200 text-zinc-500 shadow-zinc-200/50' 
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400 shadow-black/80'}
+            `}
+          >
+            <ChevronDown size={12} strokeWidth={3} />
+          </div>
+        </div>
+      )}
+
+      {/* 3. Footer Actions (Logout & Settings / Switch Account) */}
+      <div className={`p-4 flex flex-col gap-1.5 mt-auto border-t ${isDarkMode ? 'border-border-main/50' : 'border-zinc-100'}`}>
+        <button
+          onClick={() => logout()}
+          className={`
+            flex items-center h-11 rounded-xl transition-all duration-200 cursor-pointer flex-shrink-0 relative group/item
+            ${isDarkMode ? 'text-zinc-400 hover:bg-zinc-900/60 hover:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950'}
+          `}
+        >
+          <div className="w-[48px] h-11 flex items-center justify-center flex-shrink-0">
+            <LogOut size={20} strokeWidth={2} className="text-rose-500 transition-transform duration-200 group-hover/item:scale-105" />
+          </div>
+          <span 
+            className="
+              text-[13px] font-semibold tracking-wide whitespace-nowrap text-rose-500
+              opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-[200ms] ease-[cubic-bezier(0.16,1,0.3,1)]
+              translate-x-2 group-hover:translate-x-0
+            "
+          >
+            Log out
+          </span>
+        </button>
+      </div>
+    </div>
   );
 };

@@ -221,6 +221,14 @@ export const deleteChannel = async (req, res, next) => {
         where: { userId },
         data: { status: "REVOKED" },
       });
+
+      const igCount = await prisma.instagramAccount.count({ where: { userId } });
+      if (igCount === 0) {
+        await prisma.publicProfile.updateMany({
+          where: { userId },
+          data: { is_eligible: false },
+        });
+      }
     }
 
     emitToUser(userId, "user:profile_updated", {
@@ -557,3 +565,4 @@ export const manualSyncChannels = async (req, res, next) => {
     next(error);
   }
 };
+
