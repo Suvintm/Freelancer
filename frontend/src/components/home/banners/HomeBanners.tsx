@@ -4,14 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, ExternalLink, Link2, CheckCircle, Flame } from 'lucide-react';
 import { FaYoutube, FaInstagram } from 'react-icons/fa6';
 
-export interface BannerItem {
-  id: string;
-  title: string;
-  badge: string;
-  thumbnail: string;
-  Component: React.FC<{ isDarkMode: boolean }>;
-}
-
 // ─────────────────────────────────────────────────────────────
 // 1. BANNER 1: Link in Bio Studio
 // ─────────────────────────────────────────────────────────────
@@ -183,16 +175,3 @@ export const BannerLinkInBio: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode 
     </div>
   );
 };
-
-// ─────────────────────────────────────────────────────────────
-// Master Banner Items Registry
-// ─────────────────────────────────────────────────────────────
-export const HOME_BANNER_ITEMS: BannerItem[] = [
-  {
-    id: 'banner-link-in-bio',
-    title: 'Link in Bio Studio',
-    badge: 'New Feature',
-    thumbnail: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&q=80&w=600',
-    Component: BannerLinkInBio,
-  },
-];

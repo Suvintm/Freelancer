@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, MousePointerClick, TrendingUp, BarChart3 } from 'lucide-react';
+import { Eye, MousePointerClick, TrendingUp } from 'lucide-react';
 
 interface ProfileStatsProps {
   views: number;

@@ -5,7 +5,7 @@ import { Sparkles, Search } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useTheme } from '../../hooks/useTheme';
-import { HOME_BANNER_ITEMS } from './banners/HomeBanners';
+import { HOME_BANNER_ITEMS } from './banners/bannerData';
 import defaultProfile from '../../assets/defaultprofile.png';
 import darkLogo from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';

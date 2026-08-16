@@ -9,7 +9,6 @@ import { useDispatch } from 'react-redux';
 import { setAuth } from '../store/slices/authSlice';
 import { useQueryClient } from '@tanstack/react-query';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
-import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 import { api } from '../api/client';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, ExternalLink, Share2, Check, Copy } from 'lucide-react';
+import { Edit3, ExternalLink, Check, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface QuickActionsProps {

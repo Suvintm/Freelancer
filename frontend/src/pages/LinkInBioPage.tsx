@@ -3,12 +3,11 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { selectUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
-import defaultProfile from '../assets/defaultprofile.png';
 import { templateRegistry } from './link-in-bio/templates.tsx';
 import type { TemplateKey, ResolvedTheme, LinkBlock } from './link-in-bio/templates.tsx';
 import { 
-  Link as LinkIcon, Eye, Globe, Share2, TrendingUp, BarChart3, 
-  Youtube, Instagram, Sparkles, Check, ArrowRight, ExternalLink, Edit2
+  Link as LinkIcon, Eye, Share2, TrendingUp, 
+  Sparkles, Check, ArrowRight, ExternalLink, Edit2
 } from 'lucide-react';
 
 export default function LinkInBioPage() {

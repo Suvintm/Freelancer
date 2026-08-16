@@ -2,7 +2,6 @@ import React from 'react';
 import type { TemplateEditorProps } from '../../../types/template.types';
 import SectionHeader from '../../../components/editors/SectionHeader';
 import RangeSlider from '../../../components/editors/RangeSlider';
-import ColorPickerField from '../../../components/editors/ColorPickerField';
 import { Plus, Trash2, ArrowUp, ArrowDown, Eye, EyeOff, Image as ImageIcon } from 'lucide-react';
 
 type Props = Pick<

@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Home, Search, PlaySquare, Briefcase,
-  Settings, LogOut, Compass, User, MapPin, PlusSquare, Youtube, MessageSquare, ChevronDown,
+  Settings, LogOut, Compass, User, MapPin, PlusSquare, MessageSquare, ChevronDown,
   Link as LinkIcon, Check
 } from 'lucide-react';
 import { FaYoutube, FaInstagram, FaMeta } from 'react-icons/fa6';
@@ -107,7 +107,7 @@ export const RightSidebar = () => {
       items = items.filter(item => item.path !== '/upload-portal');
     }
     return items;
-  }, [isClientCategory, user?.username]);
+  }, [isClientCategory]);
 
   return (
     <div 

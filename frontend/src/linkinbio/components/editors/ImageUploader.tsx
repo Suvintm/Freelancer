@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Image, Upload, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 
 interface ImageUploaderProps {
   label: string;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import type { CreatorInfo, ProfileBlock } from '../types/profile.types';
 import type { ResolvedTheme } from '../types/template.types';
 

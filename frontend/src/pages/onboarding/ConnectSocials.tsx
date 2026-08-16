@@ -26,7 +26,6 @@ import {
   setInstagramAccounts,
   resetInstagramAccounts,
   type YouTubeChannel,
-  type InstagramAccount,
 } from '../../store/slices/onboardingSlice';
 import { useCategories } from '../../queries/useCategories';
 import type { RootState } from '../../store';
@@ -349,7 +348,6 @@ export default function ConnectSocials() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showInstaSuccess, setShowInstaSuccess] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [instaFetchError, setInstaFetchError] = useState<string | null>(null);
   const fetchStarted = useRef(false);

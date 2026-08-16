@@ -7,9 +7,9 @@ import defaultProfile from '../assets/defaultprofile.png';
 import { templateRegistry } from './link-in-bio/templates.tsx';
 import type { TemplateKey, ResolvedTheme, LinkBlock } from './link-in-bio/templates.tsx';
 import { 
-  Link as LinkIcon, Plus, Trash2, ArrowUp, ArrowDown, Eye, Globe, 
+  Link as LinkIcon, Plus, Trash2, ArrowUp, ArrowDown, Eye, 
   Youtube, Instagram, Sparkles, Check, Edit2, ArrowLeft, Paintbrush, 
-  Settings as SettingsIcon, Image, Sliders, LayoutGrid, Info
+  Image, Sliders, LayoutGrid, Info
 } from 'lucide-react';
 
 const FONTS_LIST = ['Inter', 'Poppins', 'Playfair Display', 'JetBrains Mono'];

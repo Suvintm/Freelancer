@@ -81,7 +81,7 @@ export const CurrentDesignCard: React.FC<CurrentDesignCardProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => window.open(`/${creator.username}`, '_blank')}
+              onClick={() => window.open(publicUrl || `/${creator.username}`, '_blank')}
               className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ExternalLink size={13} />
