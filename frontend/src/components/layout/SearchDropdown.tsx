@@ -232,12 +232,12 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
     },
     {
       id: 'action-connect',
-      title: 'Connect YouTube Channel',
-      subtitle: 'Sync brand accounts & credentials',
+      title: 'Connect Social Profiles',
+      subtitle: 'Sync YouTube & Instagram credentials',
       category: 'Actions',
       icon: <MdOutlineLink className={iconClass} />,
       shortcut: '/connect',
-      url: '/youtube-connect'
+      url: '/connect-socials'
     }
   ];
 
@@ -277,7 +277,7 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
 
   const filteredActionItems = actionItems.filter(item => {
     if (isClientCategory) {
-      return item.url !== '/youtube-connect';
+      return item.url !== '/connect-socials';
     }
     return true;
   });
