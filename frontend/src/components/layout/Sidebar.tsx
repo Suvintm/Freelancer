@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ReactLenis }       from 'lenis/react';
-import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase, BarChart3, ChevronRight } from 'lucide-react';
+import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase, BarChart3, ChevronRight, Users, Youtube, ArrowRight } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
@@ -14,6 +14,8 @@ import verifyLottieBlue from '../../assets/lottie/verify_lottie_blue.json';
 import verifyLottiePurple from '../../assets/lottie/verify_lottie_purple.json';
 
 import { VerifiedBadge } from '../ui/VerifiedBadge';
+import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
+import { OnboardingSyncOverlay } from '../onboarding/OnboardingSyncOverlay';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 const HIGHLIGHTS = [
@@ -41,6 +43,7 @@ export const Sidebar = () => {
   const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [showTestSync, setShowTestSync] = useState(false);
 
   const roleStr = (user?.role || '').toLowerCase();
   const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
@@ -190,8 +193,8 @@ export const Sidebar = () => {
               w-full h-8 rounded-lg border transition-all duration-300
               text-[12px] font-semibold
               ${isDarkMode 
-                ? 'border-border-main text-text-main hover:bg-border-secondary' 
-                : 'border-zinc-950 text-zinc-950 hover:bg-zinc-950 hover:text-white hover:shadow-sm cursor-pointer'}
+                ? 'border-border-main text-text-main bg-zinc-900 hover:bg-border-secondary' 
+                : 'border-zinc-950 text-zinc-950 bg-zinc-100 hover:bg-zinc-950 hover:text-white hover:shadow-sm cursor-pointer'}
             `}
           >
             View full profile
@@ -202,7 +205,7 @@ export const Sidebar = () => {
         <div className="w-full flex justify-center -mt-2 -mb-1">
           <div 
             onClick={() => navigate('/subscription')}
-            className={`w-[90%] flex flex-row items-center justify-between px-3 cursor-pointer z-10 relative group py-1.5 rounded-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${
+            className={`w-[90%] flex flex-row items-center justify-between px-3 cursor-pointer z-10 relative group py-1 rounded-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${
               isDarkMode ? 'bg-white text-black' : 'bg-zinc-950 text-white'
             }`}
             title="Get Verified"
@@ -211,7 +214,7 @@ export const Sidebar = () => {
               <Lottie 
                 animationData={activeLottie} 
                 loop={true} 
-                style={{ width: '42px', height: '42px', objectFit: 'contain' }} 
+                style={{ width: '38px', height: '38px', objectFit: 'contain' }} 
               />
               <span className="text-[12px] font-black tracking-tight group-hover:translate-x-1 transition-transform">
                 {user?.is_verified ? 'Already Verified !!' : 'Get Verified !!'}
@@ -222,6 +225,55 @@ export const Sidebar = () => {
             }`}>
               <ChevronRight size={14} strokeWidth={3} />
             </div>
+          </div>
+        </div>
+
+        {/* ── Community Link ── */}
+        <div
+          onClick={() => navigate('/community')}
+          className={`w-[90%] mx-auto py-2 rounded-xl text-xs font-community font-bold shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer border ${
+            isDarkMode 
+              ? 'bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800' 
+              : 'bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50'
+          }`}
+        >
+          <Users size={14} />
+          Community
+        </div>
+
+        {/* ── Test Sync Button ── */}
+        <button
+          onClick={() => setShowTestSync(true)}
+          className="w-[90%] mx-auto py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-colors"
+        >
+          <Youtube size={14} />
+          Test Sync UI
+        </button>
+        {showTestSync && <OnboardingSyncOverlay nextRoute="/home" />}
+
+        {/* ── Creator Tools Promotion Widget ── */}
+        <div 
+          onClick={() => navigate('/creator-tools')}
+          className={`w-[90%] mx-auto rounded-2xl overflow-hidden flex flex-col cursor-pointer transition-all border ${
+            isDarkMode ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+          }`}
+        >
+          <div className="w-full aspect-video items-center justify-center p-4">
+            <Lottie 
+              animationData={sidebarLottieAnimation} 
+              loop={true} 
+              style={{ width: '60%', height: '100%', objectFit: 'contain' }} 
+            />
+          </div>
+          <div className="w-full p-3 pt-0 flex justify-center">
+            <button className={`w-full text-xs font-bold uppercase tracking-wider py-2.5 rounded-xl shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-1.5 ${
+              isDarkMode 
+                ? 'bg-white text-black hover:bg-zinc-200' 
+                : 'bg-black text-white hover:bg-zinc-800'
+            }`}>
+              Explore Tools
+              <ArrowRight size={14} />
+            </button>
           </div>
         </div>
 

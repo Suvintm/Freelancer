@@ -9,7 +9,6 @@ import { useDispatch } from 'react-redux';
 import { setAuth } from '../store/slices/authSlice';
 import { useQueryClient } from '@tanstack/react-query';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
-import { clearTempSignupData } from '../store/slices/onboardingSlice';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 import { api } from '../api/client';
 
@@ -126,7 +125,6 @@ export default function VerifyEmail() {
           })
         );
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
-        dispatch(clearTempSignupData());
 
         // Redirect dynamically based on onboarding, sync mode, and preferences state
         const user = data.user;
@@ -134,10 +132,11 @@ export default function VerifyEmail() {
         const categoryStr = (user.primaryRole?.category || '').toLowerCase();
         const isCreator = roleStr === 'creator' || categoryStr === 'creator' || categoryStr === 'youtube creator' || categoryStr === 'yt_influencer';
         const isBrand = roleStr === 'brand' || categoryStr === 'brand' || categoryStr === 'social_promoter';
-        const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (Array.isArray(user.youtubeProfile) ? user.youtubeProfile.length : 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0;
-        const showSync = isCreator && hasChannels;
+        const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (Array.isArray(user.youtubeProfile) ? user.youtubeProfile.length : 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0 || Boolean(user.youtubeProfile);
+        const hasInstagram = (user.instagramAccounts?.length ?? 0) > 0 || Boolean(user.instagramProfile);
+        const showSync = isCreator && (hasChannels || hasInstagram);
 
-        console.log("VerifyEmail Route Decision:", { roleStr, categoryStr, isCreator, hasChannels, showSync, ytSyncMode: data.ytSyncMode });
+        console.log("VerifyEmail Route Decision:", { roleStr, categoryStr, isCreator, hasChannels, hasInstagram, showSync, syncMode: data.syncMode || data.ytSyncMode });
 
         const targetRoute = user.isOnboarded && user.preferencesCompleted
           ? '/home'
@@ -146,12 +145,19 @@ export default function VerifyEmail() {
         setNextRoute(targetRoute);
 
         if (showSync) {
-          const syncMode = data.ytSyncMode || 'background';
+          const syncMode = data.syncMode || data.ytSyncMode || data.instaSyncMode || 'foreground';
           if (syncMode === 'background') {
-            // Trigger sync in background, do not wait or show overlay
-            api.post('/youtube-creator/channel/sync-manual').catch(err => {
-              console.error('Failed to trigger background sync:', err);
-            });
+            // Trigger syncs in background, do not wait or show overlay
+            if (hasChannels) {
+              api.post('/youtube-creator/channel/sync-manual').catch(err => {
+                console.error('Failed to trigger background YouTube sync:', err);
+              });
+            }
+            if (hasInstagram) {
+              api.post('/instagram-creator/sync-manual').catch(err => {
+                console.error('Failed to trigger background Instagram sync:', err);
+              });
+            }
             setTimeout(() => {
               navigate(targetRoute, { replace: true });
             }, 1200);

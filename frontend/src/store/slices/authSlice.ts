@@ -20,8 +20,24 @@ export interface AuthUser {
   };
   channelLinkStatus?: string;
   channel_link_status?: string;
-  creatorProfile?: Record<string, unknown> | null;
+  creatorProfile?: {
+    channels?: Array<Record<string, unknown>>;
+    instagramAccounts?: Array<Record<string, unknown>>;
+    [key: string]: any;
+  } | null;
   youtubeChannels?: Record<string, unknown>[];
+  instagramProfile?: Record<string, unknown> | null;
+  instagramAccounts?: Array<{
+    id?: string;
+    accountId?: string;
+    username?: string;
+    handle?: string;
+    name?: string;
+    profilePictureUrl?: string;
+    mediaCount?: number;
+    followersCount?: number;
+    [key: string]: any;
+  }>;
   youtubeProfile?: Array<{
     id: string;
     channel_id: string;

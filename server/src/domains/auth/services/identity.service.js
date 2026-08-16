@@ -97,7 +97,7 @@ export const formatAuthResponse = (user, subscription = null) => {
   const username = user.profile?.username || user.username || "";
 
   // YouTube channels data
-  const rawChannels = user.youtubeProfile?.channels || [];
+  const rawChannels = user.youtubeProfile?.channels || user.youtubeChannels || [];
 
   const formattedChannels = rawChannels.map((ch) => ({
     ...ch,
@@ -151,6 +151,7 @@ export const formatAuthResponse = (user, subscription = null) => {
     youtubeProfile: formattedChannels, // Backward compatibility for existing UI
     youtubeChannels: formattedChannels,
     instagramProfile: user.instagramProfile || null,
+    instagramAccounts: user.instagramProfile?.accounts || user.instagramAccounts || [],
     editorProfile: user.editorProfile || null,
     brandProfile: user.brandProfile || null,
 

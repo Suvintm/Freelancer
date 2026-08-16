@@ -28,7 +28,13 @@ export const OnboardingGuard: React.FC<OnboardingGuardProps> = ({ children, step
   const activeSession = auth.sessions?.find((s) => s.user.id === auth.activeUserId);
   const isActivelyOnboarding = Boolean(onboarding.selectedRole || onboarding.tempSignupData?.categoryId);
 
-  if (activeSession?.user?.isOnboarded && !isActivelyOnboarding && !auth.isAddingAccount) {
+  // Allow through if user is returning from Instagram OAuth (full-page redirect flow)
+  const isReturningFromInstaOAuth = 
+    localStorage.getItem('instagram_oauth_pending') === 'true' ||
+    window.location.hash.includes('instaToken=') ||
+    !!localStorage.getItem('instagram_access_token');
+
+  if (activeSession?.user?.isOnboarded && !isActivelyOnboarding && !auth.isAddingAccount && !isReturningFromInstaOAuth) {
     return <Navigate to="/explore" replace />;
   }
 

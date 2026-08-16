@@ -35,6 +35,7 @@ model User {
 
   // ─── 4. Core Identity Profiles (1:1) ────────────────────────────────────
   profile          UserProfile?
+  publicProfile    PublicProfile?
   creatorProfile   CreatorProfile?
   editorProfile    EditorProfile?
   brandProfile     BrandProfile?
@@ -330,12 +331,12 @@ model YouTubeChannel {
   language      String? @db.VarChar(10)
   niche         String? @db.VarChar(100)
 
-  subscriber_count BigInt @default(0) @map("subscriber_count")
-  video_count      Int    @default(0) @map("video_count")
-  view_count       BigInt @default(0) @map("view_count")
-  avg_views        Float  @default(0.0) @map("avg_views")
-  engagement_rate  Float  @default(0.0) @map("engagement_rate")
-  authority_score  Float  @default(0.0) @map("authority_score")
+  subscriber_count        BigInt     @default(0) @map("subscriber_count")
+  video_count             Int        @default(0) @map("video_count")
+  view_count              BigInt     @default(0) @map("view_count")
+  avg_views               Float      @default(0.0) @map("avg_views")
+  engagement_rate         Float      @default(0.0) @map("engagement_rate")
+  authority_score         Float      @default(0.0) @map("authority_score")
   published_at            DateTime?  @map("published_at") @db.Timestamptz(6)
   hidden_subscriber_count Boolean    @default(false) @map("hidden_subscriber_count")
   topic_categories        String[]   @default([]) @map("topic_categories")
@@ -1604,4 +1605,71 @@ enum PlatformStatus {
   TOKEN_EXPIRED
   REVOKED
   ERROR
+}
+
+// ─── Public Profile (Link-in-Bio) ─────────────────────────────────────────
+
+enum PublicProfileBlockType {
+  LINK
+  YOUTUBE_CHANNEL
+  INSTAGRAM_PROFILE
+}
+
+enum PublicProfileAnalyticsEvent {
+  PAGE_VIEW
+  BLOCK_CLICK
+}
+
+model PublicProfile {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String  @unique @map("user_id") @db.Uuid
+  is_active       Boolean @default(false)
+  is_eligible     Boolean @default(false)
+  theme_config    Json?   @default("{}")
+  seo_title       String? @db.VarChar(255)
+  seo_description String?
+  custom_domain   String? @unique @db.VarChar(255)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blocks    PublicProfileBlock[]
+  analytics PublicProfileAnalytics[]
+
+  @@map("public_profiles")
+}
+
+model PublicProfileBlock {
+  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicProfileId String                 @map("public_profile_id") @db.Uuid
+  type            PublicProfileBlockType
+  title           String                 @db.VarChar(255)
+  url             String
+  order_index     Int                    @default(0)
+  is_visible      Boolean                @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  profile PublicProfile @relation(fields: [publicProfileId], references: [id], onDelete: Cascade)
+
+  @@map("public_profile_blocks")
+}
+
+model PublicProfileAnalytics {
+  id              String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicProfileId String                      @map("public_profile_id") @db.Uuid
+  event_type      PublicProfileAnalyticsEvent
+  blockId         String?                     @map("block_id") @db.Uuid
+  visitor_id      String                      @db.VarChar(255)
+  referrer        String?                     @db.VarChar(255)
+  device_type     String?                     @db.VarChar(50)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  profile PublicProfile @relation(fields: [publicProfileId], references: [id], onDelete: Cascade)
+
+  @@index([publicProfileId, created_at])
+  @@map("public_profile_analytics")
 }

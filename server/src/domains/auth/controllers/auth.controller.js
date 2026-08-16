@@ -535,6 +535,27 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, channels, discoveryToken, googleUser });
 });
 
+// ─── Get Instagram Accounts (for signup) ──────────────────────────────────
+export const getInstagramAccounts = asyncHandler(async (req, res) => {
+  const { accessToken } = req.body;
+  if (!accessToken || typeof accessToken !== "string") {
+    throw new ApiError(400, "Instagram accessToken is required.");
+  }
+
+  try {
+    // Import dynamically to avoid circular dependencies if any
+    const { instagramApiService } = await import("../../creator/services/instagramApiService.js");
+    const account = await instagramApiService.fetchCreatorProfile(accessToken);
+    
+    // As it returns a single account, wrap it in an array to match the frontend expectations
+    res.status(200).json({ success: true, accounts: [account] });
+  } catch (error) {
+    logger.error(`[Insta-Auth] Failed to fetch accounts: ${error.message}`);
+    throw new ApiError(400, error.message || "Failed to fetch Instagram accounts.");
+  }
+});
+
+
 // ─── Atomic Register ──────────────────────────────────────────────────────
 
 export const registerFull = asyncHandler(async (req, res) => {
@@ -702,7 +723,9 @@ export const registerFull = asyncHandler(async (req, res) => {
     token: accessToken,
     refreshToken,
     accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
-    ytSyncMode: process.env.YT_SYNC_MODE || 'background',
+    syncMode: process.env.SYNC_MODE || process.env.YT_SYNC_MODE || process.env.INSTA_SYNC_MODE || 'foreground',
+    ytSyncMode: process.env.YT_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
+    instaSyncMode: process.env.INSTA_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
   });
 });
 
@@ -1031,7 +1054,9 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     token: accessToken,
     refreshToken,
     accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
-    ytSyncMode: process.env.YT_SYNC_MODE || 'background',
+    syncMode: process.env.SYNC_MODE || process.env.YT_SYNC_MODE || process.env.INSTA_SYNC_MODE || 'foreground',
+    ytSyncMode: process.env.YT_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
+    instaSyncMode: process.env.INSTA_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
   });
 });
 

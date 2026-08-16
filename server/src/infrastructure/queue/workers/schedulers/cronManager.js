@@ -4,6 +4,7 @@ import redisProxy, { subscribe, unsubscribe } from "../../../cache/redis.client.
 import likeSyncProcessor from "../processors/likeSyncProcessor.js";
 import storyCleanupProcessor from "../processors/storyCleanupProcessor.js";
 import quotaManager from "../../../../domains/creator/services/youtubeQuotaManager.js";
+import publicProfileAnalyticsProcessor from "../processors/publicProfileAnalyticsProcessor.js";
 
 /**
  * ⏰ CENTRALIZED CRON MANAGER (Zero-Cost Polling)
@@ -16,6 +17,7 @@ import quotaManager from "../../../../domains/creator/services/youtubeQuotaManag
 let likeSyncTask = null;
 let storyCleanupTask = null;
 let quotaMaintenanceTask = null;
+let publicProfileAnalyticsSyncTask = null;
 
 export const startCronJobs = () => {
   logger.info("⏰ [CRON-MANAGER] Initializing zero-cost background schedulers...");
@@ -53,6 +55,31 @@ export const startCronJobs = () => {
     });
 
     logger.info(`❤️ [CRON-MANAGER] Like Sync Flusher active (Cron: ${likeSyncCron}).`);
+  }
+
+  // ─── 1.5 PUBLIC PROFILE ANALYTICS SYNC (Every 5 Minutes) ─────────────────
+  if (process.env.ENABLE_PUBLIC_PROFILE_SYNC_WORKER !== "false") { // default to true
+    const analyticsSyncCron = process.env.PUBLIC_PROFILE_SYNC_CRON || "*/5 * * * *";
+    
+    publicProfileAnalyticsSyncTask = cron.schedule(analyticsSyncCron, async () => {
+      const lockKey = "lock:public-profile-analytics-sync";
+      const lockDurationSeconds = 240; 
+      const lockValue = `${process.pid}-${Date.now()}`;
+      
+      try {
+        const gotLock = await redisProxy.set(lockKey, lockValue, "NX", "EX", lockDurationSeconds);
+        if (!gotLock) return;
+
+        await publicProfileAnalyticsProcessor();
+      } catch (error) {
+        logger.error(`❌ [CRON-MANAGER] Public Profile Analytics Sync failed: ${error.message}`);
+      } finally {
+        const releaseScript = `if redis.call("GET",KEYS[1])==ARGV[1] then return redis.call("DEL",KEYS[1]) else return 0 end`;
+        await redisProxy.eval(releaseScript, 1, lockKey, lockValue);
+      }
+    });
+
+    logger.info(`❤️ [CRON-MANAGER] Public Profile Analytics Flusher active (Cron: ${analyticsSyncCron}).`);
   }
 
   // ─── 2. STORY CLEANUP (Every 1 Hour) ──────────────────────────────────────
@@ -135,5 +162,7 @@ export const stopCronJobs = async () => {
   if (likeSyncTask) likeSyncTask.stop();
   if (storyCleanupTask) storyCleanupTask.stop();
   if (quotaMaintenanceTask) quotaMaintenanceTask.stop();
+  if (publicProfileAnalyticsSyncTask) publicProfileAnalyticsSyncTask.stop();
+  logger.info("🛑 [CRON-MANAGER] All cron jobs stopped.");
   await unsubscribe("urgent-flush:like-sync");
 };

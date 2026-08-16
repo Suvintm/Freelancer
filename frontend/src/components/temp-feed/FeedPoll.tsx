@@ -159,7 +159,7 @@ export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean
     }
   };
 
-  // --- OPEN ENDED UI ---
+  // --- OPEN ENDED UI ----
   if (!isMultipleChoice) {
     return (
       <motion.article 

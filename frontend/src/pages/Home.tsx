@@ -342,9 +342,9 @@ export default function Home() {
         </div>
       )}
 
-      <div className="relative w-full max-w-3xl mx-auto pb-20 pt-1 lg:pt-4">
+      <div className="relative w-full pb-20">
         {needsSync && !showSyncOverlay && (
-          <div className="w-full mb-4 px-2">
+          <div className="w-full max-w-3xl mx-auto mb-4 px-4 pt-4">
             <div className={`p-4 rounded-2xl border border-orange-500/30 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-lg ${
               isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'
             }`}>
@@ -383,38 +383,25 @@ export default function Home() {
           }
         ` }} />
       
-      {/* ─── DESKTOP TOP VIEW LAYOUT ─── */}
-      <div className="hidden lg:flex flex-col gap-8 pb-4">
-        {/* Logo, Widget, & Banner Container Group (To bypass parent gap-8 and remove whitespace) */}
-        <div className="flex flex-col gap-0 w-full">
-          {/* Logo Section */}
-          <div className="w-full px-2 mt-0 mb-1 flex items-center justify-between relative z-30">
-            <img 
-              src={isDarkMode ? darkLogo : lightLogo} 
-              alt="SuviX Official Logo" 
-              className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
-            />
-            <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
-          </div>
+      {/* ─── 1. FULL-WIDTH BANNER SECTION (Takes 100% width of central column with zero outer space) ─── */}
+      <section className="w-full">
+        <UnifiedBanner />
+      </section>
 
-          {/* 1. Banner Section (Full Width Stacked) */}
-          <section className="w-full">
-            <UnifiedBanner />
-          </section>
-        </div>
-
-        {/* 2 & 3. Stories and Feature Gallery (Side by Side) */}
+      {/* ─── 2. LOWER FEED & STORIES CONTENT WRAPPER ─── */}
+      <div className="max-w-4xl mx-auto px-4 lg:px-6 pt-6 flex flex-col gap-8">
+        {/* Stories & Feature Gallery (Side by Side on Desktop, Stacked on Mobile) */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center w-full">
-          {/* Stories Section (60%) */}
+          {/* Stories Section (Horizontal Carousel across all devices) */}
           <section className="w-full lg:w-[60%]">
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex gap-3.5 sm:gap-4 overflow-x-auto pb-2 sm:pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
               {stories.map((story) => (
                 <div 
                   key={story._id} 
                   onClick={() => navigate(`/stories/${story._id}`)}
-                  className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative"
+                  className="flex flex-col items-center gap-1.5 sm:gap-2 flex-shrink-0 cursor-pointer group relative"
                 >
-                  <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
+                  <div className="relative w-[56px] h-[56px] sm:w-[62px] sm:h-[62px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                     <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                       <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                     </svg>
@@ -424,153 +411,92 @@ export default function Home() {
                       </div>
                     </div>
                     {story.isUser && (
-                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[6px] border-2 border-container w-[18px] h-[18px] flex items-center justify-center shadow-lg">
-                        <Plus size={10} className="text-white" strokeWidth={4} />
+                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[6px] border-2 border-container w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex items-center justify-center shadow-lg">
+                        <Plus size={9} className="text-white" strokeWidth={4} />
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 max-w-[60px] lg:max-w-[68px]">
-                    <span className={`text-[10px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                    {story.verifiedColor && <VerifiedDecagram size={10} color={story.verifiedColor} className="flex-shrink-0" />}
+                  <div className="flex items-center gap-1 max-w-[56px] sm:max-w-[62px] lg:max-w-[68px]">
+                    <span className={`text-[9.5px] sm:text-[10px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                    {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* Feature Gallery (40%) */}
+          {/* Feature Gallery */}
           <section className="w-full lg:w-[40%] -mt-2 lg:mt-0">
             <FeatureGallery paused={isScrolling} />
           </section>
         </div>
-      </div>
 
-      {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="relative lg:hidden mt-2 lg:mt-0 min-h-[310px]">
-        
-        {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
-        <div className="w-full flex flex-col gap-1">
-          <div className="w-full h-[226px] pr-[84px]">
-            <UnifiedBanner className="h-full" />
-          </div>
-          <div className="w-full">
-            <FeatureGallery paused={isScrolling} isMobileLayout={true} />
-          </div>
-        </div>
-
-        {/* Floating Right Column: Vertical Stories Sidebar (Instagram style) */}
-        <div className="absolute right-0 top-2 z-20 flex-shrink-0">
-          <div className={`
-            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-l-[40px] rounded-r-none overflow-y-auto scrollbar-hide gap-4.5 overscroll-y-contain touch-pan-y will-change-scroll shadow-lg
-            ${isDarkMode ? 'bg-[#242526]/90 backdrop-blur-md' : 'bg-[#C8CBD0]/90 backdrop-blur-md'}
-          `}>
-            {stories.map((story) => (
-              <motion.div 
-                key={story._id} 
-                onClick={() => navigate(`/stories/${story._id}`)}
-                whileTap={{ scale: 0.92, rotate: story.isUser ? 0 : [0, -3, 3, 0] }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group relative"
+        {/* 4. Unified Feed */}
+        <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
+          {/* Feed Type Tabs */}
+          <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
+            {(['all', 'posts', 'reels', 'youtube'] as TabType[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setVisibleCount(5); }}
+                className={`text-sm font-bold capitalize pb-3 border-b-[3px] transition-all flex-shrink-0 ${
+                  activeTab === tab
+                    ? 'border-[#7c42f8] text-[#7c42f8] dark:text-[#9e76f9]'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                }`}
               >
-                <div className="relative w-[56px] h-[56px] flex items-center justify-center">
-                  <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
-                    <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
-                  </svg>
-                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-white' : 'bg-black') : (isDarkMode ? 'bg-white/20' : 'bg-black/20')}`}>
-                    <div className="w-full h-full rounded-full bg-container p-[2px]">
-                      <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
-                    </div>
-                  </div>
-                  {story.isUser && (
-                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[5px] border-2 border-container w-[16px] h-[16px] flex items-center justify-center shadow-lg">
-                      <Plus size={9} className="text-white" strokeWidth={4} />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 max-w-[56px]">
-                  <span className={`text-[8.5px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                  {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
-                </div>
-              </motion.div>
+                {tab === 'all' ? 'For You' : tab}
+              </button>
             ))}
           </div>
-          
-          {/* Floating Rotated Plus Icon */}
-          <div className="absolute -top-3 left-3 transform -rotate-12 z-10 pointer-events-none">
-            <Plus 
-              size={24} 
-              strokeWidth={3.5} 
-              className={`${isDarkMode ? 'text-white/90' : 'text-zinc-500/80'} drop-shadow-sm`} 
-            />
-          </div>
-        </div>
+
+          {isLoading ? (
+            <div className="w-full pb-20">
+              {[1, 2, 3].map((i) => (
+                <FeedPostSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6 lg:gap-8 w-full">
+              {feedPosts.slice(0, visibleCount).map((post, idx) => {
+                const isActive = activePostId === post.id;
+                let postEl = null;
+                if (post.contentType === 'REEL') {
+                  postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+                } else if (post.contentType === 'YOUTUBE_POST') {
+                  postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} />;
+                } else if (post.contentType === 'POLL') {
+                  postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
+                } else {
+                  postEl = <RealFeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+                }
+
+                return (
+                  <Fragment key={post.id}>
+                    {postEl}
+                    {idx === 0 && <SuggestedEditorsCarousel index={idx} />}
+                  </Fragment>
+                );
+              })}
+
+              {visibleCount < feedPosts.length && (
+                <div className="w-full flex justify-center py-6">
+                  <button 
+                    onClick={() => setVisibleCount(prev => prev + 5)}
+                    className={`px-8 py-3 rounded-full font-semibold text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm ${
+                      isDarkMode 
+                        ? 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700' 
+                        : 'bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200'
+                    }`}
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </div>
-
-      {/* 4. Unified Feed */}
-      <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
-        {/* Feed Type Tabs */}
-        <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
-          {(['all', 'posts', 'reels', 'youtube'] as TabType[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setVisibleCount(5); }}
-              className={`text-sm font-bold capitalize pb-3 border-b-[3px] transition-all flex-shrink-0 ${
-                activeTab === tab
-                  ? 'border-[#7c42f8] text-[#7c42f8] dark:text-[#9e76f9]'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              {tab === 'all' ? 'For You' : tab}
-            </button>
-          ))}
-        </div>
-
-        {isLoading ? (
-          <div className="w-full pb-20">
-            {[1, 2, 3].map((i) => (
-              <FeedPostSkeleton key={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6 lg:gap-8 w-full">
-            {feedPosts.slice(0, visibleCount).map((post, idx) => {
-              const isActive = activePostId === post.id;
-              let postEl = null;
-              if (post.contentType === 'REEL') {
-                postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.contentType === 'YOUTUBE_POST') {
-                postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} />;
-              } else if (post.contentType === 'POLL') {
-                postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
-              } else {
-                postEl = <RealFeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
-              }
-
-              return (
-                <Fragment key={post.id}>
-                  {postEl}
-                  {idx === 0 && <SuggestedEditorsCarousel index={idx} />}
-                </Fragment>
-              );
-            })}
-
-            {visibleCount < feedPosts.length && (
-              <div className="w-full flex justify-center py-6">
-                <button 
-                  onClick={() => setVisibleCount(prev => prev + 5)}
-                  className={`px-8 py-3 rounded-full font-semibold text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm ${
-                    isDarkMode 
-                      ? 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700' 
-                      : 'bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200'
-                  }`}
-                >
-                  Load More
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
       </div>
       <AnimatePresence>
         {storyId && (
@@ -581,7 +507,7 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
-    </div>
+      </div>
     </Fragment>
   );
 }

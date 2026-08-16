@@ -214,17 +214,25 @@ export default function CompleteProfile() {
         const isBrand = userRole === 'brand' || categorySlug === 'brand' || categorySlug === 'social_promoter';
         const isCreator = userRole === 'creator' || categorySlug === 'creator' || categorySlug === 'yt_influencer' || categorySlug === 'youtube creator';
         const hasChannels = (tempSignupData?.youtubeChannels?.length ?? 0) > 0 || (res.data.user?.youtubeChannels?.length ?? 0) > 0;
+        const hasInstagram = (tempSignupData?.instagramAccounts?.length ?? 0) > 0 || (res.data.user?.instagramAccounts?.length ?? 0) > 0;
 
         const targetRoute = isBrand ? '/home' : '/onboarding/preferences';
 
-        // Check sync mode for YouTube creators with connected channels
-        if (isCreator && hasChannels) {
-          const syncMode = res.data.ytSyncMode || 'background';
+        // Check sync mode for creators with connected channels or accounts
+        if (isCreator && (hasChannels || hasInstagram)) {
+          const syncMode = res.data.syncMode || res.data.ytSyncMode || res.data.instaSyncMode || 'foreground';
           if (syncMode === 'background') {
             // Trigger sync in background, do not block with overlay
-            api.post('/youtube-creator/channel/sync-manual').catch((err) => {
-              console.error('Failed to trigger background sync:', err);
-            });
+            if (hasChannels) {
+              api.post('/youtube-creator/channel/sync-manual').catch((err) => {
+                console.error('Failed to trigger background YouTube sync:', err);
+              });
+            }
+            if (hasInstagram) {
+              api.post('/instagram-creator/sync-manual').catch((err) => {
+                console.error('Failed to trigger background Instagram sync:', err);
+              });
+            }
             dispatch(clearTempSignupData());
             try { sessionStorage.removeItem('suvix_temp_signup_data'); } catch { /* ignore */ }
             setTimeout(() => {

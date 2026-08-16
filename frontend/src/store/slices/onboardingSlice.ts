@@ -39,6 +39,8 @@ const initialState: OnboardingSliceState = {
   creatorData: {
     channels: [],
     selectedChannelIds: [],
+    instagramAccounts: [],
+    selectedInstagramAccountIds: [],
     selectedNiches: [],
     discoveryToken: null,
   },
@@ -170,7 +172,21 @@ export const onboardingSlice = createSlice({
     },
     resetYoutubeDiscovery: (state) => {
       state.youtubeDiscovery = initialState.youtubeDiscovery;
-      state.creatorData = initialState.creatorData;
+      if (state.creatorData) {
+        state.creatorData.selectedChannelIds = [];
+      }
+    },
+    setInstagramAccounts: (state, action: PayloadAction<any[]>) => {
+      if (state.creatorData) {
+        state.creatorData.instagramAccounts = action.payload;
+        state.creatorData.selectedInstagramAccountIds = action.payload.map(acc => acc.accountId);
+      }
+    },
+    resetInstagramAccounts: (state) => {
+      if (state.creatorData) {
+        state.creatorData.instagramAccounts = [];
+        state.creatorData.selectedInstagramAccountIds = [];
+      }
     },
   },
 });
@@ -188,6 +204,8 @@ export const {
   toggleYoutubeChannelSelection,
   setYoutubeChannelCategory,
   resetYoutubeDiscovery,
+  setInstagramAccounts,
+  resetInstagramAccounts,
 } = onboardingSlice.actions;
 
 // --- Selectors ---

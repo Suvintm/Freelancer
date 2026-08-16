@@ -196,6 +196,35 @@ export const verifyChannel = async (userId, channelInput, reqData) => {
   // Trigger video sync in background
   await scheduleYouTubeSync(userId, [newProfile], "manual_verify");
 
+  // Update Public Profile Eligibility & Add Block
+  const publicProfile = await prisma.publicProfile.findUnique({ where: { userId } });
+  if (publicProfile) {
+    await prisma.publicProfile.update({
+      where: { userId },
+      data: { is_eligible: true }
+    });
+
+    const existingBlock = await prisma.publicProfileBlock.findFirst({
+      where: {
+        publicProfileId: publicProfile.id,
+        url: `https://youtube.com/channel/${channelData.channelId}`
+      }
+    });
+
+    if (!existingBlock) {
+      const blockCount = await prisma.publicProfileBlock.count({ where: { publicProfileId: publicProfile.id } });
+      await prisma.publicProfileBlock.create({
+        data: {
+          publicProfileId: publicProfile.id,
+          type: "YOUTUBE_CHANNEL",
+          title: channelData.title || "My YouTube Channel",
+          url: `https://youtube.com/channel/${channelData.channelId}`,
+          order_index: blockCount
+        }
+      });
+    }
+  }
+
   // 7. Cleanup Redis & Invalidate Profile Cache
   await redis.del(verifyKey);
   await deleteCache([CacheKey.userProfile(userId), CacheKey.userVideos(userId)]);

@@ -43,6 +43,9 @@ const CreatePoll = lazy(() => import('./pages/CreatePoll'));
 const CreatorTools = lazy(() => import('./pages/CreatorTools'));
 const Community = lazy(() => import('./pages/Community'));
 const CommunityRoom = lazy(() => import('./pages/CommunityRoom'));
+const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage'));
+const LinkInBioPage = lazy(() => import('./linkinbio/pages/OverviewPage'));
+const LinkInBioDesigner = lazy(() => import('./linkinbio/pages/StudioPage'));
 
 // Lightweight fallback for lazy-loaded route transitions
 function PageFallback() {
@@ -209,6 +212,36 @@ function App() {
           <Route path="/terms" element={<TermsAndConditions />} />
           
           {/* Authenticated Protected Routes */}
+          <Route 
+            path="/link-in-bio" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioPage />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/link-in-bio/design" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioDesigner />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/link-in-bio/design/:userId" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioDesigner />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
           <Route 
             path="/creator-tools" 
             element={
@@ -435,6 +468,9 @@ function App() {
               </AuthGuard>
             } 
           />
+
+          {/* Public Link-in-Bio Profile Catch-All */}
+          <Route path="/:username" element={<PublicProfilePage />} />
 
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />

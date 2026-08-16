@@ -255,8 +255,9 @@ export default function Signup() {
 
       const isCreator = tempSignupData?.categorySlug === 'creator' || tempSignupData?.categorySlug === 'yt_influencer' || tempSignupData?.role === 'creator';
       const hasChannels = selectedChannels.length > 0;
+      const hasInstagram = (tempSignupData?.instagramAccounts?.length ?? 0) > 0;
 
-      if (isCreator && hasChannels) {
+      if (isCreator && (hasChannels || hasInstagram)) {
         setShowSyncOverlay(true);
       } else {
         dispatch(clearTempSignupData());

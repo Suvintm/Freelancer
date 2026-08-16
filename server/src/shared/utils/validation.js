@@ -29,6 +29,15 @@ const isValidPassword = (password) => {
   return password && password.length >= 6;
 };
 
+const RESERVED_USERNAMES = new Set([
+  'admin', 'api', 'settings', 'login', 'register', 'signup',
+  'home', 'explore', 'suvix', 'support', 'help', 'about',
+  'contact', 'privacy', 'terms', 'dashboard', 'profile',
+  'community', 'jobs', 'gigs', 'messages', 'notifications',
+  'creator', 'brand', 'editor', 'auth', 'oauth', 'app',
+  'blog', 'press', 'careers', 'status', 'docs'
+]);
+
 /**
  * Username validation
  */
@@ -38,7 +47,10 @@ const isValidUsername = (username) => {
   if (lower.length < 3 || lower.length > 30) return false;
   if (lower.startsWith('.') || lower.endsWith('.')) return false;
   const regex = /^[a-z0-9._]+$/;
-  return regex.test(lower);
+  if (!regex.test(lower)) return false;
+  if (RESERVED_USERNAMES.has(lower)) return false;
+  
+  return true;
 };
 
 export {

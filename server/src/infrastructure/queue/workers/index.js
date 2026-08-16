@@ -3,6 +3,7 @@ import logger from "../../monitoring/logger.js";
 import { sampledLogger } from "./sampledLogger.js";
 import { getRedisConnection } from "./connection.js";
 import youtubeSyncProcessor from "./processors/youtubeSyncProcessor.js";
+import instagramSyncProcessor from "./processors/instagramSyncProcessor.js";
 import mediaProcessor from "./processors/mediaProcessor.js";
 import storyProcessor from "./processors/storyProcessor.js";
 import likeSyncProcessor from "./processors/likeSyncProcessor.js";
@@ -44,6 +45,19 @@ if (connection) {
       stalledInterval: 600000,  // ✅ Check stalled jobs every 10 minutes
       lockDuration: 60000,      // Job must complete within 60s or considered stalled
       maxStalledCount: 2,       // Stalls 2x → mark as FAILED, stop retrying
+    });
+  }
+
+  // ─── 1.5 INSTAGRAM SYNC WORKER ──────────────────────────────────────────────
+  let instaWorker = null;
+  if (process.env.ENABLE_INSTAGRAM_WORKER !== "false") {
+    instaWorker = new Worker("instagram-sync", instagramSyncProcessor, {
+      connection,
+      concurrency: 2,
+      drainDelay: 60000,
+      stalledInterval: 600000,
+      lockDuration: 60000,
+      maxStalledCount: 2,
     });
   }
 
@@ -113,6 +127,26 @@ if (connection) {
     });
   }
 
+  if (instaWorker) {
+    instaWorker.on("completed", (job) =>
+      sampledLogger.success("[Workers] Instagram Sync job done", { jobId: job.id })
+    );
+    instaWorker.on("failed", (job, err) =>
+      sampledLogger.error("[Workers] Instagram Sync job failed", err, {
+        jobId: job?.id,
+        attempt: job?.attemptsMade,
+      })
+    );
+    instaWorker.on("stalled", (jobId) =>
+      sampledLogger.warn("[Workers] Instagram Sync job stalled — will retry", { jobId })
+    );
+    instaWorker.on("error", (err) => {
+      if (err.code !== "ECONNREFUSED") {
+        sampledLogger.error("[Workers] Instagram Sync worker error", err);
+      }
+    });
+  }
+
   if (mediaWorker) {
     mediaWorker.on("completed", (job) =>
       sampledLogger.success("[Workers] Media job done", { jobId: job.id })
@@ -145,9 +179,6 @@ if (connection) {
     );
   }
 
-
-
-
   if (commentWorker) {
     commentWorker.on("completed", (job) =>
       sampledLogger.success("[Workers] Comment job done", { jobId: job.id })
@@ -161,24 +192,20 @@ if (connection) {
   }
 
   if (syncWorker) workers.push(syncWorker);
+  if (instaWorker) workers.push(instaWorker);
   if (mediaWorker) workers.push(mediaWorker);
   if (storyWorker) workers.push(storyWorker);
-
   if (commentWorker) workers.push(commentWorker);
-
 
   // ─── ⏰ SCHEDULED JOBS (Node-Cron) ──────────────────────────────────────────
   startCronJobs();
 
-
-
-  // ❤️ [LIKE SYNC] (REMOVED FROM BULLMQ)
-  // Now handled by cronManager.js to avoid idle polling costs.
   // ─── DASHBOARD SUMMARY ──────────────────────────────────────────────────────
   const getStatus = (worker) => worker ? "🟢 ACTIVE" : "🔴 DISABLED";
   logger.info("=========================================================");
   logger.info("🚀 [WORKERS] INDIVIDUAL STATUS DASHBOARD:");
   logger.info(`   ${getStatus(syncWorker).padEnd(12)} | YouTube Sync `);
+  logger.info(`   ${getStatus(instaWorker).padEnd(12)} | Instagram Sync `);
   logger.info(`   ${getStatus(mediaWorker).padEnd(12)} | Media Processing `);
   logger.info(`   ${getStatus(storyWorker).padEnd(12)} | Story Processing `);
   logger.info(`   ${getStatus(null).padEnd(12)} | Story Cleanup (Moved to Cron) `);
