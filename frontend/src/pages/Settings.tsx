@@ -865,7 +865,7 @@ export default function Settings() {
                       ))
                     ) : (
                       <div 
-                        onClick={() => navigate('/youtube-connect')}
+                        onClick={() => navigate('/connect-socials')}
                         className={`border-2 border-dashed rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-300 ${
                           isDarkMode 
                             ? 'border-border-main bg-black/40 hover:border-rose-500/50 hover:bg-rose-500/5' 

@@ -447,7 +447,7 @@ export const Sidebar = () => {
             ) : (
               /* No channels connected state: Styled like a dashed file-upload / input area */
               <div 
-                onClick={() => navigate('/youtube-connect')}
+                onClick={() => navigate('/connect-socials')}
                 className={`
                   border-2 border-dashed rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-300
                   ${isDarkMode 

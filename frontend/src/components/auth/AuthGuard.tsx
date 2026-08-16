@@ -55,7 +55,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   // 5. ONBOARDING GUARD: Ensure user has completed setup
-  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/youtube-niche', '/editor-specialization', '/brand-details', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
+  const onboardingPaths = ['/role-selection', '/signup', '/connect-socials', '/youtube-connect', '/youtube-niche', '/editor-specialization', '/brand-details', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
   if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
   }
