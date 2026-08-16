@@ -56,20 +56,21 @@ export const OnboardingSyncOverlay: React.FC<{ nextRoute?: string }> = ({
   }, [user, tempSignupData?.instagramAccounts, onboardingCreatorData?.instagramAccounts]);
 
   // Extract initial handles/names
-  const initialYtName = useMemo(() => {
-    if (tempSignupData?.youtubeChannels?.[0]?.channelName) return tempSignupData.youtubeChannels[0].channelName;
-    if (onboardingCreatorData?.channels?.[0]?.channelName) return onboardingCreatorData.channels[0].channelName;
-    if (user?.youtubeChannels?.[0]?.channel_name || user?.youtubeChannels?.[0]?.channelName) {
-      return user.youtubeChannels[0].channel_name || user.youtubeChannels[0].channelName;
+  const initialYtName = useMemo<string>(() => {
+    if (tempSignupData?.youtubeChannels?.[0]?.channelName) return String(tempSignupData.youtubeChannels[0].channelName);
+    if (onboardingCreatorData?.channels?.[0]?.channelName) return String(onboardingCreatorData.channels[0].channelName);
+    const uYt = user?.youtubeChannels?.[0] as Record<string, unknown> | undefined;
+    if (uYt && (uYt.channel_name || uYt.channelName)) {
+      return String(uYt.channel_name || uYt.channelName);
     }
     return 'YouTube Channel';
   }, [tempSignupData?.youtubeChannels, onboardingCreatorData?.channels, user?.youtubeChannels]);
 
-  const initialInstaHandle = useMemo(() => {
+  const initialInstaHandle = useMemo<string>(() => {
     if (tempSignupData?.instagramAccounts?.[0]?.handle) return `@${tempSignupData.instagramAccounts[0].handle.replace(/^@/, '')}`;
     if (onboardingCreatorData?.instagramAccounts?.[0]?.handle) return `@${onboardingCreatorData.instagramAccounts[0].handle.replace(/^@/, '')}`;
     if (user?.instagramAccounts?.[0]?.username || user?.instagramAccounts?.[0]?.handle) {
-      return `@${(user.instagramAccounts[0].username || user.instagramAccounts[0].handle).replace(/^@/, '')}`;
+      return `@${(user.instagramAccounts[0].username || user.instagramAccounts[0].handle)?.replace(/^@/, '')}`;
     }
     return '@instagram';
   }, [tempSignupData?.instagramAccounts, onboardingCreatorData?.instagramAccounts, user?.instagramAccounts]);
@@ -79,7 +80,7 @@ export const OnboardingSyncOverlay: React.FC<{ nextRoute?: string }> = ({
   const [ytMessage, setYtMessage] = useState(
     hasYoutube ? 'Connecting to YouTube API...' : 'Not connected'
   );
-  const [ytChannelName, setYtChannelName] = useState(initialYtName);
+  const [ytChannelName, setYtChannelName] = useState<string>(initialYtName);
   const [ytCompleted, setYtCompleted] = useState(!hasYoutube);
 
   const [instaProgress, setInstaProgress] = useState(hasInstagram ? 20 : 0);

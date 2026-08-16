@@ -21,6 +21,7 @@ import { Button } from '../../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setTempSignupData,
+  clearTempSignupData,
   addDiscoveredChannels,
   resetYoutubeDiscovery,
   setInstagramAccounts,
@@ -521,8 +522,8 @@ export default function ConnectSocials() {
           }
           
           if (showOverlay) {
-            setShowInstaSuccess(true);
-            setTimeout(() => setShowInstaSuccess(false), 2400);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 2400);
           }
         } else {
           throw new Error(res.data.message || 'Failed to fetch Instagram accounts');
