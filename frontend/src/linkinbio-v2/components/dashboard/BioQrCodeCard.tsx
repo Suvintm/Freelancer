@@ -37,7 +37,7 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
   const [isGenerated, setIsGenerated] = useState(initialGenerated);
   const [isGenerating, setIsGenerating] = useState(false);
   const [qrSvgData, setQrSvgData] = useState<string | null>(null);
-  const [qrPngData, setQrPngData] = useState<string | null>(null);
+  const [_qrPngData, setQrPngData] = useState<string | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname.includes('localhost');
@@ -107,7 +107,7 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
           text: `Check out my link-in-bio page!`,
           url: shareableUrl,
         });
-      } catch (err) {
+      } catch {
         handleCopyLink();
       }
     } else {

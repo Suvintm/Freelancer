@@ -403,7 +403,7 @@ export const useBioEditorStore = create<BioEditorState>((set, get) => ({
       // Always save local mirror backup (100% crash protection)
       try {
         localStorage.setItem(`suvix_bio_draft_${page.slug}`, JSON.stringify(page));
-      } catch (err) {
+      } catch {
         // localStorage quota ignore
       }
 

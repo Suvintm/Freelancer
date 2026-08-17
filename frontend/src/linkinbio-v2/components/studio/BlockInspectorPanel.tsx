@@ -286,7 +286,7 @@ const SocialBarForm: React.FC<{
   const links = config.links || [];
 
   const addPlatform = (platform: SocialLinkItem['platform']) => {
-    const newLinks = [...links, { id: `social_${Date.now()}`, platform, url: 'https://' }];
+    const newLinks = [...links, { id: `social_${platform}_${links.length + 1}`, platform, url: 'https://' }];
     onChange({ links: newLinks });
   };
 

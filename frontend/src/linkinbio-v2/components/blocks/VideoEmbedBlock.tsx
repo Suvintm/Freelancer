@@ -17,7 +17,7 @@ function getEmbedUrl(url: string, autoplay: boolean): string | null {
     return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0${autoParam}`;
   }
 
-  const vimeoMatch = url.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/);
+  const vimeoMatch = url.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/);
   if (vimeoMatch && vimeoMatch[1]) {
     const autoParam = autoplay ? '&autoplay=1&muted=1' : '';
     return `https://player.vimeo.com/video/${vimeoMatch[1]}?title=0&byline=0&portrait=0${autoParam}`;

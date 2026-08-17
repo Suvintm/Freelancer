@@ -40,7 +40,7 @@ export const LinkButtonBlock: React.FC<LinkButtonBlockProps> = ({ config, theme,
   const primaryColor = color || theme?.colors?.primary || '#3b82f6';
   const customTextColor = textColor || '#ffffff';
 
-  let customStyle: React.CSSProperties = {
+  const customStyle: React.CSSProperties = {
     borderRadius: buttonRadius,
   };
 

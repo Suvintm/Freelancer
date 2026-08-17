@@ -48,8 +48,8 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
       viewCount: 2450,
       clickCount: 680,
       ctr: 27.7,
-      publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date().toISOString(),
+      publishedAt: '2026-08-16T12:00:00.000Z',
+      updatedAt: '2026-08-17T12:00:00.000Z',
     },
     {
       id: 'bio_page_2',
@@ -63,8 +63,8 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
       viewCount: 920,
       clickCount: 295,
       ctr: 32.0,
-      publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date().toISOString(),
+      publishedAt: '2026-08-13T12:00:00.000Z',
+      updatedAt: '2026-08-17T12:00:00.000Z',
     },
   ];
 
