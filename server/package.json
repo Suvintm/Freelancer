@@ -19,7 +19,15 @@
   "license": "ISC",
   "type": "module",
   "overrides": {
-    "deepmerge-ts": "^8.0.0"
+    "prisma": {
+      "@prisma/config": {
+        "deepmerge-ts": "8.0.3"
+      }
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.3"
+    },
+    "deepmerge-ts": "8.0.3"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
