@@ -89,7 +89,7 @@ export default function BrandDetails() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔐 PRODUCTION GUARD: Requires Brand-role selection
+  // 🔐 PRODUCTION GUARD: Requires Brandrole selection
   useEffect(() => {
     const isAuthed = !!user?.id;
     if (isAuthed && user.isOnboarded) {
