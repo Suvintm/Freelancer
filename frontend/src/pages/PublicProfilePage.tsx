@@ -104,7 +104,7 @@ export const PublicProfilePage: React.FC = () => {
   const theme: ResolvedTheme = useMemo(() => {
     const defaults: Record<string, any> = {};
     for (const [key, control] of Object.entries(templateDef.config.themeSchema)) {
-      defaults[key] = control.default;
+      defaults[key] = (control as any)?.default;
     }
     const overrides = profileData?.themeConfig || profileData?.theme_config || {};
     return { ...defaults, ...overrides };

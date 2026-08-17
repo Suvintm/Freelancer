@@ -44,8 +44,10 @@ const CreatorTools = lazy(() => import('./pages/CreatorTools'));
 const Community = lazy(() => import('./pages/Community'));
 const CommunityRoom = lazy(() => import('./pages/CommunityRoom'));
 const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage'));
-const LinkInBioPage = lazy(() => import('./linkinbio/pages/OverviewPage'));
-const LinkInBioDesigner = lazy(() => import('./linkinbio/pages/StudioPage'));
+const LinkInBioPage = lazy(() => import('./linkinbio-v2/pages/BioDashboardPage'));
+const LinkInBioDesigner = lazy(() => import('./linkinbio-v2/pages/BioStudioPage'));
+const LinkInBioAnalytics = lazy(() => import('./linkinbio-v2/pages/BioAnalyticsPage'));
+const PublicBioVisitorPage = lazy(() => import('./linkinbio-v2/pages/PublicBioVisitorPage'));
 
 // Lightweight fallback for lazy-loaded route transitions
 function PageFallback() {
@@ -223,6 +225,26 @@ function App() {
             } 
           />
           <Route 
+            path="/link-in-bio/studio" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioDesigner />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/link-in-bio/studio/:pageId" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioDesigner />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
             path="/link-in-bio/design" 
             element={
               <AuthGuard>
@@ -238,6 +260,26 @@ function App() {
               <AuthGuard>
                 <AppLayout>
                   <LinkInBioDesigner />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/link-in-bio/analytics" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioAnalytics />
+                </AppLayout>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/link-in-bio/analytics/:pageId" 
+            element={
+              <AuthGuard>
+                <AppLayout>
+                  <LinkInBioAnalytics />
                 </AppLayout>
               </AuthGuard>
             } 
@@ -468,6 +510,12 @@ function App() {
               </AuthGuard>
             } 
           />
+
+          {/* Public Link-in-Bio Visitor Routes (Level 4) */}
+          <Route path="/u/:username" element={<PublicBioVisitorPage />} />
+          <Route path="/u/:username/:slug" element={<PublicBioVisitorPage />} />
+          <Route path="/p/:slug" element={<PublicBioVisitorPage />} />
+          <Route path="/bio/:username" element={<PublicBioVisitorPage />} />
 
           {/* Public Link-in-Bio Profile Catch-All */}
           <Route path="/:username" element={<PublicProfilePage />} />

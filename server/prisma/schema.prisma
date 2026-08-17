@@ -91,6 +91,9 @@ model User {
   youtube_videos      YouTubeVideo[]
   recommendation_logs RecommendationLog[]
 
+  // ─── 9. Link in Bio v2 Extension ─────────────────────────────────────────
+  bioPages            BioPage[]
+
   // ─── Indexes ────────────────────────────────────────────────────────────
   @@index([role])
   @@index([is_onboarded])
@@ -132,7 +135,14 @@ model UserProfile {
   preferred_region      String?  @db.VarChar(100)
   preferred_vibe        String?  @db.VarChar(50)
 
-  // ─── 5. Lifecycle & Timestamps ──────────────────────────────────────────
+  // ─── 5. Link in Bio QR Code Identity ─────────────────────────────────────
+  qr_generated          Boolean   @default(false) @map("qr_generated")
+  qr_svg_url            String?   @map("qr_svg_url")
+  qr_png_url            String?   @map("qr_png_url")
+  qr_version            Int       @default(0) @map("qr_version")
+  qr_generated_at       DateTime? @map("qr_generated_at") @db.Timestamptz(6)
+
+  // ─── 6. Lifecycle & Timestamps ──────────────────────────────────────────
   created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1672,4 +1682,79 @@ model PublicProfileAnalytics {
 
   @@index([publicProfileId, created_at])
   @@map("public_profile_analytics")
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── LINK IN BIO V2 (PRODUCTION ARCHITECTURE) ────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+model BioPage {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  slug              String    @db.VarChar(100)
+  title             String    @default("My Bio Page") @db.VarChar(255)
+  description       String?   @db.Text
+  status            String    @default("draft") @db.VarChar(50) // 'draft' | 'published' | 'archived'
+  isPrimary         Boolean   @default(false) @map("is_primary")
+  templateId        String    @default("creator-basic") @map("template_id") @db.VarChar(100)
+  templateVersion   String    @default("1.0.0") @map("template_version") @db.VarChar(50)
+
+  // Enterprise JSONB Payloads (Blocks, Theme & SEO settings)
+  draftBlocks       Json      @default("[]") @map("draft_blocks")
+  draftTheme        Json      @default("{}") @map("draft_theme")
+  publishedSnapshot Json?     @map("published_snapshot")
+  settings          Json      @default("{}") @map("settings")
+
+  // Real-time Aggregate Performance Metrics
+  viewCount         Int       @default(0) @map("view_count")
+  clickCount        Int       @default(0) @map("click_count")
+  uniqueVisitors    Int       @default(0) @map("unique_visitors")
+
+  // Timestamps
+  publishedAt       DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyticsEvents   BioAnalyticsEvent[]
+  subscribers       BioSubscriber[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([slug])
+  @@map("bio_pages")
+}
+
+model BioAnalyticsEvent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId     String   @map("page_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(50) // 'view' | 'click' | 'subscribe'
+  blockId    String?  @map("block_id") @db.VarChar(100)
+  visitorId  String?  @map("visitor_id") @db.VarChar(255)
+  referrer   String?  @db.VarChar(255)
+  device     String?  @db.VarChar(50)
+  country    String?  @db.VarChar(10)
+  ipHash     String?  @map("ip_hash") @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  page       BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, createdAt])
+  @@index([pageId, eventType])
+  @@map("bio_analytics_events")
+}
+
+model BioSubscriber {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId     String   @map("page_id") @db.Uuid
+  email      String   @db.VarChar(255)
+  source     String?  @default("email-capture") @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  page       BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, email])
+  @@index([pageId])
+  @@map("bio_subscribers")
 }
