@@ -100,7 +100,7 @@ export function useStudio(initialUser?: any) {
   const resolvedTheme = useMemo<ResolvedTheme>(() => {
     const defaults: Record<string, any> = {};
     for (const [key, control] of Object.entries(activeTemplateDef.config.themeSchema)) {
-      defaults[key] = control.default;
+      defaults[key] = (control as any)?.default;
     }
     return { ...defaults, ...themeOverrides };
   }, [activeTemplateDef, themeOverrides]);

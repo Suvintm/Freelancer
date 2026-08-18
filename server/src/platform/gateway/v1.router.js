@@ -13,6 +13,7 @@ import { communityRouter } from "../../domains/community/index.js";
 
 import { messagingRouter } from "../../domains/messaging/index.js";
 import { pollRouter } from "../../domains/polls/index.js";
+import { linkinbioRouter } from "../../domains/linkinbio/index.js";
 
 /**
  * 🚀 API GATEWAY - V1
@@ -43,6 +44,7 @@ v1Router.use("/messages", messagingRouter);
 v1Router.use("/polls", pollRouter);
 v1Router.use("/payment-gateway", paymentGatewayRouter);
 v1Router.use("/payments", subscriptionRouter);
+v1Router.use("/linkinbio", linkinbioRouter);
 
 
 export default v1Router;

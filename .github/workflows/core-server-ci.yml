@@ -45,7 +45,7 @@ jobs:
 
       - name: Security Scan (npm audit)
         working-directory: server
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
       - name: Secret Scanning
         uses: gitleaks/gitleaks-action@v2

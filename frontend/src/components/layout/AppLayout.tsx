@@ -24,7 +24,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isChatPage = location.pathname === '/communication-hub';
   const hasActiveChat = searchParams.has('userId');
   const isCreatorToolsPage = location.pathname === '/creator-tools';
-  const isLinkInBioStudio = location.pathname.startsWith('/link-in-bio/design');
+  const isLinkInBioStudio = location.pathname.startsWith('/link-in-bio/studio') || location.pathname.startsWith('/link-in-bio/design');
   const isLinkInBioPage = location.pathname === '/link-in-bio';
   const isCommunityPage = location.pathname.startsWith('/community');
   const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage || isCommunityPage || isLinkInBioPage || isLinkInBioStudio;
@@ -37,15 +37,15 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Unlinked Creator Persistent Lock Modal */}
       <UnlinkedChannelModal />
 
-      {/* Global Top Navbar (Fixed) - Hidden on Mobile for Explore/Notifications/Profile/Nearby */}
-      <div className={(isFullPage || isProfilePage || isNearbyPage) ? "hidden lg:block" : "block"}>
+      {/* Global Top Navbar (Fixed) - Hidden on Studio & Mobile */}
+      <div className={isLinkInBioStudio ? "hidden" : (isFullPage || isProfilePage || isNearbyPage) ? "hidden lg:block" : "block"}>
         <GlobalHeader onMenuPress={() => setIsMobileMenuOpen(true)} />
       </div>
 
       <MobileSidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
       {/* Unlinked Creator Warning Banner */}
-      <UnlinkedChannelBanner />
+      {!isLinkInBioStudio && <UnlinkedChannelBanner />}
 
       <div className="flex-1 flex overflow-hidden relative">
         {/* 1. Left Column: Navigation Sidebar (Desktop Only) */}
@@ -63,7 +63,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
             {/* Floating Canvas with Rounded Corners */}
             <div className={`w-full h-full ${isLinkInBioStudio ? 'rounded-none border-none shadow-none' : 'lg:rounded-[40px] border-b lg:border border-border-main shadow-xl dark:shadow-2xl'} flex flex-col relative overflow-hidden transition-colors duration-300 ${isFullPage || location.pathname === '/home' ? (isDarkMode ? 'bg-[#000000]' : 'bg-white') : 'bg-container'}`}>
-              {location.pathname === '/nearby' || location.pathname === '/communication-hub' || location.pathname.startsWith('/community/') || isLinkInBioStudio ? (
+              {location.pathname === '/nearby' || location.pathname === '/communication-hub' || location.pathname.startsWith('/community/') || isLinkInBioPage || isLinkInBioStudio ? (
                 <div className="w-full h-full relative overflow-hidden">
                   {children}
                 </div>
@@ -71,9 +71,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
                 <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide">
                   <main className="w-full h-full">
                     <div className={
-                      isLinkInBioPage 
-                        ? "max-w-6xl mx-auto px-4 pt-5 lg:pt-6 lg:px-6 lg:pb-32 pb-32" 
-                        : location.pathname === '/home'
+                      location.pathname === '/home'
                         ? "w-full min-h-full pb-32"
                         : (isNoPaddingMobile ? "w-full min-h-full lg:max-w-4xl lg:mx-auto lg:px-0 lg:pt-0 lg:pb-32 pb-32" : "max-w-4xl mx-auto px-4 pt-5 lg:pt-6 lg:px-8 lg:pb-32 pb-32")
                     }>
@@ -84,8 +82,12 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
               )}
 
               {/* Premium Aesthetic Overlays */}
-              <div className="hidden lg:block absolute inset-0 pointer-events-none rounded-[40px] ring-1 ring-inset ring-text-main/5" />
-              <div className="hidden lg:block absolute inset-0 pointer-events-none rounded-[40px] shadow-inner opacity-20 dark:opacity-50" />
+              {!isLinkInBioStudio && (
+                <>
+                  <div className="hidden lg:block absolute inset-0 pointer-events-none rounded-[40px] ring-1 ring-inset ring-text-main/5" />
+                  <div className="hidden lg:block absolute inset-0 pointer-events-none rounded-[40px] shadow-inner opacity-20 dark:opacity-50" />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -99,7 +101,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       {/* Mobile Bottom Navigation (Persistent) */}
-      {!(isChatPage && hasActiveChat) && <BottomNav />}
+      {!(isChatPage && hasActiveChat) && !isLinkInBioStudio && <BottomNav />}
     </div>
   );
 };

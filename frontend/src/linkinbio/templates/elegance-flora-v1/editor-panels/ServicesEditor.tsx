@@ -98,7 +98,7 @@ export const ServicesEditor: React.FC<Props> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {blocks.map((block, idx) => {
+            {blocks.map((block: any, idx: number) => {
               const subtitle = (block.metadata?.subtitle as string) || 'contact by WhatsApp';
               const thumbnail = (block.metadata?.thumbnail as string) || PRESET_THUMBNAILS[idx % PRESET_THUMBNAILS.length];
 

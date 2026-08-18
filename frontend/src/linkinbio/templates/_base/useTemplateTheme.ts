@@ -21,7 +21,7 @@ export function useTemplateTheme(
   return useMemo(() => {
     const defaults: ResolvedTheme = {};
     for (const [key, control] of Object.entries(schema)) {
-      defaults[key] = control.default as string | number | boolean;
+      defaults[key] = (control as any)?.default as string | number | boolean;
     }
     return { ...defaults, ...userOverrides } as ResolvedTheme;
   }, [schema, userOverrides]);

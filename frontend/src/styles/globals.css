@@ -3,13 +3,16 @@
    Fonts: Inter (body) · Outfit (display/headings) · Space Grotesk (labels/caps)
    Matches the SuviX mobile app's Colors.ts aesthetic exactly.
 ───────────────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Madimi+One&family=Bungee&family=Figtree:ital,wght@0,300..900;1,300..900&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Skranji:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pangolin&family=Bubblegum+Sans&family=Oregano:ital@0;1&family=Madimi+One&family=Bungee&family=Figtree:ital,wght@0,300..900;1,300..900&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Skranji:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
 @theme {
+  --font-pangolin:  "Pangolin", cursive, sans-serif;
+  --font-oregano:   "Oregano", cursive, sans-serif;
+  --font-bubblegum: "Bubblegum Sans", cursive, sans-serif;
   --font-sans:    "Figtree", ui-sans-serif, system-ui, -apple-system, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-body:    "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
