@@ -8,7 +8,7 @@ export default function About() {
 
   return (
     <div className="min-h-screen w-full bg-white text-zinc-900 font-sans antialiased selection:bg-rose-500 selection:text-white">
-      {/* ── TOP NAVIGATION HEADER ── */}
+      {/* ── TOP NAVIGATION HEADER- ── */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-8 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
