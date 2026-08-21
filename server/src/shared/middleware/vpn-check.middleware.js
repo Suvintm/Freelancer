@@ -56,9 +56,14 @@ const detectVPN = async (ip, req) => {
 };
 
 /**
- * Middleware to protect authentication endpoints
+ * Middleware to protect authentication endpoints (Toggleable via ENABLE_VPN_CHECK)
  */
 export const vpnCheckMiddleware = async (req, res, next) => {
+  // Feature toggle: Disabled by default to prevent blocking legitimate users
+  if (process.env.ENABLE_VPN_CHECK !== "true") {
+    return next();
+  }
+
   const ip = getClientIP(req);
 
   // Skip for local development (IPv4 and IPv6 localhost)
