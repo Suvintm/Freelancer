@@ -12,7 +12,13 @@ echo "👉 Java Payment Host:   ${PAYMENT_BACKEND_HOST}"
 echo "👉 Listening Port:       ${PORT}"
 
 # Substitute only specific environment variables into nginx.conf
-envsubst '${NODE_BACKEND_HOST} ${PAYMENT_BACKEND_HOST} ${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+if [ -f /etc/nginx/nginx.conf.template ]; then
+    envsubst '${NODE_BACKEND_HOST} ${PAYMENT_BACKEND_HOST} ${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+fi
 
-# Start Nginx
-exec nginx -g "daemon off;"
+# If specific command arguments are passed (e.g. during CI testing), execute them
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+else
+    exec nginx -g "daemon off;"
+fi
