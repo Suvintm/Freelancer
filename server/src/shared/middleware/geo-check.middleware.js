@@ -22,18 +22,42 @@ const loadGeoIP = async () => {
 loadGeoIP();
 
 /**
- * Get client IP address correctly, considering reverse proxies like Cloudflare
+ * Get real client IP address correctly across Cloudflare, Nginx Gateway, and Render
  */
 export const getClientIP = (req) => {
-  const ip =
-    req.headers["cf-connecting-ip"] || // Cloudflare
-    req.headers["x-forwarded-for"]?.split(",")[0].trim() || // Standard proxy
-    req.socket.remoteAddress;
+  // 1. Cloudflare True Client IP
+  if (req.headers["cf-connecting-ip"]) {
+    return req.headers["cf-connecting-ip"].trim();
+  }
 
-  // Handle local development IPv6 notation (::1 or ::ffff:192.168.x.x)
-  if (ip === "::1") return "127.0.0.1";
-  if (ip.startsWith("::ffff:")) return ip.substring(7);
-  return ip;
+  // 2. Direct X-Real-IP set by authoritative Nginx Gateway
+  if (req.headers["x-real-ip"]) {
+    return req.headers["x-real-ip"].trim();
+  }
+
+  // 3. First IP in X-Forwarded-For (Client Origin)
+  if (req.headers["x-forwarded-for"]) {
+    const ips = req.headers["x-forwarded-for"].split(",").map(ip => ip.trim());
+    // Filter out private and gateway IPs to find the true origin
+    for (const ip of ips) {
+      if (
+        ip &&
+        ip !== "127.0.0.1" &&
+        ip !== "::1" &&
+        !ip.startsWith("10.") &&
+        !ip.startsWith("192.168.") &&
+        !ip.startsWith("172.")
+      ) {
+        return ip;
+      }
+    }
+    if (ips[0]) return ips[0];
+  }
+
+  const rawIp = req.socket.remoteAddress || req.ip || "127.0.0.1";
+  if (rawIp === "::1") return "127.0.0.1";
+  if (rawIp.startsWith("::ffff:")) return rawIp.substring(7);
+  return rawIp;
 };
 
 /**
