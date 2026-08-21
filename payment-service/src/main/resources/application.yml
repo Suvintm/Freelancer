@@ -3,17 +3,43 @@
 # Profile-specific config in:
 #   application-local.yml  → local dev (Docker Kafka)
 #   application-cloud.yml  → production (Upstash Kafka)
-#
-# To run locally:  mvn spring-boot:run -Dspring-boot.run.profiles=local
-# On Render:       set SPRING_PROFILES_ACTIVE=cloud
 # ============================================================
 
 spring:
   application:
     name: payment-service
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: false
+    locations: classpath:db/migration
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
