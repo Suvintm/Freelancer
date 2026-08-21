@@ -71,11 +71,6 @@ function App() {
 
     // 🛰️ SERVER HEALTH CHECK (Only after auth is initialized)
     const checkServer = async () => {
-      if (location.pathname === '/maintenance') {
-        setIsCheckingServer(false);
-        return;
-      }
-
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
         let baseUrl = apiUrl;
@@ -97,12 +92,14 @@ function App() {
           signal: AbortSignal.timeout(8000) 
         });
         
-        if (response.status === 503) {
+        if (response.ok && location.pathname === '/maintenance') {
+          navigate('/', { replace: true });
+        } else if (response.status === 503 && location.pathname !== '/maintenance') {
           navigate('/maintenance', { replace: true });
         }
       } catch {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-        if (!apiUrl.includes('localhost')) {
+        if (!apiUrl.includes('localhost') && location.pathname !== '/maintenance') {
           navigate('/maintenance', { replace: true });
         }
       } finally {
