@@ -19,6 +19,9 @@ http {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
 
+    # DNS Resolver (Public + Docker + Cloud DNS)
+    resolver 1.1.1.1 8.8.8.8 127.0.0.11 valid=30s ipv6=off;
+
     # ========================================================
     # PERFORMANCE & STRUCTURED LOGGING
     # ========================================================
