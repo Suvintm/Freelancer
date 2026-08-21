@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { LinkButtonConfig } from '../../types/block.types';
 import type { Theme } from '../../types/theme.types';
 import { 
@@ -61,13 +61,18 @@ const ICON_MAP: Record<string, React.ElementType> = {
 export const LinkButtonBlock: React.FC<LinkButtonBlockProps> = ({ config, theme, onClick }) => {
   const { text, subtitle, url, variant = 'card', color, textColor, icon, imageUrl, animation, openInNewTab = true, schedule } = config;
 
-  // Check schedule validity
-  const isInactive = React.useMemo(() => {
-    if (!schedule?.startAt && !schedule?.endAt) return false;
+  // Check schedule validity (useEffect isolates impure time lookups)
+  const [isInactive, setIsInactive] = useState(false);
+
+  useEffect(() => {
+    if (!schedule?.startAt && !schedule?.endAt) {
+      setIsInactive(false);
+      return;
+    }
     const currentTime = Date.now();
     const isNotYetActive = schedule.startAt ? new Date(schedule.startAt).getTime() > currentTime : false;
     const isExpired = schedule.endAt ? new Date(schedule.endAt).getTime() < currentTime : false;
-    return isNotYetActive || isExpired;
+    setIsInactive(isNotYetActive || isExpired);
   }, [schedule?.startAt, schedule?.endAt]);
 
   if (isInactive) {
