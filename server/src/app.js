@@ -55,12 +55,12 @@ export function createApp() {
     contentSecurityPolicy: process.env.NODE_ENV === "production" ? {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://checkout.razorpay.com"],
+        scriptSrc: ["'self'", "https://checkout.razorpay.com", "https://challenges.cloudflare.com"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com"],
-        fontSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", process.env.FRONTEND_URL, process.env.ADMIN_URL, "wss:", "ws:"].filter(Boolean),
-        frameSrc: ["'self'", "https://api.razorpay.com"],
+        imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com", "https://challenges.cloudflare.com"],
+        fontSrc: ["'self'", "data:", "https://challenges.cloudflare.com"],
+        connectSrc: ["'self'", process.env.FRONTEND_URL, process.env.ADMIN_URL, "https://challenges.cloudflare.com", "wss:", "ws:"].filter(Boolean),
+        frameSrc: ["'self'", "https://api.razorpay.com", "https://challenges.cloudflare.com"],
         formAction: ["'self'", "https://accounts.google.com"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],

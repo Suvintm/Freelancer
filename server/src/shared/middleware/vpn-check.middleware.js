@@ -3,15 +3,19 @@ import { getClientIP } from "./geo-check.middleware.js";
 import logger from "../../infrastructure/monitoring/logger.js";
 import redis from "../../infrastructure/cache/redis.client.js";
 
-// Using centralized redis client from config/redisClient.js
-
 const CACHE_TTL = 3600; // Cache IP results for 1 hour
 const CACHE_PREFIX = "vpn_check:";
 
 /**
- * Detect if an IP is a VPN, Proxy, or Datacenter IP
+ * Detect if an IP is a malicious proxy
  */
-const detectVPN = async (ip) => {
+const detectVPN = async (ip, req) => {
+  // If Cloudflare already verified the country as India or US, allow immediately
+  const cfCountry = req?.headers?.["cf-ipcountry"]?.toUpperCase();
+  if (cfCountry === "IN" || cfCountry === "US") {
+    return { isVPN: false, countryCode: cfCountry };
+  }
+
   const cacheKey = `${CACHE_PREFIX}${ip}`;
 
   try {
@@ -22,27 +26,22 @@ const detectVPN = async (ip) => {
     }
 
     // 2. Call ip-api (Free: 45 requests per minute)
-    logger.info(`🔍 Checking VPN status for IP: ${ip} via ip-api.com`);
     const url = `http://ip-api.com/json/${ip}?fields=status,message,countryCode,proxy,hosting,mobile,query`;
-    const response = await axios.get(url, { timeout: 4000 });
+    const response = await axios.get(url, { timeout: 3000 });
 
     if (response.data.status !== "success") {
-      logger.error(`❌ ip-api error for IP ${ip}: ${response.data.message}`);
       return { isVPN: false, error: true };
     }
 
-    const { proxy, hosting, countryCode } = response.data;
+    const { proxy, countryCode } = response.data;
 
-    // Detect VPN if it's a proxy, datacenter (hosting), or NOT in Allowed Countries
-    const allowedCountries = ["IN", "US"];
-    const isVPN = proxy === true || hosting === true || !allowedCountries.includes(countryCode);
+    // Only block if explicitly flagged as an active malicious proxy
+    const isVPN = proxy === true;
 
     const result = {
       ip,
-      countryCode,
+      countryCode: cfCountry || countryCode,
       isVPN,
-      isAllowedCountry: allowedCountries.includes(countryCode),
-      isHosting: hosting === true,
       timestamp: Date.now(),
     };
 
@@ -51,31 +50,38 @@ const detectVPN = async (ip) => {
     
     return result;
   } catch (error) {
-    logger.error(`VPN Detection API Failed for IP ${ip}:`, error.message);
-    return { isVPN: false, error: true }; // Allow access on failure (fail open)
+    logger.debug(`VPN Detection API bypassed for IP ${ip}: ${error.message}`);
+    return { isVPN: false, error: true }; // Fail open: never block genuine users on lookup error
   }
 };
 
 /**
- * Middleware to block VPN/Proxy users
+ * Middleware to protect authentication endpoints
  */
 export const vpnCheckMiddleware = async (req, res, next) => {
   const ip = getClientIP(req);
 
   // Skip for local development (IPv4 and IPv6 localhost)
-  if (ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+  if (
+    !ip ||
+    ip === "127.0.0.1" || 
+    ip === "::1" || 
+    ip.startsWith("192.168.") || 
+    ip.startsWith("10.") ||
+    ip.startsWith("172.")
+  ) {
     return next();
   }
 
-  const result = await detectVPN(ip);
+  const result = await detectVPN(ip, req);
 
-  // If VPN/Proxy detected, block access
+  // If malicious proxy explicitly detected, block access
   if (result.isVPN) {
-    logger.warn(`🚫 VPN/Restricted Access: Blocked IP ${ip} (Country: ${result.countryCode}, Hosting: ${result.isHosting})`);
+    logger.warn(`🚫 Malicious Proxy Blocked: IP ${ip} (Country: ${result.countryCode})`);
     return res.status(403).json({
       success: false,
       error: "ACCESS_DENIED",
-      message: "Access restricted. Please disable VPN or ensure you are in an allowed region.",
+      message: "Access restricted. Please disable VPN or proxy and try again.",
     });
   }
 
