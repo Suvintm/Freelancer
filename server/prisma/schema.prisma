@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -7,94 +8,71 @@ datasource db {
 }
 
 model User {
-  // ─── 1. Auth & Credentials ──────────────────────────────────────────────
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username      String?       @unique @db.VarChar(100)
-  email         String        @unique @db.VarChar(255)
-  password_hash String?       @map("password_hash")
-  role          UserRole      @default(user)
-  auth_provider AuthProvider? @default(local) @map("auth_provider")
-  google_id     String?       @unique @map("google_id") @db.VarChar(255)
-  token_version Int           @default(0) @map("token_version")
-
-  // ─── 2. Security & Moderation ───────────────────────────────────────────
-  is_verified       Boolean   @default(false) @map("is_verified")
-  is_email_verified Boolean   @default(false) @map("is_email_verified")
-  email_verified_at DateTime? @map("email_verified_at") @db.Timestamptz(6)
-  is_banned         Boolean   @default(false) @map("is_banned")
-  ban_reason        String?   @map("ban_reason")
-  login_attempts    Int       @default(0) @map("login_attempts")
-  locked_until      DateTime? @map("locked_until") @db.Timestamptz(6)
-
-  // ─── 3. Lifecycle & Timestamps ──────────────────────────────────────────
-  is_onboarded  Boolean   @default(false) @map("is_onboarded")
-  last_login_at DateTime? @map("last_login_at") @db.Timestamptz(6)
-  deleted_at    DateTime? @map("deleted_at") @db.Timestamptz(6)
-  created_at    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // ─── 4. Core Identity Profiles (1:1) ────────────────────────────────────
-  profile          UserProfile?
-  publicProfile    PublicProfile?
-  creatorProfile   CreatorProfile?
-  editorProfile    EditorProfile?
-  brandProfile     BrandProfile?
-  stats            UserStats?
-  youtubeProfile   YouTubeProfile?
-  instagramProfile InstagramProfile?
-
-  // ─── 5. Content & Social Relations ──────────────────────────────────────
-  posts               Post[]
-  post_likes          PostLike[]
-  post_mentions       PostMention[]
-  post_collaborations PostCollaborator[]
-  reels               Reel[]
-  reel_likes          ReelLike[]
-  stories             Story[]
-  story_views         StoryView[]
-  comments            Comment[]             @relation("UserComments")
-  comment_likes       CommentLike[]
-  polls               Poll[]
-  poll_likes          PollLike[]
-  poll_responses      PollResponse[]
-  media               Media[]
-  media_user_tags     MediaUserTag[]
-  content_affinities  UserContentAffinity[]
-  follows             UserFollow[]          @relation("Follower")
-  following           UserFollow[]          @relation("Following")
-
-  // ─── 6. Communication & Notifications ───────────────────────────────────
-  sent_messages             Message[]                  @relation("MessageSender")
-  received_messages         Message[]                  @relation("MessageReceiver")
-  notifications             Notification[]             @relation("UserNotifications")
-  triggeredNotifications    Notification[]             @relation("TriggeredNotifications")
-  pushTokens                PushToken[]
+  id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username                  String?                    @unique @db.VarChar(100)
+  email                     String                     @unique @db.VarChar(255)
+  password_hash             String?                    @map("password_hash")
+  role                      UserRole                   @default(user)
+  auth_provider             AuthProvider?              @default(local) @map("auth_provider")
+  google_id                 String?                    @unique @map("google_id") @db.VarChar(255)
+  token_version             Int                        @default(0) @map("token_version")
+  is_verified               Boolean                    @default(false) @map("is_verified")
+  is_email_verified         Boolean                    @default(false) @map("is_email_verified")
+  email_verified_at         DateTime?                  @map("email_verified_at") @db.Timestamptz(6)
+  is_banned                 Boolean                    @default(false) @map("is_banned")
+  ban_reason                String?                    @map("ban_reason")
+  login_attempts            Int                        @default(0) @map("login_attempts")
+  locked_until              DateTime?                  @map("locked_until") @db.Timestamptz(6)
+  is_onboarded              Boolean                    @default(false) @map("is_onboarded")
+  last_login_at             DateTime?                  @map("last_login_at") @db.Timestamptz(6)
+  deleted_at                DateTime?                  @map("deleted_at") @db.Timestamptz(6)
+  created_at                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at                DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  bioPages                  BioPage[]
+  brandProfile              BrandProfile?
+  comment_likes             CommentLike[]
+  comments                  Comment[]                  @relation("UserComments")
   communities_owned         Community[]                @relation("CommunityOwner")
   memberships               CommunityMember[]
-  community_messages        CommunityMessage[]
   communityMessageReactions CommunityMessageReaction[]
-  communityPostsAuthored    CommunityPost[]            @relation("CommunityPostAuthor")
+  community_messages        CommunityMessage[]
   communityPostReactions    CommunityPostReaction[]    @relation("CommunityPostReactionUser")
+  communityPostsAuthored    CommunityPost[]            @relation("CommunityPostAuthor")
+  creatorProfile            CreatorProfile?
+  editorProfile             EditorProfile?
+  instagramProfile          InstagramProfile?
+  media                     Media[]
+  media_user_tags           MediaUserTag[]
+  received_messages         Message[]                  @relation("MessageReceiver")
+  sent_messages             Message[]                  @relation("MessageSender")
+  triggeredNotifications    Notification[]             @relation("TriggeredNotifications")
+  notifications             Notification[]             @relation("UserNotifications")
+  paymentsAsClient          Payment[]                  @relation("ClientPayments")
+  paymentsAsEditor          Payment[]                  @relation("EditorPayments")
+  poll_likes                PollLike[]
+  poll_responses            PollResponse[]
+  polls                     Poll[]
+  post_collaborations       PostCollaborator[]
+  post_likes                PostLike[]
+  post_mentions             PostMention[]
+  posts                     Post[]
+  publicProfile             PublicProfile?
+  pushTokens                PushToken[]
+  recommendation_logs       RecommendationLog[]
+  reel_likes                ReelLike[]
+  reels                     Reel[]
+  stories                   Story[]
+  story_views               StoryView[]
+  content_affinities        UserContentAffinity[]
+  follows                   UserFollow[]               @relation("Follower")
+  following                 UserFollow[]               @relation("Following")
+  profile                   UserProfile?
+  stats                     UserStats?
+  youtube_post_likes        YoutubePostLike[]
+  youtube_posts             YoutubePost[]
+  youtubeProfile            YouTubeProfile?
+  youtube_videos            YouTubeVideo[]
 
-  // ─── 7. Monetization & Payments ─────────────────────────────────────────
-  paymentsAsClient   Payment[]           @relation("ClientPayments")
-  paymentsAsEditor   Payment[]           @relation("EditorPayments")
-  refundsAsClient    Refund[]            @relation("ClientRefunds")
-  refundsAsEditor    Refund[]            @relation("EditorRefunds")
-  subscriptions      Subscription[]
-  walletTransactions WalletTransaction[]
-  withdrawalRequests WithdrawalRequest[]
-
-  // ─── 8. YouTube Platform Extension ──────────────────────────────────────
-  youtube_posts       YoutubePost[]
-  youtube_post_likes  YoutubePostLike[]
-  youtube_videos      YouTubeVideo[]
-  recommendation_logs RecommendationLog[]
-
-  // ─── 9. Link in Bio v2 Extension ─────────────────────────────────────────
-  bioPages            BioPage[]
-
-  // ─── Indexes ────────────────────────────────────────────────────────────
   @@index([role])
   @@index([is_onboarded])
   @@index([created_at(sort: Desc)])
@@ -103,54 +81,40 @@ model User {
 }
 
 model UserProfile {
-  // ─── 1. Core Identity & Media ───────────────────────────────────────────
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String    @unique @map("user_id") @db.Uuid
-  username        String    @unique @db.VarChar(100)
-  name            String    @db.VarChar(100)
-  profile_picture String?   @map("profile_picture")
-  cover_banner    String?   @map("cover_banner")
-  bio             String?
-  gender          String?   @db.VarChar(20)
-  date_of_birth   DateTime? @db.Date
-  mother_tongue   String?   @map("mother_tongue") @db.VarChar(50)
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String             @unique @map("user_id") @db.Uuid
+  username              String             @unique @db.VarChar(100)
+  name                  String             @db.VarChar(100)
+  profile_picture       String?            @map("profile_picture")
+  cover_banner          String?            @map("cover_banner")
+  bio                   String?
+  gender                String?            @db.VarChar(20)
+  date_of_birth         DateTime?          @db.Date
+  mother_tongue         String?            @map("mother_tongue") @db.VarChar(50)
+  location_city         String?            @map("location_city") @db.VarChar(100)
+  location_state        String?            @map("location_state") @db.VarChar(100)
+  location_country      String?            @default("India") @map("location_country") @db.VarChar(100)
+  phone                 String?            @db.VarChar(20)
+  is_phone_verified     Boolean            @default(false) @map("is_phone_verified")
+  website               String?            @db.VarChar(255)
+  social_links          Json?              @default("{}")
+  availability          AvailabilityStatus @default(available)
+  categoryId            String?            @map("role_category_id") @db.Uuid
+  content_interests     String[]           @default([])
+  preferences_completed Boolean            @default(false)
+  preferred_language    String?            @db.VarChar(50)
+  preferred_region      String?            @db.VarChar(100)
+  preferred_vibe        String?            @db.VarChar(50)
+  qr_generated          Boolean            @default(false) @map("qr_generated")
+  qr_svg_url            String?            @map("qr_svg_url")
+  qr_png_url            String?            @map("qr_png_url")
+  qr_version            Int                @default(0) @map("qr_version")
+  qr_generated_at       DateTime?          @map("qr_generated_at") @db.Timestamptz(6)
+  created_at            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  category              RoleCategory?      @relation(fields: [categoryId], references: [id])
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // ─── 2. Location & Contact ──────────────────────────────────────────────
-  location_city     String? @map("location_city") @db.VarChar(100)
-  location_state    String? @map("location_state") @db.VarChar(100)
-  location_country  String? @default("India") @map("location_country") @db.VarChar(100)
-  phone             String? @db.VarChar(20)
-  is_phone_verified Boolean @default(false) @map("is_phone_verified")
-  website           String? @db.VarChar(255)
-  social_links      Json?   @default("{}")
-
-  // ─── 3. Role & Marketplace Availability ─────────────────────────────────
-  availability AvailabilityStatus @default(available)
-  categoryId   String?            @map("role_category_id") @db.Uuid
-
-  // ─── 4. Feed & Discovery Preferences ────────────────────────────────────
-  content_interests     String[] @default([])
-  preferences_completed Boolean  @default(false)
-  preferred_language    String?  @db.VarChar(50)
-  preferred_region      String?  @db.VarChar(100)
-  preferred_vibe        String?  @db.VarChar(50)
-
-  // ─── 5. Link in Bio QR Code Identity ─────────────────────────────────────
-  qr_generated          Boolean   @default(false) @map("qr_generated")
-  qr_svg_url            String?   @map("qr_svg_url")
-  qr_png_url            String?   @map("qr_png_url")
-  qr_version            Int       @default(0) @map("qr_version")
-  qr_generated_at       DateTime? @map("qr_generated_at") @db.Timestamptz(6)
-
-  // ─── 6. Lifecycle & Timestamps ──────────────────────────────────────────
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // ─── 6. Relations ───────────────────────────────────────────────────────
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category RoleCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  // ─── 7. Optimized Indexes ───────────────────────────────────────────────
   @@index([categoryId])
   @@index([availability])
   @@index([location_country, location_city])
@@ -158,43 +122,27 @@ model UserProfile {
 }
 
 model EditorProfile {
-  // ─── 1. Identity ───────────────────────────────────────────────────────────
-  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String @unique @map("user_id") @db.Uuid
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String   @unique @map("user_id") @db.Uuid
+  portfolio_url        String?  @map("portfolio_url") @db.VarChar(255)
+  showcase_video_urls  String[] @default([]) @map("showcase_video_urls")
+  experience_years     Int      @default(0) @map("experience_years")
+  skills               String[] @default([])
+  software_used        String[] @default([]) @map("software_used")
+  specializations      String[] @default([]) @map("specializations")
+  accepting_orders     Boolean  @default(true) @map("accepting_orders")
+  turnaround_time_days Int      @default(3) @map("turnaround_time_days")
+  rate_currency        String   @default("INR") @map("rate_currency") @db.VarChar(10)
+  hourly_rate          Decimal? @map("hourly_rate") @db.Decimal(12, 2)
+  base_video_rate      Decimal? @map("base_video_rate") @db.Decimal(12, 2)
+  rate_per_short       Decimal? @map("rate_per_short") @db.Decimal(12, 2)
+  avg_rating           Float    @default(0.0) @map("avg_rating")
+  review_count         Int      @default(0) @map("review_count")
+  completed_gigs       Int      @default(0) @map("completed_gigs")
+  created_at           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // ─── 2. Portfolio & Showcase ───────────────────────────────────────────────
-  portfolio_url       String?  @map("portfolio_url") @db.VarChar(255)
-  showcase_video_urls String[] @default([]) @map("showcase_video_urls")
-
-  // ─── 3. Experience & Tools ─────────────────────────────────────────────────
-  experience_years Int      @default(0) @map("experience_years")
-  skills           String[] @default([]) // Technical tools: e.g. "Premiere Pro", "DaVinci Resolve"
-  software_used    String[] @default([]) @map("software_used")
-  specializations  String[] @default([]) @map("specializations") // Content types: e.g. "Gaming", "Documentary", "Shorts/Reels"
-
-  // ─── 4. Marketplace Availability & Delivery ────────────────────────────────
-  accepting_orders     Boolean @default(true) @map("accepting_orders")
-  turnaround_time_days Int     @default(3) @map("turnaround_time_days")
-
-  // ─── 5. Rates (Decimal for financial precision) ────────────────────────────
-  rate_currency   String   @default("INR") @map("rate_currency") @db.VarChar(10)
-  hourly_rate     Decimal? @map("hourly_rate") @db.Decimal(12, 2)
-  base_video_rate Decimal? @map("base_video_rate") @db.Decimal(12, 2)
-  rate_per_short  Decimal? @map("rate_per_short") @db.Decimal(12, 2)
-
-  // ─── 6. Trust Signals & Metrics ────────────────────────────────────────────
-  avg_rating     Float @default(0.0) @map("avg_rating")
-  review_count   Int   @default(0) @map("review_count")
-  completed_gigs Int   @default(0) @map("completed_gigs")
-
-  // ─── 7. Timestamps ─────────────────────────────────────────────────────────
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // ─── 8. Relations ──────────────────────────────────────────────────────────
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // ─── 9. Indexes ────────────────────────────────────────────────────────────
   @@index([accepting_orders])
   @@index([experience_years])
   @@index([base_video_rate])
@@ -203,39 +151,25 @@ model EditorProfile {
 }
 
 model BrandProfile {
-  // ─── 1. Identity ───────────────────────────────────────────────────────────
-  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String @unique @map("user_id") @db.Uuid
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  company_name      String?  @map("company_name") @db.VarChar(100)
+  company_website   String?  @map("company_website") @db.VarChar(255)
+  logo_url          String?  @map("logo_url")
+  industry          String?  @db.VarChar(100)
+  company_size      String?  @map("company_size") @db.VarChar(50)
+  designation       String?  @db.VarChar(100)
+  brand_description String?  @map("brand_description")
+  target_regions    String[] @default([]) @map("target_regions")
+  is_verified       Boolean  @default(false) @map("is_verified")
+  budget_currency   String   @default("INR") @map("budget_currency") @db.VarChar(10)
+  approx_budget     Decimal? @map("approx_budget") @db.Decimal(14, 2)
+  campaigns_posted  Int      @default(0) @map("campaigns_posted")
+  total_spent       Decimal? @map("total_spent") @db.Decimal(14, 2)
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // ─── 2. Company Info ───────────────────────────────────────────────────────
-  company_name      String? @map("company_name") @db.VarChar(100)
-  company_website   String? @map("company_website") @db.VarChar(255)
-  logo_url          String? @map("logo_url")
-  industry          String? @db.VarChar(100)
-  company_size      String? @map("company_size") @db.VarChar(50)
-  designation       String? @db.VarChar(100) // Role of contact person: e.g. "Brand Lead", "Founder"
-  brand_description String? @map("brand_description")
-
-  // ─── 3. Campaign Targeting & Trust ─────────────────────────────────────────
-  target_regions String[] @default([]) @map("target_regions")
-  is_verified    Boolean  @default(false) @map("is_verified")
-
-  // ─── 4. Budget & Financials ────────────────────────────────────────────────
-  budget_currency String   @default("INR") @map("budget_currency") @db.VarChar(10)
-  approx_budget   Decimal? @map("approx_budget") @db.Decimal(14, 2)
-
-  // ─── 5. Activity Counters ──────────────────────────────────────────────────
-  campaigns_posted Int      @default(0) @map("campaigns_posted")
-  total_spent      Decimal? @map("total_spent") @db.Decimal(14, 2)
-
-  // ─── 6. Timestamps ─────────────────────────────────────────────────────────
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // ─── 7. Relations ──────────────────────────────────────────────────────────
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // ─── 8. Indexes ────────────────────────────────────────────────────────────
   @@index([industry])
   @@index([is_verified])
   @@map("brand_profiles")
@@ -279,7 +213,6 @@ model UserStats {
   @@map("user_stats")
 }
 
-// ─── 1. Creator Profile (1:1 with User) ─────────────────────────────────────
 model CreatorProfile {
   id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId                 String   @unique @map("user_id") @db.Uuid
@@ -291,83 +224,68 @@ model CreatorProfile {
   rate_short             Decimal? @map("rate_short") @db.Decimal(12, 2)
   created_at             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([accepting_sponsorships])
   @@map("creator_profiles")
 }
 
-// ─── 2. YouTube Channel (1:N with CreatorProfile & User) ────────────────────
-
-// --- PLATFORM CONNECTORS ---
-
 model YouTubeProfile {
-  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String @unique @map("user_id") @db.Uuid
-
-  access_token     String?   @map("access_token")
-  refresh_token    String?   @map("refresh_token")
-  token_expires_at DateTime? @map("token_expires_at") @db.Timestamptz(6)
-  scopes           String[]  @default([])
-
-  status         PlatformStatus @default(LINKED)
-  sync_status    SyncStatus     @default(idle)
-  last_synced_at DateTime?      @map("last_synced_at") @db.Timestamptz(6)
-
-  connected_at DateTime? @map("connected_at") @db.Timestamptz(6)
-  created_at   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channels YouTubeChannel[]
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String           @unique @map("user_id") @db.Uuid
+  access_token     String?          @map("access_token")
+  refresh_token    String?          @map("refresh_token")
+  token_expires_at DateTime?        @map("token_expires_at") @db.Timestamptz(6)
+  scopes           String[]         @default([])
+  status           PlatformStatus   @default(LINKED)
+  sync_status      SyncStatus       @default(idle)
+  last_synced_at   DateTime?        @map("last_synced_at") @db.Timestamptz(6)
+  connected_at     DateTime?        @map("connected_at") @db.Timestamptz(6)
+  created_at       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  channels         YouTubeChannel[]
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("youtube_profiles")
 }
 
 model YouTubeChannel {
-  id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  youtubeProfileId String @map("youtube_profile_id") @db.Uuid
-  userId           String @map("user_id") @db.Uuid
-
-  channel_id    String  @unique @map("channel_id") @db.VarChar(255)
-  channel_name  String  @map("channel_name") @db.VarChar(255)
-  custom_url    String? @unique @map("custom_url") @db.VarChar(255)
-  description   String?
-  thumbnail_url String? @map("thumbnail_url")
-  banner_url    String? @map("banner_url")
-  country       String? @db.VarChar(10)
-  language      String? @db.VarChar(10)
-  niche         String? @db.VarChar(100)
-
-  subscriber_count        BigInt     @default(0) @map("subscriber_count")
-  video_count             Int        @default(0) @map("video_count")
-  view_count              BigInt     @default(0) @map("view_count")
-  avg_views               Float      @default(0.0) @map("avg_views")
-  engagement_rate         Float      @default(0.0) @map("engagement_rate")
-  authority_score         Float      @default(0.0) @map("authority_score")
-  published_at            DateTime?  @map("published_at") @db.Timestamptz(6)
-  hidden_subscriber_count Boolean    @default(false) @map("hidden_subscriber_count")
-  topic_categories        String[]   @default([]) @map("topic_categories")
-  keywords                String?    @map("keywords")
-  last_synced_at          DateTime?  @map("last_synced_at") @db.Timestamptz(6)
-  sync_status             SyncStatus @default(idle) @map("sync_status")
-  uploads_playlist_id     String?    @map("uploads_playlist_id") @db.VarChar(100)
-  made_for_kids           Boolean    @default(false) @map("made_for_kids")
-
-  is_primary  Boolean       @default(false) @map("is_primary")
-  is_verified Boolean       @default(false) @map("is_verified")
-  status      ChannelStatus @default(active)
-
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  youtubeProfile YouTubeProfile   @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
-  videos         YouTubeVideo[]
-  sync_logs      YouTubeSyncLog[]
-  youtube_posts  YoutubePost[]
-  community      Community?
+  id                      String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  youtubeProfileId        String           @map("youtube_profile_id") @db.Uuid
+  userId                  String           @map("user_id") @db.Uuid
+  channel_id              String           @unique @map("channel_id") @db.VarChar(255)
+  channel_name            String           @map("channel_name") @db.VarChar(255)
+  custom_url              String?          @unique @map("custom_url") @db.VarChar(255)
+  description             String?
+  thumbnail_url           String?          @map("thumbnail_url")
+  banner_url              String?          @map("banner_url")
+  country                 String?          @db.VarChar(10)
+  language                String?          @db.VarChar(10)
+  niche                   String?          @db.VarChar(100)
+  subscriber_count        BigInt           @default(0) @map("subscriber_count")
+  video_count             Int              @default(0) @map("video_count")
+  view_count              BigInt           @default(0) @map("view_count")
+  avg_views               Float            @default(0.0) @map("avg_views")
+  engagement_rate         Float            @default(0.0) @map("engagement_rate")
+  authority_score         Float            @default(0.0) @map("authority_score")
+  published_at            DateTime?        @map("published_at") @db.Timestamptz(6)
+  hidden_subscriber_count Boolean          @default(false) @map("hidden_subscriber_count")
+  topic_categories        String[]         @default([]) @map("topic_categories")
+  keywords                String?          @map("keywords")
+  last_synced_at          DateTime?        @map("last_synced_at") @db.Timestamptz(6)
+  sync_status             SyncStatus       @default(idle) @map("sync_status")
+  uploads_playlist_id     String?          @map("uploads_playlist_id") @db.VarChar(100)
+  made_for_kids           Boolean          @default(false) @map("made_for_kids")
+  is_primary              Boolean          @default(false) @map("is_primary")
+  is_verified             Boolean          @default(false) @map("is_verified")
+  status                  ChannelStatus    @default(active)
+  created_at              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at              DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  community               Community?
+  youtubeProfile          YouTubeProfile   @relation(fields: [youtubeProfileId], references: [id], onDelete: Cascade)
+  youtube_posts           YoutubePost[]
+  sync_logs               YouTubeSyncLog[]
+  videos                  YouTubeVideo[]
 
   @@index([userId])
   @@index([subscriber_count(sort: Desc)])
@@ -378,59 +296,50 @@ model YouTubeChannel {
 }
 
 model InstagramProfile {
-  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String @unique @map("user_id") @db.Uuid
-
-  access_token     String?   @map("access_token")
-  refresh_token    String?   @map("refresh_token")
-  token_expires_at DateTime? @map("token_expires_at") @db.Timestamptz(6)
-  scopes           String[]  @default([])
-
-  status         PlatformStatus @default(LINKED)
-  sync_status    SyncStatus     @default(idle)
-  last_synced_at DateTime?      @map("last_synced_at") @db.Timestamptz(6)
-
-  connected_at DateTime? @map("connected_at") @db.Timestamptz(6)
-  created_at   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accounts InstagramAccount[]
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String             @unique @map("user_id") @db.Uuid
+  access_token     String?            @map("access_token")
+  refresh_token    String?            @map("refresh_token")
+  token_expires_at DateTime?          @map("token_expires_at") @db.Timestamptz(6)
+  scopes           String[]           @default([])
+  status           PlatformStatus     @default(LINKED)
+  sync_status      SyncStatus         @default(idle)
+  last_synced_at   DateTime?          @map("last_synced_at") @db.Timestamptz(6)
+  connected_at     DateTime?          @map("connected_at") @db.Timestamptz(6)
+  created_at       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  accounts         InstagramAccount[]
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("instagram_profiles")
 }
 
 model InstagramAccount {
-  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  instagramProfileId String @map("instagram_profile_id") @db.Uuid
-  userId             String @map("user_id") @db.Uuid
-
-  account_id          String  @unique @map("account_id") @db.VarChar(255)
-  username            String  @unique @db.VarChar(255)
-  display_name        String? @map("display_name") @db.VarChar(255)
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  instagramProfileId  String             @map("instagram_profile_id") @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  account_id          String             @unique @map("account_id") @db.VarChar(255)
+  username            String             @unique @db.VarChar(255)
+  display_name        String?            @map("display_name") @db.VarChar(255)
   biography           String?
-  profile_picture_url String? @map("profile_picture_url")
-  website             String? @db.VarChar(500)
-  account_type        String? @map("account_type") @db.VarChar(50)
-  business_category   String? @map("business_category") @db.VarChar(100)
-  country             String? @db.VarChar(10)
-
-  followers_count Int   @default(0) @map("followers_count")
-  following_count Int   @default(0) @map("following_count")
-  media_count     Int   @default(0) @map("media_count")
-  avg_likes       Float @default(0.0) @map("avg_likes")
-  engagement_rate Float @default(0.0) @map("engagement_rate")
-
-  is_primary  Boolean @default(false) @map("is_primary")
-  is_verified Boolean @default(false) @map("is_verified")
-
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  instagramProfile  InstagramProfile   @relation(fields: [instagramProfileId], references: [id], onDelete: Cascade)
-  posts             InstagramPost[]
-  community         Community?
-  instagramSyncLogs InstagramSyncLog[]
+  profile_picture_url String?            @map("profile_picture_url")
+  website             String?            @db.VarChar(500)
+  account_type        String?            @map("account_type") @db.VarChar(50)
+  business_category   String?            @map("business_category") @db.VarChar(100)
+  country             String?            @db.VarChar(10)
+  followers_count     Int                @default(0) @map("followers_count")
+  following_count     Int                @default(0) @map("following_count")
+  media_count         Int                @default(0) @map("media_count")
+  avg_likes           Float              @default(0.0) @map("avg_likes")
+  engagement_rate     Float              @default(0.0) @map("engagement_rate")
+  is_primary          Boolean            @default(false) @map("is_primary")
+  is_verified         Boolean            @default(false) @map("is_verified")
+  created_at          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  community           Community?
+  instagramProfile    InstagramProfile   @relation(fields: [instagramProfileId], references: [id], onDelete: Cascade)
+  posts               InstagramPost[]
+  instagramSyncLogs   InstagramSyncLog[]
 
   @@index([userId])
   @@index([followers_count(sort: Desc)])
@@ -439,28 +348,24 @@ model InstagramAccount {
 }
 
 model InstagramPost {
-  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  instagramAccountId String @map("instagram_account_id") @db.Uuid
-  userId             String @map("user_id") @db.Uuid
-
-  post_id       String    @unique @map("post_id") @db.VarChar(255)
-  media_type    String    @map("media_type") @db.VarChar(50)
-  media_url     String?   @map("media_url")
-  thumbnail_url String?   @map("thumbnail_url")
-  permalink     String?   @db.VarChar(500)
-  caption       String?
-  timestamp     DateTime? @db.Timestamptz(6)
-
-  like_count    Int  @default(0) @map("like_count")
-  comment_count Int  @default(0) @map("comment_count")
-  view_count    Int? @map("view_count")
-  reach         Int?
-  impressions   Int?
-
-  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  instagramAccountId String           @map("instagram_account_id") @db.Uuid
+  userId             String           @map("user_id") @db.Uuid
+  post_id            String           @unique @map("post_id") @db.VarChar(255)
+  media_type         String           @map("media_type") @db.VarChar(50)
+  media_url          String?          @map("media_url")
+  thumbnail_url      String?          @map("thumbnail_url")
+  permalink          String?          @db.VarChar(500)
+  caption            String?
+  timestamp          DateTime?        @db.Timestamptz(6)
+  like_count         Int              @default(0) @map("like_count")
+  comment_count      Int              @default(0) @map("comment_count")
+  view_count         Int?             @map("view_count")
+  reach              Int?
+  impressions        Int?
+  created_at         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  instagramAccount   InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
 
   @@index([instagramAccountId, timestamp])
   @@index([userId])
@@ -695,7 +600,7 @@ model YoutubePost {
   media              Media[]
   likes              YoutubePostLike[]
   user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  youtubeChannel     YouTubeChannel?   @relation(fields: [youtube_channel_id], references: [id], onDelete: SetNull)
+  youtubeChannel     YouTubeChannel?   @relation(fields: [youtube_channel_id], references: [id])
 
   @@index([userId, created_at])
   @@index([youtube_channel_id])
@@ -912,21 +817,21 @@ model Community {
   description        String?
   thumbnail          String?
   bannerUrl          String?                  @map("banner_url")
-  rules              String?                  @db.Text
+  rules              String?
   category           CommunityCategory        @default(CUSTOM)
   isPrivate          Boolean                  @default(false) @map("is_private")
   memberCount        Int                      @default(0) @map("member_count")
   metadata           Json?                    @default("{}")
   created_at         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at         DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  instagramAccount   InstagramAccount?        @relation(fields: [instagramAccountId], references: [id])
   owner              User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  youtubeChannel     YouTubeChannel?          @relation(fields: [youtubeChannelId], references: [id], onDelete: SetNull)
-  instagramAccount   InstagramAccount?        @relation(fields: [instagramAccountId], references: [id], onDelete: SetNull)
+  youtubeChannel     YouTubeChannel?          @relation(fields: [youtubeChannelId], references: [id])
+  inviteLinks        CommunityInviteLink[]
   linkedAccounts     CommunityLinkedAccount[]
   members            CommunityMember[]
   messages           CommunityMessage[]
   posts              CommunityPost[]
-  inviteLinks        CommunityInviteLink[]
 
   @@index([ownerId])
   @@index([slug])
@@ -1000,24 +905,23 @@ model CommunityLinkedAccount {
 }
 
 model CommunityPost {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  communityId String            @map("community_id") @db.Uuid
-  authorId    String            @map("author_id") @db.Uuid
-  type        CommunityPostType @default(NATIVE)
-  content     String?           @db.Text
-  mediaId     String?           @map("media_id") @db.Uuid
-  sourceId    String?           @map("source_id") @db.Uuid
-  metadata    Json?             @default("{}")
-  isPinned    Boolean           @default(false) @map("is_pinned")
-  isDeleted   Boolean           @default(false) @map("is_deleted")
-  viewCount   Int               @default(0) @map("view_count")
-  created_at  DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime          @default(now()) @db.Timestamptz(6)
-
-  community Community               @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  author    User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  media     Media?                  @relation(fields: [mediaId], references: [id])
-  reactions CommunityPostReaction[]
+  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String                  @map("community_id") @db.Uuid
+  authorId    String                  @map("author_id") @db.Uuid
+  type        CommunityPostType       @default(NATIVE)
+  content     String?
+  mediaId     String?                 @map("media_id") @db.Uuid
+  sourceId    String?                 @map("source_id") @db.Uuid
+  metadata    Json?                   @default("{}")
+  isPinned    Boolean                 @default(false) @map("is_pinned")
+  isDeleted   Boolean                 @default(false) @map("is_deleted")
+  viewCount   Int                     @default(0) @map("view_count")
+  created_at  DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime                @default(now()) @db.Timestamptz(6)
+  reactions   CommunityPostReaction[]
+  author      User                    @relation("CommunityPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  community   Community               @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  media       Media?                  @relation(fields: [mediaId], references: [id])
 
   @@index([communityId, created_at])
   @@index([communityId, isPinned])
@@ -1025,14 +929,13 @@ model CommunityPost {
 }
 
 model CommunityPostReaction {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId     String   @map("post_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  emoji      String   @db.VarChar(10)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User          @relation("CommunityPostReactionUser", fields: [userId], references: [id], onDelete: Cascade)
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String        @map("post_id") @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  emoji      String        @db.VarChar(10)
+  created_at DateTime      @default(now()) @db.Timestamptz(6)
+  post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User          @relation("CommunityPostReactionUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId, emoji])
   @@index([postId])
@@ -1049,175 +952,125 @@ model CommunityInviteLink {
   expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
   isActive    Boolean   @default(true) @map("is_active")
   created_at  DateTime  @default(now()) @db.Timestamptz(6)
-
-  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
 
   @@index([code])
   @@map("community_invite_links")
 }
 
 model SubscriptionPlan {
-  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name               String         @db.VarChar(100)
-  slug               String         @unique @db.VarChar(100)
-  feature            String         @db.VarChar(100)
-  planTier           String         @default("free") @map("plan_tier") @db.VarChar(50)
-  duration           String         @db.VarChar(50)
-  durationDays       Int            @map("duration_days")
-  price              Float
-  originalPrice      Float          @default(0) @map("original_price")
-  currency           String         @default("INR") @db.VarChar(10)
-  discountPercent    Float          @default(0) @map("discount_percent")
-  trialDays          Int            @default(3) @map("trial_days")
-  features           String[]
-  description        String?
-  badge              String?        @db.VarChar(50)
-  isActive           Boolean        @default(true) @map("is_active")
-  sortOrder          Int            @default(0) @map("sort_order")
-  totalSubscriptions Int            @default(0) @map("total_subscriptions")
-  created_at         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  subscriptions      Subscription[]
+  id               String         @id @db.VarChar(50)
+  name             String         @db.VarChar(100)
+  description      String?
+  tier_level       Int            @default(0)
+  billing_interval String         @db.VarChar(20)
+  price_monthly    Decimal        @default(0) @db.Decimal(19, 4)
+  price_annual     Decimal        @default(0) @db.Decimal(19, 4)
+  features         Json           @default("{}")
+  limits           Json           @default("{}")
+  isActive         Boolean        @default(true) @map("is_active")
+  created_at       DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  subscriptions    Subscription[]
 
-  @@index([feature, isActive, sortOrder])
+  @@index([features], map: "idx_plan_features", type: Gin)
+  @@index([isActive], map: "idx_subscription_plans_active")
+  @@index([tier_level], map: "idx_subscription_plans_tier")
   @@map("subscription_plans")
 }
 
 model Subscription {
-  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String             @map("user_id") @db.Uuid
-  planId             String             @map("plan_id") @db.Uuid
-  planName           String             @map("plan_name") @db.VarChar(100)
-  planType           String             @map("plan_type") @db.VarChar(50)
-  feature            String             @db.VarChar(100)
-  planTier           String             @default("free") @map("plan_tier") @db.VarChar(50)
-  status             SubscriptionStatus @default(payment_pending)
-  startDate          DateTime           @default(now()) @map("start_date") @db.Timestamptz(6)
-  endDate            DateTime           @map("end_date") @db.Timestamptz(6)
-  isTrial            Boolean            @default(false) @map("is_trial")
-  trialEndDate       DateTime?          @map("trial_end_date") @db.Timestamptz(6)
-  amount             Float
-  currency           String             @default("INR") @db.VarChar(10)
-  razorpayOrderId    String?            @map("razorpay_order_id") @db.VarChar(255)
-  razorpayPaymentId  String?            @map("razorpay_payment_id") @db.VarChar(255)
-  razorpaySignature  String?            @map("razorpay_signature") @db.VarChar(255)
-  autoRenew          Boolean            @default(true) @map("auto_renew")
-  cancelledAt        DateTime?          @map("cancelled_at") @db.Timestamptz(6)
-  cancellationReason String?            @map("cancellation_reason")
-  renewalCount       Int                @default(0) @map("renewal_count")
-  lastRenewalDate    DateTime?          @map("last_renewal_date") @db.Timestamptz(6)
-  created_at         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
-  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                   String           @map("user_id") @db.VarChar(50)
+  planId                   String           @map("plan_id") @db.VarChar(50)
+  status                   String           @default("incomplete") @db.VarChar(20)
+  provider                 String           @default("razorpay") @db.VarChar(20)
+  provider_subscription_id String?          @db.VarChar(100)
+  provider_customer_id     String?          @db.VarChar(100)
+  current_period_start     DateTime?        @db.Timestamptz(6)
+  current_period_end       DateTime?        @db.Timestamptz(6)
+  cancel_at_period_end     Boolean          @default(false)
+  cancelledAt              DateTime?        @map("cancelled_at") @db.Timestamptz(6)
+  ended_at                 DateTime?        @db.Timestamptz(6)
+  payment_method_id        String?          @db.VarChar(100)
+  trial_start              DateTime?        @db.Timestamptz(6)
+  trial_end                DateTime?        @db.Timestamptz(6)
+  metadata                 Json?            @default("{}")
+  created_at               DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at               DateTime?        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  invoices                 invoices[]
+  plan                     SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([userId, feature, status])
-  @@index([userId, endDate])
-  @@index([status, endDate])
+  @@index([userId], map: "idx_active_subscriptions", where: raw("((status)::text = 'active'::text)"))
+  @@index([current_period_end], map: "idx_subscriptions_period_end")
+  @@index([status, current_period_end], map: "idx_subscriptions_renewal", where: raw("((status)::text = ANY ((ARRAY['active'::character varying, 'past_due'::character varying])::text[]))"))
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([userId], map: "idx_subscriptions_user_id")
+  @@index([userId, status], map: "idx_subscriptions_user_status")
   @@map("subscriptions")
 }
 
 model Payment {
-  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order                 String              @db.VarChar(255)
-  clientId              String              @map("client_id") @db.Uuid
-  editorId              String              @map("editor_id") @db.Uuid
-  gig                   String?             @db.VarChar(255)
-  amount                Float
-  platformFee           Float               @map("platform_fee")
-  editorEarning         Float               @map("editor_earning")
-  type                  PaymentType
-  status                PaymentStatus       @default(pending)
-  transactionId         String?             @unique @map("transaction_id") @db.VarChar(255)
-  stripePaymentIntentId String?             @map("stripe_payment_intent_id") @db.VarChar(255)
-  stripeTransferId      String?             @map("stripe_transfer_id") @db.VarChar(255)
-  initiatedAt           DateTime            @default(now()) @map("initiated_at") @db.Timestamptz(6)
-  completedAt           DateTime?           @map("completed_at") @db.Timestamptz(6)
-  receiptNumber         String?             @unique @map("receipt_number") @db.VarChar(255)
-  receiptDownloadedAt   DateTime?           @map("receipt_downloaded_at") @db.Timestamptz(6)
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order                 String    @db.VarChar(255)
+  clientId              String    @map("client_id") @db.Uuid
+  editorId              String    @map("editor_id") @db.Uuid
+  gig                   String?   @db.VarChar(255)
+  amount                Decimal   @db.Decimal(12, 2)
+  platformFee           Decimal   @map("platform_fee") @db.Decimal(12, 2)
+  editorEarning         Decimal   @map("editor_earning") @db.Decimal(12, 2)
+  type                  String    @db.VarChar(255)
+  status                String    @default("pending") @db.VarChar(255)
+  transactionId         String?   @unique @map("transaction_id") @db.VarChar(255)
+  stripePaymentIntentId String?   @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeTransferId      String?   @map("stripe_transfer_id") @db.VarChar(255)
+  initiatedAt           DateTime  @default(now()) @map("initiated_at") @db.Timestamptz(6)
+  completedAt           DateTime? @map("completed_at") @db.Timestamptz(6)
+  receiptNumber         String?   @unique @map("receipt_number") @db.VarChar(255)
+  receiptDownloadedAt   DateTime? @map("receipt_downloaded_at") @db.Timestamptz(6)
   notes                 String?
-  created_at            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at            DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
-  client                User                @relation("ClientPayments", fields: [clientId], references: [id], onDelete: Cascade)
-  editor                User                @relation("EditorPayments", fields: [editorId], references: [id], onDelete: Cascade)
-  refunds               Refund[]
-  walletTransactions    WalletTransaction[]
+  created_at            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at            DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  currency              String?   @db.VarChar(255)
+  description           String?   @db.VarChar(255)
+  order_id              String    @db.VarChar(255)
+  razorpay_order_id     String?   @db.VarChar(255)
+  razorpay_payment_id   String?   @unique(map: "uk3h326otx9ko45mitb1ptj38bi") @db.VarChar(255)
+  razorpay_refund_id    String?   @db.VarChar(255)
+  refunded_at           DateTime? @db.Timestamptz(6)
+  client                User      @relation("ClientPayments", fields: [clientId], references: [id], onDelete: Cascade)
+  editor                User      @relation("EditorPayments", fields: [editorId], references: [id], onDelete: Cascade)
 
   @@index([order])
   @@index([clientId])
   @@index([editorId])
+  @@index([clientId], map: "idx_payments_client_id")
+  @@index([editorId], map: "idx_payments_editor_id")
+  @@index([order_id], map: "idx_payments_order")
   @@map("payments")
 }
 
 model Refund {
-  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId          String              @map("payment_id") @db.Uuid
-  clientId           String              @map("client_id") @db.Uuid
-  editorId           String              @map("editor_id") @db.Uuid
-  order              String?             @db.VarChar(255)
-  amount             Float
-  reason             String
-  status             RefundStatus        @default(requested)
-  stripeRefundId     String?             @map("stripe_refund_id") @db.VarChar(255)
-  resolutionNotes    String?             @map("resolution_notes")
-  requestedAt        DateTime            @default(now()) @map("requested_at") @db.Timestamptz(6)
-  processedAt        DateTime?           @map("processed_at") @db.Timestamptz(6)
-  created_at         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
-  client             User                @relation("ClientRefunds", fields: [clientId], references: [id], onDelete: Cascade)
-  editor             User                @relation("EditorRefunds", fields: [editorId], references: [id], onDelete: Cascade)
-  payment            Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  walletTransactions WalletTransaction[]
+  id                   String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  transaction_id       String               @db.Uuid
+  amount               Decimal              @db.Decimal(19, 4)
+  currency             String               @default("INR") @db.VarChar(3)
+  status               String               @default("pending") @db.VarChar(20)
+  provider             String               @db.VarChar(20)
+  provider_refund_id   String?              @db.VarChar(100)
+  reason               String
+  reason_code          String?              @db.VarChar(50)
+  initiated_by         String               @db.VarChar(50)
+  initiated_by_type    String               @db.VarChar(20)
+  created_at           DateTime?            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime?            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  completed_at         DateTime?            @db.Timestamptz(6)
+  payment_transactions payment_transactions @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([paymentId])
-  @@index([clientId])
-  @@index([status])
+  @@index([created_at], map: "idx_refunds_created")
+  @@index([status], map: "idx_refunds_status")
+  @@index([transaction_id], map: "idx_refunds_transaction")
   @@map("refunds")
-}
-
-model WithdrawalRequest {
-  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String              @map("user_id") @db.Uuid
-  amount             Float
-  status             WithdrawalStatus    @default(pending)
-  paymentMethod      String              @map("payment_method") @db.VarChar(50)
-  transactionId      String?             @map("transaction_id") @db.VarChar(255)
-  adminNotes         String?             @map("admin_notes")
-  requestedAt        DateTime            @default(now()) @map("requested_at") @db.Timestamptz(6)
-  processedAt        DateTime?           @map("processed_at") @db.Timestamptz(6)
-  created_at         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at         DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
-  walletTransactions WalletTransaction[]
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@map("withdrawal_requests")
-}
-
-model WalletTransaction {
-  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String             @map("user_id") @db.Uuid
-  amount       Float
-  type         WalletTxType
-  purpose      WalletPurpose
-  status       WalletTxStatus     @default(completed)
-  reference    String?            @db.VarChar(255)
-  description  String             @db.VarChar(255)
-  paymentId    String?            @map("payment_id") @db.Uuid
-  order        String?            @db.VarChar(255)
-  withdrawalId String?            @map("withdrawal_id") @db.Uuid
-  refundId     String?            @map("refund_id") @db.Uuid
-  created_at   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at   DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
-  payment      Payment?           @relation(fields: [paymentId], references: [id])
-  refund       Refund?            @relation(fields: [refundId], references: [id])
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  withdrawal   WithdrawalRequest? @relation(fields: [withdrawalId], references: [id])
-
-  @@index([userId])
-  @@index([paymentId])
-  @@map("wallet_transactions")
 }
 
 model Poll {
@@ -1414,6 +1267,405 @@ model youtube_search_dictionary {
   @@index([term])
 }
 
+model PublicProfile {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String                   @unique @map("user_id") @db.Uuid
+  is_active       Boolean                  @default(false)
+  is_eligible     Boolean                  @default(false)
+  theme_config    Json?                    @default("{}")
+  seo_title       String?                  @db.VarChar(255)
+  seo_description String?
+  custom_domain   String?                  @unique @db.VarChar(255)
+  created_at      DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+  analytics       PublicProfileAnalytics[]
+  blocks          PublicProfileBlock[]
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("public_profiles")
+}
+
+model PublicProfileBlock {
+  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicProfileId String                 @map("public_profile_id") @db.Uuid
+  type            PublicProfileBlockType
+  title           String                 @db.VarChar(255)
+  url             String
+  order_index     Int                    @default(0)
+  is_visible      Boolean                @default(true)
+  created_at      DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  profile         PublicProfile          @relation(fields: [publicProfileId], references: [id], onDelete: Cascade)
+
+  @@map("public_profile_blocks")
+}
+
+model PublicProfileAnalytics {
+  id              String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicProfileId String                      @map("public_profile_id") @db.Uuid
+  event_type      PublicProfileAnalyticsEvent
+  blockId         String?                     @map("block_id") @db.Uuid
+  visitor_id      String                      @db.VarChar(255)
+  referrer        String?                     @db.VarChar(255)
+  device_type     String?                     @db.VarChar(50)
+  created_at      DateTime                    @default(now()) @db.Timestamptz(6)
+  profile         PublicProfile               @relation(fields: [publicProfileId], references: [id], onDelete: Cascade)
+
+  @@index([publicProfileId, created_at])
+  @@map("public_profile_analytics")
+}
+
+model BioPage {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String              @map("user_id") @db.Uuid
+  slug              String              @db.VarChar(100)
+  title             String              @default("My Bio Page") @db.VarChar(255)
+  description       String?
+  status            String              @default("draft") @db.VarChar(50)
+  isPrimary         Boolean             @default(false) @map("is_primary")
+  templateId        String              @default("creator-basic") @map("template_id") @db.VarChar(100)
+  templateVersion   String              @default("1.0.0") @map("template_version") @db.VarChar(50)
+  draftBlocks       Json                @default("[]") @map("draft_blocks")
+  draftTheme        Json                @default("{}") @map("draft_theme")
+  publishedSnapshot Json?               @map("published_snapshot")
+  settings          Json                @default("{}") @map("settings")
+  viewCount         Int                 @default(0) @map("view_count")
+  clickCount        Int                 @default(0) @map("click_count")
+  uniqueVisitors    Int                 @default(0) @map("unique_visitors")
+  publishedAt       DateTime?           @map("published_at") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  customDomain      String?             @unique @map("custom_domain") @db.VarChar(255)
+  analyticsEvents   BioAnalyticsEvent[]
+  dailyStats        BioDailyStat[]
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscribers       BioSubscriber[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([slug])
+  @@map("bio_pages")
+}
+
+model BioDailyStat {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId    String    @map("page_id") @db.Uuid
+  date      DateTime  @db.Date
+  views     Int       @default(0)
+  clicks    Int       @default(0)
+  ctr       Float     @default(0)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  page      BioPage   @relation(fields: [pageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([pageId, date])
+  @@map("bio_daily_stats")
+}
+
+model BioAnalyticsEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId    String   @map("page_id") @db.Uuid
+  eventType String   @map("event_type") @db.VarChar(50)
+  blockId   String?  @map("block_id") @db.VarChar(100)
+  visitorId String?  @map("visitor_id") @db.VarChar(255)
+  referrer  String?  @db.VarChar(255)
+  device    String?  @db.VarChar(50)
+  country   String?  @db.VarChar(10)
+  ipHash    String?  @map("ip_hash") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  page      BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, createdAt])
+  @@index([pageId, eventType])
+  @@map("bio_analytics_events")
+}
+
+model BioSubscriber {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId      String   @map("page_id") @db.Uuid
+  email       String   @db.VarChar(255)
+  source      String?  @default("email-capture") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  sourceBlock String?  @map("source_block") @db.VarChar(100)
+  page        BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, email])
+  @@index([pageId])
+  @@map("bio_subscribers")
+}
+
+model BioTemplate {
+  id          String    @id @db.VarChar(100)
+  name        String    @db.VarChar(255)
+  description String?
+  category    String    @default("creators") @db.VarChar(50)
+  tier        String    @default("free") @db.VarChar(20)
+  thumbnail   String?
+  themeJson   Json      @default("{}") @map("theme_json")
+  blocksJson  Json      @default("[]") @map("blocks_json")
+  isActive    Boolean   @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("bio_templates")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model audit_logs {
+  id             BigInt    @id @default(autoincrement())
+  table_name     String    @db.VarChar(50)
+  record_id      String    @db.VarChar(100)
+  action         String    @db.VarChar(20)
+  old_values     Json?
+  new_values     Json?
+  changed_by     String    @db.VarChar(50)
+  changed_at     DateTime? @default(now()) @db.Timestamptz(6)
+  ip_address     String?   @db.Inet
+  user_agent     String?
+  correlation_id String?   @db.VarChar(64)
+
+  @@index([changed_at], map: "idx_audit_logs_changed_at")
+  @@index([table_name, record_id], map: "idx_audit_logs_table")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model escrows {
+  id                   String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  transaction_id       String               @db.Uuid
+  payer_user_id        String               @db.VarChar(50)
+  payee_user_id        String               @db.VarChar(50)
+  amount               Decimal              @db.Decimal(19, 4)
+  currency             String               @default("INR") @db.VarChar(3)
+  platform_fee         Decimal              @default(0) @db.Decimal(19, 4)
+  status               String               @default("held") @db.VarChar(20)
+  release_condition    String               @default("manual_approval") @db.VarChar(50)
+  release_metadata     Json?                @default("{}")
+  held_at              DateTime?            @default(now()) @db.Timestamptz(6)
+  released_at          DateTime?            @db.Timestamptz(6)
+  disputed_at          DateTime?            @db.Timestamptz(6)
+  expires_at           DateTime             @db.Timestamptz(6)
+  dispute_reason       String?
+  resolved_by          String?              @db.VarChar(50)
+  resolution_notes     String?
+  created_at           DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?            @default(now()) @db.Timestamptz(6)
+  payment_transactions payment_transactions @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([expires_at], map: "idx_escrows_expires")
+  @@index([payee_user_id], map: "idx_escrows_payee")
+  @@index([payer_user_id], map: "idx_escrows_payer")
+  @@index([status], map: "idx_escrows_status")
+  @@index([status, expires_at], map: "idx_escrows_status_expires", where: raw("((status)::text = 'held'::text)"))
+  @@index([transaction_id], map: "idx_escrows_transaction")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model idempotency_keys {
+  id            String    @id @db.VarChar(64)
+  status        String    @db.VarChar(20)
+  request_hash  String    @db.VarChar(64)
+  response_body Json?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  expires_at    DateTime  @db.Timestamptz(6)
+
+  @@index([expires_at], map: "idx_idempotency_expires")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model invoices {
+  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  invoice_number       String                @unique @db.VarChar(50)
+  user_id              String                @db.VarChar(50)
+  customer_name        String                @db.VarChar(200)
+  customer_email       String                @db.VarChar(200)
+  customer_gstin       String?               @db.VarChar(20)
+  subtotal             Decimal               @db.Decimal(19, 4)
+  tax_rate             Decimal               @default(18.00) @db.Decimal(5, 2)
+  tax_amount           Decimal               @db.Decimal(19, 4)
+  total_amount         Decimal               @db.Decimal(19, 4)
+  currency             String                @default("INR") @db.VarChar(3)
+  transaction_id       String?               @db.Uuid
+  subscription_id      String?               @db.Uuid
+  status               String                @default("draft") @db.VarChar(20)
+  invoice_date         DateTime              @default(dbgenerated("CURRENT_DATE")) @db.Date
+  due_date             DateTime?             @db.Date
+  paid_at              DateTime?             @db.Timestamptz(6)
+  provider             String?               @db.VarChar(20)
+  provider_invoice_id  String?               @db.VarChar(100)
+  pdf_url              String?
+  created_at           DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?             @default(now()) @db.Timestamptz(6)
+  subscriptions        Subscription?         @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_transactions payment_transactions? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([invoice_number], map: "idx_invoices_number")
+  @@index([status], map: "idx_invoices_status")
+  @@index([user_id], map: "idx_invoices_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model outbox {
+  id            BigInt    @id @default(autoincrement())
+  topic         String    @db.VarChar(100)
+  partition_key String    @db.VarChar(100)
+  payload       Json
+  headers       Json?     @default("{}")
+  status        String    @default("pending") @db.VarChar(20)
+  retry_count   Int       @default(0)
+  error_message String?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  published_at  DateTime? @db.Timestamptz(6)
+
+  @@index([created_at], map: "idx_outbox_created")
+  @@index([status], map: "idx_outbox_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payment_transactions {
+  id                  String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id             String     @db.VarChar(50)
+  amount              Decimal    @db.Decimal(19, 4)
+  currency            String     @default("INR") @db.VarChar(3)
+  status              String     @default("pending") @db.VarChar(20)
+  provider            String     @db.VarChar(20)
+  provider_order_id   String?    @db.VarChar(100)
+  provider_payment_id String?    @db.VarChar(100)
+  provider_signature  String?    @db.VarChar(255)
+  platform_fee        Decimal    @default(0) @db.Decimal(19, 4)
+  editor_earnings     Decimal    @default(0) @db.Decimal(19, 4)
+  tax_amount          Decimal    @default(0) @db.Decimal(19, 4)
+  subscription_id     String?    @db.Uuid
+  escrow_id           String?    @db.Uuid
+  payout_id           String?    @db.Uuid
+  idempotency_key     String     @unique @db.VarChar(64)
+  correlation_id      String?    @db.VarChar(64)
+  description         String?
+  metadata            Json?      @default("{}")
+  created_at          DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?  @default(now()) @db.Timestamptz(6)
+  completed_at        DateTime?  @db.Timestamptz(6)
+  escrows             escrows[]
+  invoices            invoices[]
+  refunds             Refund[]
+
+  @@index([metadata], map: "idx_payment_metadata", type: Gin)
+  @@index([created_at], map: "idx_payment_transactions_created")
+  @@index([provider_order_id], map: "idx_payment_transactions_provider")
+  @@index([status], map: "idx_payment_transactions_status")
+  @@index([user_id, created_at(sort: Desc)], map: "idx_payment_transactions_user_created")
+  @@index([user_id], map: "idx_payment_transactions_user_id")
+  @@index([user_id, status], map: "idx_payment_transactions_user_status")
+  @@index([idempotency_key], map: "idx_pending_payments", where: raw("((status)::text = 'pending'::text)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payout_batches {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider_batch_id String?   @unique @db.VarChar(100)
+  status            String    @default("processing") @db.VarChar(20)
+  total_count       Int       @default(0)
+  total_amount      Decimal   @default(0) @db.Decimal(19, 4)
+  completed_count   Int       @default(0)
+  failed_count      Int       @default(0)
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  completed_at      DateTime? @db.Timestamptz(6)
+
+  @@index([status], map: "idx_payout_batches_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payouts {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id               String    @db.VarChar(50)
+  amount                Decimal   @db.Decimal(19, 4)
+  currency              String    @default("INR") @db.VarChar(3)
+  platform_fee          Decimal   @default(0) @db.Decimal(19, 4)
+  net_amount            Decimal   @db.Decimal(19, 4)
+  status                String    @default("pending") @db.VarChar(20)
+  provider              String    @default("razorpayx") @db.VarChar(20)
+  provider_payout_id    String?   @db.VarChar(100)
+  provider_batch_id     String?   @db.VarChar(100)
+  destination_type      String    @db.VarChar(20)
+  destination_encrypted String
+  retry_count           Int       @default(0)
+  last_error            String?
+  next_retry_at         DateTime? @db.Timestamptz(6)
+  description           String?
+  metadata              Json?     @default("{}")
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime? @default(now()) @db.Timestamptz(6)
+  processed_at          DateTime? @db.Timestamptz(6)
+  completed_at          DateTime? @db.Timestamptz(6)
+
+  @@index([provider_batch_id], map: "idx_payouts_batch")
+  @@index([created_at], map: "idx_payouts_created")
+  @@index([status], map: "idx_payouts_status")
+  @@index([status, next_retry_at], map: "idx_payouts_status_retry", where: raw("((status)::text = ANY ((ARRAY['pending'::character varying, 'failed'::character varying])::text[]))"))
+  @@index([user_id], map: "idx_payouts_user_id")
+}
+
+model usage_tracking {
+  id           BigInt    @id @default(autoincrement())
+  user_id      String    @db.VarChar(50)
+  feature_name String    @db.VarChar(100)
+  usage_period String    @db.VarChar(20)
+  usage_count  Int       @default(0)
+  usage_limit  Int?
+  last_used_at DateTime? @default(now()) @db.Timestamptz(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, feature_name, usage_period])
+  @@index([feature_name], map: "idx_usage_tracking_feature")
+  @@index([usage_period], map: "idx_usage_tracking_period")
+  @@index([user_id], map: "idx_usage_tracking_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_wallets {
+  id                     String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                String    @unique @db.VarChar(50)
+  balance                Decimal   @default(0) @db.Decimal(19, 4)
+  hold_balance           Decimal   @default(0) @db.Decimal(19, 4)
+  total_earned           Decimal   @default(0) @db.Decimal(19, 4)
+  total_withdrawn        Decimal   @default(0) @db.Decimal(19, 4)
+  currency               String    @default("INR") @db.VarChar(3)
+  kyc_status             String    @default("pending") @db.VarChar(20)
+  kyc_verified_at        DateTime? @db.Timestamptz(6)
+  bank_account_encrypted String?
+  upi_id_encrypted       String?
+  pan_encrypted          String?
+  created_at             DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([kyc_status], map: "idx_user_wallets_kyc")
+  @@index([user_id], map: "idx_user_wallets_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model webhook_events {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider         String    @db.VarChar(20)
+  event_type       String    @db.VarChar(100)
+  event_id         String    @db.VarChar(100)
+  payload          Json
+  payload_hash     String    @db.VarChar(64)
+  signature_header String?   @db.VarChar(255)
+  signature_valid  Boolean   @default(false)
+  status           String    @default("pending") @db.VarChar(20)
+  processed_at     DateTime? @db.Timestamptz(6)
+  error_message    String?
+  processed_count  Int       @default(0)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([provider, event_id], map: "idx_webhook_events_unique", where: raw("((status)::text = ANY ((ARRAY['completed'::character varying, 'processing'::character varying])::text[]))"))
+  @@index([created_at], map: "idx_webhook_events_created")
+  @@index([provider, event_id], map: "idx_webhook_events_provider")
+  @@index([status], map: "idx_webhook_events_status")
+  @@index([event_type], map: "idx_webhook_events_type")
+}
+
 enum NotificationType {
   SYSTEM
   SYNC_COMPLETE
@@ -1468,8 +1720,6 @@ enum AuthProvider {
   local
   google
 }
-
-// RoleGroup enum removed — replaced by maps_to_role on RoleCategory
 
 enum AvailabilityStatus {
   available
@@ -1617,8 +1867,6 @@ enum PlatformStatus {
   ERROR
 }
 
-// ─── Public Profile (Link-in-Bio) ─────────────────────────────────────────
-
 enum PublicProfileBlockType {
   LINK
   YOUTUBE_CHANNEL
@@ -1628,171 +1876,4 @@ enum PublicProfileBlockType {
 enum PublicProfileAnalyticsEvent {
   PAGE_VIEW
   BLOCK_CLICK
-}
-
-model PublicProfile {
-  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String  @unique @map("user_id") @db.Uuid
-  is_active       Boolean @default(false)
-  is_eligible     Boolean @default(false)
-  theme_config    Json?   @default("{}")
-  seo_title       String? @db.VarChar(255)
-  seo_description String?
-  custom_domain   String? @unique @db.VarChar(255)
-
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
-
-  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  blocks    PublicProfileBlock[]
-  analytics PublicProfileAnalytics[]
-
-  @@map("public_profiles")
-}
-
-model PublicProfileBlock {
-  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  publicProfileId String                 @map("public_profile_id") @db.Uuid
-  type            PublicProfileBlockType
-  title           String                 @db.VarChar(255)
-  url             String
-  order_index     Int                    @default(0)
-  is_visible      Boolean                @default(true)
-
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
-
-  profile PublicProfile @relation(fields: [publicProfileId], references: [id], onDelete: Cascade)
-
-  @@map("public_profile_blocks")
-}
-
-model PublicProfileAnalytics {
-  id              String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  publicProfileId String                      @map("public_profile_id") @db.Uuid
-  event_type      PublicProfileAnalyticsEvent
-  blockId         String?                     @map("block_id") @db.Uuid
-  visitor_id      String                      @db.VarChar(255)
-  referrer        String?                     @db.VarChar(255)
-  device_type     String?                     @db.VarChar(50)
-
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  profile PublicProfile @relation(fields: [publicProfileId], references: [id], onDelete: Cascade)
-
-  @@index([publicProfileId, created_at])
-  @@map("public_profile_analytics")
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ─── LINK IN BIO V2 (PRODUCTION ARCHITECTURE) ────────────────────────────────
-// ══════════════════════════════════════════════════════════════════════════════
-
-model BioPage {
-  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String    @map("user_id") @db.Uuid
-  slug              String    @db.VarChar(100)
-  title             String    @default("My Bio Page") @db.VarChar(255)
-  description       String?   @db.Text
-  status            String    @default("draft") @db.VarChar(50) // 'draft' | 'published' | 'archived'
-  isPrimary         Boolean   @default(false) @map("is_primary")
-  customDomain      String?   @unique @map("custom_domain") @db.VarChar(255)
-  templateId        String    @default("creator-basic") @map("template_id") @db.VarChar(100)
-  templateVersion   String    @default("1.0.0") @map("template_version") @db.VarChar(50)
-
-  // Enterprise JSONB Payloads (Blocks, Theme & SEO settings)
-  draftBlocks       Json      @default("[]") @map("draft_blocks")
-  draftTheme        Json      @default("{}") @map("draft_theme")
-  publishedSnapshot Json?     @map("published_snapshot")
-  settings          Json      @default("{}") @map("settings")
-
-  // Real-time Aggregate Performance Metrics
-  viewCount         Int       @default(0) @map("view_count")
-  clickCount        Int       @default(0) @map("click_count")
-  uniqueVisitors    Int       @default(0) @map("unique_visitors")
-
-  // Timestamps
-  publishedAt       DateTime? @map("published_at") @db.Timestamptz(6)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analyticsEvents   BioAnalyticsEvent[]
-  subscribers       BioSubscriber[]
-  dailyStats        BioDailyStat[]
-
-  @@unique([userId, slug])
-  @@index([userId])
-  @@index([slug])
-  @@map("bio_pages")
-}
-
-model BioDailyStat {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pageId         String   @map("page_id") @db.Uuid
-  date           DateTime @db.Date
-  views          Int      @default(0)
-  clicks         Int      @default(0)
-  uniqueVisitors Int      @default(0) @map("unique_visitors")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  page           BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
-
-  @@unique([pageId, date])
-  @@index([pageId, date])
-  @@map("bio_daily_stats")
-}
-
-model BioAnalyticsEvent {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pageId     String   @map("page_id") @db.Uuid
-  eventType  String   @map("event_type") @db.VarChar(50) // 'view' | 'click' | 'subscribe'
-  blockId    String?  @map("block_id") @db.VarChar(100)
-  visitorId  String?  @map("visitor_id") @db.VarChar(255)
-  referrer   String?  @db.VarChar(255)
-  device     String?  @db.VarChar(50)
-  country    String?  @db.VarChar(10)
-  ipHash     String?  @map("ip_hash") @db.VarChar(255)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  page       BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
-
-  @@index([pageId, createdAt])
-  @@index([pageId, eventType])
-  @@map("bio_analytics_events")
-}
-
-model BioSubscriber {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pageId      String   @map("page_id") @db.Uuid
-  email       String   @db.VarChar(255)
-  source      String?  @default("email-capture") @db.VarChar(100)
-  sourceBlock String?  @map("source_block") @db.VarChar(100)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  page        BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
-
-  @@unique([pageId, email])
-  @@index([pageId])
-  @@map("bio_subscribers")
-}
-
-model BioTemplate {
-  id          String   @id @db.VarChar(100)
-  name        String   @db.VarChar(255)
-  description String?  @db.Text
-  category    String   @default("creators") @db.VarChar(50) // 'creators' | 'music' | 'business' | 'minimal' | 'ecommerce'
-  tier        String   @default("free") @db.VarChar(20) // 'free' | 'pro'
-  thumbnail   String?  @db.Text
-  themeJson   Json     @map("theme_json")
-  blocksJson  Json     @map("blocks_json")
-  isActive    Boolean  @default(true) @map("is_active")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@index([category, isActive])
-  @@map("bio_templates")
 }
