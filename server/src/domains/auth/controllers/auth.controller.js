@@ -75,30 +75,31 @@ export const getUserSubscriptionData = async (userId) => {
     const sub = await prisma.subscription.findFirst({
       where: {
         userId: userId,
-        status: { in: ["active", "trial"] },
-        endDate: { gte: new Date() }
+        status: "active",
+        current_period_end: { gte: new Date() }
+      },
+      include: {
+        plan: true
       },
       orderBy: {
-        endDate: "desc"
+        current_period_end: "desc"
       }
     });
 
     if (!sub) return null;
 
-    // Determine features based on planTier
-    const allFeatures = ["nearby_pro", "verified_badge", "yt_analytics", "portfolio_link", "priority_explore", "ai_suggestions", "team_collab"];
-    let features = [];
-    
-    if (sub.planTier === "creator") features = ["nearby_pro", "portfolio_link", "priority_explore"];
-    else if (sub.planTier === "pro") features = ["nearby_pro", "portfolio_link", "priority_explore", "verified_badge", "yt_analytics", "ai_suggestions"];
-    else if (sub.planTier === "elite") features = allFeatures;
+    const plan = sub.plan;
+    const featuresObj = plan?.features || {};
+    const features = typeof featuresObj === "object" ? Object.keys(featuresObj) : [];
 
     return {
-      tier: sub.planTier,
+      tier: plan?.tier_level === 2 ? "business" : plan?.tier_level === 1 ? "pro" : "free",
+      planId: sub.planId,
+      planName: plan?.name || "Pro Plan",
       features,
-      expiresAt: sub.endDate,
-      isTrial: sub.isTrial,
-      daysRemaining: Math.max(0, Math.ceil((new Date(sub.endDate) - new Date()) / (1000 * 60 * 60 * 24)))
+      expiresAt: sub.current_period_end,
+      isTrial: false,
+      daysRemaining: Math.max(0, Math.ceil((new Date(sub.current_period_end) - new Date()) / (1000 * 60 * 60 * 24)))
     };
   } catch (error) {
     logger.error(`Error fetching subscription for user ${userId}:`, error);
