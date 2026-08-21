@@ -16,7 +16,28 @@ export interface AuthUser {
     group: 'CLIENT' | 'PROVIDER';
     category: string;
     subCategory: string;
+    categorySlug?: string;
   };
+  channelLinkStatus?: string;
+  channel_link_status?: string;
+  creatorProfile?: {
+    channels?: Array<Record<string, unknown>>;
+    instagramAccounts?: Array<Record<string, unknown>>;
+    [key: string]: any;
+  } | null;
+  youtubeChannels?: Record<string, unknown>[];
+  instagramProfile?: Record<string, unknown> | null;
+  instagramAccounts?: Array<{
+    id?: string;
+    accountId?: string;
+    username?: string;
+    handle?: string;
+    name?: string;
+    profilePictureUrl?: string;
+    mediaCount?: number;
+    followersCount?: number;
+    [key: string]: any;
+  }>;
   youtubeProfile?: Array<{
     id: string;
     channel_id: string;
@@ -58,7 +79,21 @@ export interface SignupPayload {
   phone?: string;
   motherTongue?: string;
   categoryId?: string;
+  categorySlug?: string;
+  role?: string;
   roleSubCategoryIds?: string[];
+  specializations?: string[];
+  softwareUsed?: string[];
+  skills?: string[];
+  portfolioUrl?: string;
+  experienceYears?: number;
+  companyName?: string;
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  designation?: string;
+  approxBudget?: string | number;
+  targetRegions?: string[];
   youtubeChannels?: Array<{
     channelId: string;
     channelName: string;
@@ -77,10 +112,21 @@ export interface SignupPayload {
       publishedAt: string;
     }>;
   }>;
+  instagramAccounts?: Array<{
+    accountId: string;
+    handle: string;
+    name?: string;
+    profilePictureUrl?: string;
+    followerCount?: number | string;
+    mediaCount?: number | string;
+    isPrimary?: boolean;
+  }>;
   googleId?: string;
   authProvider?: string;
   profilePicture?: File | string | null;
   pushToken?: string;
+  turnstileToken?: string;
+  discoveryToken?: string | null;
 }
 
 export interface AuthSession {

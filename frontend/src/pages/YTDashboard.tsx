@@ -218,7 +218,7 @@ export default function YTDashboard() {
           <YouTubeVerificationBadge />
         </div>
         <button
-          onClick={() => navigate('/youtube-connect')}
+          onClick={() => navigate('/connect-socials')}
           className={`px-8 py-3 rounded-full font-bold text-sm tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
             isDarkMode 
               ? 'bg-rose-600 text-white hover:bg-rose-500 shadow-rose-950/20' 
@@ -258,7 +258,7 @@ export default function YTDashboard() {
               <span>Create YouTube Post</span>
             </button>
             <button
-              onClick={() => navigate('/youtube-connect')}
+              onClick={() => navigate('/connect-socials')}
               className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-md hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer ${
                 isDarkMode 
                   ? 'bg-zinc-800 text-white hover:bg-zinc-700 shadow-zinc-950/20' 
@@ -427,7 +427,7 @@ export default function YTDashboard() {
             {/* Connect Channel Action Card */}
             <motion.div
               whileHover={{ y: -4 }}
-              onClick={() => navigate('/youtube-connect')}
+              onClick={() => navigate('/connect-socials')}
               className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[160px] text-center cursor-pointer transition-all duration-300 ${
                 isDarkMode 
                   ? 'border-border-main bg-black/20 hover:bg-zinc-900/10 hover:border-zinc-700 text-text-muted hover:text-text-main' 
@@ -572,7 +572,7 @@ export default function YTDashboard() {
             <span>Create YouTube Post</span>
           </button>
           <button
-            onClick={() => navigate('/youtube-connect')}
+            onClick={() => navigate('/connect-socials')}
             className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all active:scale-[0.98] cursor-pointer ${
               isDarkMode 
                 ? 'border-border-main bg-zinc-950 text-white hover:bg-border-secondary' 

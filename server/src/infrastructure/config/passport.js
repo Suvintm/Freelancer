@@ -95,7 +95,8 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                             data: {
                                 google_id: googleId,
                                 auth_provider: "google",
-                                is_verified: true
+                                is_verified: true,
+                                is_email_verified: true
                             },
                             include: { profile: true }
                         });

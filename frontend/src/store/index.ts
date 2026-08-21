@@ -7,7 +7,7 @@ const storage = (storageModule as { default?: typeof storageModule }).default ||
 import { authReducer } from './slices/authSlice';
 import type { AuthState } from './slices/authSlice';
 import { onboardingReducer } from './slices/onboardingSlice';
-import type { TempSignupData, YouTubeChannel } from './slices/onboardingSlice';
+import type { OnboardingSliceState } from './slices/onboardingSlice';
 import { uiReducer } from './slices/uiSlice';
 import { uploadReducer } from './slices/uploadSlice';
 import type { UploadState } from './slices/uploadSlice';
@@ -21,7 +21,7 @@ const authPersistConfig = {
 const onboardingPersistConfig = {
   key: 'onboarding',
   storage,
-  whitelist: ['tempSignupData', 'youtubeDiscovery'],
+  whitelist: ['tempSignupData', 'selectedRole', 'authMethod', 'youtubeDiscovery'],
 };
 
 export const store = configureStore({
@@ -43,14 +43,7 @@ export const persistor = persistStore(store);
 
 export interface RootState {
   auth: AuthState;
-  onboarding: {
-    tempSignupData: TempSignupData;
-    youtubeDiscovery: {
-      channels: YouTubeChannel[];
-      selectedChannelIds: string[];
-      categorizations: Record<string, string>;
-    };
-  };
+  onboarding: OnboardingSliceState;
   ui: {
     sidebarOpen: boolean;
   };

@@ -18,6 +18,8 @@ import passport from "./infrastructure/config/passport.js";
 import v1Router from "./platform/gateway/v1.router.js";
 
 import { healthRouter } from "./platform/health/health.controller.js";
+import { metricsMiddleware } from "./shared/middleware/metrics.middleware.js";
+import { getMetrics } from "./platform/metrics/metrics.controller.js";
 
 export function createApp() {
   // Initialize Sentry
@@ -31,18 +33,22 @@ export function createApp() {
       return this.toString();
   };
 
-  // 🔍 DIAGNOSTIC: Global Request Logger
+  // ============ MONITORING & METRICS ============
+  app.use(metricsMiddleware);
+
+  // ============ CORE PROXY & REQUEST TRACING ============
+  app.set("trust proxy", true);
+
   app.use((req, res, next) => {
-    logger.info(`[DEBUG] ${req.method} ${req.originalUrl}`);
+    req.realIp = req.headers["x-real-ip"] || req.ip;
+    req.requestId = req.headers["x-request-id"] || req.headers["x-correlation-id"] || crypto.randomUUID();
+    res.setHeader("X-Request-ID", req.requestId);
+    logger.info(`[REQ] ${req.method} ${req.originalUrl} | IP: ${req.realIp} | ID: ${req.requestId}`);
     next();
   });
 
   // ============ CORE MIDDLEWARE ============
   app.use(cookieParser());
-
-  if (process.env.NODE_ENV === "production") {
-    app.set("trust proxy", 1);
-  }
 
   app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -103,6 +109,7 @@ export function createApp() {
 
   // Platform Routes
   app.use("/api", healthRouter);
+  app.get("/metrics", getMetrics);
 
   // ============ API GATEWAY ============
   app.use("/api/v1", v1Router);

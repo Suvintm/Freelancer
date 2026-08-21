@@ -13,16 +13,18 @@ import org.apache.commons.codec.digest.HmacUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Core payment business logic.
- * Handles: create Razorpay order, verify payment HMAC, record payment, refund.
+ * Handles: create Razorpay order, verify payment HMAC, record payment in PostgreSQL, refund.
  */
 @Slf4j
 @Service
@@ -39,19 +41,14 @@ public class PaymentService {
     @Value("${razorpay.key-secret}")
     private String razorpayKeySecret;
 
-    /** Platform fee percentage (10%) — match your Node.js config */
+    /** Platform fee percentage (10%) */
     private static final double PLATFORM_FEE_PERCENT = 0.10;
 
     // ========================= CREATE ORDER =========================
 
-    /**
-     * Create a Razorpay order so the frontend can show the payment popup.
-     * This is equivalent to your Node.js createPaymentOrder().
-     */
     public Map<String, Object> createOrder(CreateOrderRequest request, String userId) throws Exception {
         log.info("Creating Razorpay order for suvixOrderId={}, amount={}", request.getOrderId(), request.getAmount());
 
-        // Amount must be in paise (1 INR = 100 paise)
         int amountInPaise = (int) (request.getAmount() * 100);
 
         JSONObject orderRequest = new JSONObject();
@@ -74,11 +71,7 @@ public class PaymentService {
 
     // ========================= VERIFY PAYMENT =========================
 
-    /**
-     * Verify the HMAC signature from Razorpay.
-     * If valid, save the Payment record and publish Kafka event.
-     * Equivalent to your Node.js verifyPayment().
-     */
+    @Transactional
     public Map<String, Object> verifyPayment(VerifyPaymentRequest request) {
         log.info("Verifying payment: razorpayPaymentId={}", request.getRazorpayPaymentId());
 
@@ -94,15 +87,15 @@ public class PaymentService {
         log.info("Payment signature verified ✓ for razorpayPaymentId={}", request.getRazorpayPaymentId());
 
         // Step 2: Calculate amounts
-        BigDecimal totalAmount  = BigDecimal.valueOf(request.getAmount());
-        BigDecimal platformFee  = totalAmount.multiply(BigDecimal.valueOf(PLATFORM_FEE_PERCENT));
+        BigDecimal totalAmount   = BigDecimal.valueOf(request.getAmount());
+        BigDecimal platformFee   = totalAmount.multiply(BigDecimal.valueOf(PLATFORM_FEE_PERCENT));
         BigDecimal editorEarning = totalAmount.subtract(platformFee);
 
-        // Step 3: Save Payment record to MongoDB
+        // Step 3: Save Payment record to PostgreSQL
         Payment payment = Payment.builder()
                 .orderId(request.getSuvixOrderId())
-                .clientId(request.getClientId())
-                .editorId(request.getEditorId())
+                .clientId(parseUuid(request.getClientId()))
+                .editorId(parseUuid(request.getEditorId()))
                 .amount(totalAmount)
                 .platformFee(platformFee)
                 .editorEarning(editorEarning)
@@ -116,11 +109,11 @@ public class PaymentService {
                 .build();
 
         payment = paymentRepository.save(payment);
-        log.info("Payment saved to DB: _id={}", payment.getId());
+        log.info("Payment saved to PostgreSQL DB: id={}", payment.getId());
 
         // Step 4: Publish Kafka event → other services react to this
         paymentProducer.publishPaymentVerified(
-                payment.getId(),
+                payment.getId().toString(),
                 request.getSuvixOrderId(),
                 request.getClientId(),
                 request.getEditorId(),
@@ -129,7 +122,7 @@ public class PaymentService {
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("paymentId", payment.getId());
+        response.put("paymentId", payment.getId().toString());
         response.put("message", "Payment verified and recorded");
         return response;
     }
@@ -137,20 +130,31 @@ public class PaymentService {
     // ========================= PAYMENT HISTORY =========================
 
     public List<Payment> getPaymentHistory(String userId) {
-        // Returns history for both clients and editors
-        List<Payment> payments = paymentRepository.findByClientIdOrderByCreatedAtDesc(userId);
+        UUID userUuid = parseUuid(userId);
+        List<Payment> payments = paymentRepository.findByClientIdOrderByCreatedAtDesc(userUuid);
         if (payments.isEmpty()) {
-            payments = paymentRepository.findByEditorIdOrderByCreatedAtDesc(userId);
+            payments = paymentRepository.findByEditorIdOrderByCreatedAtDesc(userUuid);
         }
         return payments;
     }
 
     public Payment getPaymentById(String paymentId) {
-        return paymentRepository.findById(paymentId)
+        UUID uuid = parseUuid(paymentId);
+        return paymentRepository.findById(uuid)
                 .orElseThrow(() -> new RuntimeException("Payment not found: " + paymentId));
     }
 
     public List<Payment> getAllPayments() {
         return paymentRepository.findAll();
+    }
+
+    private UUID parseUuid(String id) {
+        if (id == null || id.isBlank()) return null;
+        try {
+            return UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            // Generate deterministic UUID if string is not standard UUID
+            return UUID.nameUUIDFromBytes(id.getBytes());
+        }
     }
 }

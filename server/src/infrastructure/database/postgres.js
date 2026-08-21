@@ -1,5 +1,6 @@
 import "dotenv/config";
 import pg from 'pg';
+import { execSync } from 'child_process';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import pkg from '@prisma/client';
@@ -23,6 +24,18 @@ const prisma = new PrismaClient({ adapter });
 
 export const connectPostgres = async () => {
   try {
+    // 🛡️ UNIVERSAL PLATFORM MIGRATION GUARD
+    // Auto-executes pending Prisma migrations on production startup regardless of hosting provider
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        logger.info('🚀 [PostgreSQL] Verifying production database migrations...');
+        execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+        logger.info('✅ [PostgreSQL] Database migrations up to date.');
+      } catch (migErr) {
+        logger.error('⚠️ [PostgreSQL Migration Warning]:', migErr.message);
+      }
+    }
+
     const maskedUrl = process.env.DATABASE_URL?.replace(/:([^:@]+)@/, ':****@');
     logger.debug(`[PostgreSQL] Attempting connection to: ${maskedUrl}`);
     // With adapters, we just test the pool connectivity

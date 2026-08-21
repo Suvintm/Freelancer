@@ -17,7 +17,7 @@ const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent 
 const TOOLS = [
   {
     id: 'youtube-dashboard',
-    title: 'YouTube Workspace',
+    title: 'YouTube Workspace.',
     description: 'Manage your connected YouTube channels, analyze views, and track growth metrics in real-time.',
     icon: Youtube,
     color: 'text-rose-500',

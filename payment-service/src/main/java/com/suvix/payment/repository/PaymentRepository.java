@@ -1,18 +1,19 @@
 package com.suvix.payment.repository;
 
 import com.suvix.payment.model.Payment;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface PaymentRepository extends MongoRepository<Payment, String> {
+public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
-    List<Payment> findByClientIdOrderByCreatedAtDesc(String clientId);
+    List<Payment> findByClientIdOrderByCreatedAtDesc(UUID clientId);
 
-    List<Payment> findByEditorIdOrderByCreatedAtDesc(String editorId);
+    List<Payment> findByEditorIdOrderByCreatedAtDesc(UUID editorId);
 
     Optional<Payment> findByRazorpayPaymentId(String razorpayPaymentId);
 

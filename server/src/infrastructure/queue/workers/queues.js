@@ -41,6 +41,17 @@ export const youtubeSyncQueue = createQueue("youtube-sync", {
 });
 
 /**
+ * Instagram Sync Queue
+ * Multi-platform creator post & reel thumbnail mirroring
+ */
+export const instagramSyncQueue = createQueue("instagram-sync", {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 4000 }, // 4s → 8s → 16s
+  removeOnComplete: { age: 300, count: 200 },
+  removeOnFail: { age: 86400, count: 50 },
+});
+
+/**
  * Media Processing Queue
  * Media is user-visible — keep some history, higher priority
  */
@@ -54,17 +65,41 @@ export const mediaQueue = createQueue("media-processing", {
 
 
 /**
- * Like Sync Queue
- * Periodically flushes likes from Redis to DB.
+ * Like Sync Queue has been removed.
+ * It is now handled by Node-Cron in cronManager.js to avoid BullMQ idle polling costs.
  */
-export const likeSyncQueue = createQueue("like-sync", {
-  attempts: Number(process.env.LIKE_SYNC_ATTEMPTS || 5),
-  backoff: { type: process.env.LIKE_SYNC_BACKOFF || "exponential", delay: 5000 },
-  removeOnComplete: { age: 3600, count: 50 },
-  removeOnFail: { age: 86400, count: 50 },
+
+/**
+ * videoProcessingQueue
+ * Used for async HLS transcoding failsafes and media cleanup.
+ */
+export const videoProcessingQueue = createQueue("video-processing", {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: { age: 3600, count: 500 }, // Keep for an hour
+    removeOnFail: { age: 86400, count: 100 },
 });
 
+/**
+ * analyticsQueue
+ * Used for non-blocking high-volume event processing (Views, Skips, etc.)
+ */
+export const analyticsQueue = createQueue("analytics", {
+    attempts: 1, // Analytical data is fire-and-forget
+    removeOnComplete: true,
+    removeOnFail: true,
+});
 
+/**
+ * commentProcessingQueue
+ * Used for syncing comment counts and dispatching notifications asynchronously.
+ */
+export const commentProcessingQueue = createQueue("comment-processing", {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: true,
+    removeOnFail: true,
+});
 
 // ─── HELPER: YOUTUBE SYNC ENQUEUER ────────────────────────────────────────────
 
@@ -112,30 +147,54 @@ export async function scheduleYouTubeSync(userId, channels, triggerReason = "man
   return job;
 }
 
-/**
- * Schedule a daily maintenance job for the YouTube Quota Manager.
- * Resets the quota at exactly Midnight Pacific Time (00:00:00).
- */
-export async function scheduleQuotaMaintenance() {
-  if (!youtubeSyncQueue) return;
+// ─── HELPER: INSTAGRAM SYNC ENQUEUER ──────────────────────────────────────────
 
-  // Add a repeatable job
-  await youtubeSyncQueue.add(
-    "quota-maintenance",
-    { type: "DAILY_RESET" },
+/**
+ * Schedule an Instagram sync with dual-mode dispatcher (Background BullMQ vs Foreground Direct Execution).
+ *
+ * @param {string} userId
+ * @param {object[]} accounts
+ * @param {string} triggerReason - "onboarding" | "manual" | "scheduled"
+ */
+export async function scheduleInstagramSync(userId, accounts, triggerReason = "manual") {
+  const isForeground =
+    process.env.INSTA_SYNC_MODE === "foreground" ||
+    process.env.YT_SYNC_MODE === "foreground" ||
+    process.env.SYNC_MODE === "foreground";
+
+  // If foreground mode or Redis is disconnected, execute directly in Node.js process
+  if (isForeground || !instagramSyncQueue) {
+    logger.info(`⚡ [Queue] Instagram sync running in foreground mode for user ${userId}`);
+    try {
+      const { persistInstagramContent } = await import(
+        "../../../domains/creator/services/instagramSyncService.js"
+      );
+      for (const acc of accounts || []) {
+        await persistInstagramContent(userId, acc, triggerReason);
+      }
+      return { success: true, mode: "foreground" };
+    } catch (fgErr) {
+      logger.error(`❌ [Queue] Foreground Instagram sync error: ${fgErr.message}`);
+      return null;
+    }
+  }
+
+  const jobId = `ig_sync_${userId}_${triggerReason}_${Date.now()}`;
+
+  const job = await instagramSyncQueue.add(
+    "sync-instagram",
+    { userId, accounts, triggerReason, requestedAt: Date.now() },
     {
-      repeat: {
-        pattern: "0 0 * * *", // Every day at Midnight
-        tz: "America/Los_Angeles"
-      },
-      priority: PRIORITY.HIGH, // Quota reset is important
-      removeOnComplete: true,
-      removeOnFail: true,
+      jobId,
+      priority: triggerReason === "onboarding" ? PRIORITY.HIGH : PRIORITY.MEDIUM,
     }
   );
 
-  logger.info("⏱️ [Queue] Daily YouTube Quota Reset scheduled (Midnight Pacific Time).");
+  logger.info(`📅 [Queue] Instagram Sync scheduled. JobId: ${jobId}`);
+  return job;
 }
+
+
 
 // ─── HELPER: MEDIA JOB ENQUEUER ───────────────────────────────────────────────
 
@@ -203,16 +262,7 @@ export const storyQueue = createQueue("story-processing", {
   removeOnFail: { age: 3600, count: 100 },
 });
 
-/**
- * Story Cleanup Queue
- * Handles deletion of expired stories.
- */
-export const storyCleanupQueue = createQueue("story-cleanup", {
-  attempts: 3,
-  backoff: { type: "exponential", delay: 2000 },
-  removeOnComplete: { age: 60, count: 500 },
-  removeOnFail: { age: 3600, count: 100 },
-});
+
 
 /**
  * Add a story processing job.

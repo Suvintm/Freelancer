@@ -21,6 +21,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import jwt from "jsonwebtoken";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -56,6 +57,9 @@ import {
   isValidEmail,
   isValidUsername,
 } from "../../../shared/utils/validation.js";
+import { verifyTurnstileToken } from "../utils/turnstile.js";
+import { sendOTPEmail } from "../../../infrastructure/email/email.client.js";
+import { eventBus } from "../../../shared/kernel/events.js";
 
 // ─── Cookie Options ────────────────────────────────────────────────────────
 const cookieOptions = {
@@ -123,11 +127,29 @@ export const refresh = asyncHandler(async (req, res) => {
   if (!storedData) {
     if (redisAvailable) {
       logger.warn(
-        `[SECURITY] Refresh token missing from Redis for user ${userId}. Session may have expired or was already rotated.`
+        `🚨 [SECURITY] REUSE DETECTED: Refresh token missing from Redis for user ${userId} (family: ${familyId}). Nuking token family!`
       );
+      // Nuke the entire token family on reuse
+      if (familyId) {
+        try {
+          const familyTokens = await redis.smembers(`token_family:${familyId}`);
+          const pipe = redis.pipeline();
+          if (familyTokens && familyTokens.length > 0) {
+            familyTokens.forEach((t) => pipe.del(`refresh_token:${t}`));
+          }
+          pipe.del(`token_family:${familyId}`);
+          if (userId) pipe.del(`user_sessions:${userId}`);
+          await pipe.exec();
+          logger.warn(
+            `🚨 [SECURITY] Nuked ${familyTokens?.length || 0} tokens in family ${familyId} for user ${userId}.`
+          );
+        } catch (nukeErr) {
+          logger.error(`Failed to nuke token family on reuse: ${nukeErr.message}`);
+        }
+      }
       throw new ApiError(
         401,
-        "Session expired or invalid. Please log in again."
+        "Security alert: Refresh token reuse detected. All active sessions have been terminated. Please log in again."
       );
     }
     if (!redisAvailable) {
@@ -213,7 +235,7 @@ export const refresh = asyncHandler(async (req, res) => {
 // ─── Login ─────────────────────────────────────────────────────────────────
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
 
   if (!email || !password || !isValidEmail(email)) {
     logger.debug(
@@ -225,14 +247,19 @@ export const login = asyncHandler(async (req, res) => {
     );
   }
 
+  const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
+  if (!isHuman) {
+    throw new ApiError(403, "Security check failed. Please refresh and try again.");
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
     include: USER_INCLUDE,
   });
 
-  if (!user) {
+  if (!user || user.deleted_at) {
     await trackFailedLogin(email);
-    throw new ApiError(401, "Invalid credentials.");
+    throw new ApiError(401, "Invalid credentials or account deactivated.");
   }
 
   if (user.is_banned) {
@@ -259,6 +286,24 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   await resetFailedLogin(email);
+
+  if (!user.is_email_verified) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const redisKey = `email_otp:${user.email.toLowerCase()}`;
+    try {
+      await redis.set(redisKey, otp, "EX", 15 * 60); // 15 minutes TTL
+      await sendOTPEmail(user.email, user.profile?.name || user.username || "User", otp);
+      logger.info(`📧 [LOGIN-OTP] Sent email verification code to ${user.email}`);
+    } catch (emailError) {
+      logger.error(`❌ [LOGIN-OTP] Failed to send email OTP: ${emailError.message}`);
+    }
+    throw new ApiError(
+      403,
+      "Email verification required. We sent a verification code to your email.",
+      true,
+      { requiresVerification: true, email: user.email }
+    );
+  }
 
   const deviceId = req.headers["x-device-id"] || null;
   const deviceName = req.headers["x-device-name"] || "Unknown Device";
@@ -339,6 +384,12 @@ export const login = asyncHandler(async (req, res) => {
   // Bust stale cache on fresh login
   await deleteCache(CacheKey.userProfile(user.id));
 
+  // Record last login timestamp asynchronously
+  prisma.user.update({
+    where: { id: user.id },
+    data: { last_login_at: new Date() },
+  }).catch((err) => logger.warn(`[AUTH] Could not update last_login_at: ${err.message}`));
+
   logger.info(
     `[SECURITY] Successful login for user ${user.id} (${email}). Family: ${familyId}`
   );
@@ -358,10 +409,62 @@ export const login = asyncHandler(async (req, res) => {
 // ─── Get Role Categories ───────────────────────────────────────────────────
 
 export const getRoles = asyncHandler(async (req, res) => {
+  const REDIS_CACHE_KEY = "cache:role_categories";
+  const CACHE_TTL_SECONDS = 4 * 60 * 60; // 4 Hours (14,400s)
+
+  // 1. Set CDN & Browser Cache-Control headers (4 hours max-age, 1-hour stale-while-revalidate)
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=14400, s-maxage=14400, stale-while-revalidate=3600"
+    );
+  } else {
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+  }
+
+  // 2. Try Redis Cache Hit
+  try {
+    if (redisAvailable) {
+      const cached = await redis.get(REDIS_CACHE_KEY);
+      if (cached) {
+        res.setHeader("X-Cache", "HIT");
+        return res.status(200).json({ success: true, categories: JSON.parse(cached) });
+      }
+    }
+  } catch (err) {
+    logger.warn(`⚠️ [CACHE-WARN] Failed to read role categories from Redis: ${err.message}`);
+  }
+
+  // 3. Cache Miss: Query Database
   const categories = await prisma.roleCategory.findMany({
-    include: { subCategories: true },
-    orderBy: { name: "asc" },
+    where: { is_active: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      icon: true,
+      maps_to_role: true,
+      description: true,
+      info: true,
+      display_order: true,
+    },
+    orderBy: { display_order: "asc" },
   });
+
+  // 4. Save to Redis Cache with 5-minute TTL
+  try {
+    if (redisAvailable && categories?.length > 0) {
+      await redis.set(REDIS_CACHE_KEY, JSON.stringify(categories), "EX", 300);
+    }
+  } catch (err) {
+    logger.warn(`⚠️ [CACHE-WARN] Failed to store role categories into Redis: ${err.message}`);
+  }
+
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("X-Cache", "MISS");
   res.status(200).json({ success: true, categories });
 });
 
@@ -377,32 +480,82 @@ export const getYouTubeChannels = asyncHandler(async (req, res) => {
 
   if (channels && channels.length > 0) {
     try {
-      const channelIds = channels.map((ch) => ch.channelId);
-      const ytModel =
-        prisma.youtubeProfile ||
-        prisma.youTubeProfile ||
-        prisma.youtubeProfiles;
+      const channelIds = channels.map((ch) => String(ch.channelId || '').trim()).filter(Boolean);
+      logger.info(`🔍 [YT-GUARD] Checking claimed status for channelIds: ${JSON.stringify(channelIds)}`);
+      
+      const claimedChannels = await prisma.youTubeChannel.findMany({
+        where: {
+          OR: channelIds.map((id) => ({
+            channel_id: { equals: id, mode: "insensitive" },
+          })),
+        },
+        select: { channel_id: true, channel_name: true },
+      });
+      
+      const claimedSet = new Set(claimedChannels.map((p) => String(p.channel_id || '').trim().toLowerCase()));
+      logger.info(`🔍 [YT-GUARD] Claimed channels found in DB: ${claimedChannels.length} (${JSON.stringify(claimedChannels)})`);
 
-      if (!ytModel) {
-        channels.forEach((ch) => (ch.isClaimed = false));
-      } else {
-        const existingProfiles = await ytModel.findMany({
-          where: { channel_id: { in: channelIds } },
-          select: { channel_id: true },
-        });
-        const claimedSet = new Set(existingProfiles.map((p) => p.channel_id));
-        channels.forEach((ch) => {
-          ch.isClaimed = claimedSet.has(ch.channelId);
-        });
-      }
+      channels.forEach((ch) => {
+        const cleanId = String(ch.channelId || '').trim().toLowerCase();
+        ch.isClaimed = claimedSet.has(cleanId);
+        logger.info(`🔍 [YT-GUARD] Channel ${ch.channelName} (${cleanId}) -> isClaimed: ${ch.isClaimed}`);
+      });
     } catch (ytError) {
-      logger.error(`⚠️ [YT-GUARD] Duplicate check failed: ${ytError.message}`);
+      logger.error(`⚠️ [YT-GUARD] Duplicate check failed: ${ytError.message}`, { stack: ytError.stack });
       channels.forEach((ch) => (ch.isClaimed = false));
     }
   }
 
-  res.status(200).json({ success: true, channels });
+  // 🛡️ Fetch Google profile info (email, name, picture) if available from OAuth token
+  let googleUser = null;
+  try {
+    const userinfoRes = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 4000,
+    });
+    if (userinfoRes.data?.email) {
+      googleUser = {
+        email: userinfoRes.data.email,
+        name: userinfoRes.data.name || null,
+        picture: userinfoRes.data.picture || null,
+        googleId: userinfoRes.data.sub || null,
+      };
+    }
+  } catch (userInfoErr) {
+    logger.debug(`[YT-OAUTH] Userinfo not available from token: ${userInfoErr.message}`);
+  }
+
+  // 🛡️ Generate a signed discovery token proving these channels were legitimately discovered via Google OAuth
+  const channelIds = (channels || []).map((ch) => ch.channelId);
+  const discoveryToken = jwt.sign(
+    { channelIds, type: "youtube_discovery" },
+    process.env.JWT_SECRET || "suvix_dev_secret",
+    { expiresIn: "1h" }
+  );
+
+  res.status(200).json({ success: true, channels, discoveryToken, googleUser });
 });
+
+// ─── Get Instagram Accounts (for signup) ──────────────────────────────────
+export const getInstagramAccounts = asyncHandler(async (req, res) => {
+  const { accessToken } = req.body;
+  if (!accessToken || typeof accessToken !== "string") {
+    throw new ApiError(400, "Instagram accessToken is required.");
+  }
+
+  try {
+    // Import dynamically to avoid circular dependencies if any
+    const { instagramApiService } = await import("../../creator/services/instagramApiService.js");
+    const account = await instagramApiService.fetchCreatorProfile(accessToken);
+    
+    // As it returns a single account, wrap it in an array to match the frontend expectations
+    res.status(200).json({ success: true, accounts: [account] });
+  } catch (error) {
+    logger.error(`[Insta-Auth] Failed to fetch accounts: ${error.message}`);
+    throw new ApiError(400, error.message || "Failed to fetch Instagram accounts.");
+  }
+});
+
 
 // ─── Atomic Register ──────────────────────────────────────────────────────
 
@@ -416,34 +569,24 @@ export const registerFull = asyncHandler(async (req, res) => {
     motherTongue,
     country,
     categoryId,
-    roleSubCategoryIds,
+    categorySlug,
     youtubeChannels,
+    instagramAccounts,
+    skills,
+    softwareUsed,
+    specializations,
+    companyName,
+    industry,
+    designation,
     pushToken,
     platform,
     website,
+    turnstileToken,
   } = req.body;
 
-  let parsedSubIds = roleSubCategoryIds;
-  if (typeof roleSubCategoryIds === "string" && roleSubCategoryIds) {
-    try {
-      parsedSubIds = JSON.parse(roleSubCategoryIds);
-    } catch {
-      parsedSubIds = [roleSubCategoryIds];
-    }
-  }
-
-  let finalSubIds = parsedSubIds || [];
-  if (
-    finalSubIds.length > 0 &&
-    !finalSubIds[0].match(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    )
-  ) {
-    const dbSubs = await prisma.roleSubCategory.findMany({
-      where: { slug: { in: finalSubIds } },
-      select: { id: true },
-    });
-    finalSubIds = dbSubs.map((s) => s.id);
+  const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
+  if (!isHuman) {
+    throw new ApiError(403, "Security check failed. Please refresh and try again.");
   }
 
   let parsedYoutubeChannels = youtubeChannels;
@@ -455,7 +598,45 @@ export const registerFull = asyncHandler(async (req, res) => {
     }
   }
 
-  if (!categoryId) throw new ApiError(400, "categoryId is required.");
+  let parsedInstagramAccounts = instagramAccounts;
+  if (typeof instagramAccounts === "string" && instagramAccounts) {
+    try {
+      parsedInstagramAccounts = JSON.parse(instagramAccounts);
+    } catch {
+      parsedInstagramAccounts = [];
+    }
+  }
+
+  let parsedSkills = skills;
+  if (typeof skills === "string" && skills) {
+    try {
+      parsedSkills = JSON.parse(skills);
+    } catch {
+      parsedSkills = [skills];
+    }
+  }
+
+  let parsedSoftwareUsed = softwareUsed;
+  if (typeof softwareUsed === "string" && softwareUsed) {
+    try {
+      parsedSoftwareUsed = JSON.parse(softwareUsed);
+    } catch {
+      parsedSoftwareUsed = [softwareUsed];
+    }
+  }
+
+  let parsedSpecializations = specializations;
+  if (typeof specializations === "string" && specializations) {
+    try {
+      parsedSpecializations = JSON.parse(specializations);
+    } catch {
+      parsedSpecializations = [specializations];
+    }
+  }
+
+  if (!categoryId && !categorySlug && !req.body.role) {
+    throw new ApiError(400, "categoryId or categorySlug is required.");
+  }
 
   const userData = {
     fullName,
@@ -466,19 +647,40 @@ export const registerFull = asyncHandler(async (req, res) => {
     motherTongue,
     country,
     categoryId,
-    roleSubCategoryIds: finalSubIds,
+    categorySlug,
     youtubeChannels: Array.isArray(parsedYoutubeChannels)
       ? parsedYoutubeChannels
       : [],
+    instagramAccounts: Array.isArray(parsedInstagramAccounts)
+      ? parsedInstagramAccounts
+      : [],
+    skills: Array.isArray(parsedSkills) ? parsedSkills : [],
+    softwareUsed: Array.isArray(parsedSoftwareUsed) ? parsedSoftwareUsed : [],
+    specializations: Array.isArray(parsedSpecializations) ? parsedSpecializations : [],
+    companyName,
+    industry,
+    designation,
     pushToken,
     platform,
     website,
     profilePictureBuffer: req.file ? req.file.buffer : null,
     googleId: req.body.googleId || null,
     authProvider: req.body.authProvider || "local",
+    role: req.body.role || null,
+    discoveryToken: req.body.discoveryToken || null,
   };
 
   const userWithProfile = await registerService(userData);
+  
+  const isGoogle = userData.authProvider === "google";
+  if (!isGoogle) {
+    return res.status(201).json({
+      success: true,
+      requiresVerification: true,
+      email: userWithProfile.email,
+      message: "Verification code sent to your email."
+    });
+  }
 
   const familyId = crypto.randomUUID();
   const deviceId = req.headers["x-device-id"] || null;
@@ -522,7 +724,9 @@ export const registerFull = asyncHandler(async (req, res) => {
     token: accessToken,
     refreshToken,
     accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
-    ytSyncMode: process.env.YT_SYNC_MODE || 'background',
+    syncMode: process.env.SYNC_MODE || process.env.YT_SYNC_MODE || process.env.INSTA_SYNC_MODE || 'foreground',
+    ytSyncMode: process.env.YT_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
+    instaSyncMode: process.env.INSTA_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
   });
 });
 
@@ -602,6 +806,7 @@ export const checkUsername = asyncHandler(async (req, res) => {
   const { username } = req.params;
   const exists = await prisma.userProfile.findUnique({
     where: { username: username.toLowerCase().trim() },
+    select: { id: true },
   });
   res.status(200).json({ success: true, available: !exists });
 });
@@ -758,4 +963,155 @@ export const validateVault = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, validIds: existingUsers.map((u) => u.id) });
+});
+
+// ─── Verify Email ─────────────────────────────────────────────────────────
+
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new ApiError(400, "Email and OTP verification code are required.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const attemptsKey = `email_otp_attempts:${normalizedEmail}`;
+  const redisKey = `email_otp:${normalizedEmail}`;
+
+  // Check attempt limiter
+  const currentAttempts = parseInt((await redis.get(attemptsKey)) || "0", 10);
+  if (currentAttempts >= 5) {
+    await redis.del(redisKey);
+    throw new ApiError(429, "Too many failed attempts. Please request a new verification code.");
+  }
+
+  const storedOtp = await redis.get(redisKey);
+
+  if (!storedOtp || storedOtp !== String(otp).trim()) {
+    await redis.set(attemptsKey, String(currentAttempts + 1), "EX", 15 * 60);
+    throw new ApiError(400, "Invalid or expired verification code.");
+  }
+
+  // OTP verified, remove OTP and attempt counter
+  await redis.del(redisKey);
+  await redis.del(attemptsKey);
+
+  // Update user verified state
+  const updatedUser = await prisma.user.update({
+    where: { email: normalizedEmail },
+    data: { is_email_verified: true, email_verified_at: new Date() },
+    include: USER_INCLUDE,
+  });
+
+  // Bust the cache so subsequent requests don't think they are still unverified
+  await deleteCache(CacheKey.userProfile(updatedUser.id));
+
+  // Trigger welcome email since they are verified now!
+  eventBus.publish('user.registered', {
+    userId: updatedUser.id,
+    email: updatedUser.email,
+  });
+
+  // Create session for them so they are logged in immediately after verification
+  const familyId = crypto.randomUUID();
+  const deviceId = req.headers["x-device-id"] || null;
+  const deviceName = req.headers["x-device-name"] || "Unknown Device";
+  const { accessToken, refreshToken } = generateUserTokens(
+    updatedUser,
+    familyId,
+    deviceId
+  );
+  const hashedToken = hashToken(refreshToken);
+
+  const sessionData = JSON.stringify({
+    userId: updatedUser.id,
+    familyId,
+    deviceId,
+    metadata: {
+      userAgent: req.headers["user-agent"] || "Mobile App",
+      ip: req.ip || req.connection.remoteAddress,
+      deviceName,
+      lastActive: new Date().toISOString(),
+    },
+  });
+
+  await redis
+    .pipeline()
+    .set(
+      `refresh_token:${hashedToken}`,
+      sessionData,
+      "EX",
+      REFRESH_TOKEN_TTL_SECONDS
+    )
+    .sadd(`user_sessions:${updatedUser.id}`, hashedToken)
+    .expire(`user_sessions:${updatedUser.id}`, REFRESH_TOKEN_TTL_SECONDS)
+    .exec();
+
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+  res.status(200).json({
+    success: true,
+    message: "Email verified successfully!",
+    user: formatAuthResponse(updatedUser),
+    token: accessToken,
+    refreshToken,
+    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+    syncMode: process.env.SYNC_MODE || process.env.YT_SYNC_MODE || process.env.INSTA_SYNC_MODE || 'foreground',
+    ytSyncMode: process.env.YT_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
+    instaSyncMode: process.env.INSTA_SYNC_MODE || process.env.SYNC_MODE || 'foreground',
+  });
+});
+
+// ─── Resend Verification Code ─────────────────────────────────────────────
+
+export const resendVerificationCode = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || !isValidEmail(email)) {
+    throw new ApiError(400, "A valid email address is required.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Find user first to ensure they exist and are not already verified
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: { profile: true },
+  });
+
+  if (!user) {
+    throw new ApiError(404, "No account found with this email.");
+  }
+
+  if (user.is_email_verified) {
+    throw new ApiError(400, "Email is already verified.");
+  }
+
+  // Rate limit resend requests per email using Redis (limit: 1 resend per 60 seconds)
+  const resendLimitKey = `resend_limit:${normalizedEmail}`;
+  const isRateLimited = await redis.get(resendLimitKey);
+  if (isRateLimited) {
+    throw new ApiError(429, "Please wait 60 seconds before requesting a new verification code.");
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const redisKey = `email_otp:${normalizedEmail}`;
+
+  await redis
+    .pipeline()
+    .set(redisKey, otp, "EX", 15 * 60) // 15 mins expiry
+    .set(resendLimitKey, "1", "EX", 60) // 60s cooldown limit
+    .exec();
+
+  try {
+    await sendOTPEmail(user.email, user.profile?.name || user.username || "User", otp);
+    logger.info(`📧 [RESEND-OTP] Sent email verification code to ${user.email}`);
+  } catch (emailError) {
+    logger.error(`❌ [RESEND-OTP] Failed to send email OTP: ${emailError.message}`);
+    throw new ApiError(500, "Failed to send email verification code. Please try again later.");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "A new verification code has been sent to your email.",
+  });
 });

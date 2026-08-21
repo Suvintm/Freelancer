@@ -1,5 +1,5 @@
 import prisma from "../../../infrastructure/database/postgres.js";
-import { commentProcessingQueue } from "../../../infrastructure/queue/queues.config.js";
+import { commentProcessingQueue } from "../../../infrastructure/queue/workers/queues.js";
 import { ApiError } from "../../../shared/middleware/error-handler.middleware.js";
 
 class CommentService {

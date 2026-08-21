@@ -1,23 +1,36 @@
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
-import { ProfileDispatcher } from '../components/profile/ProfileDispatcher';
+import { ProfileDispatcher, type UserRole } from '../components/profile/ProfileDispatcher';
 
 export default function Profile() {
   const user = useSelector(selectUser);
 
-  // In a real scenario, map user.primaryRole.category to the internal roles
-  // Here we assume it's 'yt_creator' for testing if no specific role matched yet
-  let role: 'yt_creator' | 'gym' | 'singer' | 'default' = 'default';
-  
-  if (user?.primaryRole?.category === 'yt_influencer' || user?.youtubeProfile?.length) {
-    role = 'yt_creator';
-  } else if (user?.primaryRole?.category === 'fitness_expert') {
-    role = 'gym';
+  const roleStr = (user?.role || '').toLowerCase();
+  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
+  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
+
+  const isCreator =
+    roleStr === 'creator' ||
+    roleStr === 'yt_influencer' ||
+    categoryStr === 'creator' ||
+    categoryStr === 'youtube creator' ||
+    categoryStr === 'yt_influencer' ||
+    categorySlugStr === 'creator' ||
+    categorySlugStr === 'yt_influencer' ||
+    !!user?.creatorProfile ||
+    !!user?.youtubeProfile?.length;
+
+  let activeRole: UserRole = 'default';
+
+  if (isCreator) {
+    activeRole = 'yt_creator';
+  } else if (categoryStr.includes('fitness') || categorySlugStr.includes('fitness')) {
+    activeRole = 'gym';
   }
 
   return (
     <div className="w-full">
-      <ProfileDispatcher role={role} viewType="main" data={user} />
+      <ProfileDispatcher role={activeRole} viewType="main" data={user} />
     </div>
   );
 }

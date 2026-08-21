@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Loader2 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
-import { MdStar, MdChevronRight, MdCheckCircle } from 'react-icons/md';
+import { MdChevronRight } from 'react-icons/md';
 import defaultProfile from '../assets/defaultprofile.png';
+import { VerifiedBadge } from '../components/ui/VerifiedBadge';
 import { FeatureGallery } from '../components/home/FeatureGallery';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
@@ -242,7 +243,7 @@ export default function Home() {
               </div>
 
               {/* Heading */}
-              <h1 className={`text-4xl lg:text-5xl font-black tracking-tight leading-tight ${
+              <h1 className={`font-banner text-4xl lg:text-5xl font-normal tracking-tight leading-tight ${
                 isDarkMode 
                   ? 'text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]' 
                   : 'text-zinc-950'
@@ -341,9 +342,9 @@ export default function Home() {
         </div>
       )}
 
-      <div className="relative w-full max-w-3xl mx-auto pb-20 pt-1 lg:pt-4">
+      <div className="relative w-full pb-20">
         {needsSync && !showSyncOverlay && (
-          <div className="w-full mb-4 px-2">
+          <div className="w-full max-w-3xl mx-auto mb-4 px-4 pt-4">
             <div className={`p-4 rounded-2xl border border-orange-500/30 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-lg ${
               isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'
             }`}>
@@ -382,38 +383,25 @@ export default function Home() {
           }
         ` }} />
       
-      {/* ─── DESKTOP TOP VIEW LAYOUT ─── */}
-      <div className="hidden lg:flex flex-col gap-8 pb-4">
-        {/* Logo, Widget, & Banner Container Group (To bypass parent gap-8 and remove whitespace) */}
-        <div className="flex flex-col gap-0 w-full">
-          {/* Logo Section */}
-          <div className="w-full px-2 mt-0 mb-1 flex items-center justify-between relative z-30">
-            <img 
-              src={isDarkMode ? darkLogo : lightLogo} 
-              alt="SuviX Official Logo" 
-              className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity" 
-            />
-            <span className="text-[10px] font-bold text-text-muted bg-border-secondary/40 border border-border-main/60 px-2.5 py-1 rounded-full uppercase tracking-wider select-none">Beta</span>
-          </div>
+      {/* ─── 1. FULL-WIDTH BANNER SECTION (Takes 100% width of central column with zero outer space) ─── */}
+      <section className="w-full">
+        <UnifiedBanner />
+      </section>
 
-          {/* 1. Banner Section (Full Width Stacked) */}
-          <section className="w-full">
-            <UnifiedBanner />
-          </section>
-        </div>
-
-        {/* 2 & 3. Stories and Feature Gallery (Side by Side) */}
+      {/* ─── 2. LOWER FEED & STORIES CONTENT WRAPPER ─── */}
+      <div className="max-w-4xl mx-auto px-4 lg:px-6 pt-6 flex flex-col gap-8">
+        {/* Stories & Feature Gallery (Side by Side on Desktop, Stacked on Mobile) */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center w-full">
-          {/* Stories Section (60%) */}
+          {/* Stories Section (Horizontal Carousel across all devices) */}
           <section className="w-full lg:w-[60%]">
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex gap-3.5 sm:gap-4 overflow-x-auto pb-2 sm:pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
               {stories.map((story) => (
                 <div 
                   key={story._id} 
                   onClick={() => navigate(`/stories/${story._id}`)}
-                  className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group relative"
+                  className="flex flex-col items-center gap-1.5 sm:gap-2 flex-shrink-0 cursor-pointer group relative"
                 >
-                  <div className="relative w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
+                  <div className="relative w-[56px] h-[56px] sm:w-[62px] sm:h-[62px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
                     <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
                       <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
                     </svg>
@@ -423,153 +411,92 @@ export default function Home() {
                       </div>
                     </div>
                     {story.isUser && (
-                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[6px] border-2 border-container w-[18px] h-[18px] flex items-center justify-center shadow-lg">
-                        <Plus size={10} className="text-white" strokeWidth={4} />
+                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[6px] border-2 border-container w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex items-center justify-center shadow-lg">
+                        <Plus size={9} className="text-white" strokeWidth={4} />
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 max-w-[60px] lg:max-w-[68px]">
-                    <span className={`text-[10px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                    {story.verifiedColor && <VerifiedDecagram size={10} color={story.verifiedColor} className="flex-shrink-0" />}
+                  <div className="flex items-center gap-1 max-w-[56px] sm:max-w-[62px] lg:max-w-[68px]">
+                    <span className={`text-[9.5px] sm:text-[10px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
+                    {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* Feature Gallery (40%) */}
+          {/* Feature Gallery */}
           <section className="w-full lg:w-[40%] -mt-2 lg:mt-0">
             <FeatureGallery paused={isScrolling} />
           </section>
         </div>
-      </div>
 
-      {/* ─── MOBILE SPLIT LAYOUT ─── */}
-      <div className="relative lg:hidden mt-2 lg:mt-0 min-h-[310px]">
-        
-        {/* Left Column: Stacked Banner & Feature Gallery (Full width, behind the stories sidebar) */}
-        <div className="w-full flex flex-col gap-1">
-          <div className="w-full h-[226px] pr-[84px]">
-            <UnifiedBanner className="h-full" />
-          </div>
-          <div className="w-full">
-            <FeatureGallery paused={isScrolling} isMobileLayout={true} />
-          </div>
-        </div>
-
-        {/* Floating Right Column: Vertical Stories Sidebar (Instagram style) */}
-        <div className="absolute right-0 top-2 z-20 flex-shrink-0">
-          <div className={`
-            w-[84px] h-[310px] flex flex-col items-center py-4 px-1 rounded-l-[40px] rounded-r-none overflow-y-auto scrollbar-hide gap-4.5 overscroll-y-contain touch-pan-y will-change-scroll shadow-lg
-            ${isDarkMode ? 'bg-[#242526]/90 backdrop-blur-md' : 'bg-[#C8CBD0]/90 backdrop-blur-md'}
-          `}>
-            {stories.map((story) => (
-              <motion.div 
-                key={story._id} 
-                onClick={() => navigate(`/stories/${story._id}`)}
-                whileTap={{ scale: 0.92, rotate: story.isUser ? 0 : [0, -3, 3, 0] }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group relative"
+        {/* 4. Unified Feed */}
+        <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
+          {/* Feed Type Tabs */}
+          <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
+            {(['all', 'posts', 'reels', 'youtube'] as TabType[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setVisibleCount(5); }}
+                className={`text-sm font-bold capitalize pb-3 border-b-[3px] transition-all flex-shrink-0 ${
+                  activeTab === tab
+                    ? 'border-[#7c42f8] text-[#7c42f8] dark:text-[#9e76f9]'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                }`}
               >
-                <div className="relative w-[56px] h-[56px] flex items-center justify-center">
-                  <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
-                    <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
-                  </svg>
-                  <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-white' : 'bg-black') : (isDarkMode ? 'bg-white/20' : 'bg-black/20')}`}>
-                    <div className="w-full h-full rounded-full bg-container p-[2px]">
-                      <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
-                    </div>
-                  </div>
-                  {story.isUser && (
-                    <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[5px] border-2 border-container w-[16px] h-[16px] flex items-center justify-center shadow-lg">
-                      <Plus size={9} className="text-white" strokeWidth={4} />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 max-w-[56px]">
-                  <span className={`text-[8.5px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                  {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
-                </div>
-              </motion.div>
+                {tab === 'all' ? 'For You' : tab}
+              </button>
             ))}
           </div>
-          
-          {/* Floating Rotated Plus Icon */}
-          <div className="absolute -top-3 left-3 transform -rotate-12 z-10 pointer-events-none">
-            <Plus 
-              size={24} 
-              strokeWidth={3.5} 
-              className={`${isDarkMode ? 'text-white/90' : 'text-zinc-500/80'} drop-shadow-sm`} 
-            />
-          </div>
-        </div>
+
+          {isLoading ? (
+            <div className="w-full pb-20">
+              {[1, 2, 3].map((i) => (
+                <FeedPostSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6 lg:gap-8 w-full">
+              {feedPosts.slice(0, visibleCount).map((post, idx) => {
+                const isActive = activePostId === post.id;
+                let postEl = null;
+                if (post.contentType === 'REEL') {
+                  postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+                } else if (post.contentType === 'YOUTUBE_POST') {
+                  postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} />;
+                } else if (post.contentType === 'POLL') {
+                  postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
+                } else {
+                  postEl = <RealFeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
+                }
+
+                return (
+                  <Fragment key={post.id}>
+                    {postEl}
+                    {idx === 0 && <SuggestedEditorsCarousel index={idx} />}
+                  </Fragment>
+                );
+              })}
+
+              {visibleCount < feedPosts.length && (
+                <div className="w-full flex justify-center py-6">
+                  <button 
+                    onClick={() => setVisibleCount(prev => prev + 5)}
+                    className={`px-8 py-3 rounded-full font-semibold text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm ${
+                      isDarkMode 
+                        ? 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700' 
+                        : 'bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200'
+                    }`}
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </div>
-
-      {/* 4. Unified Feed */}
-      <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
-        {/* Feed Type Tabs */}
-        <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
-          {(['all', 'posts', 'reels', 'youtube'] as TabType[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setVisibleCount(5); }}
-              className={`text-sm font-bold capitalize pb-3 border-b-[3px] transition-all flex-shrink-0 ${
-                activeTab === tab
-                  ? 'border-[#7c42f8] text-[#7c42f8] dark:text-[#9e76f9]'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              {tab === 'all' ? 'For You' : tab}
-            </button>
-          ))}
-        </div>
-
-        {isLoading ? (
-          <div className="w-full pb-20">
-            {[1, 2, 3].map((i) => (
-              <FeedPostSkeleton key={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6 lg:gap-8 w-full">
-            {feedPosts.slice(0, visibleCount).map((post, idx) => {
-              const isActive = activePostId === post.id;
-              let postEl = null;
-              if (post.contentType === 'REEL') {
-                postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.contentType === 'YOUTUBE_POST') {
-                postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
-              } else if (post.contentType === 'POLL') {
-                postEl = <RealFeedPoll key={post.id} post={post} isDarkMode={isDarkMode} />;
-              } else {
-                postEl = <RealFeedPost key={post.id} post={post} isDarkMode={isDarkMode} />;
-              }
-
-              return (
-                <Fragment key={post.id}>
-                  {postEl}
-                  {idx === 0 && <SuggestedEditorsCarousel index={idx} />}
-                </Fragment>
-              );
-            })}
-
-            {visibleCount < feedPosts.length && (
-              <div className="w-full flex justify-center py-6">
-                <button 
-                  onClick={() => setVisibleCount(prev => prev + 5)}
-                  className={`px-8 py-3 rounded-full font-semibold text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm ${
-                    isDarkMode 
-                      ? 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700' 
-                      : 'bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200'
-                  }`}
-                >
-                  Load More
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
       </div>
       <AnimatePresence>
         {storyId && (
@@ -580,7 +507,7 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
-    </div>
+      </div>
     </Fragment>
   );
 }
@@ -603,7 +530,8 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'VFX Specialist',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
     rating: '4.9',
-    reviews: '82'
+    reviews: '82',
+    isVerified: true
   },
   {
     id: 'ed-2',
@@ -611,7 +539,8 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'Cinematic Colorist',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
     rating: '5.0',
-    reviews: '120'
+    reviews: '120',
+    isVerified: false
   },
   {
     id: 'ed-3',
@@ -619,15 +548,17 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'Shorts Specialist',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
     rating: '4.8',
-    reviews: '95'
+    reviews: '95',
+    isVerified: true
   },
   {
     id: 'ed-4',
     name: 'Sarah Jenkins',
     role: 'Documentary Editor',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
-    rating: '5.0',
-    reviews: '43'
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
+    rating: '4.9',
+    reviews: '150',
+    isVerified: true
   },
   {
     id: 'ed-5',
@@ -635,15 +566,17 @@ const MOCK_SUGGESTED_EDITORS = [
     role: 'Gaming Video Editor',
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150',
     rating: '4.7',
-    reviews: '74'
+    reviews: '74',
+    isVerified: false
   },
   {
     id: 'ed-6',
     name: 'Chloe Miller',
-    role: 'Motion Graphics Designer',
+    role: 'Educational Creator',
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150',
     rating: '4.9',
-    reviews: '56'
+    reviews: '4.1K',
+    isVerified: true
   }
 ];
 
@@ -651,18 +584,20 @@ const MOCK_SUGGESTED_CREATORS = [
   {
     id: 'cr-1',
     name: 'Naveen Kumar',
-    role: 'Tech Reviews',
-    avatar: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=150',
-    rating: '4.9',
-    reviews: '124'
+    role: 'Tech Reviewer',
+    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=150',
+    rating: '5.0',
+    reviews: '856',
+    isVerified: true
   },
   {
     id: 'cr-2',
     name: 'Sneha Gowda',
-    role: 'Cooking & Lifestyle Vlog',
-    avatar: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=150',
+    role: 'Lifestyle Vlogger',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=150',
     rating: '4.8',
-    reviews: '92'
+    reviews: '1.2K',
+    isVerified: false
   },
   {
     id: 'cr-3',
@@ -670,15 +605,17 @@ const MOCK_SUGGESTED_CREATORS = [
     role: 'Travel Vlog',
     avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=150',
     rating: '5.0',
-    reviews: '215'
+    reviews: '215',
+    isVerified: true
   },
   {
     id: 'cr-4',
     name: 'Puneeth Raj',
-    role: 'Gaming Streamer',
-    avatar: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=150',
-    rating: '4.7',
-    reviews: '88'
+    role: 'Gaming Creator',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=150',
+    rating: '4.9',
+    reviews: '2.4K',
+    isVerified: true
   },
   {
     id: 'cr-5',
@@ -686,7 +623,8 @@ const MOCK_SUGGESTED_CREATORS = [
     role: 'Educational Content',
     avatar: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=150',
     rating: '4.9',
-    reviews: '106'
+    reviews: '106',
+    isVerified: false
   }
 ];
 
@@ -740,7 +678,8 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
             role: (p.roles && p.roles[0]) || p.category || (isEditor ? 'YouTube Creator' : 'Video Editor'),
             avatar: p.profilePicture || defaultProfile,
             rating: (4.6 + (idx % 5) * 0.1).toFixed(1),
-            reviews: String(45 + (idx % 10) * 12)
+            reviews: String(45 + (idx % 10) * 12),
+            isVerified: p.isVerified || false
           }));
           setProfiles(mapped);
         } else {
@@ -774,84 +713,79 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
   if (shiftedProfiles.length === 0) return null;
 
   return (
-    <div className={`w-full lg:-mx-8 lg:w-[calc(100%+4rem)] rounded-[32px] border p-6 space-y-5 my-4 transition-all duration-300 ${
-      isDarkMode 
-        ? 'bg-[#0d0d10] border-zinc-850 text-zinc-300' 
-        : 'bg-white border-zinc-200/60 shadow-[0_2px_16px_rgba(0,0,0,0.03)] text-zinc-800'
-    }`}>
+    <div className="w-full lg:-mx-8 lg:w-[calc(100%+4rem)] py-2 my-2 sm:my-4">
       {/* Title Header */}
-      <div className="flex items-center justify-between px-1">
-        <div>
-          <h4 className="text-[10.5px] font-bold uppercase tracking-[0.14em] opacity-95 text-text-main">
-            {isEditor ? '✨ Suggested Creators for you' : '✨ Suggested Editors for you'}
-          </h4>
-          <p className="text-[10px] text-text-muted mt-0.5">
-            {isEditor ? 'Top-rated YouTube creators ready to collaborate' : 'Top-rated video editors ready to collaborate'}
-          </p>
-        </div>
+      <div className="flex items-center justify-between px-2 mb-2 sm:mb-4">
+        <h4 className="text-sm sm:text-base font-bold text-text-main tracking-tight">
+          {isEditor ? 'Suggested Creators for you' : 'Suggested Editors for you'}
+        </h4>
         <button 
           onClick={() => navigate('/explore')}
-          className={`flex items-center gap-0.5 text-[10.5px] font-bold cursor-pointer transition-colors ${
+          className={`flex items-center gap-0.5 text-xs font-bold cursor-pointer transition-colors ${
             isDarkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-zinc-950'
           }`}
         >
           <span>See All</span>
-          <MdChevronRight size={15} />
+          <MdChevronRight size={16} />
         </button>
       </div>
 
+      <style>{`
+        @keyframes floatBubbleHorizontal {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+      `}</style>
+
       {/* Horizontal List Scrollable container */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-2.5 pt-1 scrollbar-hide snap-x px-1">
-        {shiftedProfiles.map((profileItem) => (
+      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto py-6 scrollbar-hide snap-x px-2">
+        {shiftedProfiles.map((profileItem, idx) => (
           <div
             key={profileItem.id}
-            className={`w-[155px] shrink-0 rounded-[22px] border p-4 flex flex-col items-center justify-between snap-center transition-all ${
-              isDarkMode 
-                ? 'bg-[#15151a]/40 border-zinc-800/80 hover:border-zinc-700 hover:bg-[#15151a]/60' 
-                : 'bg-zinc-50 border-zinc-150 hover:bg-white hover:shadow-md'
-            }`}
+            className="flex flex-col items-center group w-[80px] sm:w-[90px] shrink-0 snap-center"
+            style={{ 
+              animation: 'floatBubbleHorizontal 4s ease-in-out infinite',
+              animationDelay: `${idx * 0.4}s` 
+            }}
           >
             {/* Creator Avatar with mini verification tick */}
-            <div className="relative">
-              <img
-                src={profileItem.avatar || defaultProfile}
-                alt={profileItem.name}
-                className={`w-14 h-14 rounded-full object-cover border-2 ${
-                  isDarkMode ? 'border-zinc-800' : 'border-white shadow-sm'
-                }`}
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#7c42f8] rounded-full flex items-center justify-center border-2 border-container text-white">
-                <MdCheckCircle size={11} className="text-white fill-white" />
-              </span>
+            <div className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-[3px] shadow-lg mb-3 cursor-pointer transition-transform duration-300 group-hover:scale-110 ${
+              isDarkMode ? 'border-zinc-800 hover:border-white bg-zinc-900' : 'border-zinc-200 hover:border-black bg-white'
+            }`}>
+              <div className="w-full h-full rounded-full overflow-hidden">
+                <img
+                  src={profileItem.avatar || defaultProfile}
+                  alt={profileItem.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {profileItem.isVerified && (
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 z-10 overflow-hidden ${isDarkMode ? 'border-zinc-900 bg-zinc-900' : 'border-white bg-white'}`}>
+                  <VerifiedBadge isVerified={profileItem.isVerified} role={isEditor ? 'yt_influencer' : 'video_editor'} className="w-full h-full object-cover scale-110" />
+                </div>
+              )}
             </div>
 
             {/* Profile Info */}
-            <div className="text-center mt-3.5 w-full min-w-0">
-              <p className="text-[12.5px] font-bold text-text-main leading-tight truncate">
+            <div className="flex flex-col items-center w-full mb-2.5">
+              <h3 className="font-bold text-[11px] sm:text-xs text-center truncate w-full leading-tight">
                 {profileItem.name}
+              </h3>
+              <p className={`text-[9px] sm:text-[10px] text-center truncate w-full mt-0.5 leading-none ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                @{profileItem.name.toLowerCase().replace(/\s/g, '')}
               </p>
-              <p className="text-[9.5px] text-text-muted mt-1 leading-tight truncate">
-                {profileItem.role}
-              </p>
-            </div>
-
-            {/* Ratings */}
-            <div className="flex items-center justify-center gap-0.5 mt-2.5">
-              <MdStar size={12} className="text-amber-500 fill-amber-500" />
-              <span className="text-[10px] font-bold text-text-main leading-none">{profileItem.rating}</span>
-              <span className="text-[9px] text-text-muted leading-none">({profileItem.reviews})</span>
             </div>
 
             <button
               onClick={() => handleFollowToggle(profileItem.id)}
-              className={`w-full h-8 rounded-xl text-[10px] font-bold mt-4 active:scale-[0.98] transition-all cursor-pointer ${
+              className={`w-full py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-1.5 ${
                 user?.followingIds?.includes(profileItem.id)
                   ? isDarkMode
-                    ? 'bg-zinc-800/80 border border-zinc-700/80 text-zinc-400 hover:bg-zinc-850'
-                    : 'bg-zinc-200 border border-zinc-300 text-zinc-650 hover:bg-zinc-250'
+                    ? 'bg-zinc-800 text-zinc-400'
+                    : 'bg-zinc-200 text-zinc-600'
                   : isDarkMode 
-                    ? 'bg-white text-black hover:bg-zinc-100' 
-                    : 'bg-zinc-950 text-white hover:bg-zinc-900'
+                    ? 'bg-white text-black hover:bg-zinc-200' 
+                    : 'bg-black text-white hover:bg-zinc-800'
               }`}
             >
               {user?.followingIds?.includes(profileItem.id) ? 'Following' : 'Follow'}

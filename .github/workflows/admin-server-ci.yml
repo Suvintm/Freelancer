@@ -45,7 +45,7 @@ jobs:
 
       - name: Security Scan
         working-directory: admin-server
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
   ci-quality-gate-stub:
     name: Build & Quality

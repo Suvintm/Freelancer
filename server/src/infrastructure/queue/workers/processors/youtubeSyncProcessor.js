@@ -17,12 +17,7 @@ import quotaManager from '../../../../domains/creator/services/youtubeQuotaManag
  *  4. On per-channel failure → fail entire job (triggers BullMQ retry)
  */
 export default async function youtubeSyncProcessor(job) {
-  // ── SPECIAL CASE: Quota Maintenance ───────────────────────────────────────
-  if (job.name === "quota-maintenance") {
-    await quotaManager.checkAndReset();
-    sampledLogger.success("Daily Quota Reset completed via Heartbeat", { jobId: job.id });
-    return;
-  }
+
 
   const { userId, channelIds, triggerReason } = job.data;
   const channelsToSync = channelIds || []; // Fallback for safety

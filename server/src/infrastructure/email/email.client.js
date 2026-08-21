@@ -49,7 +49,7 @@ const createSmtpTransporter = () => {
  * Prioritizes Resend API (works on all cloud providers)
  * Falls back to SMTP if Resend is missing or fails
  */
-export const sendEmail = async ({ to, subject, html, text }) => {
+export const sendEmail = async ({ to, subject, html, text, templateId, templateData }) => {
   let resendTried = false;
 
   try {
@@ -61,13 +61,18 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       
       const fromEmail = process.env.EMAIL_FROM || "SuviX <onboarding@resend.dev>";
       
-      const { data, error } = await resend.emails.send({
+      const payload = {
         from: fromEmail,
         to: [to],
         subject,
-        html,
-        text: text || undefined,
-      });
+      };
+      if (templateId) {
+        payload.template = { id: templateId, variables: templateData || {} };
+      } else {
+        payload.html = html;
+        if (text) payload.text = text;
+      }
+      const { data, error } = await resend.emails.send(payload);
 
       if (error) {
         // If Resend fails (e.g. testing restriction), log and fall through to SMTP
@@ -352,7 +357,31 @@ export const sendOTPEmail = async (email, name, otp) => {
 
   const text = `Hi ${name}, your SuviX verification code is ${otp}. This code expires in 10 minutes.`;
   
-  return sendEmail({ to: email, subject, html, text });
+  const templateId = process.env.RESEND_OTP_TEMPLATE_ID;
+  
+  const digits = String(otp).split('');
+  const templateData = { 
+    name, 
+    otp, 
+    PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL || 'https://suvix.in/privacy',
+    USER_EMAIL: email,
+    OTP_CODE: otp,
+    OTP_DIGIT_1: digits[0] || '',
+    OTP_DIGIT_2: digits[1] || '',
+    OTP_DIGIT_3: digits[2] || '',
+    OTP_DIGIT_4: digits[3] || '',
+    OTP_DIGIT_5: digits[4] || '',
+    OTP_DIGIT_6: digits[5] || ''
+  };
+  
+  return sendEmail({
+    to: email,
+    subject,
+    html,
+    text,
+    templateId,
+    templateData,
+  });
 };
 
 export default { sendEmail, sendPasswordResetEmail, sendOTPEmail };

@@ -34,11 +34,11 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Render health check — must be public
-                .requestMatchers("/actuator/health").permitAll()
-                // Razorpay webhook — Razorpay calls this, not Node
+                // Health checks — must be public for Gateway & Container monitoring
+                .requestMatchers("/actuator/**", "/api/v1/payments/health").permitAll()
+                // Razorpay webhook — Razorpay calls this directly
                 .requestMatchers("/api/v1/payments/webhook").permitAll()
-                // All other requests require service secret
+                // All other payment requests require authentication
                 .anyRequest().authenticated()
             )
             .addFilterBefore(

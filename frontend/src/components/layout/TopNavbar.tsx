@@ -37,7 +37,7 @@ export const TopNavbar = () => {
         
         <div className="w-px h-6 bg-zinc-800/50 mx-2" />
         
-        <Button className="h-11 px-6 rounded-[20px] bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-black text-[13px] shadow-lg shadow-orange-500/10 gap-2 transition-transform active:scale-95">
+        <Button className="h-11 px-6 rounded-[20px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90 text-white font-black text-[13px] shadow-lg shadow-pink-500/10 gap-2 transition-transform active:scale-95 border-0">
           <Plus size={16} strokeWidth={4} />
           Create a post
         </Button>

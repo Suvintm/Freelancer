@@ -1,0 +1,35 @@
+name: "API Gateway: Production CI"
+
+on:
+  push:
+    branches: [main, master, feat/*]
+    paths:
+      - 'api-gateway/**'
+      - '.github/workflows/gateway-ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'api-gateway/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gateway-lint-and-build:
+    name: Nginx Validation & Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build API Gateway Docker Image
+        run: |
+          echo "🐳 Building API Gateway Docker container..."
+          docker build -t suvix-api-gateway:ci ./api-gateway
+
+      - name: Verify Container Image Integrity
+        run: |
+          echo "🔍 Testing Nginx image layers and file structure..."
+          docker run --rm suvix-api-gateway:ci ls -la /etc/ssl/gateway
+          echo "✅ Gateway container successfully built and validated!"

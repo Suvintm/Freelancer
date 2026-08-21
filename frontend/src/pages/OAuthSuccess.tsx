@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import LottieComponent from 'lottie-react';
 import securityLoaderAnimation from '../assets/lottie/security_loader.json';
 
@@ -8,7 +9,7 @@ const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent 
 import { useDispatch } from 'react-redux';
 import { useQueryClient } from '@tanstack/react-query';
 import { setAuth, setIsAddingAccount } from '../store/slices/authSlice';
-import { setTempSignupData } from '../store/slices/onboardingSlice';
+import { setTempSignupData, resetYoutubeDiscovery } from '../store/slices/onboardingSlice';
 import { store } from '../store';
 import type { RootState } from '../store';
 import { api } from '../api/client';
@@ -31,10 +32,27 @@ export default function OAuthSuccess() {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const exchangeStarted = useRef(false);
+  const codeRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const code = searchParams.get('code');
-    
+    // 🛡️ Support both URL fragment (#code=...) and query (?code=...)
+    if (!codeRef.current) {
+      let extractedCode = searchParams.get('code');
+      if (!extractedCode && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        extractedCode = hashParams.get('code');
+      }
+      if (extractedCode) {
+        codeRef.current = extractedCode;
+        // Clean URL fragment/query immediately so OTC never lingers in URL bar
+        if (window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    }
+
+    const code = codeRef.current;
+
     if (!code) {
       navigate('/login?error=no_code');
       return;
@@ -52,70 +70,132 @@ export default function OAuthSuccess() {
           return;
         }
 
-        // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-        const emailToCheck = response.data.socialProfile?.email || response.data.user?.email;
-        if (emailToCheck) {
-          const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com', 'uber@company.com'];
-          if (!allowedEmails.includes(emailToCheck.toLowerCase().trim())) {
-            navigate('/login?error=server_busy');
-            return;
+        // Read intent and state from tempSignupData, with synchronous sessionStorage recovery
+        let tempSignupData = (store.getState() as RootState).onboarding.tempSignupData;
+        if (!tempSignupData?.categoryId) {
+          try {
+            const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+            if (rawBackup) {
+              const parsed = JSON.parse(rawBackup);
+              if (parsed?.categoryId) {
+                dispatch(setTempSignupData(parsed));
+                tempSignupData = parsed;
+              }
+            }
+          } catch {
+            // ignore
           }
         }
 
-        // Read intent from tempSignupData (set before OAuth redirect)
-        // This is the ONLY source of truth — we never read stale role data here.
-        const onboardingStore = (store.getState() as RootState).onboarding;
-        const intent = onboardingStore.tempSignupData?.intent ?? 'login';
-        const categorySlug = onboardingStore.tempSignupData?.categorySlug;
+        const oauthIntent = sessionStorage.getItem('oauth_intent') || (window.location.search.includes('connect_youtube') ? 'connect_youtube' : null);
+        const isExplicitYoutubeConnect = Boolean(response.data.isExplicitYoutubeConnect) || oauthIntent === 'connect_youtube' || Boolean(sessionStorage.getItem('youtube_access_token'));
+        const intent = tempSignupData?.intent ?? (isExplicitYoutubeConnect ? 'register' : 'login');
+
+        // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
+        // ONLY trigger YouTube channel fetch if user explicitly clicked "Connect YouTube"
+        if (isExplicitYoutubeConnect) {
+          sessionStorage.removeItem('oauth_intent');
+          dispatch(resetYoutubeDiscovery());
+          const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
+          
+          if (tokenToUse) {
+            try {
+              sessionStorage.setItem('youtube_access_token', tokenToUse);
+            } catch {
+              // ignore
+            }
+          }
+
+          const profileData = response.data.socialProfile || (response.data.user ? {
+            name: response.data.user.name || response.data.user.fullName || '',
+            email: response.data.user.email,
+            picture: response.data.user.avatar || response.data.user.profile?.avatar || undefined,
+            googleId: response.data.user.google_id || '',
+          } : undefined);
+
+          if (profileData?.email) {
+            // ✅ CRITICAL: Read the ORIGINAL authMethod before overwriting.
+            // Email users connecting YouTube (YouTube Data API OAuth) must keep authMethod:'email'.
+            // Only Google-auth users should get authMethod:'google' and isSocialSignup:true.
+            const existingAuthMethod = tempSignupData?.authMethod;
+            const isGoogleAuthFlow = existingAuthMethod === 'google';
+
+            const profileUpdate = {
+              socialProfile: {
+                name: profileData.name || '',
+                email: profileData.email,
+                picture: profileData.picture || undefined,
+                googleId: profileData.googleId || '',
+              },
+              // Only overwrite these for actual Google-auth users, not email users
+              ...(isGoogleAuthFlow ? { isSocialSignup: true, authMethod: 'google' as const } : {}),
+            };
+            dispatch(setTempSignupData(profileUpdate));
+            try {
+              const raw = sessionStorage.getItem('suvix_temp_signup_data');
+              const current = raw ? JSON.parse(raw) : {};
+              sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({ ...current, ...profileUpdate }));
+            } catch {
+              // ignore
+            }
+          }
+
+          if (tokenToUse) {
+            navigate('/connect-socials', { state: { googleAccessToken: tokenToUse } });
+          } else {
+            navigate('/connect-socials?error=no_token');
+          }
+          return; // Early return prevents unwanted redirect to /role-selection or /home!
+        }
 
         if (response.data.isNewUser) {
           // ── NEW USER ────────────────────────────────────────────────────────
 
           if (intent === 'login') {
             // User clicked Google on the Login page but has no account.
-            // Do NOT create an account — send them to signup with an error.
             navigate('/login?error=no_account');
             return;
           }
 
-          // intent === 'register': proceed with onboarding
-          const { socialProfile, googleAccessToken } = response.data;
-          const tempSignupData = (store.getState() as RootState).onboarding.tempSignupData;
-          const isEmailFlow = tempSignupData?.authMethod === 'email';
+          // intent === 'register': Merge Google identity into tempSignupData.
+          // ✅ DO NOT call /auth/register-full here — that happens at CompleteProfile.
+          const { socialProfile } = response.data;
 
-          // Merge social profile into temp data (preserving role/intent already set)
-          dispatch(setTempSignupData({ 
-            isSocialSignup: !isEmailFlow,
-            ...(!isEmailFlow ? {
+          dispatch(setTempSignupData({
+            isSocialSignup: true,
+            authMethod: 'google' as const,
+            socialProfile: {
+              name: socialProfile.name,
+              email: socialProfile.email,
+              picture: socialProfile.picture,
+              googleId: socialProfile.googleId,
+            }
+          }));
+
+          try {
+            const raw = sessionStorage.getItem('suvix_temp_signup_data');
+            const current = raw ? JSON.parse(raw) : {};
+            sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify({
+              ...current,
+              isSocialSignup: true,
+              authMethod: 'google',
               socialProfile: {
                 name: socialProfile.name,
                 email: socialProfile.email,
                 picture: socialProfile.picture,
                 googleId: socialProfile.googleId,
               }
-            } : {})
-          }));
-
-          // YouTube flow: user selected yt_influencer role AND we have a Google token
-          if (categorySlug === 'yt_influencer' && googleAccessToken) {
-            navigate('/youtube-connect', { state: { googleAccessToken } });
-            return;
+            }));
+          } catch {
+            // ignore
           }
 
-          // All other roles: if they need subcategory selection, go there first
+          // All roles (Editor / Brand / Normal User / Creator post-niche) go to CompleteProfile
+          // where the SINGLE server call POST /auth/register-full happens with ALL data.
           const currentOnboardingStore = (store.getState() as RootState).onboarding;
           if (currentOnboardingStore.tempSignupData?.categoryId) {
-            // Check if this role requires subcategory
-            const needsSubcategory = categorySlug && 
-              !['direct_client', 'yt_influencer'].includes(categorySlug);
-            
-            if (needsSubcategory) {
-              navigate('/subcategory-selection');
-            } else {
-              navigate('/complete-profile');
-            }
+            navigate('/complete-profile');
           } else {
-            // No role data — send back to role selection to start fresh
             navigate('/role-selection');
           }
           return;
@@ -123,24 +203,15 @@ export default function OAuthSuccess() {
 
         // ── EXISTING USER ──────────────────────────────────────────────────
 
-        const { user, token, refreshToken, googleAccessToken } = response.data;
+        const { user, token, refreshToken } = response.data;
 
         // Set auth state first so the user is authenticated in Redux
         dispatch(setAuth({ user, token, refreshToken }));
         dispatch(setIsAddingAccount(false));
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
 
-        const oauthIntent = sessionStorage.getItem('oauth_intent');
-        if (oauthIntent === 'connect_youtube' && googleAccessToken) {
-          sessionStorage.removeItem('oauth_intent');
-          navigate('/youtube-connect', { state: { googleAccessToken } });
-          return;
-        }
-
-        if (intent === 'register' && categorySlug === 'yt_influencer' && googleAccessToken) {
-          // Edge case: existing user who is trying to re-link YouTube during onboarding
-          // Pass token to YouTubeConnect to show their claimed channels
-          navigate('/youtube-connect', { state: { googleAccessToken } });
+        if (!user.isOnboarded) {
+          navigate('/complete-profile');
           return;
         }
 
@@ -156,17 +227,43 @@ export default function OAuthSuccess() {
   }, [searchParams, navigate, dispatch, queryClient]);
 
   return (
-    <div className="h-screen w-full bg-black flex flex-col items-center justify-center gap-4">
-      <div className="w-48 h-48 flex items-center justify-center">
-        <Lottie 
-          animationData={securityLoaderAnimation} 
-          loop={true} 
-          style={{ width: '100%', height: '100%' }} 
-        />
-      </div>
-      <div className="text-center space-y-2 -mt-4">
-        <h2 className="text-2xl font-bold text-white uppercase tracking-widest font-display">Securing Session</h2>
-        <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">Finalizing your secure login...</p>
+    <div className="h-screen w-full bg-[#FAFAFA] flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
+      {/* Subtle Ambient Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
+
+      {/* Main Card Container */}
+      <div className="relative z-10 flex flex-col items-center max-w-sm w-full">
+        <div className="w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center">
+          <Lottie 
+            animationData={securityLoaderAnimation} 
+            loop={true} 
+            style={{ width: '100%', height: '100%' }} 
+          />
+        </div>
+
+        <div className="text-center space-y-1.5 mt-2">
+          <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight">
+            Signing you in
+          </h2>
+          <p className="text-xs sm:text-sm text-neutral-500 font-normal leading-relaxed">
+            Verifying your identity and setting up your workspace...
+          </p>
+        </div>
+
+        {/* Minimalist indeterminate loader bar */}
+        <div className="w-48 h-1 bg-neutral-200 rounded-full overflow-hidden mt-6 relative">
+          <motion.div
+            animate={{
+              x: ['-100%', '100%']
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.2,
+              ease: 'easeInOut'
+            }}
+            className="w-1/2 h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+          />
+        </div>
       </div>
     </div>
   );

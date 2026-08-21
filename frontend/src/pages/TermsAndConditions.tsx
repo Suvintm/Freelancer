@@ -8,7 +8,7 @@ export default function TermsAndConditions() {
   const { isDarkMode } = useTheme();
 
   return (
-    <div className={`min-h-[80vh] py-8 px-4 sm:px-6 lg:px-8 font-sans ${isDarkMode ? 'text-zinc-100' : 'text-zinc-950'}`}>
+    <div className={`min-h-[80vh] py-8 px-4 sm:px-6 lg:px-8 font-sans ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>
       <div className="max-w-3xl mx-auto space-y-12">
         {/* Header */}
         <div className="flex flex-col space-y-4">

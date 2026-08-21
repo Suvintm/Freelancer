@@ -1,36 +1,125 @@
-version: '3.8'
+# ============================================================
+# SUVIX PLATFORM - CORE ORCHESTRATION
+# Services: Nginx Gateway + Node.js Core Backend + Java Payment Service
+# ============================================================
 
+# ============================================================
+# NETWORKS (Multi-Tier Isolation)
+# ============================================================
+networks:
+  suvix-public:
+    driver: bridge
+  suvix-backend:
+    driver: bridge
+
+# ============================================================
+# PERSISTENT VOLUMES
+# ============================================================
+volumes:
+  certbot-data:
+    driver: local
+  certbot-www:
+    driver: local
+  nginx-logs:
+    driver: local
+
+# ============================================================
+# SERVICES
+# ============================================================
 services:
-  core-server:
-    build: ./server
+  # ==========================================================
+  # 🛡️ API GATEWAY (Nginx Reverse Proxy & Load Balancer)
+  # ==========================================================
+  nginx-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: suvix-gateway
+    hostname: nginx-gateway
+    restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot-www:/var/www/certbot
+      - nginx-logs:/var/log/nginx
+    networks:
+      - suvix-public
+      - suvix-backend
+    depends_on:
+      - node-server-1
+      - payment-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  # ==========================================================
+  # 🟢 NODE.JS CORE BACKEND
+  # ==========================================================
+  node-server-1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: suvix-node-1
+    hostname: node-server-1
+    restart: unless-stopped
+    expose:
+      - "5000"
     env_file: ./server/.env
     environment:
       - NODE_ENV=production
+      - PORT=5000
+      - TRUST_PROXY=true
+    networks:
+      - suvix-backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
-  admin-server:
-    build: ./admin-server
-    ports:
-      - "10000:10000"
-    env_file: ./admin-server/.env
+  # ==========================================================
+  # ☕ JAVA PAYMENT MICROSERVICE (Spring Boot)
+  # ==========================================================
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: suvix-payment
+    hostname: payment-service
+    restart: unless-stopped
+    expose:
+      - "8080"
+    env_file:
+      - ./server/.env
+      - ./payment-service/.env
     environment:
-      - NODE_ENV=production
-
-  main-frontend:
-    build: ./frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - core-server
-
-  admin-frontend:
-    build: ./admin-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - admin-server
-
-networks:
-  default:
-    name: suvix-network
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - SERVER_PORT=8080
+    networks:
+      - suvix-backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G

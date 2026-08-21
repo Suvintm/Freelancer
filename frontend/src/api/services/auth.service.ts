@@ -2,8 +2,8 @@ import { api } from '../client';
 import type { SignupPayload } from '../../store/slices/authSlice';
 
 export const authService = {
-  login: async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
+  login: async (email: string, password: string, turnstileToken: string) => {
+    const res = await api.post('/auth/login', { email, password, turnstileToken });
     return res.data; // { success, user, token, refreshToken, message }
   },
 
@@ -16,7 +16,7 @@ export const authService = {
       Object.entries(data as unknown as Record<string, unknown>).forEach(([key, value]) => {
         if (value === undefined || value === null) return;
         
-        if (key === 'youtubeChannels' || key === 'roleSubCategoryIds') {
+        if (key === 'youtubeChannels' || key === 'instagramAccounts' || key === 'roleSubCategoryIds') {
           formData.append(key, JSON.stringify(value));
         } else if (value instanceof File) {
           formData.append(key, value);
@@ -46,5 +46,15 @@ export const authService = {
   checkUsername: async (username: string) => {
     const res = await api.get(`/auth/check-username/${username}`);
     return res.data.available as boolean;
+  },
+
+  verifyEmail: async (email: string, otp: string) => {
+    const res = await api.post('/auth/verify-email', { email, otp });
+    return res.data;
+  },
+
+  resendVerificationCode: async (email: string) => {
+    const res = await api.post('/auth/resend-verification', { email });
+    return res.data;
   },
 };

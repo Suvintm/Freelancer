@@ -7,14 +7,18 @@ server:
   port: 8080
 
 spring:
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-      database: ${MONGODB_DB}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
 
   kafka:
-    bootstrap-servers: localhost:9092
-    # No SASL/SSL needed for local Docker Kafka
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      auto-startup: ${KAFKA_AUTO_STARTUP:false}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -43,7 +47,8 @@ management:
 
 logging:
   level:
-    com.suvix: DEBUG
-    org.springframework.kafka: INFO
+    com.suvix: INFO
+    org.apache.kafka: ERROR
+    org.springframework.kafka: ERROR
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

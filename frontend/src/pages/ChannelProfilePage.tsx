@@ -64,11 +64,13 @@ export default function ChannelProfilePage() {
   // 🛡️ Redirect Guard: Prevent creators/influencers from accessing client-facing media kit
   useEffect(() => {
     if (user) {
-      const isClient = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+      const userCat = user?.primaryRole?.category || user?.role || '';
+      const isClient = ['user', 'brand', 'social_promoter', 'direct_client'].includes(userCat);
       const isAdmin = user?.role === 'admin';
+      const isCreator = ['creator', 'yt_influencer'].includes(userCat);
 
       if (!isClient && !isAdmin) {
-        if (user.primaryRole?.category === 'yt_influencer') {
+        if (isCreator) {
           const ownsChannel = user.youtubeProfile?.some(
             (p: { channel_id?: string; id?: string }) => p.channel_id === channelId || p.id === channelId
           );

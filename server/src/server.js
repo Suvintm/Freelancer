@@ -9,8 +9,7 @@ import { connectPostgres } from "./infrastructure/database/postgres.js";
 import prisma from "./infrastructure/database/postgres.js";
 import { initSocket } from "./platform/socket/socket.gateway.js";
 import { initFirebaseAdmin } from "./infrastructure/push/fcm.admin.js";
-import { startLikeSyncScheduler } from "./infrastructure/queue/workers/schedulers/likeSync.scheduler.js";
-import { startQuotaResetScheduler } from "./infrastructure/queue/workers/schedulers/quotaReset.scheduler.js";
+
 import { startSubscriptionSyncScheduler } from "./infrastructure/queue/workers/schedulers/subscriptionSync.scheduler.js";
 // Domain entrypoints
 import { youtubeQuotaManager, bootstrapCreator } from "./domains/creator/index.js";
@@ -58,8 +57,7 @@ const startServer = async () => {
 
   // 5. Scheduled Jobs (cron-based, zero-cost — only fires at specific times)
   //    Includes: YouTube quota reset at midnight Pacific (YouTube's actual reset time)
-  startLikeSyncScheduler();
-  startQuotaResetScheduler();
+
   startSubscriptionSyncScheduler();
 
   // 6. BullMQ Background Workers
@@ -78,24 +76,28 @@ const startServer = async () => {
   //      - Notifications & messaging
   //      - Real-time socket events
   if (process.env.ENABLE_WORKERS === "true") {
-    logger.info("🚀 [WORKERS] ENABLE_WORKERS=true — Starting BullMQ Background Workers...");
+    logger.info("=========================================================");
+    logger.info("🚀 [WORKERS] MAIN GATE: OPEN (ENABLE_WORKERS=true)");
+    logger.info("=========================================================");
     const startWorkers = async () => {
       try {
         await import("./infrastructure/queue/workers/index.js");
-        logger.info("✅ [WORKERS] Background workers module loaded");
       } catch (err) {
         logger.error(`❌ [WORKERS] Failed to start background workers: ${err.message}`);
       }
     };
     startWorkers();
   } else {
-    logger.warn("⚠️ [WORKERS] Background workers are disabled. Set ENABLE_WORKERS=true to enable.");
+    logger.warn("=========================================================");
+    logger.warn("⚠️ [WORKERS] MAIN GATE: CLOSED (ENABLE_WORKERS=false)");
+    logger.warn("   All background processing is completely disabled.");
+    logger.warn("=========================================================");
   }
   // 7. Start HTTP & WebSocket Server
   initSocket(server);
 
-  server.listen(PORT, "0.0.0.0", () => {
-    logger.info(`✅ Modular Monolith Server running on port ${PORT} (reachable at http://0.0.0.0:${PORT})`);
+  server.listen(PORT, "::", () => {
+    logger.info(`✅ Modular Monolith Server running on port ${PORT} (reachable at http://localhost:${PORT})`);
   });
 
   // Graceful shutdown

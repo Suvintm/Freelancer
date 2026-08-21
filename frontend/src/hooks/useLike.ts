@@ -58,7 +58,7 @@ export function useLike({ postId, contentType, initialLiked, initialCount }: Use
         ...prev,
         likedByMe: response.data.isLiked,
         // Optional: trust server count if provided, otherwise keep optimistic
-        // likeCount: response.data.count ?? prev.likeCount,
+        likeCount: response.data.count ?? prev.likeCount,
         isSyncing: false,
       }));
     } catch (error: unknown) {

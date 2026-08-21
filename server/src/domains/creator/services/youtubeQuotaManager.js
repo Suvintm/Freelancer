@@ -57,10 +57,29 @@ class YoutubeQuotaManager {
     });
 
     if (result.count === 0) {
-      // If count is 0, it means either 'primary' key is missing or 'remaining_units' < units
-      const status = await prisma.youTubeQuotaState.findUnique({ where: { key_name: "primary" } });
-      const balance = status ? status.remaining_units : 0;
+      // Check if primary record even exists
+      let status = await prisma.youTubeQuotaState.findUnique({ where: { key_name: "primary" } });
+      if (!status) {
+        await this.initializeQuota();
+        status = await prisma.youTubeQuotaState.findUnique({ where: { key_name: "primary" } });
+        // Retry atomic deduction
+        const retryResult = await prisma.youTubeQuotaState.updateMany({
+          where: {
+            key_name: "primary",
+            remaining_units: { gte: units }
+          },
+          data: {
+            used_units: { increment: units },
+            remaining_units: { decrement: units }
+          }
+        });
+        if (retryResult.count > 0) {
+          logger.info(`📉 [QUOTA] Auto-initialized & Consumed ${units} units.`);
+          return true;
+        }
+      }
       
+      const balance = status ? status.remaining_units : 0;
       logger.error(`❌ [QUOTA] Exhausted: Tried to use ${units}, but only ${balance} left.`);
       throw new Error(`YouTube API quota exhausted (${balance} units left). Job delayed.`);
     }

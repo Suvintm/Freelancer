@@ -234,12 +234,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     },
     {
       id: 'action-connect',
-      title: 'Connect YouTube Channel',
-      subtitle: 'Sync new YouTube brand accounts and analytics',
+      title: 'Connect Social Profiles',
+      subtitle: 'Sync YouTube & Instagram accounts and analytics',
       category: 'Actions',
       icon: <MdOutlineLink className="text-xl text-amber-600" />,
       shortcut: '/connect',
-      url: '/youtube-connect'
+      url: '/connect-socials'
     }
   ];
 

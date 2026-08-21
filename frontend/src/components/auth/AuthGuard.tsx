@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectIsAuthenticated, selectIsInitialized, selectUser, selectIsAddingAccount } from '../../store/slices/authSlice';
+import { setTempSignupData } from '../../store/slices/onboardingSlice';
 import type { RootState } from '../../store';
 import { queryClient } from '../../queries/queryClient';
 import { CURRENT_USER_QUERY_KEY } from '../../queries/useCurrentUser';
@@ -54,7 +55,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   // 5. ONBOARDING GUARD: Ensure user has completed setup
-  const onboardingPaths = ['/role-selection', '/signup', '/youtube-connect', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
+  const onboardingPaths = ['/role-selection', '/signup', '/connect-socials', '/youtube-connect', '/youtube-niche', '/editor-specialization', '/brand-details', '/subcategory-selection', '/complete-profile', '/onboarding/preferences'];
   if (user && !user.isOnboarded && !onboardingPaths.includes(location.pathname)) {
     return <Navigate to="/role-selection" replace />;
   }
@@ -62,8 +63,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   // 6. PREFERENCES GUARD: Ensure fully onboarded users have completed their preferences
   // We check for preferencesCompleted === false explicitly to avoid redirecting 
   // if the backend hasn't populated this field yet (e.g., during migration rollout).
-  // NOTE: Brand Sponsors (social_promoter) are exempt from content preferences.
-  const isBrandClient = user?.primaryRole?.category === 'social_promoter';
+  // NOTE: Brand Sponsors (brand / social_promoter) are exempt from content preferences.
+  const isBrandClient = user?.primaryRole?.category === 'brand' || user?.primaryRole?.category === 'social_promoter' || user?.role === 'brand';
   
   if (
     user && 
@@ -95,8 +96,21 @@ export const RoleGuard = ({ children, allowedCategories }: RoleGuardProps) => {
     return <>{children}</>;
   }
 
-  const userCategorySlug = user.primaryRole?.category;
-  if (!userCategorySlug || !allowedCategories.includes(userCategorySlug)) {
+  const userCategorySlug = user.primaryRole?.category || user.role;
+  const isAllowed = allowedCategories.some(cat => 
+    cat === userCategorySlug || 
+    cat === user.role ||
+    (cat === 'yt_influencer' && (userCategorySlug === 'creator' || user.role === 'creator')) ||
+    (cat === 'video_editor' && (userCategorySlug === 'editor' || user.role === 'editor')) ||
+    (cat === 'social_promoter' && (userCategorySlug === 'brand' || user.role === 'brand')) ||
+    (cat === 'direct_client' && (userCategorySlug === 'user' || user.role === 'user')) ||
+    (cat === 'creator' && (userCategorySlug === 'yt_influencer' || user.role === 'creator')) ||
+    (cat === 'editor' && (userCategorySlug === 'video_editor' || user.role === 'editor')) ||
+    (cat === 'brand' && (userCategorySlug === 'social_promoter' || user.role === 'brand')) ||
+    (cat === 'user' && (userCategorySlug === 'direct_client' || user.role === 'user'))
+  );
+
+  if (!isAllowed) {
     return <Navigate to="/home" replace />;
   }
 
@@ -121,20 +135,40 @@ export const PublicRoute = ({ children }: AuthGuardProps) => {
   // If already logged in and fully onboarded, don't show login/signup pages
   // UNLESS they explicitly want to add an account
   if (isAuthenticated && user?.isOnboarded && !isAddingAccount) {
-    return <Navigate to="/home" replace />;
+    // Allow VerifyEmail to handle its own redirect (e.g. for YouTube Sync Overlay)
+    if (location.pathname !== '/verify-email') {
+      console.log('🚨 [PublicRoute] Redirecting authenticated user to /home');
+      return <Navigate to="/home" replace />;
+    }
   }
 
   // If logged in but NOT onboarded, only redirect if they are trying to access /login or /signup
   const authEntryPaths = ['/login', '/signup', '/'];
   if (isAuthenticated && !user?.isOnboarded && authEntryPaths.includes(location.pathname)) {
+    console.log('🚨 [PublicRoute] Redirecting un-onboarded user to /role-selection');
     return <Navigate to="/role-selection" replace />;
   }
 
   return <>{children}</>;
 };
 
-const STEP_ORDER = ['role', 'subcategory', 'youtube', 'details', 'complete'] as const;
-type OnboardingStep = typeof STEP_ORDER[number];
+import type { OnboardingStep } from '../../features/onboarding/types';
+
+const STEP_ORDER: OnboardingStep[] = [
+  'welcome',
+  'role',
+  'auth_method',
+  'specialization',
+  'brand',
+  'subcategory',
+  'youtube',
+  'youtube_connect',
+  'youtube_niche',
+  'brand_details',
+  'details',
+  'complete',
+  'complete_profile',
+];
 
 interface OnboardingGuardProps {
   children: ReactNode;
@@ -143,18 +177,38 @@ interface OnboardingGuardProps {
 }
 
 export const OnboardingGuard = ({ children, requiredStep, fallback = '/role-selection' }: OnboardingGuardProps) => {
+  const dispatch = useDispatch();
   const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
 
-  const currentStep = tempSignupData?.onboardingStep;
-  const categoryId = tempSignupData?.categoryId;
+  let currentStep = tempSignupData?.onboardingStep;
+  let categoryId = tempSignupData?.categoryId;
+
+  // Check sessionStorage backup if Redux is not yet populated
+  if (!categoryId) {
+    try {
+      const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+      if (rawBackup) {
+        const parsed = JSON.parse(rawBackup);
+        if (parsed?.categoryId) {
+          categoryId = parsed.categoryId;
+          currentStep = parsed.onboardingStep;
+          dispatch(setTempSignupData(parsed));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   // Base requirement: must have a category selected at minimum
-  if (!categoryId) {
+  // If user is in the middle of YouTube connect OAuth flow, allow grace period
+  const isYouTubeOAuth = sessionStorage.getItem('oauth_intent') === 'connect_youtube' || !!sessionStorage.getItem('youtube_access_token');
+  if (!categoryId && !isYouTubeOAuth) {
     return <Navigate to={fallback} replace />;
   }
 
   // If a specific step is required, verify the user has reached at least that step
-  if (requiredStep !== 'role') {
+  if (requiredStep !== 'role' && !isYouTubeOAuth) {
     const currentIndex = currentStep ? STEP_ORDER.indexOf(currentStep) : -1;
     const requiredIndex = STEP_ORDER.indexOf(requiredStep);
 

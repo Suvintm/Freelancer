@@ -73,16 +73,27 @@ router.get(
         scope: ["profile", "email", "https://www.googleapis.com/auth/youtube.readonly"],
         prompt: "select_account",
         session: false,
+        state: "connect_youtube",
     })
 );
 
 // Google OAuth callback (Web)
 router.get(
     "/google/callback",
-    passport.authenticate("google", {
-        failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`,
-        session: false,
-    }),
+    (req, res, next) => {
+        passport.authenticate("google", { session: false }, (err, user, info) => {
+            const host = req.get('host') || '';
+            const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+            const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+
+            if (err || !user) {
+                logger.error(`❌ [OAuth] Google callback error: ${err?.message || 'No user returned from Google'}`);
+                return res.redirect(`${redirectBase}/login?error=google_auth_failed`);
+            }
+            req.user = user;
+            next();
+        })(req, res, next);
+    },
     async (req, res) => {
         try {
             const user = req.user;
@@ -101,10 +112,13 @@ router.get(
                 return res.redirect(`${redirectBase}/login?error=no_user`);
             }
 
+            const isExplicitYoutubeConnect = req.query.state === 'connect_youtube';
+
             // [NEW] Handle Discovery Flow for Unregistered Users
             if (user.isNewUser) {
                 const otc = await generateOTC({
                     isNewUser: true,
+                    isExplicitYoutubeConnect,
                     socialProfile: {
                         email: user.email,
                         name: user.name,
@@ -113,7 +127,7 @@ router.get(
                         accessToken: user.accessToken
                     }
                 });
-                return res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+                return res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
             }
 
             // [EXISTING] Handle Login for Registered Users
@@ -122,11 +136,12 @@ router.get(
                 role: user.role,
                 isOnboarded: user.is_onboarded,
                 isVerified: user.is_verified,
+                isExplicitYoutubeConnect,
                 accessToken: user.accessToken
             });
 
-            // Redirect with a short-lived exchange code
-            res.redirect(`${redirectBase}/oauth-success?code=${otc}`);
+            // Redirect with a short-lived exchange code in URL fragment (prevents referrer leaks & history logs)
+            res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
         } catch (error) {
             logger.error("Google callback error:", error);
             const host = req.get('host');
@@ -136,6 +151,60 @@ router.get(
         }
     }
 );
+
+// ============ META / INSTAGRAM OAUTH (WEB) ============
+
+// Initiate Meta/Instagram OAuth
+router.get("/meta/instagram", authLimiter, (req, res) => {
+    const appId = process.env.META_APP_ID;
+    const redirectUri = process.env.META_REDIRECT_URI;
+    
+    if (!appId || !redirectUri) {
+        logger.error("[Meta OAuth] Missing META_APP_ID or META_REDIRECT_URI in env");
+        return res.status(500).json({ success: false, message: "Instagram integration is not configured." });
+    }
+
+    // Standard Instagram Graph API Auth URL (requires Instagram Creator/Business account)
+    const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish`;
+    
+    logger.info(`[Meta OAuth] Redirecting to: ${authUrl}`);
+    res.redirect(authUrl);
+});
+
+// Meta/Instagram OAuth Callback
+router.get("/meta/instagram/callback", async (req, res) => {
+    try {
+        const { code, error, error_description } = req.query;
+        const host = req.get('host') || '';
+        const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+        const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+
+        if (error) {
+            logger.error(`❌ [Meta OAuth] Callback error: ${error_description}`);
+            return res.redirect(`${redirectBase}/connect-socials?error=meta_auth_failed`);
+        }
+
+        if (!code) {
+            logger.error(`❌ [Meta OAuth] No code provided`);
+            return res.redirect(`${redirectBase}/connect-socials?error=no_code_provided`);
+        }
+
+        // Import dynamically to avoid circular dependencies
+        const { instagramApiService } = await import("../creator/services/instagramApiService.js");
+        
+        // Exchange code for short-lived token
+        const accessToken = await instagramApiService.exchangeCodeForToken(code);
+
+        // Redirect back to frontend Connect Socials page, dropping the token in the URL hash
+        res.redirect(`${redirectBase}/connect-socials#instaToken=${accessToken}`);
+    } catch (err) {
+        logger.error(`[Meta OAuth] Error during callback: ${err.message}`);
+        const host = req.get('host') || '';
+        const isProd = host.includes('suvix.in') || process.env.NODE_ENV === 'production';
+        const redirectBase = isProd ? "https://suvix.in" : (process.env.FRONTEND_URL || "http://localhost:5173");
+        res.redirect(`${redirectBase}/connect-socials?error=meta_exchange_failed`);
+    }
+});
 
 // ============ ONE-TIME CODE EXCHANGE (Secure POST) ============
 
@@ -181,6 +250,7 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
             return res.status(200).json({
                 success: true,
                 isNewUser: true,
+                isExplicitYoutubeConnect: Boolean(data.isExplicitYoutubeConnect),
                 socialProfile: data.socialProfile,
                 googleAccessToken: data.socialProfile.accessToken
             });
@@ -233,6 +303,7 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
 
         res.status(200).json({
             success: true,
+            isExplicitYoutubeConnect: Boolean(data.isExplicitYoutubeConnect),
             token: accessToken,
             refreshToken,
             googleAccessToken,
@@ -314,7 +385,8 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
                     data: { 
                         google_id: googleId,
                         // is_verified = true is safe: Google confirmed they own this email
-                        is_verified: true
+                        is_verified: true,
+                        is_email_verified: true
                         // auth_provider intentionally NOT changed — preserve local/google/etc.
                     },
                     include: USER_INCLUDE
@@ -385,7 +457,7 @@ router.post("/google/mobile", authLimiter, checkAccountLockout, async (req, res)
  */
 router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (req, res) => {
     try {
-        const { idToken, username, phone, categoryId, roleSubCategoryIds, youtubeChannels } = req.body;
+        const { idToken, username, phone, categoryId, youtubeChannels } = req.body;
 
         if (!idToken || !username || !phone) {
             return res.status(400).json({ success: false, message: "Missing mandatory registration data" });
@@ -420,7 +492,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             if (!existing.google_id) {
                 finalUser = await prisma.user.update({
                     where: { id: existing.id },
-                    data: { google_id: googleId, is_verified: true },
+                    data: { google_id: googleId, is_verified: true, is_email_verified: true, email_verified_at: new Date() },
                     include: USER_INCLUDE
                 });
             }
@@ -460,19 +532,29 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
             ? categoryId 
             : null;
         
-        const validRoleSubIds = (roleSubCategoryIds || []).filter(id => 
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-        );
-
         // 3. ATOMIC TRANSACTION: Create Everything
         const user = await prisma.$transaction(async (tx) => {
+            let assignedRole = "user";
+            if (validCategoryId) {
+                const selectedCategory = await tx.roleCategory.findUnique({
+                    where: { id: validCategoryId },
+                    select: { maps_to_role: true }
+                });
+                if (selectedCategory?.maps_to_role) {
+                    assignedRole = selectedCategory.maps_to_role;
+                }
+            }
+
             const newUser = await tx.user.create({
                 data: {
                     email: normalizedEmail,
+                    username: normalizedUsername,
                     google_id: googleId,
                     auth_provider: "google",
                     is_verified: true,
-                    role: "suvix_user",
+                    is_email_verified: true,
+                    email_verified_at: new Date(),
+                    role: assignedRole,
                     is_onboarded: true, // Atomic!
                     password_hash: `OAUTH_ATOMIC_${crypto.randomBytes(8).toString("hex")}`,
                 }
@@ -495,19 +577,50 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
                 data: { userId: newUser.id }
             });
 
-            if (validRoleSubIds.length > 0) {
-                await tx.userRoleMapping.createMany({
-                    data: validRoleSubIds.map((subId, index) => ({
-                        profileId: profile.id,
-                        roleSubCategoryId: subId,
-                        isPrimary: index === 0,
-                    }))
+            // Initialize Role-Specific Profile
+            if (assignedRole === "creator") {
+                await tx.creatorProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id, business_email: normalizedEmail }
+                });
+            } else if (assignedRole === "editor") {
+                await tx.editorProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id }
+                });
+            } else if (assignedRole === "brand") {
+                await tx.brandProfile.upsert({
+                    where: { userId: newUser.id },
+                    update: {},
+                    create: { userId: newUser.id }
                 });
             }
 
-            // Removed manual YouTube Profile insertion.
-            // This is now fully deferred to the BullMQ background worker to securely process
-            // Cloudinary thumbnails and 15 related videos without blocking DB performance.
+            // Initialize Public Profile (Link-in-bio)
+            const hasSocials = youtubeChannels && Array.isArray(youtubeChannels) && youtubeChannels.length > 0;
+            
+            let initialBlocks = [];
+            if (hasSocials) {
+                initialBlocks.push({
+                    type: "YOUTUBE_CHANNEL",
+                    title: youtubeChannels[0].channelName || youtubeChannels[0].channel_name || "My YouTube Channel",
+                    url: `https://youtube.com/channel/${youtubeChannels[0].channelId || youtubeChannels[0].id}`,
+                    order_index: 0
+                });
+            }
+
+            await tx.publicProfile.create({
+                data: {
+                    userId: newUser.id,
+                    is_active: false,
+                    is_eligible: hasSocials,
+                    blocks: initialBlocks.length > 0 ? {
+                        create: initialBlocks
+                    } : undefined
+                }
+            });
 
             return await tx.user.findUnique({
                 where: { id: newUser.id },
@@ -578,7 +691,7 @@ router.post("/google/register-atomic", authLimiter, checkAccountLockout, async (
  */
 router.post("/select-role", authLimiter, async (req, res) => {
     try {
-        const { token, phone, country, categoryId, roleSubCategoryIds, username } = req.body;
+        const { token, phone, country, categoryId, username } = req.body;
 
         if (!token) throw new Error("Onboarding token required");
 
@@ -587,9 +700,23 @@ router.post("/select-role", authLimiter, async (req, res) => {
         
         // Finalize PostgreSQL Profile
         const updatedUser = await prisma.$transaction(async (tx) => {
+            let assignedRole = "user";
+            if (categoryId) {
+                const selectedCategory = await tx.roleCategory.findUnique({
+                    where: { id: categoryId },
+                    select: { maps_to_role: true }
+                });
+                if (selectedCategory?.maps_to_role) {
+                    assignedRole = selectedCategory.maps_to_role;
+                }
+            }
+
             await tx.user.update({
                 where: { id: decoded.id },
-                data: { is_onboarded: true }
+                data: { 
+                    is_onboarded: true,
+                    role: assignedRole
+                }
             });
 
             const profile = await tx.userProfile.update({
@@ -602,19 +729,24 @@ router.post("/select-role", authLimiter, async (req, res) => {
                 }
             });
 
-            // Add Role Mappings (Expertise)
-            if (roleSubCategoryIds && Array.isArray(roleSubCategoryIds) && roleSubCategoryIds.length > 0) {
-                // Clear existing mappings if any (unlikely for new user but safe)
-                await tx.userRoleMapping.deleteMany({
-                    where: { profileId: profile.id }
+            // Initialize Role-Specific Profile (Creator/Editor/Brand)
+            if (assignedRole === "creator") {
+                await tx.creatorProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
                 });
-
-                await tx.userRoleMapping.createMany({
-                    data: roleSubCategoryIds.map((subId, index) => ({
-                        profileId: profile.id,
-                        roleSubCategoryId: subId,
-                        isPrimary: index === 0,
-                    }))
+            } else if (assignedRole === "editor") {
+                await tx.editorProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
+                });
+            } else if (assignedRole === "brand") {
+                await tx.brandProfile.upsert({
+                    where: { userId: decoded.id },
+                    update: {},
+                    create: { userId: decoded.id }
                 });
             }
 

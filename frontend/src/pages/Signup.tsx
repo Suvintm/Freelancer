@@ -20,10 +20,11 @@ import {
   Check,
   ChevronLeft
 } from 'lucide-react';
-import logo from '../assets/blackbglogo.png';
+import logo from '../assets/lightlogo.png';
 import { AuthBackground } from '../components/auth/AuthBackground';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearTempSignupData } from '../store/slices/onboardingSlice';
+import { setTempSignupData, clearTempSignupData } from '../store/slices/onboardingSlice';
 import { useSignup } from '../mutations/useSignup';
 import type { RootState } from '../store';
 import { authService } from '../api/services/auth.service';
@@ -40,23 +41,24 @@ interface StepBarProps {
 }
 
 function StepBar({ categorySlug }: StepBarProps) {
-  // Steps vary by role
-  const steps =
-    categorySlug === 'direct_client'
-      ? ['Role', 'Details']
-      : categorySlug === 'yt_influencer'
-      ? ['Role', 'YouTube', 'Details']
-      : ['Role', 'Niches', 'Details'];
+  const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
+  const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
+
+  const steps = isCreator
+    ? ['Role', 'YouTube', 'Details']
+    : isEditor
+    ? ['Role', 'Specialization', 'Details']
+    : ['Role', 'Details'];
 
   const activeIndex = steps.length - 1; // Always on last step (Details) in this page
 
   return (
-    <div className="flex items-center justify-center gap-3 mb-2">
+    <div className="flex items-center justify-center gap-1.5 sm:gap-3 mb-1 lg:mb-3">
       {steps.map((step, i) => (
         <React.Fragment key={step}>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <div
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-all ${
+              className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-black transition-all ${
                 i < activeIndex
                   ? 'bg-emerald-500 text-white'
                   : i === activeIndex
@@ -64,10 +66,10 @@ function StepBar({ categorySlug }: StepBarProps) {
                   : 'bg-zinc-200 text-zinc-500'
               }`}
             >
-              {i < activeIndex ? <Check size={10} strokeWidth={3} /> : i + 1}
+              {i < activeIndex ? <Check size={8} strokeWidth={3.5} /> : i + 1}
             </div>
             <span
-              className={`text-[10px] font-bold uppercase tracking-wider ${
+              className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-wider ${
                 i === activeIndex ? 'text-black' : i < activeIndex ? 'text-emerald-500' : 'text-zinc-400'
               }`}
             >
@@ -75,7 +77,7 @@ function StepBar({ categorySlug }: StepBarProps) {
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div className={`w-10 sm:w-16 lg:w-20 h-px ${i < activeIndex ? 'bg-emerald-500/40' : 'bg-zinc-200'}`} />
+            <div className={`w-6 sm:w-16 lg:w-20 h-px ${i < activeIndex ? 'bg-emerald-500/40' : 'bg-zinc-200'}`} />
           )}
         </React.Fragment>
       ))}
@@ -88,18 +90,24 @@ export default function Signup() {
   const [showPass, setShowPass] = useState(false);
   const dispatch = useDispatch();
   const { mutateAsync: signupMutation } = useSignup();
-  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
+  const onboarding = useSelector((state: RootState) => state.onboarding);
+  const tempSignupData = onboarding.tempSignupData;
+  const selectedRole = onboarding.selectedRole;
+  const authMethod = onboarding.authMethod || tempSignupData?.authMethod;
   const socialProfile = tempSignupData?.socialProfile as Record<string, string> | undefined;
 
+  const roleSlug = selectedRole?.slug || tempSignupData?.categorySlug || 'creator';
+  const roleName = selectedRole?.name || tempSignupData?.roleName || 'Creator';
+
   const [form, setForm] = useState({
-    fullName: socialProfile?.name || '',
+    fullName: tempSignupData?.companyName || socialProfile?.name || '',
     username: '',
     email: socialProfile?.email || '',
     phone: '',
     password: '',
     motherTongue: 'English',
     country: 'India',
-    website: ''
+    website: tempSignupData?.companyWebsite || ''
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,18 +116,30 @@ export default function Signup() {
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [enableNotifications, setEnableNotifications] = useState(false);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   const navigate = useNavigate();
-  const isBrandClient = tempSignupData?.roleGroup === 'CLIENT' && tempSignupData?.categorySlug !== 'direct_client';
+  const isBrandClient = roleSlug === 'brand' || roleSlug === 'social_promoter' || tempSignupData?.categorySlug === 'brand';
+  const isSocialUser = authMethod === 'google' && !!socialProfile;
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
-  // If tempSignupData has no categoryId, the user navigated here without going
-  // through role selection — redirect them back.
   useEffect(() => {
-    if (!tempSignupData?.categoryId) {
+    if (!selectedRole && !tempSignupData?.categoryId) {
+      try {
+        const rawBackup = sessionStorage.getItem('suvix_temp_signup_data');
+        if (rawBackup) {
+          const parsed = JSON.parse(rawBackup);
+          if (parsed?.categoryId) {
+            dispatch(setTempSignupData(parsed));
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
       navigate('/role-selection', { replace: true });
     }
-  }, [tempSignupData?.categoryId, navigate]);
+  }, [selectedRole, tempSignupData?.categoryId, dispatch, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -131,19 +151,40 @@ export default function Signup() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  // 🔐 PRODUCTION FIX: Use the REAL checkUsername API, not a mock timer.
-  const handleUsernameBlur = async () => {
-    if (!form.username || form.username.length < 3) return;
-    setUserStatus('checking');
-    try {
-      const available = await authService.checkUsername(form.username.trim().toLowerCase());
-      setUserStatus(available ? 'available' : 'taken');
-    } catch {
+    if (e.target.name === 'username') {
       setUserStatus('idle');
     }
   };
+
+  // Auto-validates username/handle while typing, debounced to 2000ms (2 seconds) to protect DB costs
+  useEffect(() => {
+    if (!form.username || form.username.trim().length < 3) {
+      const resetTimer = setTimeout(() => {
+        setUserStatus('idle');
+      }, 0);
+      return () => clearTimeout(resetTimer);
+    }
+
+    const timer = setTimeout(async () => {
+      setUserStatus('checking');
+      const startTime = Date.now();
+      try {
+        const available = await authService.checkUsername(form.username.trim().toLowerCase());
+        
+        // Enforce a minimum display time of 400ms for the loading spinner to prevent instant flashes
+        const elapsed = Date.now() - startTime;
+        const remainingDelay = Math.max(0, 400 - elapsed);
+        
+        setTimeout(() => {
+          setUserStatus(available ? 'available' : 'taken');
+        }, remainingDelay);
+      } catch {
+        setUserStatus('idle');
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [form.username]);
 
   const selectedChannels = tempSignupData?.youtubeChannels ?? [];
 
@@ -152,9 +193,10 @@ export default function Signup() {
     form.username.trim() &&
     form.email.trim() &&
     form.phone.trim() &&
-    (socialProfile || form.password.trim()) &&
+    (isSocialUser || form.password.trim()) &&
     (!isBrandClient || form.website.trim()) &&
-    userStatus === 'available'
+    userStatus === 'available' &&
+    turnstileToken
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,14 +206,7 @@ export default function Signup() {
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
 
-    // SECURITY RESTRICTION: Block unauthorized emails during DEV phase
-    const allowedEmails = ['suvintm19@gmail.com', 'suvintm19@gamil.com', 'suvintm1515@gmail.com','suvineditography@gmail.com', 'uber@company.com'];
-    if (!allowedEmails.includes(form.email.toLowerCase().trim())) {
-      setError('Server busy ! Please try again later or contact SuviX team.');
-      return;
-    }
-
-    if (!socialProfile && !form.password) { setError('Password is required.'); return; }
+    if (!isSocialUser && !form.password) { setError('Password is required.'); return; }
 
     setIsLoading(true);
     setError(null);
@@ -188,21 +223,45 @@ export default function Signup() {
       // Build complete registration payload from tempSignupData + form data
       const response = await signupMutation({
         ...form,
+        role: tempSignupData?.role || 'creator',
+        categorySlug: tempSignupData?.categorySlug || 'creator',
         categoryId: tempSignupData?.categoryId,
         roleSubCategoryIds: tempSignupData?.roleSubCategoryIds,
+        specializations: tempSignupData?.specializations ?? [],
+        softwareUsed: tempSignupData?.softwareUsed ?? [],
+        skills: tempSignupData?.softwareUsed ?? [],
+        portfolioUrl: tempSignupData?.portfolioUrl,
+        experienceYears: tempSignupData?.experienceYears,
+        companyName: tempSignupData?.companyName || (isBrandClient ? form.fullName : undefined),
+        companyWebsite: tempSignupData?.companyWebsite || (isBrandClient ? form.website : undefined),
+        industry: tempSignupData?.industry,
+        companySize: tempSignupData?.companySize,
+        designation: tempSignupData?.designation,
+        approxBudget: tempSignupData?.approxBudget,
         youtubeChannels: selectedChannels,
-        googleId: socialProfile?.googleId,
-        authProvider: socialProfile ? 'google' : 'local',
+        instagramAccounts: tempSignupData?.instagramAccounts ?? [],
+        discoveryToken: tempSignupData?.discoveryToken ?? null,
+        googleId: isSocialUser ? socialProfile?.googleId : undefined,
+        authProvider: isSocialUser ? 'google' : 'local',
         profilePicture,
-        pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined
+        pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined,
+        turnstileToken
       });
 
-      // Show blocking overlay if foreground sync is requested
-      if (response?.ytSyncMode === 'foreground' && selectedChannels.length > 0) {
+      if (response?.requiresVerification) {
+        navigate(`/verify-email?email=${encodeURIComponent(response.email || form.email)}`);
+        return;
+      }
+
+      const isCreator = tempSignupData?.categorySlug === 'creator' || tempSignupData?.categorySlug === 'yt_influencer' || tempSignupData?.role === 'creator';
+      const hasChannels = selectedChannels.length > 0;
+      const hasInstagram = (tempSignupData?.instagramAccounts?.length ?? 0) > 0;
+
+      if (isCreator && (hasChannels || hasInstagram)) {
         setShowSyncOverlay(true);
       } else {
-        // Clear ALL onboarding state after successful registration
         dispatch(clearTempSignupData());
+        try { sessionStorage.removeItem('suvix_temp_signup_data'); } catch { /* ignore */ }
         navigate('/home');
       }
     } catch (err: unknown) {
@@ -212,20 +271,23 @@ export default function Signup() {
     }
   };
 
-  // Determine back navigation based on role
   const handleBack = () => {
     const slug = tempSignupData?.categorySlug;
-    if (slug === 'direct_client') navigate('/role-selection');
-    else if (slug === 'yt_influencer') navigate('/youtube-connect');
-    else navigate('/subcategory-selection');
+    if (slug === 'creator' || slug === 'yt_influencer') {
+      navigate('/connect-socials');
+    } else if (slug === 'editor' || slug === 'video_editor') {
+      navigate('/editor-specialization');
+    } else {
+      navigate('/role-selection');
+    }
   };
 
   return (
-    <div className="relative h-screen w-full bg-white lg:bg-black flex flex-col overflow-hidden font-sans">
-      {showSyncOverlay && <OnboardingSyncOverlay />}
+    <div className="relative h-[100dvh] w-full bg-black flex flex-col overflow-hidden font-sans">
+      {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/home" />}
       
-      {/* Full Screen Background (Laptop only) */}
-      <div className="hidden lg:block absolute inset-0 z-0">
+      {/* Full Screen Background */}
+      <div className="absolute inset-0 z-0">
         <AuthBackground />
       </div>
 
@@ -236,42 +298,39 @@ export default function Signup() {
         <div className="absolute top-6 left-6 lg:top-10 lg:left-10 z-50">
           <button 
             onClick={handleBack}
-            className="flex items-center gap-2.5 px-5 py-2.5 bg-black/30 hover:bg-black/50 backdrop-blur-md rounded-full text-white text-xs lg:text-sm font-bold transition-all border border-white/10 shadow-2xl"
+            className="flex items-center gap-2 px-4 py-2 lg:px-5 lg:py-2.5 bg-white border border-gray-200 lg:border-black rounded-full text-black text-[11px] lg:text-sm font-bold transition-all shadow-md hover:scale-105"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={14} className="lg:w-4 lg:h-4" />
             <span>Back</span>
           </button>
         </div>
 
-        {/* Left Side (30% approx) - Invisible, just lets the AuthBackground text show through */}
+        {/* Left Side (30% approx) - Spacer */}
         <div className="hidden lg:block lg:w-[40%] xl:w-[30%] h-full pointer-events-none"></div>
 
         {/* Right Side Form Container (70%) */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 h-full lg:w-[60%] xl:w-[70%]">
+        <div className="flex-1 flex flex-col items-center justify-center p-4 pt-20 sm:p-6 lg:p-12 h-full lg:w-[60%] xl:w-[70%]">
           
-          {/* Floating Rounded Form Card (Laptop) / Flat (Mobile) */}
-          <div className="w-full max-w-[600px] bg-white lg:rounded-[2rem] lg:shadow-2xl flex flex-col relative shrink-0 max-h-full overflow-hidden">
+          {/* Floating Rounded Form Card */}
+          <div className="w-full max-w-[600px] bg-white rounded-3xl lg:rounded-[2rem] shadow-2xl flex flex-col relative shrink-0 max-h-full overflow-hidden mt-2 lg:mt-0">
             
             {/* Fixed Header Container */}
-            <div className="w-full shrink-0 px-4 pt-4 lg:px-5 lg:pt-5 z-10 bg-white">
+            <div className="w-full shrink-0 px-5 pt-5 pb-1 z-10 bg-white">
               
-              {/* Desktop Header */}
+              {/* Unified Header */}
               <motion.header 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: EASE }}
-                className="hidden lg:flex w-full flex-col pb-2 border-b border-zinc-100 mb-4 shrink-0"
+                className="flex relative w-full flex-col items-center pb-3 border-b border-zinc-100 mb-2 shrink-0 space-y-2 lg:space-y-0"
               >
-                {/* Logo Top Left */}
-                <img src={logo} alt="SuviX" className="h-20 self-start mb-0" />
-                
-                {/* Title Centered */}
-                <div className="text-center space-y-0.5 w-full -mt-6">
+                <img src={logo} alt="SuviX" className="lg:absolute lg:left-0 lg:top-1.5 h-6 lg:h-8 shrink-0" />
+                <div className="text-center space-y-0.5">
                   <h1 className="text-xl lg:text-2xl font-bold text-black leading-[1.1] tracking-tight">
                     Create your account.
                   </h1>
-                  <p className="text-zinc-500 text-[13px] font-medium">
-                    As <span className="text-black font-bold">{tempSignupData?.roleName || 'Creator'}</span> — enter your details.
+                  <p className="text-zinc-500 text-[10px] lg:text-xs font-medium">
+                    As <span className="text-black font-bold">{roleName}</span> — enter your details.
                   </p>
                 </div>
               </motion.header>
@@ -286,31 +345,21 @@ export default function Signup() {
               className="w-full flex-1 flex flex-col min-h-0"
             >
               
-              {/* Fixed Step Bar / Mobile Title */}
-              <div className="w-full px-4 lg:px-5 shrink-0 bg-white z-10">
+              {/* Fixed Step Bar Container */}
+              <div className="w-full px-5 shrink-0 bg-white z-10">
                 <StepBar categorySlug={tempSignupData?.categorySlug} />
-
-                {/* Mobile Title */}
-                <div className="lg:hidden text-center mt-2">
-                  <h1 className="text-2xl font-bold text-black tracking-tight leading-tight">
-                    Create your account.
-                  </h1>
-                  <p className="text-zinc-500 text-sm font-medium mt-1">
-                    As <span className="text-black font-bold">{tempSignupData?.roleName || 'Creator'}</span>
-                  </p>
-                </div>
               </div>
 
               {/* Scrollable Form Content */}
-              <ReactLenis className="w-full flex-1 overflow-y-auto custom-scrollbar px-6 lg:px-10 pb-12 lg:pb-16">
-                <div className="space-y-6 mt-4 lg:mt-6">
+              <ReactLenis className="w-full flex-1 overflow-y-auto custom-scrollbar px-5 lg:px-8 pb-8 lg:pb-12">
+                <div className="space-y-3.5 mt-1 lg:mt-4">
                   {error && (
                     <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-xs font-semibold">
                       {error}
                     </div>
                   )}
 
-              <div className="space-y-6">
+                  <div className="space-y-3.5">
                 {/* Profile Picture Upload */}
                 <div className="flex items-center gap-4 mb-2">
                   <div className="relative">
@@ -346,31 +395,34 @@ export default function Signup() {
                     required 
                   />
 
-                  <div className="space-y-1.5">
-                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
+                  <div className="space-y-1">
+                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
                       {isBrandClient ? "Brand Handle" : "Handle"}
                     </label>
                     <div className="relative">
-                      <AtSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <AtSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input
                         name="username"
                         placeholder={isBrandClient ? "brandhandle" : "handle"}
                         value={form.username}
                         onChange={handleChange}
-                        onBlur={handleUsernameBlur}
                         required
-                        className={`suvix-input !pl-12 pr-4 bg-white border-2 border-black text-black placeholder:text-zinc-400 ${
+                        className={`suvix-input !h-10 !pl-11 pr-12 !text-[13px] bg-white !border-2 text-black transition-all placeholder:text-zinc-400 ${
                           userStatus === 'available' ? '!border-green-500' :
-                          userStatus === 'taken'     ? '!border-red-500'   : ''
+                          userStatus === 'taken'     ? '!border-red-500'   : '!border-black'
                         }`}
                       />
                       {userStatus !== 'idle' && (
-                        <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold ${
-                          userStatus === 'available' ? 'text-green-500' :
-                          userStatus === 'taken'     ? 'text-red-500'   :
-                          'text-zinc-400'
-                        }`}>
-                          {userStatus === 'checking' ? '...' : userStatus === 'available' ? '✓ free' : '✗ taken'}
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                          {userStatus === 'checking' ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+                          ) : (
+                            <span className={`text-[10px] font-black tracking-wide uppercase ${
+                              userStatus === 'available' ? 'text-green-500' : 'text-red-500'
+                            }`}>
+                              {userStatus === 'available' ? '✓ free' : '✗ taken'}
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>
@@ -378,16 +430,28 @@ export default function Signup() {
                 </div>
 
                 {/* Email */}
-                <InputField 
-                  label={isBrandClient ? "Work Email Address" : "Email Address"} 
-                  name="email" 
-                  type="email" 
-                  placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"} 
-                  icon={<Mail size={16} />} 
-                  value={form.email} 
-                  onChange={handleChange} 
-                  required 
-                />
+                <div>
+                  <InputField 
+                    label={isBrandClient ? "Work Email Address" : "Email Address"} 
+                    name="email" 
+                    type="email" 
+                    placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"} 
+                    icon={<Mail size={16} />} 
+                    value={form.email} 
+                    onChange={handleChange} 
+                    required 
+                    helperText={socialProfile?.email ? (
+                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                        <Check size={11} strokeWidth={3} /> Auto-filled
+                      </span>
+                    ) : undefined}
+                  />
+                  {socialProfile?.email && (
+                    <p className="mt-1 text-[10px] text-zinc-400 font-medium pl-1 flex items-center gap-1">
+                      <span>💡 Pre-filled from Google. You can change this to your preferred business email.</span>
+                    </p>
+                  )}
+                </div>
 
                 {/* Phone + Language/Website */}
                 <div className="grid grid-cols-2 gap-4">
@@ -404,15 +468,15 @@ export default function Signup() {
                       required 
                     />
                   ) : (
-                    <div className="space-y-1.5">
-                      <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Language</label>
+                    <div className="space-y-1">
+                      <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Language</label>
                       <div className="relative">
-                        <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                         <select
                           name="motherTongue"
                           value={form.motherTongue}
                           onChange={handleChange}
-                          className="suvix-input !pl-12 bg-white border-2 border-black text-black placeholder:text-zinc-400 appearance-none"
+                          className="suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400 appearance-none"
                         >
                           {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
                         </select>
@@ -422,15 +486,15 @@ export default function Signup() {
                 </div>
 
                 {/* Country */}
-                <div className="space-y-1.5">
-                  <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Country</label>
+                <div className="space-y-1">
+                  <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Country</label>
                   <div className="relative">
-                    <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                     <select
                       name="country"
                       value={form.country}
                       onChange={handleChange}
-                      className="suvix-input !pl-12 bg-white border-2 border-black text-black placeholder:text-zinc-400 appearance-none"
+                      className="suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400 appearance-none"
                     >
                       {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -465,19 +529,19 @@ export default function Signup() {
                 )}
 
                 {/* Password (email signup only) / Security note (Google signup) */}
-                {!socialProfile ? (
-                  <div className="space-y-1.5">
-                    <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">Password</label>
+                {!isSocialUser ? (
+                  <div className="space-y-1">
+                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Password</label>
                     <div className="relative">
-                      <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input
                         name="password"
                         type={showPass ? 'text' : 'password'}
                         placeholder="••••••••"
                         value={form.password}
                         onChange={handleChange}
-                        required={!socialProfile}
-                        className="suvix-input !pl-12 pr-12 bg-white border-2 border-black text-black placeholder:text-zinc-400"
+                        required={!isSocialUser}
+                        className="suvix-input !h-10 !pl-11 pr-12 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400"
                       />
                       <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors">
                         {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -520,18 +584,27 @@ export default function Signup() {
               </div>
             </ReactLenis>
               {/* Fixed Bottom Action Area */}
-              <div className="w-full shrink-0 bg-white border-t border-zinc-100 px-6 lg:px-10 py-4 lg:py-6 mt-auto">
+              <div className="w-full shrink-0 bg-white border-t border-zinc-100 px-6 lg:px-10 py-3 lg:py-5 mt-auto">
+                <div className="flex justify-center mb-2.5 scale-85 sm:scale-100 origin-center my-0.5">
+                  <Turnstile
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setError('Security check failed. Please refresh and try again.')}
+                  />
+                </div>
                 {/* Submit */}
                 <button 
                   type="submit" 
                   disabled={isLoading || !isFormValid} 
-                  className={`suvix-btn-primary w-full h-12 !text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-[0.98] ${
-                    isFormValid ? '!bg-black hover:opacity-90 shadow-black/10' : '!bg-zinc-900 shadow-none cursor-not-allowed text-zinc-500'
+                  className={`suvix-btn-primary w-full h-9 lg:h-10 !text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-[0.98] !text-[11px] lg:!text-[13px] ${
+                    isFormValid 
+                      ? '!bg-black hover:opacity-90 shadow-black/10' 
+                      : '!bg-zinc-200 shadow-none cursor-not-allowed !text-zinc-400'
                   }`}
                 >
                   {isLoading
-                    ? <Loader2 className="w-5 h-5 animate-spin" />
-                    : <><span>Create Account</span><ArrowRight size={18} strokeWidth={2.5} /></>
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <><span>Create Account</span><ArrowRight size={14} strokeWidth={2.5} /></>
                   }
                 </button>
 
@@ -563,17 +636,21 @@ export default function Signup() {
 interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon: React.ReactNode;
+  helperText?: React.ReactNode;
 }
 
-function InputField({ label, icon, ...props }: InputFieldProps) {
+function InputField({ label, icon, helperText, ...props }: InputFieldProps) {
   return (
-    <div className="space-y-1.5">
-      <label className="font-label text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">{label}</label>
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">{label}</label>
+        {helperText}
+      </div>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">{icon}</span>
         <input
           {...props}
-          className={`suvix-input !pl-12 bg-white border-2 border-black text-black placeholder:text-zinc-400 ${props.className ?? ''}`}
+          className={`suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400 ${props.className ?? ''}`}
         />
       </div>
     </div>

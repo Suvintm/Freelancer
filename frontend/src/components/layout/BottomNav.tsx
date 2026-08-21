@@ -114,7 +114,7 @@ export const BottomNav = () => {
     };
   }, [isUploadSheetOpen]);
 
-  const isClientCategory = ['social_promoter', 'direct_client'].includes(user?.primaryRole?.category || '');
+  const isClientCategory = ['user', 'brand', 'social_promoter', 'direct_client'].includes(user?.primaryRole?.category || user?.role || '');
   const filteredNavItems = NAV_ITEMS.filter(item => {
     if (isClientCategory) {
       return !item.isUpload;

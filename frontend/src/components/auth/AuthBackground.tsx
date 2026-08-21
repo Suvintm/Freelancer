@@ -79,7 +79,7 @@ export const AuthBackground = () => {
                 <span className="text-[10px] font-black tracking-[0.2em] text-white/50 uppercase">
                   {ONBOARDING_DATA[current].subtitle}
                 </span>
-                <h2 className="text-4xl lg:text-5xl font-black text-white leading-[1.1] whitespace-pre-line tracking-tighter">
+                <h2 className="font-welcome text-4xl lg:text-5xl font-black text-white leading-[1.1] whitespace-pre-line tracking-tighter">
                   {ONBOARDING_DATA[current].title}
                 </h2>
               </div>
@@ -91,7 +91,7 @@ export const AuthBackground = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Slide Indicators */}
+      {/* Slide Indicatorss */}
       <div className="absolute bottom-12 left-12 lg:left-16 flex items-center gap-2 z-20">
         {ONBOARDING_DATA.map((_, i) => (
           <div

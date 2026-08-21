@@ -12,6 +12,7 @@ export const testUsers = {
     name: "Test Editor",
     role: "editor",
     is_verified: true,
+    is_email_verified: true,
     is_onboarded: true,
     country: "IN",
     profile: {
@@ -27,6 +28,7 @@ export const testUsers = {
     name: "Test Client",
     role: "client",
     is_verified: true,
+    is_email_verified: true,
     is_onboarded: true,
     country: "IN",
     profile: {
@@ -42,6 +44,7 @@ export const testUsers = {
     name: "Banned User",
     role: "client",
     is_verified: true,
+    is_email_verified: true,
     is_onboarded: true,
     is_banned: true,
     ban_reason: "Violation of terms",
