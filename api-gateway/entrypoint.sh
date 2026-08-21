@@ -6,6 +6,10 @@ export NODE_BACKEND_HOST=${NODE_BACKEND_HOST:-node-server-1:5000}
 export PAYMENT_BACKEND_HOST=${PAYMENT_BACKEND_HOST:-payment-service:8080}
 export PORT=${PORT:-80}
 
+# Strip ports for Host header and SNI
+export NODE_HOST_HEADER=$(echo "$NODE_BACKEND_HOST" | sed 's/:[0-9]*$//')
+export PAYMENT_HOST_HEADER=$(echo "$PAYMENT_BACKEND_HOST" | sed 's/:[0-9]*$//')
+
 # Determine protocol scheme & default ports for external vs internal hosts
 if echo "$NODE_BACKEND_HOST" | grep -q "\.com"; then
     export NODE_SCHEME="https"
@@ -28,13 +32,13 @@ else
 fi
 
 echo "🛡️ SuviX Gateway starting..."
-echo "👉 Node.js Backend:    ${NODE_SCHEME}://${NODE_BACKEND_HOST}"
-echo "👉 Java Payment:       ${PAYMENT_SCHEME}://${PAYMENT_BACKEND_HOST}"
+echo "👉 Node.js Backend:    ${NODE_SCHEME}://${NODE_BACKEND_HOST} (Host: ${NODE_HOST_HEADER})"
+echo "👉 Java Payment:       ${PAYMENT_SCHEME}://${PAYMENT_BACKEND_HOST} (Host: ${PAYMENT_HOST_HEADER})"
 echo "👉 Listening Port:      ${PORT}"
 
 # Substitute environment variables into nginx.conf
 if [ -f /etc/nginx/nginx.conf.template ]; then
-    envsubst '${NODE_BACKEND_HOST} ${PAYMENT_BACKEND_HOST} ${NODE_SCHEME} ${PAYMENT_SCHEME} ${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+    envsubst '${NODE_BACKEND_HOST} ${PAYMENT_BACKEND_HOST} ${NODE_HOST_HEADER} ${PAYMENT_HOST_HEADER} ${NODE_SCHEME} ${PAYMENT_SCHEME} ${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 fi
 
 # If specific command arguments are passed (e.g. during CI testing), execute them
