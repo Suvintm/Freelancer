@@ -18,7 +18,7 @@ import javax.sql.DataSource;
 @Configuration
 public class DatabaseConfig {
 
-    @Value("${DATABASE_URL:${POSTGRES_URL:}}")
+    @Value("${DATABASE_URL:${DIRECT_URL:${POSTGRES_URL:}}}")
     private String databaseUrl;
 
     @Value("${DB_HOST:localhost}")
