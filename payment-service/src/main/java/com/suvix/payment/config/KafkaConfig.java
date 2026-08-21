@@ -85,6 +85,7 @@ public class KafkaConfig {
         factory.setConsumerFactory(consumerFactory());
         // Manual acknowledgment — we confirm only after successful processing
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+        factory.getContainerProperties().setMissingTopicsFatal(false);
         return factory;
     }
 }
