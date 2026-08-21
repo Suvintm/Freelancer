@@ -27,9 +27,9 @@ export const bioApiService = {
   },
 
   /**
-   * Save draft state to cloud database (Single atomic write)
+   * Save draft state to cloud database (Single atomic write with optimistic concurrency check)
    */
-  async saveDraft(id: string, updates: Partial<BioPage>): Promise<BioPage> {
+  async saveDraft(id: string, updates: Partial<BioPage> & { clientUpdatedAt?: string }): Promise<BioPage> {
     const res = await api.put(`/linkinbio/pages/${id}/draft`, updates);
     return res.data.data;
   },
@@ -55,6 +55,31 @@ export const bioApiService = {
    */
   async deletePage(id: string): Promise<{ success: boolean; deletedId: string }> {
     const res = await api.delete(`/linkinbio/pages/${id}`);
+    return res.data.data;
+  },
+
+  /**
+   * Migrate legacy PublicProfile into BioPage v2
+   */
+  async migrateLegacy(): Promise<BioPage> {
+    const res = await api.post('/linkinbio/pages/migrate-legacy');
+    return res.data.data;
+  },
+
+  /**
+   * Fetch active templates from database with optional category filter
+   */
+  async getTemplates(category?: string): Promise<any[]> {
+    const query = category && category !== 'all' ? `?category=${category}` : '';
+    const res = await api.get(`/linkinbio/templates${query}`);
+    return res.data.data;
+  },
+
+  /**
+   * Save or publish a new template to database (Admin)
+   */
+  async saveTemplate(templateData: any): Promise<any> {
+    const res = await api.post('/linkinbio/templates', templateData);
     return res.data.data;
   },
 
@@ -102,6 +127,35 @@ export const bioApiService = {
   },
 
   /**
+   * Create Razorpay Tip order
+   */
+  async createTipOrder(data: {
+    pageId: string;
+    amount: number;
+    currency?: string;
+    tipMessage?: string;
+    visitorName?: string;
+  }) {
+    const res = await api.post('/linkinbio/tips/create-order', data);
+    return res.data.data;
+  },
+
+  /**
+   * Verify Razorpay Tip signature
+   */
+  async verifyTip(data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature?: string;
+    pageId?: string;
+    amount?: number;
+    currency?: string;
+  }) {
+    const res = await api.post('/linkinbio/tips/verify', data);
+    return res.data;
+  },
+
+  /**
    * Synchronously generate or regenerate personalized QR code
    */
   async generateQr(options?: { slug?: string; color?: string; bg?: string }) {
@@ -114,6 +168,21 @@ export const bioApiService = {
    */
   async getQrStatus() {
     const res = await api.get('/linkinbio/qr/status');
+    return res.data.data;
+  },
+
+  /**
+   * Fetch aggregate overview metrics for creator dashboard
+   */
+  async getAnalyticsOverview(): Promise<{
+    totalViews: number;
+    totalClicks: number;
+    averageCtr: number;
+    viewsTrend: string;
+    clicksTrend: string;
+    topLink?: { title: string; clicks: number } | null;
+  }> {
+    const res = await api.get('/linkinbio/analytics/overview');
     return res.data.data;
   },
 };

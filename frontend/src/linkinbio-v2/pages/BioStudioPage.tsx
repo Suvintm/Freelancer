@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useBioEditorStore } from '../../zustand/useBioEditorStore';
 import { StudioNavbar } from '../components/studio/StudioNavbar';
 import { BlockListPanel } from '../components/studio/BlockListPanel';
@@ -7,6 +8,7 @@ import { BioCanvasPreview } from '../components/studio/BioCanvasPreview';
 import { BlockInspectorPanel } from '../components/studio/BlockInspectorPanel';
 import { ThemeCustomizerPanel } from '../components/studio/ThemeCustomizerPanel';
 import { PageSettingsPanel } from '../components/studio/PageSettingsPanel';
+import { StudioLoadingScreen } from '../components/studio/StudioLoadingScreen';
 import { 
   Palette, 
   Sliders, 
@@ -16,21 +18,47 @@ import {
 type RightPanelTab = 'block' | 'theme' | 'settings';
 
 export const BioStudioPage: React.FC = () => {
+  const { id, pageId } = useParams<{ id?: string; pageId?: string }>();
+  const targetPageId = pageId || id;
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<RightPanelTab>('block');
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
 
   const page = useBioEditorStore((s) => s.page);
   const isPreviewMode = useBioEditorStore((s) => s.isPreviewMode);
   const selectedBlockId = useBioEditorStore((s) => s.selectedBlockId);
   const loadTemplate = useBioEditorStore((s) => s.loadTemplate);
   const addBlock = useBioEditorStore((s) => s.addBlock);
+  const fetchAndInitPage = useBioEditorStore((s) => s.fetchAndInitPage);
 
-  // Initialize with a creator starter if page is not loaded yet
+  // Initialize or fetch the specific bio page with guaranteed minimum 2.0s branded loader
   useEffect(() => {
-    if (!page) {
-      loadTemplate('creator-basic', 'Alex Morgan • Official Bio', 'main');
+    let isMounted = true;
+    setIsLoadingPage(true);
+
+    const minTimer = new Promise((resolve) => setTimeout(resolve, 2000));
+
+    if (targetPageId) {
+      const fetchPromise = fetchAndInitPage(targetPageId).catch((err) => {
+        console.error('[BioStudioPage] Error fetching page:', err);
+      });
+
+      Promise.all([fetchPromise, minTimer]).finally(() => {
+        if (isMounted) setIsLoadingPage(false);
+      });
+    } else {
+      if (!page) {
+        loadTemplate('suvix-signature-olive', 'Official Bio', 'main');
+      }
+      minTimer.finally(() => {
+        if (isMounted) setIsLoadingPage(false);
+      });
     }
-  }, [page, loadTemplate]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetPageId]);
 
   // Auto-switch to 'block' tab whenever a block is selected
   useEffect(() => {
@@ -39,13 +67,21 @@ export const BioStudioPage: React.FC = () => {
     }
   }, [selectedBlockId]);
 
+  // Dedicated Studio Loading Screen while data is being fetched and cached
+  if (isLoadingPage || (targetPageId && (!page || page.id !== targetPageId))) {
+    return (
+      <StudioLoadingScreen 
+        message="Opening Bio Studio..." 
+        submessage="Preparing your customized blocks, theme, and real-time canvas..." 
+      />
+    );
+  }
+
   return (
     <div className="w-full h-screen flex flex-col bg-slate-50 dark:bg-black text-slate-900 dark:text-zinc-100 font-sans overflow-hidden select-none">
       
       {/* ── 1. STUDIO TOP NAVBAR (Part 3.1) ── */}
-      <StudioNavbar 
-        onPublish={() => alert('🎉 Bio page published successfully!')}
-      />
+      <StudioNavbar />
 
       {/* ── 2. MAIN 3-PANEL WORKSPACE ── */}
       <div className="flex-1 min-h-0 flex items-stretch overflow-hidden relative">
@@ -54,6 +90,7 @@ export const BioStudioPage: React.FC = () => {
         {!isPreviewMode && (
           <BlockListPanel 
             onOpenAddDrawer={() => setIsAddDrawerOpen(true)}
+            onOpenThemeTab={() => setActiveTab('theme')}
           />
         )}
 
@@ -118,7 +155,7 @@ export const BioStudioPage: React.FC = () => {
       <AddBlockDrawer
         isOpen={isAddDrawerOpen}
         onClose={() => setIsAddDrawerOpen(false)}
-        onAddBlock={(type) => addBlock(type)}
+        onAddBlock={(type, overrides) => addBlock(type, undefined, overrides)}
       />
 
     </div>

@@ -23,6 +23,11 @@ export interface PageAnalyticsSettings {
 
 export interface PageAdvancedSettings {
   customDomain?: string | null;
+  protection?: {
+    type: 'none' | 'pin' | 'age';
+    pinCode?: string;
+    warningMessage?: string;
+  };
   passwordProtection?: {
     enabled: boolean;
     passwordHash?: string;
@@ -54,8 +59,9 @@ export interface BioPage {
   status: PageStatus;
   isActive: boolean;             // True if this is the user's primary public bio
   isPrimary?: boolean;
+  customDomain?: string | null;  // Custom branded domain e.g. links.mybrand.com
   templateId?: string;           // Provenance template ID
-  templateVersion?: number;      // Provenance template version
+  templateVersion?: number | string; // Provenance template version
 
   // Draft Data (Actively edited & autosaved)
   draftBlocks: Block[];
@@ -86,8 +92,12 @@ export interface BioPageSummary {
   description: string;
   status: PageStatus;
   isActive: boolean;
+  customDomain?: string | null;
   templateId?: string;
   thumbnailUrl?: string;
+  draftBlocks?: Block[];
+  draftTheme?: Theme;
+  publishedSnapshot?: PublishedSnapshot | null;
   viewCount: number;
   clickCount: number;
   ctr: number;

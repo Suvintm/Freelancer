@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Share2, 
   Copy, 
@@ -9,10 +8,7 @@ import {
   Smartphone, 
   Zap, 
   Globe, 
-  Download, 
-  RotateCw, 
-  Loader2,
-  CheckCircle2
+  Download 
 } from 'lucide-react';
 import defaultProfile from '../../../assets/defaultprofile.png';
 import officialLogo from '../../../assets/officiallogo.png';
@@ -23,7 +19,6 @@ interface BioQrCodeCardProps {
   name?: string;
   avatarUrl?: string;
   slug?: string;
-  initialGenerated?: boolean;
 }
 
 export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
@@ -31,14 +26,9 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
   name = 'SuviX Official',
   avatarUrl,
   slug = 'main',
-  initialGenerated = false,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [isGenerated, setIsGenerated] = useState(initialGenerated);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [qrSvgData, setQrSvgData] = useState<string | null>(null);
-  const [_qrPngData, setQrPngData] = useState<string | null>(null);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname.includes('localhost');
   const localUrl = `/u/${username}${slug === 'main' ? '' : `/${slug}`}`;
@@ -49,49 +39,25 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
 
   const displayAvatar = avatarUrl || officialLogo || defaultProfile;
 
-  // Check initial QR status from backend on mount
+  // Auto-fetch real server SVG or generate in background if not cached yet
   useEffect(() => {
     bioApiService.getQrStatus()
       .then((status) => {
-        if (status) {
-          if (status.qrGenerated) {
-            setIsGenerated(true);
-          }
-          if (status.qrSvg) {
-            setQrSvgData(status.qrSvg);
-          }
-          if (status.qrPng) {
-            setQrPngData(status.qrPng);
-          }
+        if (status?.qrSvg) {
+          setQrSvgData(status.qrSvg);
+        } else {
+          // Auto-generate in background without blocking UI
+          bioApiService.generateQr({ slug })
+            .then((res) => {
+              if (res?.qrSvg) {
+                setQrSvgData(res.qrSvg);
+              }
+            })
+            .catch(() => {});
         }
       })
-      .catch(() => {
-        // Keep default state if offline
-      });
-  }, []);
-
-  const handleGenerateQr = async () => {
-    setIsGenerating(true);
-    try {
-      const res = await bioApiService.generateQr({ slug });
-      if (res) {
-        if (res.qrSvg) {
-          setQrSvgData(res.qrSvg);
-        }
-        if (res.qrPng) {
-          setQrPngData(res.qrPng);
-        }
-      }
-      setIsGenerated(true);
-      setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 3000);
-    } catch (err) {
-      console.warn('[BioQrCodeCard] QR generation error:', err);
-      setIsGenerated(true);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+      .catch(() => {});
+  }, [slug]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareableUrl);
@@ -130,38 +96,10 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
   };
 
   return (
-    <div className="w-full bg-white dark:bg-[#111114] p-3 sm:p-4 rounded-2xl font-sans transition-all duration-200 shadow-xs border border-slate-200/80 dark:border-zinc-800/80 relative overflow-hidden">
-      
-      {/* ── FULL-CARD CIRCULAR SPINNER LOADER OVERLAY DURING GENERATION ── */}
-      <AnimatePresence>
-        {isGenerating && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-30 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
-          >
-            <div className="relative flex items-center justify-center">
-              {/* Outer rotating ring */}
-              <div className="w-14 h-14 rounded-full border-3 border-slate-200 dark:border-zinc-700 border-t-black dark:border-t-white animate-spin" />
-              {/* Center icon */}
-              <Zap className="w-6 h-6 text-amber-400 fill-amber-400 absolute" />
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-sm font-bold text-slate-900 dark:text-white tracking-wide">
-                Generating & Storing Official QR Code...
-              </span>
-              <span className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5 font-medium">
-                Uploading to S3 and syncing to database
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+    <div className="w-full bg-white dark:bg-[#111114] p-3 sm:p-4 rounded-2xl font-sans transition-all duration-200 shadow-xs border border-slate-200/80 dark:border-zinc-800/80">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
         
-        {/* ── LEFT SUB-COLUMN (4.5 cols): Always-Visible QR Showcase ── */}
+        {/* ── LEFT SUB-COLUMN (4.5 cols): Always-Active Vector QR Showcase ── */}
         <div className="md:col-span-5 flex flex-col items-center">
           <div className="w-full max-w-[185px] rounded-2xl bg-slate-50 dark:bg-zinc-900/90 border border-slate-200/80 dark:border-zinc-800/80 p-3 flex flex-col items-center shadow-xs">
             
@@ -186,12 +124,12 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
               </div>
 
               <span 
-                className={`w-2 h-2 rounded-full ${isGenerated ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} 
-                title={isGenerated ? 'Active & Synced' : 'Preview Mode (Unsaved)'} 
+                className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" 
+                title="Live Active QR" 
               />
             </div>
 
-            {/* Vector QR Canvas (Dynamically renders real server-generated SVG if present) */}
+            {/* Always-Ready Vector QR Canvas */}
             <div className="w-full aspect-square bg-white rounded-xl p-2.5 flex items-center justify-center shadow-xs relative group overflow-hidden">
               {qrSvgData ? (
                 <div 
@@ -268,100 +206,60 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
               )}
             </div>
 
-            {/* ── CARD BOTTOM ACTIONS: Generate Button OR Full Actions ── */}
+            {/* ── CARD BOTTOM ACTIONS: Always-Unlocked Share / Copy / Download Suite ── */}
             <div className="w-full mt-2 pt-2 border-t border-slate-200/60 dark:border-zinc-800/80 flex flex-col gap-1.5">
-              <AnimatePresence mode="wait">
-                {!isGenerated ? (
-                  /* ── BUTTON TO GENERATE QR CODE IF USER DOESN'T HAVE IT YET ── */
-                  <motion.div
-                    key="generate-cta"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full flex flex-col items-center gap-1"
-                  >
-                    <button
-                      onClick={handleGenerateQr}
-                      disabled={isGenerating}
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Activating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                          <span>Generate QR Code</span>
-                        </>
-                      )}
-                    </button>
-                    <span className="text-[9px] text-slate-400 dark:text-zinc-500">
-                      Click to activate your permanent QR
-                    </span>
-                  </motion.div>
-                ) : (
-                  /* ── FULL SHARE / COPY / DOWNLOAD ACTIONS WHEN ACTIVE ── */
-                  <motion.div
-                    key="active-actions"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-1.5 w-full"
-                  >
-                    <button
-                      onClick={handleShare}
-                      className="flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
-                      title="Share link"
-                    >
-                      <Share2 className="w-3 h-3" />
-                      <span>Share</span>
-                    </button>
+              <div className="flex items-center gap-1.5 w-full">
+                <button
+                  onClick={handleShare}
+                  className="flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
+                  title="Share link"
+                >
+                  <Share2 className="w-3 h-3" />
+                  <span>Share</span>
+                </button>
 
-                    <button
-                      onClick={handleCopyLink}
-                      className="flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-medium border border-slate-200 dark:border-zinc-700 transition-all cursor-pointer"
-                      title="Copy link"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 text-slate-500" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-medium border border-slate-200 dark:border-zinc-700 transition-all cursor-pointer"
+                  title="Copy link"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3 text-slate-500" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
 
-                    <button
-                      onClick={handleDownloadQr}
-                      className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-400 transition-colors flex items-center justify-center border border-slate-200 dark:border-zinc-700"
-                      title="Download Vector QR"
-                    >
-                      <Download className="w-3 h-3" />
-                    </button>
+                <button
+                  onClick={handleDownloadQr}
+                  className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-400 transition-colors flex items-center justify-center border border-slate-200 dark:border-zinc-700 cursor-pointer"
+                  title="Download Vector QR"
+                >
+                  <Download className="w-3 h-3" />
+                </button>
 
-                    <a
-                      href={shareableUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-400 transition-colors flex items-center justify-center border border-slate-200 dark:border-zinc-700"
-                      title="Open Live Public Link"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <a
+                  href={shareableUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-400 transition-colors flex items-center justify-center border border-slate-200 dark:border-zinc-700 cursor-pointer"
+                  title="Open Live Public Link"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
 
           </div>
         </div>
 
-        {/* ── RIGHT SUB-COLUMN (7 cols): Information & Regenerate Option ── */}
+        {/* ── RIGHT SUB-COLUMN (7 cols): Information & Feature Highlights ── */}
         <div className="md:col-span-7 flex flex-col justify-center space-y-2.5">
           
           <div>
@@ -370,18 +268,6 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
                 <Sparkles className="w-3 h-3 text-sky-500" />
                 <span>Instant QR Sharing</span>
               </div>
-
-              {isGenerated && (
-                <button
-                  onClick={handleGenerateQr}
-                  disabled={isGenerating}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-                  title="Regenerate QR Code"
-                >
-                  <RotateCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
-                  <span>Regenerate</span>
-                </button>
-              )}
             </div>
 
             <h2 
@@ -421,21 +307,6 @@ export const BioQrCodeCard: React.FC<BioQrCodeCardProps> = ({
               https://{brandedUrl}
             </span>
           </div>
-
-          {/* Toast Notification on Successful Generation */}
-          <AnimatePresence>
-            {showSuccessToast && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>QR Code generated, saved to S3 & database!</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
         </div>
 

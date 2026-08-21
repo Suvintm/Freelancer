@@ -57,6 +57,23 @@ export class BioAnalyticsController {
   }
 
   /**
+   * GET /api/linkinbio/analytics/overview
+   * Authenticated user overview analytics across all bio pages
+   */
+  async getOverview(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const overview = await bioAnalyticsService.getUserOverview(userId);
+      return res.status(200).json({
+        success: true,
+        data: overview,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * GET /api/linkinbio/analytics/:pageId
    * Authenticated analytics dashboard breakdown
    */
@@ -93,6 +110,49 @@ export class BioAnalyticsController {
         message: 'Successfully subscribed!',
         data: { email: subscriber.email },
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/linkinbio/subscribers/:pageId
+   * Authenticated creator subscriber list
+   */
+  async getSubscribers(req, res, next) {
+    try {
+      const { pageId } = req.params;
+      const page = parseInt(req.query.page || '1', 10);
+      const limit = parseInt(req.query.limit || '50', 10);
+
+      const result = await bioAnalyticsRepository.getSubscribers(pageId, page, limit);
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/linkinbio/subscribers/:pageId/export-csv
+   * Authenticated CSV download stream
+   */
+  async exportSubscribersCsv(req, res, next) {
+    try {
+      const { pageId } = req.params;
+      const subscribers = await bioAnalyticsRepository.getAllSubscribersForExport(pageId);
+
+      let csv = 'Email,Source Block,Subscribed Date\r\n';
+      subscribers.forEach((sub) => {
+        const date = new Date(sub.createdAt).toISOString().split('T')[0];
+        csv += `"${sub.email}","${sub.source || 'email-capture'}","${date}"\r\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="subscribers-${pageId}.csv"`);
+      return res.status(200).send(csv);
     } catch (err) {
       next(err);
     }

@@ -67,6 +67,13 @@ export class BioAnalyticsService {
   }
 
   /**
+   * Get creator's aggregate overview analytics across all pages
+   */
+  async getUserOverview(userId) {
+    return bioAnalyticsRepository.getUserOverview(userId);
+  }
+
+  /**
    * Add a new email newsletter subscriber
    */
   async addSubscriber(pageId, email, source) {

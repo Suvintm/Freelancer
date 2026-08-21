@@ -1696,6 +1696,7 @@ model BioPage {
   description       String?   @db.Text
   status            String    @default("draft") @db.VarChar(50) // 'draft' | 'published' | 'archived'
   isPrimary         Boolean   @default(false) @map("is_primary")
+  customDomain      String?   @unique @map("custom_domain") @db.VarChar(255)
   templateId        String    @default("creator-basic") @map("template_id") @db.VarChar(100)
   templateVersion   String    @default("1.0.0") @map("template_version") @db.VarChar(50)
 
@@ -1719,11 +1720,29 @@ model BioPage {
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   analyticsEvents   BioAnalyticsEvent[]
   subscribers       BioSubscriber[]
+  dailyStats        BioDailyStat[]
 
   @@unique([userId, slug])
   @@index([userId])
   @@index([slug])
   @@map("bio_pages")
+}
+
+model BioDailyStat {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId         String   @map("page_id") @db.Uuid
+  date           DateTime @db.Date
+  views          Int      @default(0)
+  clicks         Int      @default(0)
+  uniqueVisitors Int      @default(0) @map("unique_visitors")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  page           BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, date])
+  @@index([pageId, date])
+  @@map("bio_daily_stats")
 }
 
 model BioAnalyticsEvent {
@@ -1746,15 +1765,34 @@ model BioAnalyticsEvent {
 }
 
 model BioSubscriber {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pageId     String   @map("page_id") @db.Uuid
-  email      String   @db.VarChar(255)
-  source     String?  @default("email-capture") @db.VarChar(100)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId      String   @map("page_id") @db.Uuid
+  email       String   @db.VarChar(255)
+  source      String?  @default("email-capture") @db.VarChar(100)
+  sourceBlock String?  @map("source_block") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  page       BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page        BioPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
   @@unique([pageId, email])
   @@index([pageId])
   @@map("bio_subscribers")
+}
+
+model BioTemplate {
+  id          String   @id @db.VarChar(100)
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  category    String   @default("creators") @db.VarChar(50) // 'creators' | 'music' | 'business' | 'minimal' | 'ecommerce'
+  tier        String   @default("free") @db.VarChar(20) // 'free' | 'pro'
+  thumbnail   String?  @db.Text
+  themeJson   Json     @map("theme_json")
+  blocksJson  Json     @map("blocks_json")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([category, isActive])
+  @@map("bio_templates")
 }

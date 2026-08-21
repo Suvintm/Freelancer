@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  core-server:
+    build: ./server
+    ports:
+      - "5000:5000"
+    env_file: ./server/.env
+    environment:
+      - NODE_ENV=production
+
+  admin-server:
+    build: ./admin-server
+    ports:
+      - "10000:10000"
+    env_file: ./admin-server/.env
+    environment:
+      - NODE_ENV=production
+
+  main-frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - core-server
+
+  admin-frontend:
+    build: ./admin-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - admin-server
+
+networks:
+  default:
+    name: suvix-network

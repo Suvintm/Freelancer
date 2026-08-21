@@ -35,7 +35,7 @@ interface BioEditorState {
 
   // Block Mutations
   updateBlockConfig: (blockId: string, configUpdates: Partial<AnyBlockConfig>) => void;
-  addBlock: (type: BlockType, targetIndex?: number) => void;
+  addBlock: (type: BlockType, targetIndex?: number, configOverrides?: Record<string, any>) => void;
   removeBlock: (blockId: string) => void;
   moveBlock: (fromIndex: number, toIndex: number) => void;
   toggleBlockVisibility: (blockId: string) => void;
@@ -53,6 +53,7 @@ interface BioEditorState {
   setHasUnsavedChanges: (val: boolean) => void;
   saveToCloud: () => Promise<boolean>;
   publishToCloud: () => Promise<boolean>;
+  fetchAndInitPage: (pageId: string) => Promise<boolean>;
 }
 
 export const useBioEditorStore = create<BioEditorState>((set, get) => ({
@@ -66,6 +67,20 @@ export const useBioEditorStore = create<BioEditorState>((set, get) => ({
   lastSavedAt: null,
   history: [],
   historyIndex: -1,
+
+  fetchAndInitPage: async (pageId: string) => {
+    try {
+      const pageData = await bioApiService.getPageById(pageId);
+      if (pageData) {
+        get().initializePage(pageData);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn('[useBioEditorStore] fetchAndInitPage error:', err);
+      return false;
+    }
+  },
 
   initializePage: (pageData) => {
     const defaultTemplate = STARTER_TEMPLATES[0];
@@ -202,12 +217,12 @@ export const useBioEditorStore = create<BioEditorState>((set, get) => ({
     });
   },
 
-  addBlock: (type, targetIndex) => {
+  addBlock: (type, targetIndex, configOverrides) => {
     const current = get().page;
     if (!current) return;
 
     const insertIndex = targetIndex ?? current.draftBlocks.length;
-    const newBlock = createNewBlock(type, insertIndex);
+    const newBlock = createNewBlock(type, insertIndex, configOverrides);
 
     const updatedBlocks = [...current.draftBlocks];
     updatedBlocks.splice(insertIndex, 0, newBlock);
@@ -397,6 +412,7 @@ export const useBioEditorStore = create<BioEditorState>((set, get) => ({
           draftBlocks: page.draftBlocks,
           draftTheme: page.draftTheme,
           settings: page.settings,
+          clientUpdatedAt: page.updatedAt,
         });
       }
 
@@ -413,8 +429,11 @@ export const useBioEditorStore = create<BioEditorState>((set, get) => ({
         lastSavedAt: new Date(),
       });
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[useBioEditorStore] Cloud save failed:', err);
+      if (err?.response?.status === 409) {
+        alert('⚠️ Notice: This bio page was modified in another tab or session. Please refresh your browser to see the latest changes.');
+      }
       set({ isSaving: false });
       return false;
     }
