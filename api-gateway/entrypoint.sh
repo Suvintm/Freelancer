@@ -6,6 +6,10 @@ export NODE_BACKEND_HOST=${NODE_BACKEND_HOST:-node-server-1:5000}
 export PAYMENT_BACKEND_HOST=${PAYMENT_BACKEND_HOST:-payment-service:8080}
 export PORT=${PORT:-80}
 
+# Automatically clean protocols (http://, https://) and trailing slashes
+export NODE_BACKEND_HOST=$(echo "$NODE_BACKEND_HOST" | sed -e 's|^https://||' -e 's|^http://||' -e 's|/.*$||')
+export PAYMENT_BACKEND_HOST=$(echo "$PAYMENT_BACKEND_HOST" | sed -e 's|^https://||' -e 's|^http://||' -e 's|/.*$||')
+
 # Strip ports for Host header and SNI
 export NODE_HOST_HEADER=$(echo "$NODE_BACKEND_HOST" | sed 's/:[0-9]*$//')
 export PAYMENT_HOST_HEADER=$(echo "$PAYMENT_BACKEND_HOST" | sed 's/:[0-9]*$//')
