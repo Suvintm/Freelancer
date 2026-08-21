@@ -61,9 +61,14 @@ export const getClientIP = (req) => {
 };
 
 /**
- * Middleware to block requests from outside India
+ * Middleware to block requests from outside allowed countries (Toggleable via ENABLE_GEO_CHECK)
  */
 export const geoCheckMiddleware = async (req, res, next) => {
+  // Feature toggle: Disabled by default to prevent blocking legitimate users
+  if (process.env.ENABLE_GEO_CHECK !== "true") {
+    return next();
+  }
+
   // Bypass if DB is not loaded (prevents app crash if file is missing)
   if (!geoReader) {
     logger.warn("⚠️ Skipping GeoIP check: Database not found");
