@@ -62,11 +62,15 @@ export const LinkButtonBlock: React.FC<LinkButtonBlockProps> = ({ config, theme,
   const { text, subtitle, url, variant = 'card', color, textColor, icon, imageUrl, animation, openInNewTab = true, schedule } = config;
 
   // Check schedule validity
-  const now = Date.now();
-  const isNotYetActive = schedule?.startAt ? new Date(schedule.startAt).getTime() > now : false;
-  const isExpired = schedule?.endAt ? new Date(schedule.endAt).getTime() < now : false;
+  const isInactive = React.useMemo(() => {
+    if (!schedule?.startAt && !schedule?.endAt) return false;
+    const currentTime = Date.now();
+    const isNotYetActive = schedule.startAt ? new Date(schedule.startAt).getTime() > currentTime : false;
+    const isExpired = schedule.endAt ? new Date(schedule.endAt).getTime() < currentTime : false;
+    return isNotYetActive || isExpired;
+  }, [schedule?.startAt, schedule?.endAt]);
 
-  if (isNotYetActive || isExpired) {
+  if (isInactive) {
     return null; // Automatically hidden from public visitors when not active
   }
 

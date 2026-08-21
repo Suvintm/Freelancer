@@ -8,101 +8,87 @@ interface CountdownBlockProps {
   theme?: Theme;
 }
 
+const DEFAULT_TARGET_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
+
 export const CountdownBlock: React.FC<CountdownBlockProps> = ({ config, theme: _theme }) => {
-  const {
-    targetDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    title = '🔥 Next Big Launch Starts In:',
-    expiredText = 'Launch is Live! 🚀',
-  } = config;
+  const targetDate = config.targetDate;
+  const title = config.title || '🔥 Next Big Launch Starts In:';
+  const expiredText = config.expiredText || 'Launch is Live! 🚀';
 
-  const calculateTimeLeft = () => {
-    const difference = +new Date(targetDate) - +new Date();
-    let timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
-
-    if (difference > 0) {
-      timeLeft = {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / 1000 / 60) % 60),
-        seconds: Math.floor((difference / 1000) % 60),
-      };
-    }
-    return timeLeft;
-  };
-
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
-  const [isExpired, setIsExpired] = useState(+new Date(targetDate) <= +new Date());
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const remaining = calculateTimeLeft();
-      setTimeLeft(remaining);
-      if (+new Date(targetDate) <= +new Date()) {
-        setIsExpired(true);
+    const calculateTimeLeft = () => {
+      const targetTime = targetDate ? new Date(targetDate).getTime() : Date.now() + DEFAULT_TARGET_OFFSET_MS;
+      const difference = targetTime - Date.now();
+      if (difference > 0) {
+        return {
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((difference / 1000 / 60) % 60),
+          seconds: Math.floor((difference / 1000) % 60),
+        };
       }
+      return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    };
+
+    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
     }, 1000);
 
     return () => clearInterval(timer);
   }, [targetDate]);
 
+  const isExpired =
+    timeLeft.days === 0 &&
+    timeLeft.hours === 0 &&
+    timeLeft.minutes === 0 &&
+    timeLeft.seconds === 0;
+
   return (
-    <div className="w-full my-2 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-zinc-900 text-white shadow-md border border-white/15 select-none overflow-hidden font-sans text-center">
-      
-      {/* Title */}
-      <div className="flex items-center justify-center gap-1.5 mb-2.5">
-        <Timer className="w-4 h-4 text-amber-400 animate-pulse" />
-        <h4 className="font-extrabold text-xs tracking-tight text-white">
-          {isExpired ? expiredText : title}
-        </h4>
+    <div className="w-full relative overflow-hidden rounded-2xl p-5 backdrop-blur-md bg-white/5 border border-white/10 shadow-lg text-white">
+      {/* Header Info */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+          <Timer className="w-5 h-5 animate-pulse" />
+        </div>
+        <h4 className="font-semibold text-sm tracking-wide text-white/90">{title}</h4>
       </div>
 
-      {!isExpired ? (
-        <div className="grid grid-cols-4 gap-1.5 max-w-xs mx-auto">
-          <div className="p-1.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex flex-col items-center">
-            <span className="text-sm font-black font-mono text-white leading-tight">
-              {String(timeLeft.days).padStart(2, '0')}
-            </span>
-            <span className="text-[7.5px] uppercase font-bold text-zinc-400 tracking-wider">
-              Days
-            </span>
-          </div>
-
-          <div className="p-1.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex flex-col items-center">
-            <span className="text-sm font-black font-mono text-white leading-tight">
-              {String(timeLeft.hours).padStart(2, '0')}
-            </span>
-            <span className="text-[7.5px] uppercase font-bold text-zinc-400 tracking-wider">
-              Hours
-            </span>
-          </div>
-
-          <div className="p-1.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex flex-col items-center">
-            <span className="text-sm font-black font-mono text-white leading-tight">
-              {String(timeLeft.minutes).padStart(2, '0')}
-            </span>
-            <span className="text-[7.5px] uppercase font-bold text-zinc-400 tracking-wider">
-              Mins
-            </span>
-          </div>
-
-          <div className="p-1.5 rounded-xl bg-amber-400/20 backdrop-blur-sm border border-amber-400/30 flex flex-col items-center">
-            <span className="text-sm font-black font-mono text-amber-300 leading-tight animate-pulse">
-              {String(timeLeft.seconds).padStart(2, '0')}
-            </span>
-            <span className="text-[7.5px] uppercase font-bold text-amber-300 tracking-wider">
-              Secs
-            </span>
-          </div>
+      {/* Countdown Grid or Expired Message */}
+      {isExpired ? (
+        <div className="flex items-center justify-center gap-2 py-4 text-center">
+          <Zap className="w-5 h-5 text-emerald-400" />
+          <span className="font-bold text-base text-emerald-400">{expiredText}</span>
         </div>
       ) : (
-        <div className="py-1 px-3 rounded-xl bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-1 shadow-sm">
-          <Zap className="w-3.5 h-3.5 fill-slate-950" />
-          <span>Available Right Now!</span>
+        <div className="grid grid-cols-4 gap-2 text-center pt-1">
+          {[
+            { label: 'Days', value: timeLeft.days },
+            { label: 'Hours', value: timeLeft.hours },
+            { label: 'Mins', value: timeLeft.minutes },
+            { label: 'Secs', value: timeLeft.seconds },
+          ].map((item, index) => (
+            <div
+              key={index}
+              className="flex flex-col items-center justify-center p-2 rounded-xl bg-white/5 border border-white/5 backdrop-blur-sm"
+            >
+              <span className="font-extrabold text-xl sm:text-2xl text-white tracking-tight">
+                {String(item.value).padStart(2, '0')}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-white/50 font-medium mt-0.5">
+                {item.label}
+              </span>
+            </div>
+          ))}
         </div>
       )}
-
     </div>
   );
 };
-
-export default CountdownBlock;

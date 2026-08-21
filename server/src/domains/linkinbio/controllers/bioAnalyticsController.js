@@ -1,4 +1,5 @@
 import bioAnalyticsService from '../services/bioAnalyticsService.js';
+import bioAnalyticsRepository from '../repositories/bioAnalyticsRepository.js';
 
 export class BioAnalyticsController {
   /**

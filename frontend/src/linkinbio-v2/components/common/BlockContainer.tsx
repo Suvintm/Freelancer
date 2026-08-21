@@ -44,8 +44,7 @@ export const BlockContainer: React.FC<BlockContainerProps> = ({
 
   const computedStyle: React.CSSProperties = {
     // Universal Design Unit: 1 unit = 1% of container width (or proportional height for fixed aspect ratio blocks)
-    // @ts-ignore
-    '--du': isFixed ? 'min(1cqw, 0.5625cqh)' : '1cqw',
+    ['--du' as unknown as keyof React.CSSProperties]: isFixed ? 'min(1cqw, 0.5625cqh)' : '1cqw',
     ...(isFixed && aspectRatio ? { aspectRatio } : {}),
     ...(minHeight ? { minHeight } : {}),
     ...style,
