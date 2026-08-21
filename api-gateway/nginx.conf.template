@@ -85,12 +85,12 @@ http {
     limit_conn_status 429;
 
     # ========================================================
-    # UPSTREAM DEFINITIONS (Active Backend Services)
+    # UPSTREAM DEFINITIONS (Dynamic / Configurable via Env)
     # ========================================================
     
     # Node.js Core Backend
     upstream node_core {
-        server node-server-1:5000 max_fails=3 fail_timeout=30s;
+        server ${NODE_BACKEND_HOST} max_fails=3 fail_timeout=30s;
         keepalive 32;
         keepalive_requests 100;
         keepalive_timeout 60s;
@@ -98,7 +98,7 @@ http {
 
     # Java Payment Microservice (Spring Boot)
     upstream java_payments {
-        server payment-service:8080 max_fails=3 fail_timeout=30s;
+        server ${PAYMENT_BACKEND_HOST} max_fails=3 fail_timeout=30s;
         keepalive 32;
         keepalive_requests 100;
         keepalive_timeout 60s;
@@ -133,7 +133,7 @@ http {
     # MAIN API GATEWAY SERVER (HTTP + HTTPS)
     # ========================================================
     server {
-        listen 80 default_server;
+        listen ${PORT} default_server;
         listen 443 ssl default_server;
         server_name api.suvix.in localhost _;
 
