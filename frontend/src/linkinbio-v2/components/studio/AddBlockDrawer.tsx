@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 
 import { HeaderVariantPreviewCard, HEADER_VARIANTS_METADATA } from './HeaderVariantPreviewCard';
-import type { ProfileVariant } from '../../types/block.types';
 import { ArrowLeft } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../../store/slices/authSlice';
@@ -107,7 +106,7 @@ export const AddBlockDrawer: React.FC<AddBlockDrawerProps> = ({
     : bioPage?.slug 
     ? `@${bioPage.slug}` 
     : '@yourhandle';
-  const previewAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+  const previewAvatar = currentUser?.profilePicture || (currentUser as any)?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
   const previewBio = (currentUser as any)?.bio || 'Your bio and description will appear here...';
 
   if (!isOpen) return null;
