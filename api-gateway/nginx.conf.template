@@ -381,6 +381,8 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header X-Forwarded-Host $host;
             proxy_set_header X-Request-ID $request_id;
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_set_header CF-IPCountry $http_cf_ipcountry;
             
             proxy_connect_timeout 10s;
             proxy_send_timeout 30s;
@@ -415,6 +417,8 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header X-Forwarded-Host $host;
             proxy_set_header X-Request-ID $request_id;
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_set_header CF-IPCountry $http_cf_ipcountry;
             
             proxy_connect_timeout 10s;
             proxy_send_timeout 60s;
