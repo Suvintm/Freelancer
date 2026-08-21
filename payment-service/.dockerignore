@@ -1,0 +1,10 @@
+target
+.env
+.env.*
+.git
+.gitignore
+.idea
+.vscode
+*.log
+build-error.txt
+hs_err_*.log

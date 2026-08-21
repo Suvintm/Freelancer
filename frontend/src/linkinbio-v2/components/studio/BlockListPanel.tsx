@@ -20,23 +20,33 @@ import {
   Image, 
   Type, 
   Minus,
-  Sparkles
+  Sparkles,
+  Heart,
+  HelpCircle,
+  Clock,
+  Palette
 } from 'lucide-react';
 
 interface BlockListPanelProps {
   onOpenAddDrawer: () => void;
+  onOpenThemeTab?: () => void;
 }
 
 const BLOCK_TYPE_ICONS: Record<string, React.ReactNode> = {
   'profile-header': <User className="w-3.5 h-3.5" />,
   'link-button': <Link2 className="w-3.5 h-3.5" />,
   'social-bar': <Share2 className="w-3.5 h-3.5" />,
+  'tip-jar': <Heart className="w-3.5 h-3.5 text-rose-500" />,
+  'music-embed': <Music className="w-3.5 h-3.5 text-emerald-400" />,
+  'email-capture': <Mail className="w-3.5 h-3.5 text-sky-400" />,
+  'faq-accordion': <HelpCircle className="w-3.5 h-3.5 text-amber-500" />,
+  'countdown': <Clock className="w-3.5 h-3.5 text-amber-400" />,
+  'product-card': <ShoppingBag className="w-3.5 h-3.5 text-indigo-500" />,
   'product-grid': <ShoppingBag className="w-3.5 h-3.5" />,
   'video-embed': <Video className="w-3.5 h-3.5" />,
   'audio-player': <Music className="w-3.5 h-3.5" />,
-  'email-capture': <Mail className="w-3.5 h-3.5" />,
+  'text-block': <Type className="w-3.5 h-3.5" />,
   'image-gallery': <Image className="w-3.5 h-3.5" />,
-  'text': <Type className="w-3.5 h-3.5" />,
   'divider': <Minus className="w-3.5 h-3.5" />,
 };
 
@@ -47,19 +57,27 @@ const getBlockLabel = (block: Block): string => {
 
   switch (block.type) {
     case 'profile-header':
-      return config.displayName || config.username || 'Profile Header';
+      return config.displayName || config.title || config.username || 'Profile Header';
     case 'link-button':
-      return config.title || 'Link Button';
+      return config.text || config.title || 'Link Button';
     case 'social-bar':
-      return `Socials (${config.platforms?.length || 0})`;
+      return `Socials (${config.links?.length ?? config.platforms?.length ?? 0})`;
+    case 'tip-jar':
+      return config.title || 'Tip Jar & Donations';
+    case 'music-embed':
+      return config.title || 'Music Player';
+    case 'faq-accordion':
+      return config.heading || `FAQ (${config.items?.length || 0})`;
+    case 'countdown':
+      return config.title || 'Countdown Timer';
+    case 'product-card':
+      return config.title || 'Product Showcase';
     case 'product-grid':
       return config.heading || `Products (${config.products?.length || 0})`;
     case 'video-embed':
       return config.title || 'Video Player';
-    case 'countdown':
-      return config.title || 'Countdown Timer';
     case 'email-capture':
-      return config.heading || 'Newsletter Box';
+      return config.title || config.heading || 'Newsletter Box';
     case 'image-gallery':
       return config.heading || `Gallery (${config.images?.length || 0})`;
     case 'text-block':
@@ -73,6 +91,7 @@ const getBlockLabel = (block: Block): string => {
 
 export const BlockListPanel: React.FC<BlockListPanelProps> = ({
   onOpenAddDrawer,
+  onOpenThemeTab,
 }) => {
   const page = useBioEditorStore((s) => s.page);
   const selectedBlockId = useBioEditorStore((s) => s.selectedBlockId);
@@ -108,6 +127,31 @@ export const BlockListPanel: React.FC<BlockListPanelProps> = ({
 
       {/* ── MIDDLE: Scrollable Block Layers List ── */}
       <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 no-scrollbar">
+        {/* Pinned Master Layer: Page Canvas & Background */}
+        <div
+          onClick={() => onOpenThemeTab?.()}
+          className="p-2 rounded-xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/50 dark:bg-sky-950/20 hover:bg-sky-50 dark:hover:bg-sky-950/40 flex items-center justify-between cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-1.5 rounded-lg bg-sky-500 text-white shadow-xs">
+              <Palette className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-sky-950 dark:text-sky-200 truncate">
+                Canvas & Background
+              </span>
+              <span className="text-[10px] text-sky-600 dark:text-sky-400">
+                Master Root Layer
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform">
+            Edit →
+          </span>
+        </div>
+
+        <div className="my-1 border-t border-slate-100 dark:border-zinc-800/80" />
+
         {blocks.map((block, idx) => {
           const isSelected = selectedBlockId === block.id;
           const isFirst = idx === 0;

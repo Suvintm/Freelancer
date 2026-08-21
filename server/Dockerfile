@@ -1,26 +1,28 @@
-# Dockerfile for SuviX Node.js Server
-# Production-Grade Alpine Image (Ultra-Lightweight)
-
+# Dockerfile for SuviX Node.js Core Server
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies first (better caching)
+# Copy package files and prisma schema first for postinstall: prisma generate
 COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies (runs prisma generate during postinstall)
 RUN npm ci
 
-# Copy source and build (if needed, though server is usually raw JS)
+# Copy remaining source files
 COPY . .
 
 # Final stage: Runner
 FROM node:20-alpine
 
 WORKDIR /app
+
 COPY --from=builder /app ./
 
-# Production environment
 ENV NODE_ENV=production
+ENV PORT=5000
 
 EXPOSE 5000
 
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]

@@ -43,12 +43,13 @@ export class BioPageController {
   async createPage(req, res, next) {
     try {
       const userId = req.user.id;
-      const { templateId, title, slug, draftBlocks, draftTheme, settings } = req.body;
+      const { templateId, title, slug, customDomain, draftBlocks, draftTheme, settings } = req.body;
 
       const newPage = await bioPageService.createPage(userId, {
         templateId,
         title,
         slug,
+        customDomain,
         draftBlocks,
         draftTheme,
         settings,
@@ -72,15 +73,17 @@ export class BioPageController {
     try {
       const userId = req.user.id;
       const { id } = req.params;
-      const { title, slug, description, draftBlocks, draftTheme, settings } = req.body;
+      const { title, slug, description, customDomain, draftBlocks, draftTheme, settings, clientUpdatedAt } = req.body;
 
       const updatedPage = await bioPageService.saveDraft(id, userId, {
         title,
         slug,
         description,
+        customDomain,
         draftBlocks,
         draftTheme,
         settings,
+        clientUpdatedAt,
       });
 
       return res.status(200).json({
@@ -153,6 +156,25 @@ export class BioPageController {
         success: true,
         message: 'Bio page deleted',
         data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /api/linkinbio/pages/migrate-legacy
+   * Convert legacy PublicProfile into BioPage v2
+   */
+  async migrateLegacy(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const migratedPage = await bioPageService.migrateLegacyPublicProfile(userId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Legacy profile successfully migrated to Bio Page v2',
+        data: migratedPage,
       });
     } catch (err) {
       next(err);

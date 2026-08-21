@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { STARTER_TEMPLATES } from '../../registry/templateRegistry';
 import type { Template } from '../../types/template.types';
+import { bioApiService } from '../../services/bioApiService';
 import { TemplateCard } from './TemplateCard';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { 
@@ -39,12 +40,40 @@ export const TemplatePickerModal: React.FC<TemplatePickerModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [dbTemplates, setDbTemplates] = useState<Template[]>([]);
   
   // Selection & Configuration Step
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [pageTitle, setPageTitle] = useState<string>('');
   const [pageSlug, setPageSlug] = useState<string>('');
   const [slugError, setSlugError] = useState<string | null>(null);
+
+  // Fetch live templates from DB
+  useEffect(() => {
+    if (!isOpen) return;
+    bioApiService.getTemplates()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Template[] = data.map((t) => ({
+            id: t.id,
+            version: 1,
+            name: t.name,
+            description: t.description || '',
+            category: (t.category as any) || 'creator',
+            isPremium: t.tier === 'pro',
+            thumbnailUrl: t.thumbnail || 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600',
+            isActive: true,
+            tags: [t.category, t.tier],
+            defaultTheme: t.themeJson,
+            defaultBlocks: t.blocksJson || [],
+            createdAt: t.createdAt || new Date().toISOString(),
+            updatedAt: t.updatedAt || new Date().toISOString(),
+          }));
+          setDbTemplates(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
   // Prevent background body scroll while modal is open
   useEffect(() => {
@@ -57,9 +86,17 @@ export const TemplatePickerModal: React.FC<TemplatePickerModalProps> = ({
     }
   }, [isOpen]);
 
+  // All combined templates (DB templates first, then built-in starters)
+  const allTemplates = useMemo(() => {
+    if (dbTemplates.length === 0) return STARTER_TEMPLATES;
+    const existingIds = new Set(dbTemplates.map((t) => t.id));
+    const uniqueStarters = STARTER_TEMPLATES.filter((t) => !existingIds.has(t.id));
+    return [...dbTemplates, ...uniqueStarters];
+  }, [dbTemplates]);
+
   // Filter templates based on category & search
   const filteredTemplates = useMemo(() => {
-    return STARTER_TEMPLATES.filter((tpl) => {
+    return allTemplates.filter((tpl) => {
       const matchesCategory =
         selectedCategory === 'all' ||
         tpl.category === selectedCategory ||
@@ -73,7 +110,7 @@ export const TemplatePickerModal: React.FC<TemplatePickerModalProps> = ({
 
       return matchesCategory && matchesSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [allTemplates, selectedCategory, searchQuery]);
 
   const handleSelectTemplate = (template: Template) => {
     setSelectedTemplate(template);

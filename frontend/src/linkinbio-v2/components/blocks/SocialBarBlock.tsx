@@ -15,18 +15,26 @@ const PLATFORM_ICONS: Record<string, { icon: React.ElementType; label: string; c
   tiktok: { icon: FaTiktok, label: 'TikTok', color: '#00F2FE' },
   spotify: { icon: FaSpotify, label: 'Spotify', color: '#1DB954' },
   linkedin: { icon: FaLinkedin, label: 'LinkedIn', color: '#0A66C2' },
-  github: { icon: FaGithub, label: 'GitHub', color: '#ffffff' },
+  github: { icon: FaGithub, label: 'GitHub', color: '#000000' },
   discord: { icon: FaDiscord, label: 'Discord', color: '#5865F2' },
   website: { icon: FaGlobe, label: 'Website', color: '#38BDF8' },
-  email: { icon: FaEnvelope, label: 'Email', color: '#F59E0B' },
+  email: { icon: FaEnvelope, label: 'Email', color: '#4D6234' },
 };
 
 export const SocialBarBlock: React.FC<SocialBarBlockProps> = ({ config }) => {
-  const { links, style, size } = config;
+  const { links: configLinks, style, size } = config;
+  const rawLinks = configLinks || (config as any).platforms || [];
 
-  if (!links || links.length === 0) {
+  if (!rawLinks || rawLinks.length === 0) {
     return null;
   }
+
+  // Normalize links
+  const links = rawLinks.map((item: any) => ({
+    id: item.id || item.platform,
+    platform: (item.platform || 'website').toLowerCase(),
+    url: item.url || '#',
+  }));
 
   const iconSizeClass =
     size === 'small' ? 'w-4 h-4' : size === 'large' ? 'w-6 h-6' : 'w-5 h-5';
@@ -34,10 +42,33 @@ export const SocialBarBlock: React.FC<SocialBarBlockProps> = ({ config }) => {
   const containerPadding =
     size === 'small' ? 'p-2' : size === 'large' ? 'p-3.5' : 'p-2.5';
 
+  if (style === 'filled-circle') {
+    return (
+      <div className="w-full flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap my-2">
+        {links.map((item: any) => {
+          const info = PLATFORM_ICONS[item.platform] || { icon: FaGlobe, label: item.platform, color: '#4D6234' };
+          const Icon = info.icon;
+          return (
+            <a
+              key={item.id || item.platform}
+              href={item.url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={info.label}
+              className="w-8.5 h-8.5 rounded-full bg-white text-[#4D6234] hover:bg-white/95 shadow-xs transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer no-underline shrink-0"
+            >
+              <Icon className="w-4 h-4" />
+            </a>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (style === 'pills') {
     return (
       <div className="w-full flex flex-wrap items-center justify-center gap-2 my-2.5">
-        {links.map((item) => {
+        {links.map((item: any) => {
           const info = PLATFORM_ICONS[item.platform] || { icon: FaGlobe, label: item.platform, color: '#ffffff' };
           const Icon = info.icon;
           return (
@@ -60,7 +91,7 @@ export const SocialBarBlock: React.FC<SocialBarBlockProps> = ({ config }) => {
   if (style === 'icons-with-label') {
     return (
       <div className="w-full grid grid-cols-2 gap-2 my-2.5">
-        {links.map((item) => {
+        {links.map((item: any) => {
           const info = PLATFORM_ICONS[item.platform] || { icon: FaGlobe, label: item.platform, color: '#ffffff' };
           const Icon = info.icon;
           return (
@@ -84,7 +115,7 @@ export const SocialBarBlock: React.FC<SocialBarBlockProps> = ({ config }) => {
 
   return (
     <div className="w-full flex items-center justify-center gap-2 flex-wrap my-3">
-      {links.map((item) => {
+      {links.map((item: any) => {
         const info = PLATFORM_ICONS[item.platform] || { icon: FaGlobe, label: item.platform, color: '#ffffff' };
         const Icon = info.icon;
         return (
@@ -103,3 +134,5 @@ export const SocialBarBlock: React.FC<SocialBarBlockProps> = ({ config }) => {
     </div>
   );
 };
+
+export default SocialBarBlock;

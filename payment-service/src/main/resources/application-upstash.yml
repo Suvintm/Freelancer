@@ -10,10 +10,12 @@ server:
   port: ${SERVER_PORT:8080}
 
 spring:
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-      database: ${MONGODB_DB}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}

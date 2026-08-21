@@ -8,17 +8,23 @@ export type BlockType =
   | 'link-button'
   | 'social-bar'
   | 'product-grid'
+  | 'product-card'
   | 'video-embed'
+  | 'music-embed'
   | 'text-block'
   | 'image-gallery'
   | 'email-capture'
+  | 'tip-jar'
+  | 'faq-accordion'
   | 'divider'
   | 'countdown';
 
-export type ProfileVariant = 'centered' | 'banner' | 'split';
-export type LinkButtonVariant = 'solid' | 'outline' | 'soft' | 'glass';
+export type ProfileVariant = 'centered' | 'banner' | 'split' | 'compact' | 'story';
+export type AvatarShape = 'circle' | 'squircle' | 'square';
+export type AvatarSize = 'small' | 'medium' | 'large';
+export type LinkButtonVariant = 'solid' | 'outline' | 'soft' | 'glass' | 'card';
 export type LinkButtonAnimation = 'none' | 'pulse' | 'bounce' | 'glow';
-export type SocialBarStyle = 'icons-only' | 'icons-with-label' | 'pills';
+export type SocialBarStyle = 'icons-only' | 'icons-with-label' | 'pills' | 'filled-circle';
 export type SocialIconSize = 'small' | 'medium' | 'large';
 export type VideoAspectRatio = '16:9' | '9:16' | '1:1';
 export type ImageGalleryLayout = 'grid' | 'carousel' | 'masonry';
@@ -46,6 +52,12 @@ export interface GalleryImageItem {
   url?: string;
 }
 
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
 // ----------------------------------------------------
 // Specific Block Config Interfaces
 // ----------------------------------------------------
@@ -55,9 +67,15 @@ export interface ProfileHeaderConfig {
   bannerUrl?: string;
   title: string;
   subtitle: string;
+  badgeText?: string;
   variant: ProfileVariant;
+  avatarShape?: AvatarShape;
+  avatarSize?: AvatarSize;
   alignment: 'left' | 'center' | 'right';
   showVerifiedBadge?: boolean;
+  displayName?: string; // Compatibility alias
+  avatarUrl?: string; // Compatibility alias
+  bio?: string; // Compatibility alias
 }
 
 export interface LinkButtonConfig {
@@ -71,6 +89,11 @@ export interface LinkButtonConfig {
   imageUrl?: string;
   animation: LinkButtonAnimation;
   openInNewTab: boolean;
+  schedule?: {
+    startAt?: string; // ISO 8601 string
+    endAt?: string;   // ISO 8601 string
+    timezone?: string;
+  };
 }
 
 export interface SocialBarConfig {
@@ -86,11 +109,29 @@ export interface ProductGridConfig {
   showPrice: boolean;
 }
 
+export interface ProductCardConfig {
+  title: string;
+  description?: string;
+  price: string;
+  originalPrice?: string;
+  imageUrl: string;
+  url: string;
+  badgeText?: string;
+  buttonText?: string;
+}
+
 export interface VideoEmbedConfig {
   videoUrl: string;
   aspectRatio: VideoAspectRatio;
   autoplay: boolean;
   title?: string;
+}
+
+export interface MusicEmbedConfig {
+  platform: 'spotify' | 'apple-music' | 'soundcloud';
+  embedUrl: string;
+  title?: string;
+  theme?: 'dark' | 'light';
 }
 
 export interface TextBlockConfig {
@@ -114,6 +155,22 @@ export interface EmailCaptureConfig {
   provider?: 'internal' | 'mailchimp' | 'convertkit';
 }
 
+export interface TipJarConfig {
+  title: string;
+  description?: string;
+  currency: 'USD' | 'INR' | 'EUR' | 'GBP';
+  presets: number[];
+  customAmount: boolean;
+  upiId?: string;
+  paymentUrl?: string;
+  thankYouMessage?: string;
+}
+
+export interface FaqAccordionConfig {
+  heading?: string;
+  items: FaqItem[];
+}
+
 export interface DividerConfig {
   style: DividerStyle;
   color?: string;
@@ -131,10 +188,14 @@ export type AnyBlockConfig =
   | LinkButtonConfig
   | SocialBarConfig
   | ProductGridConfig
+  | ProductCardConfig
   | VideoEmbedConfig
+  | MusicEmbedConfig
   | TextBlockConfig
   | ImageGalleryConfig
   | EmailCaptureConfig
+  | TipJarConfig
+  | FaqAccordionConfig
   | DividerConfig
   | CountdownConfig
   | Record<string, any>;

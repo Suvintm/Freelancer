@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../../store/slices/authSlice';
 import { useBioEditorStore } from '../../../zustand/useBioEditorStore';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
+import { PublishSuccessModal } from './PublishSuccessModal';
 import { 
   ArrowLeft, 
   Smartphone, 
@@ -16,7 +19,8 @@ import {
   Pencil, 
   CheckCircle2, 
   Save,
-  Loader2
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 
 interface StudioNavbarProps {
@@ -27,6 +31,8 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
   onPublish,
 }) => {
   const navigate = useNavigate();
+  const authUser = useSelector(selectUser);
+  const username = authUser?.username || authUser?.name?.toLowerCase().replace(/\s+/g, '') || 'suvintm';
   
   const page = useBioEditorStore((s) => s.page);
   const previewDevice = useBioEditorStore((s) => s.previewDevice);
@@ -47,6 +53,8 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
   const [titleInput, setTitleInput] = useState(page?.title || 'My Bio Page');
   const [copiedLink, setCopiedLink] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showPublishSuccessModal, setShowPublishSuccessModal] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // 1. Browser Native Tab Close Guard
   useEffect(() => {
@@ -83,7 +91,10 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
     }
   };
 
-  const liveUrl = `suvix.me/${page?.slug === 'main' ? 'creator' : `creator/${page?.slug || 'bio'}`}`;
+  const isLocalhost = typeof window !== 'undefined' && window.location.hostname.includes('localhost');
+  const path = `/u/${username}${page?.slug && page.slug !== 'main' ? `/${page.slug}` : ''}`;
+  const liveUrl = `suvix.in${path}`;
+  const liveHref = isLocalhost ? path : `https://${liveUrl}`;
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(`https://${liveUrl}`);
@@ -104,8 +115,17 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
   };
 
   const handlePublishClick = async () => {
-    await publishToCloud();
-    onPublish?.();
+    try {
+      setIsPublishing(true);
+      await saveToCloud();
+      const success = await publishToCloud();
+      if (success) {
+        setShowPublishSuccessModal(true);
+        onPublish?.();
+      }
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleSaveAndExit = async () => {
@@ -268,6 +288,19 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
             )}
           </button>
 
+          {/* Direct "View Public Profile" Button */}
+          <a
+            href={liveHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer no-underline"
+            title="Open Live Public Profile in a new tab"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-sky-500" />
+            <span className="hidden md:inline">View Public Profile</span>
+            <span className="md:hidden">Public</span>
+          </a>
+
           {/* Explicit [Save Draft] Button (Google/Figma Zero-Waste Pattern) */}
           <button
             onClick={handleSaveDraft}
@@ -303,15 +336,15 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
           {/* Primary [Publish] CTA */}
           <button
             onClick={handlePublishClick}
-            disabled={isSaving}
+            disabled={isSaving || isPublishing}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
           >
-            {isSaving ? (
+            {isPublishing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <CheckCircle2 className="w-3.5 h-3.5" />
             )}
-            <span>Publish</span>
+            <span>{isPublishing ? 'Publishing...' : 'Publish'}</span>
           </button>
 
         </div>
@@ -325,6 +358,19 @@ export const StudioNavbar: React.FC<StudioNavbarProps> = ({
         onStay={() => setShowExitModal(false)}
         onDiscard={handleDiscardAndExit}
         onSaveAndExit={handleSaveAndExit}
+      />
+
+      {/* Celebratory Publish Success Modal */}
+      <PublishSuccessModal
+        isOpen={showPublishSuccessModal}
+        onClose={() => setShowPublishSuccessModal(false)}
+        pageTitle={page?.title || 'Bio Page'}
+        username={username}
+        slug={page?.slug}
+        onNavigateToDashboard={() => {
+          setShowPublishSuccessModal(false);
+          navigate('/link-in-bio');
+        }}
       />
     </>
   );

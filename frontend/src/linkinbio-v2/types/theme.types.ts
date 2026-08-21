@@ -1,6 +1,6 @@
 /**
  * Theme System Type Definitions
- * Controls global visuals: background, typography, button styles, colors, and layout spacing.
+ * Enterprise-Grade Link-in-Bio Canvas Master & Visual Tokens
  */
 
 export type BackgroundType = 'solid' | 'gradient' | 'image' | 'video' | 'mesh';
@@ -8,6 +8,7 @@ export type GradientType = 'linear' | 'radial';
 export type ButtonStyle = 'rounded' | 'pill' | 'square' | 'soft' | 'glass';
 export type ButtonShadow = 'none' | 'small' | 'medium' | 'large' | 'glow';
 export type ButtonAnimation = 'none' | 'pulse' | 'bounce' | 'glow';
+export type CardVariant = 'solid' | 'glass' | 'outline' | 'shadow';
 export type SpacingScale = 'compact' | 'comfortable' | 'spacious' | 'small' | 'medium' | 'large';
 export type MaxWidthScale = 'narrow' | 'medium' | 'wide';
 
@@ -20,18 +21,20 @@ export interface BackgroundGradient {
 export interface BackgroundOverlay {
   enabled: boolean;
   color: string;
-  opacity: number;
+  opacity: number; // 0.0 (transparent) to 0.8 (dark)
 }
 
 export interface BackgroundConfig {
   type: BackgroundType;
-  value?: string;
-  color?: string;
+  value?: string; // Hex, CSS gradient, or asset URL
+  color?: string; // Solid color fallback
   gradient?: BackgroundGradient;
+  assetId?: string; // Resolved CDN Asset ID for uploaded wallpapers
+  dominantColor?: string; // Hex code of dominant color for instant luminance/contrast computation
   imageUrl?: string;
   videoUrl?: string;
   overlay?: BackgroundOverlay;
-  blur?: number;
+  blur?: number; // Frosted blur capped at 0–12px for mobile performance
 }
 
 export interface TypographyConfig {
@@ -68,6 +71,7 @@ export interface ColorPaletteConfig {
 }
 
 export interface Theme {
+  schemaVersion?: number;
   id?: string;
   name?: string;
   background: BackgroundConfig;
@@ -75,4 +79,5 @@ export interface Theme {
   buttons: ButtonThemeConfig;
   spacing: SpacingConfig;
   colors: ColorPaletteConfig;
+  cardVariant?: CardVariant;
 }

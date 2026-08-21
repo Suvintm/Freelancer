@@ -21,6 +21,9 @@ export class BioPageRepository {
         isPrimary: true,
         templateId: true,
         templateVersion: true,
+        draftBlocks: true,
+        draftTheme: true,
+        publishedSnapshot: true,
         viewCount: true,
         clickCount: true,
         uniqueVisitors: true,
@@ -85,6 +88,15 @@ export class BioPageRepository {
   }
 
   /**
+   * Find a bio page by custom domain
+   */
+  async findByCustomDomain(domain) {
+    return prisma.bioPage.findUnique({
+      where: { customDomain: domain.toLowerCase().trim() },
+    });
+  }
+
+  /**
    * Create a new Bio Page
    */
   async create(data) {
@@ -96,11 +108,14 @@ export class BioPageRepository {
         description: data.description || '',
         status: data.status || 'draft',
         isPrimary: data.isPrimary ?? false,
+        customDomain: data.customDomain ? data.customDomain.toLowerCase().trim() : null,
         templateId: data.templateId || 'creator-basic',
         templateVersion: data.templateVersion || '1.0.0',
         draftBlocks: data.draftBlocks || [],
         draftTheme: data.draftTheme || {},
         settings: data.settings || {},
+        publishedSnapshot: data.publishedSnapshot || null,
+        publishedAt: data.publishedAt || null,
       },
     });
   }
@@ -115,6 +130,9 @@ export class BioPageRepository {
         ...(updates.title !== undefined && { title: updates.title }),
         ...(updates.slug !== undefined && { slug: updates.slug }),
         ...(updates.description !== undefined && { description: updates.description }),
+        ...(updates.customDomain !== undefined && { 
+          customDomain: updates.customDomain ? updates.customDomain.toLowerCase().trim() : null 
+        }),
         ...(updates.draftBlocks !== undefined && { draftBlocks: updates.draftBlocks }),
         ...(updates.draftTheme !== undefined && { draftTheme: updates.draftTheme }),
         ...(updates.settings !== undefined && { settings: updates.settings }),

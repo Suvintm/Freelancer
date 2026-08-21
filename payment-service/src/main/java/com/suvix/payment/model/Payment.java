@@ -1,76 +1,112 @@
 package com.suvix.payment.model;
 
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.index.Indexed;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * Payment document — mirrors the Node.js Payment.js model in MongoDB.
- * This service OWNS the payments collection.
+ * Payment Entity — maps directly to PostgreSQL 'payments' table.
+ * Fully synchronized with SuviX Prisma PostgreSQL schema.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "payments")
+@Entity
+@Table(name = "payments", indexes = {
+    @Index(name = "idx_payments_order", columnList = "order_id"),
+    @Index(name = "idx_payments_client_id", columnList = "client_id"),
+    @Index(name = "idx_payments_editor_id", columnList = "editor_id")
+})
 public class Payment {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
-    /** Reference to Order (as String ObjectId, read from orders collection) */
-    @Indexed
+    /** Reference to Order */
+    @Column(name = "order_id", nullable = false)
     private String orderId;
 
     /** Client who paid */
-    @Indexed
-    private String clientId;
+    @Column(name = "client_id")
+    private UUID clientId;
 
     /** Editor who receives payment */
-    @Indexed
-    private String editorId;
+    @Column(name = "editor_id")
+    private UUID editorId;
 
     /** Total amount paid by client (in INR) */
+    @Column(name = "amount", precision = 12, scale = 2, nullable = false)
     private BigDecimal amount;
 
     /** Platform fee deducted (e.g., 10%) */
+    @Column(name = "platform_fee", precision = 12, scale = 2)
     private BigDecimal platformFee;
 
     /** What editor actually earns after fee */
+    @Column(name = "editor_earning", precision = 12, scale = 2)
     private BigDecimal editorEarning;
 
     /** Razorpay payment ID (pay_xxx) */
-    @Indexed(unique = true, sparse = true)
+    @Column(name = "razorpay_payment_id", unique = true)
     private String razorpayPaymentId;
 
     /** Razorpay order ID (order_xxx) */
-    @Indexed
+    @Column(name = "razorpay_order_id")
     private String razorpayOrderId;
 
     /** Payment status */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private PaymentStatus status;
 
     /** Type of payment */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
     private PaymentType type;
 
     /** Razorpay refund ID if refunded */
+    @Column(name = "razorpay_refund_id")
     private String razorpayRefundId;
 
     /** Timestamps */
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Column(name = "refunded_at")
     private Instant refundedAt;
 
     /** Metadata */
+    @Column(name = "currency")
     private String currency;
+
+    @Column(name = "description")
     private String description;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+        if (this.currency == null) {
+            this.currency = "INR";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 
     public enum PaymentStatus {
         PENDING, COMPLETED, FAILED, REFUNDED

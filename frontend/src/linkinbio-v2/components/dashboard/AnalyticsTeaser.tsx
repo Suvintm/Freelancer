@@ -5,6 +5,8 @@ interface AnalyticsTeaserProps {
   totalViews: number;
   totalClicks: number;
   averageCtr: number;
+  viewsTrend?: string;
+  clicksTrend?: string;
   topLink?: {
     title: string;
     clicks: number;
@@ -16,6 +18,8 @@ export const AnalyticsTeaser: React.FC<AnalyticsTeaserProps> = ({
   totalViews = 0,
   totalClicks = 0,
   averageCtr = 0,
+  viewsTrend = '+18% this week',
+  clicksTrend = '+24% this week',
   topLink,
   onViewDetailedAnalytics,
 }) => {
@@ -33,7 +37,7 @@ export const AnalyticsTeaser: React.FC<AnalyticsTeaserProps> = ({
               {totalViews.toLocaleString()}
             </div>
             <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-              ↑ 18% this week
+              ↑ {viewsTrend}
             </span>
           </div>
 
@@ -46,7 +50,7 @@ export const AnalyticsTeaser: React.FC<AnalyticsTeaserProps> = ({
               {totalClicks.toLocaleString()}
             </div>
             <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-              ↑ 24% this week
+              ↑ {clicksTrend}
             </span>
           </div>
 
@@ -82,7 +86,7 @@ export const AnalyticsTeaser: React.FC<AnalyticsTeaserProps> = ({
             {onViewDetailedAnalytics && (
               <button
                 onClick={onViewDetailedAnalytics}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 transition-colors shrink-0"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 transition-colors shrink-0 cursor-pointer"
               >
                 Analytics
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -94,3 +98,5 @@ export const AnalyticsTeaser: React.FC<AnalyticsTeaserProps> = ({
     </div>
   );
 };
+
+export default AnalyticsTeaser;

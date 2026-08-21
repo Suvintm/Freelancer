@@ -1,4 +1,5 @@
 import prisma from '../../../infrastructure/database/postgres.js';
+import bioPageService from './bioPageService.js';
 import { redis, redisAvailable } from '../../../infrastructure/cache/redis.client.js';
 
 const CACHE_TTL_SECONDS = 600; // 10 minutes
@@ -38,8 +39,8 @@ export class BioPublicService {
         is_verified: true,
         profile: {
           select: {
-            display_name: true,
-            avatar_url: true,
+            name: true,
+            profile_picture: true,
             bio: true,
           },
         },
@@ -83,9 +84,7 @@ export class BioPublicService {
     }
 
     if (!bioPage) {
-      const error = new Error('No public bio page configured for this creator');
-      error.statusCode = 404;
-      throw error;
+      bioPage = await bioPageService.provisionDefaultPage(user);
     }
 
     // 4. Construct Public Output Payload
@@ -105,8 +104,8 @@ export class BioPublicService {
       pageId: bioPage.id,
       creator: {
         username: user.username,
-        name: user.profile?.display_name || user.username,
-        avatarUrl: user.profile?.avatar_url || '',
+        name: user.profile?.name || user.username,
+        avatarUrl: user.profile?.profile_picture || '',
         bio: user.profile?.bio || '',
         isVerified: user.is_verified,
       },
@@ -130,6 +129,49 @@ export class BioPublicService {
     }
 
     return publicPayload;
+  }
+
+  /**
+   * Helper: Generate OpenGraph HTML for social media crawlers
+   */
+  generateOpenGraphHtml(publicPayload, fullUrl) {
+    const creator = publicPayload?.creator || {};
+    const page = publicPayload?.page || {};
+    const settings = page.settings || {};
+
+    const title = settings.seoTitle || page.title || `${creator.name || creator.username} • SuviX Bio`;
+    const description = settings.seoDescription || page.description || creator.bio || 'Connect and explore my latest links and projects on SuviX.';
+    const imageUrl = settings.ogImageUrl || creator.avatarUrl || 'https://suvix.in/assets/whitebglogo.png';
+    const canonicalUrl = fullUrl || `https://suvix.in/u/${creator.username}${page.slug && page.slug !== 'main' ? `/${page.slug}` : ''}`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <meta name="description" content="${description}">
+  
+  <!-- OpenGraph / Facebook / WhatsApp -->
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:url" content="${canonicalUrl}">
+  <meta property="og:site_name" content="SuviX Link in Bio">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
+  <meta name="twitter:image" content="${imageUrl}">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="font-family: sans-serif; padding: 2rem; background: #09090b; color: #fff;">
+  <h1>${title}</h1>
+  <p>${description}</p>
+</body>
+</html>`;
   }
 }
 

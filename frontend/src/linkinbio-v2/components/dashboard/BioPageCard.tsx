@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import type { BioPageSummary } from '../../types/page.types';
+import { resolveBackgroundStyle } from '../../utils/themeResolver';
+import defaultProfile from '../../../assets/defaultprofile.png';
 import { 
   Globe, 
   ExternalLink, 
@@ -40,6 +42,15 @@ export const BioPageCard: React.FC<BioPageCardProps> = ({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Dynamic preview properties from saved / draft page
+  const pageTheme = (page as any).publishedSnapshot?.theme || (page as any).draftTheme;
+  const resolvedBg = resolveBackgroundStyle(pageTheme, { isThumbnail: true });
+  const blocks = (page as any).publishedSnapshot?.blocks || (page as any).draftBlocks || [];
+  const headerBlock = blocks.find((b: any) => b.type === 'profile-header');
+  const linkBlocks = blocks.filter((b: any) => b.type === 'link-button' && b.isVisible !== false);
+  const avatar = headerBlock?.config?.imageUrl || headerBlock?.config?.avatarUrl || defaultProfile;
+  const creatorName = headerBlock?.config?.title || headerBlock?.config?.displayName || page.title;
 
   return (
     <div className={`relative flex flex-col rounded-xl border transition-all duration-200 overflow-hidden ${
@@ -134,16 +145,67 @@ export const BioPageCard: React.FC<BioPageCardProps> = ({
 
       {/* Card Body */}
       <div className="p-4 flex gap-4 items-center">
-        {/* Device Preview Icon Slot */}
-        <div className="shrink-0 w-16 h-24 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex flex-col items-center justify-between p-1.5 shadow-inner">
-          <div className="w-5 h-5 rounded-full bg-slate-300 dark:bg-zinc-700 mt-1" />
-          <div className="w-full space-y-1">
-            <div className="h-1 w-8 mx-auto rounded-full bg-slate-300 dark:bg-zinc-700" />
-            <div className="h-1 w-10 mx-auto rounded-full bg-slate-200 dark:bg-zinc-800" />
+        {/* Real Live Mini Phone Preview */}
+        <div 
+          style={resolvedBg.containerStyle}
+          className="shrink-0 w-20 h-28 rounded-xl border-2 border-zinc-800 shadow-md flex flex-col items-center p-1.5 overflow-hidden relative select-none"
+        >
+          {/* Mini Wallpaper Layer */}
+          {resolvedBg.isImage && (
+            <div 
+              style={resolvedBg.bgImageLayerStyle}
+              className="absolute inset-0 z-0 pointer-events-none"
+            />
+          )}
+
+          {/* Mini Overlay Tint */}
+          {resolvedBg.overlayStyle.opacity ? (
+            <div 
+              style={resolvedBg.overlayStyle}
+              className="absolute inset-0 z-0 pointer-events-none"
+            />
+          ) : null}
+
+          {/* Dynamic Island Notch */}
+          <div className="w-5 h-1 bg-black rounded-full mb-1 opacity-80 relative z-10" />
+
+          {/* Mini Avatar */}
+          <div className="w-6 h-6 rounded-full overflow-hidden ring-1 ring-white/90 shadow-xs mb-0.5 bg-white/20 relative z-10">
+            <img src={avatar} alt={creatorName} className="w-full h-full object-cover" />
           </div>
-          <div className="w-full space-y-1 mb-1">
-            <div className="h-1.5 w-full rounded bg-slate-300 dark:bg-zinc-700" />
-            <div className="h-1.5 w-full rounded bg-slate-300 dark:bg-zinc-700" />
+
+          {/* Mini Name */}
+          <span className="text-[6.5px] font-extrabold text-white truncate max-w-[65px] leading-tight text-center relative z-10">
+            {creatorName}
+          </span>
+
+          {/* Mini 3 Social Dots */}
+          <div className="flex items-center gap-0.5 my-1 relative z-10">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+          </div>
+
+          {/* Mini Link Button Cards (up to 2) */}
+          <div className="w-full space-y-0.5 mt-auto relative z-10">
+            {linkBlocks.slice(0, 2).map((b: any, i: number) => (
+              <div 
+                key={b.id || i}
+                className="w-full py-0.5 px-1 rounded-sm bg-white text-slate-900 text-[5px] font-bold truncate text-center shadow-2xs leading-tight"
+              >
+                {b.config?.text || b.config?.title || 'Link'}
+              </div>
+            ))}
+            {linkBlocks.length === 0 && (
+              <>
+                <div className="w-full py-0.5 px-1 rounded-sm bg-white text-slate-900 text-[5px] font-bold truncate text-center shadow-2xs leading-tight">
+                  YouTube
+                </div>
+                <div className="w-full py-0.5 px-1 rounded-sm bg-white text-slate-900 text-[5px] font-bold truncate text-center shadow-2xs leading-tight">
+                  Instagram
+                </div>
+              </>
+            )}
           </div>
         </div>
 

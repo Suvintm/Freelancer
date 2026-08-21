@@ -514,20 +514,214 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition<any>> = {
       },
     ],
   },
+
+  'tip-jar': {
+    type: 'tip-jar',
+    name: 'Tip Jar & Donations',
+    icon: 'Heart',
+    description: 'Accept tips and donations via UPI or direct payment links',
+    category: 'commerce',
+    schemaVersion: 1,
+    defaultConfig: {
+      title: 'Support My Work',
+      description: 'If you enjoy my content, buy me a coffee! ☕',
+      currency: 'INR',
+      presets: [50, 100, 250, 500],
+      customAmount: true,
+      upiId: '',
+      paymentUrl: '',
+      thankYouMessage: 'Thank you so much for your generosity! ❤️',
+    },
+    editorFields: [
+      {
+        key: 'title',
+        type: 'text',
+        label: 'Card Title',
+      },
+      {
+        key: 'description',
+        type: 'textarea',
+        label: 'Description / Call to Action',
+      },
+      {
+        key: 'currency',
+        type: 'select',
+        label: 'Currency',
+        options: [
+          { label: 'INR (₹)', value: 'INR' },
+          { label: 'USD ($)', value: 'USD' },
+          { label: 'EUR (€)', value: 'EUR' },
+          { label: 'GBP (£)', value: 'GBP' },
+        ],
+      },
+      {
+        key: 'upiId',
+        type: 'text',
+        label: 'UPI ID (For India / GPay / PhonePe)',
+        placeholder: 'username@okaxis or phone@paytm',
+      },
+      {
+        key: 'paymentUrl',
+        type: 'url',
+        label: 'Custom Stripe / Razorpay / PayPal Link (Optional)',
+        placeholder: 'https://buy.stripe.com/...',
+      },
+      {
+        key: 'thankYouMessage',
+        type: 'text',
+        label: 'Thank You Message',
+      },
+    ],
+  },
+
+  'music-embed': {
+    type: 'music-embed',
+    name: 'Music Player (Spotify / Apple)',
+    icon: 'Music',
+    description: 'Embed tracks, albums, or playlists with audio preview player',
+    category: 'media',
+    schemaVersion: 1,
+    defaultConfig: {
+      platform: 'spotify',
+      embedUrl: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT',
+      title: 'Featured Track',
+      theme: 'dark',
+    },
+    editorFields: [
+      {
+        key: 'platform',
+        type: 'select',
+        label: 'Streaming Platform',
+        options: [
+          { label: 'Spotify', value: 'spotify' },
+          { label: 'Apple Music', value: 'apple-music' },
+          { label: 'SoundCloud', value: 'soundcloud' },
+        ],
+      },
+      {
+        key: 'embedUrl',
+        type: 'url',
+        label: 'Track / Album / Playlist Link',
+        placeholder: 'https://open.spotify.com/track/...',
+      },
+      {
+        key: 'title',
+        type: 'text',
+        label: 'Display Title',
+      },
+    ],
+  },
+
+  'faq-accordion': {
+    type: 'faq-accordion',
+    name: 'FAQ Accordion',
+    icon: 'HelpCircle',
+    description: 'Interactive collapsible FAQ accordion for questions & answers',
+    category: 'core',
+    schemaVersion: 1,
+    defaultConfig: {
+      heading: 'Frequently Asked Questions',
+      items: [
+        {
+          id: 'faq_1',
+          question: 'How do I book a 1-on-1 collaboration?',
+          answer: 'You can reach out via my email or WhatsApp link above for sponsorships, brand partnerships, or mentorship.',
+        },
+        {
+          id: 'faq_2',
+          question: 'Where can I find your free resources?',
+          answer: 'Check out the links above for my free starter templates, design kits, and GitHub repositories!',
+        },
+      ],
+    },
+    editorFields: [
+      {
+        key: 'heading',
+        type: 'text',
+        label: 'Section Heading',
+      },
+    ],
+  },
+
+  'product-card': {
+    type: 'product-card',
+    name: 'Digital Product Showcase',
+    icon: 'ShoppingBag',
+    description: 'Sell a digital product, guide, or course with high-converting card',
+    category: 'commerce',
+    schemaVersion: 1,
+    defaultConfig: {
+      title: 'Ultimate Creator Notion OS',
+      description: 'All-in-one system to manage your content calendar, sponsors, and growth.',
+      price: '$29',
+      originalPrice: '$59',
+      imageUrl: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop&q=80',
+      url: 'https://suvix.in',
+      badgeText: '50% OFF',
+      buttonText: 'Get Instant Access',
+    },
+    editorFields: [
+      {
+        key: 'title',
+        type: 'text',
+        label: 'Product Title',
+      },
+      {
+        key: 'description',
+        type: 'textarea',
+        label: 'Description',
+      },
+      {
+        key: 'price',
+        type: 'text',
+        label: 'Sale Price',
+        placeholder: 'e.g. $29 or ₹499',
+      },
+      {
+        key: 'originalPrice',
+        type: 'text',
+        label: 'Original Price (Crossed out)',
+        placeholder: 'e.g. $59 or ₹999',
+      },
+      {
+        key: 'imageUrl',
+        type: 'image-upload',
+        label: 'Product Cover Image URL',
+      },
+      {
+        key: 'url',
+        type: 'url',
+        label: 'Purchase Checkout URL',
+      },
+      {
+        key: 'badgeText',
+        type: 'text',
+        label: 'Discount / Promo Badge Text',
+      },
+      {
+        key: 'buttonText',
+        type: 'text',
+        label: 'CTA Button Label',
+      },
+    ],
+  },
 };
 
-export function createNewBlock(type: BlockType, order: number): Block {
+export function createNewBlock(type: BlockType, order: number, configOverrides?: Record<string, any>): Block {
   const def = BLOCK_REGISTRY[type];
   if (!def) {
     throw new Error(`Unknown block type: ${type}`);
   }
+
+  const baseConfig = JSON.parse(JSON.stringify(def.defaultConfig));
+  const finalConfig = configOverrides ? { ...baseConfig, ...configOverrides } : baseConfig;
 
   return {
     id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     type,
     schemaVersion: def.schemaVersion,
     order,
-    config: JSON.parse(JSON.stringify(def.defaultConfig)),
+    config: finalConfig,
     isVisible: true,
   };
 }

@@ -454,15 +454,16 @@ export const getRoles = asyncHandler(async (req, res) => {
     orderBy: { display_order: "asc" },
   });
 
-  // 4. Save to Redis Cache with 4-hour TTL
+  // 4. Save to Redis Cache with 5-minute TTL
   try {
     if (redisAvailable && categories?.length > 0) {
-      await redis.set(REDIS_CACHE_KEY, JSON.stringify(categories), "EX", CACHE_TTL_SECONDS);
+      await redis.set(REDIS_CACHE_KEY, JSON.stringify(categories), "EX", 300);
     }
   } catch (err) {
     logger.warn(`⚠️ [CACHE-WARN] Failed to store role categories into Redis: ${err.message}`);
   }
 
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("X-Cache", "MISS");
   res.status(200).json({ success: true, categories });
 });
