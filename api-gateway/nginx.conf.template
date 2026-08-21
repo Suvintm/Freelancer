@@ -148,6 +148,13 @@ http {
     proxy_ssl_server_name on;
     proxy_ssl_protocols TLSv1.2 TLSv1.3;
 
+    # Prevent duplicate CORS headers when upstream also emits CORS
+    proxy_hide_header Access-Control-Allow-Origin;
+    proxy_hide_header Access-Control-Allow-Methods;
+    proxy_hide_header Access-Control-Allow-Headers;
+    proxy_hide_header Access-Control-Allow-Credentials;
+    proxy_hide_header Access-Control-Max-Age;
+
     # ========================================================
     # 7. MICRO-CACHING PATH (5-Sec Cache for Feed Optimization)
     # ========================================================
