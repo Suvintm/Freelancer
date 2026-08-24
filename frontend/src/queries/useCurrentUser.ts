@@ -13,20 +13,15 @@ export const useCurrentUser = () => {
   return useQuery({
     queryKey: CURRENT_USER_QUERY_KEY,
     queryFn: async () => {
-      try {
-        const data = await authService.fetchMe();
-        if (data.success && data.user) {
-          dispatch(updateUser(data.user));
-          return data.user;
-        }
-        throw new Error(data.message || 'Failed to fetch user');
-      } catch (error) {
-        dispatch(clearAuth());
-        throw error;
+      const data = await authService.fetchMe();
+      if (data.success && data.user) {
+        dispatch(updateUser(data.user));
+        return data.user;
       }
+      throw new Error(data.message || 'Failed to fetch user');
     },
     enabled: !!token,
-    retry: false,
+    retry: 1,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -36,7 +31,7 @@ export const useAuthInit = () => {
   const token = useSelector(selectToken);
   const isInitialized = useSelector(selectIsInitialized);
 
-  const { data: user, isSuccess, isError, isLoading } = useCurrentUser();
+  const { data: user, isSuccess, isLoading } = useCurrentUser();
 
   useEffect(() => {
     if (!token) {
@@ -47,10 +42,8 @@ export const useAuthInit = () => {
   useEffect(() => {
     if (isSuccess && user) {
       dispatch(setInitialized(true));
-    } else if (isError) {
-      dispatch(clearAuth());
     }
-  }, [isSuccess, isError, user, dispatch]);
+  }, [isSuccess, user, dispatch]);
 
   return {
     isInitialized: isInitialized || !token,

@@ -40,6 +40,33 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const scheduleProactiveTokenRefresh = (delayMs = 13 * 60 * 1000) => {
+  if (proactiveRefreshTimer) clearTimeout(proactiveRefreshTimer);
+  
+  proactiveRefreshTimer = setTimeout(async () => {
+    try {
+      const { store } = await import('../store');
+      const refreshToken = selectRefreshToken(store.getState() as RootState);
+      if (!refreshToken) return;
+
+      const res = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken });
+      if (res.data.success) {
+        const { setTokens } = await import('../store/slices/authSlice');
+        store.dispatch(setTokens({
+          token: res.data.token,
+          refreshToken: res.data.refreshToken,
+          user: res.data.user,
+        }));
+        scheduleProactiveTokenRefresh(13 * 60 * 1000);
+      }
+    } catch {
+      // Proactive refresh failed silently; reactive 401 interceptor will catch when needed
+    }
+  }, delayMs);
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -63,26 +90,12 @@ api.interceptors.response.use(
     }
 
     if (response?.status === 401 && !originalRequest._retry) {
-      // 🛡️ SKIP REFRESH for auth endpoints and guest identity checks
+      // 🛡️ SKIP REFRESH only for non-authenticated auth endpoints
       if (
         originalRequest.url?.includes('/auth/login') ||
         originalRequest.url?.includes('/auth/register') ||
-        originalRequest.url?.includes('/auth/refresh-token') ||
-        originalRequest.url?.includes('/auth/me') ||
-        originalRequest.url?.includes('/auth/exchange-code') ||
-        originalRequest.url?.includes('/auth/youtube/channels') ||
-        originalRequest.url?.includes('/auth/roles')
+        originalRequest.url?.includes('/auth/refresh-token')
       ) {
-        // If /auth/me fails with 401, simply clear auth without disrupting onboarding
-        if (originalRequest.url?.includes('/auth/me')) {
-          try {
-            const { store } = await import('../store');
-            const { clearAuth } = await import('../store/slices/authSlice');
-            store.dispatch(clearAuth());
-          } catch {
-            // ignore
-          }
-        }
         return Promise.reject(error);
       }
 
@@ -115,6 +128,9 @@ api.interceptors.response.use(
 
           const { setTokens } = await import('../store/slices/authSlice');
           store.dispatch(setTokens({ token: newToken, refreshToken: newRefreshToken, user: refreshedUser }));
+          
+          // Reschedule next proactive refresh (13 mins from now)
+          scheduleProactiveTokenRefresh(13 * 60 * 1000);
           
           isRefreshing = false;
           onRefreshed(newToken);

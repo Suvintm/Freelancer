@@ -9,6 +9,10 @@ import { AuthGuard, PublicRoute, OnboardingGuard, RoleGuard } from './components
 import LottieComponent from 'lottie-react';
 import loaderAnimation from './assets/lottie/loader.json';
 
+import { useSelector } from 'react-redux';
+import { selectToken } from './store/slices/authSlice';
+import { scheduleProactiveTokenRefresh } from './api/client';
+
 // Handle ESM/CJS interop for lottie-react
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
@@ -65,6 +69,13 @@ function App() {
   const location = useLocation();
   const { isInitialized } = useAuthInit();
   const [isCheckingServer, setIsCheckingServer] = useState(true);
+  const token = useSelector(selectToken);
+
+  useEffect(() => {
+    if (token) {
+      scheduleProactiveTokenRefresh(13 * 60 * 1000);
+    }
+  }, [token]);
 
   useEffect(() => {
     if (!isInitialized) return;

@@ -41,6 +41,7 @@ export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   store: makeRedisStore("auth"),
+  validate: { trustProxy: false },
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'AUTH' }),
   message: {
     success: false,
@@ -57,6 +58,7 @@ export const feedLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
   store: makeRedisStore("feed"),
+  validate: { trustProxy: false },
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'FEED' }),
   message: { success: false, message: "Stream busy. Please slow down." },
 });
@@ -67,6 +69,7 @@ export const interactionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   store: makeRedisStore("social"),
+  validate: { trustProxy: false },
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'SOCIAL' }),
   message: { success: false, message: "Interaction quota exceeded. Please wait a moment." },
 });
@@ -77,6 +80,7 @@ export const heavyLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 15,
   store: makeRedisStore("heavy"),
+  validate: { trustProxy: false },
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'HEAVY' }),
   message: { success: false, message: "Server is processing heavy requests. Please wait a minute." },
 });
@@ -88,6 +92,7 @@ export const impressionLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 200,
   store: makeRedisStore("impress"),
+  validate: { trustProxy: false },
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'TELEMETRY' }),
   message: { success: false, message: "Telemetry quota reached." },
 });
@@ -98,6 +103,7 @@ export const publicApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === "production" ? 2500 : 5000,
   store: makeRedisStore("general"),
+  validate: { trustProxy: false },
   handler: (req, res, next, options) => limitHandler(req, res, next, { ...options, prefix: 'GENERAL' }),
   message: { success: false, message: "Too many navigation requests. Please slow down." },
   standardHeaders: true,

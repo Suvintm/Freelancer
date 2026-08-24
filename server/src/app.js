@@ -37,13 +37,17 @@ export function createApp() {
   app.use(metricsMiddleware);
 
   // ============ CORE PROXY & REQUEST TRACING ============
-  app.set("trust proxy", true);
+  app.set("trust proxy", 1);
 
   app.use((req, res, next) => {
     req.realIp = req.headers["x-real-ip"] || req.ip;
     req.requestId = req.headers["x-request-id"] || req.headers["x-correlation-id"] || crypto.randomUUID();
     res.setHeader("X-Request-ID", req.requestId);
-    logger.info(`[REQ] ${req.method} ${req.originalUrl} | IP: ${req.realIp} | ID: ${req.requestId}`);
+
+    const isViaGateway = Boolean(req.headers["x-request-id"] || req.headers["x-real-ip"] || req.headers["x-forwarded-for"]);
+    const gatewayTag = isViaGateway ? "🛡️ [CALL FROM API GATEWAY]" : "🌐 [DIRECT CALL]";
+
+    logger.info(`${gatewayTag} ${req.method} ${req.originalUrl} | IP: ${req.realIp} | ID: ${req.requestId}`);
     next();
   });
 
