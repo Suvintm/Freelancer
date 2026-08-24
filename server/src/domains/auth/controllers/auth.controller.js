@@ -123,7 +123,23 @@ export const refresh = asyncHandler(async (req, res) => {
   const { id: userId, familyId } = decoded;
   const hashedToken = hashToken(refreshToken);
 
+  // 1. Check if token is in active session cache
   const storedData = await redis.get(`refresh_token:${hashedToken}`);
+
+  // 2. If not found in active sessions, check the 30-second Grace Period cache (Auth0 standard)
+  if (!storedData && redisAvailable) {
+    const graceData = await redis.get(`rotated_token:${hashedToken}`);
+    if (graceData) {
+      logger.info(`[AUTH] Grace period hit for rotated token: user ${userId} (family: ${familyId})`);
+      try {
+        const gracePayload = JSON.parse(graceData);
+        res.cookie("refreshToken", gracePayload.refreshToken, cookieOptions);
+        return res.status(200).json(gracePayload);
+      } catch (parseErr) {
+        // Continue to standard validation if parsing fails
+      }
+    }
+  }
 
   if (!storedData) {
     if (redisAvailable) {
@@ -203,9 +219,23 @@ export const refresh = asyncHandler(async (req, res) => {
     },
   });
 
+  const responsePayload = {
+    success: true,
+    token: newAccessToken,
+    refreshToken: newRefreshToken,
+    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+    refreshExpiresAt: Date.now() + (REFRESH_TOKEN_TTL_SECONDS * 1000),
+    user: formatAuthResponse(user),
+  };
+
+  // Pipeline atomic update:
+  // 1. Delete old refresh token from active pool
+  // 2. Add old token to rotated_token grace cache with 30s TTL
+  // 3. Save new refresh token in active pool
   await redis
     .pipeline()
     .del(`refresh_token:${hashedToken}`)
+    .set(`rotated_token:${hashedToken}`, JSON.stringify(responsePayload), "EX", 30) // 30s Grace Period
     .srem(`token_family:${familyId}`, hashedToken)
     .set(
       `refresh_token:${newHashedToken}`,
@@ -221,16 +251,7 @@ export const refresh = asyncHandler(async (req, res) => {
   await deleteCache(CacheKey.userProfile(userId));
 
   res.cookie("refreshToken", newRefreshToken, cookieOptions);
-  res.status(200).json({
-    success: true,
-    token: newAccessToken,
-    refreshToken: newRefreshToken,
-    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
-    // ✅ FIX (Bug 4): Return the new refresh token expiry so the mobile vault
-    // can store the correct 30-day window instead of keeping the old stale date.
-    refreshExpiresAt: Date.now() + (REFRESH_TOKEN_TTL_SECONDS * 1000),
-    user: formatAuthResponse(user),
-  });
+  res.status(200).json(responsePayload);
 });
 
 // ─── Login ─────────────────────────────────────────────────────────────────
