@@ -14,6 +14,7 @@ import { store } from '../store';
 import type { RootState } from '../store';
 import { api } from '../api/client';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
+import { isAccessAllowed } from '../config/accessControl.config';
 
 /**
  * OAuthSuccess — The OAuth callback landing page.
@@ -67,6 +68,12 @@ export default function OAuthSuccess() {
         
         if (!response.data.success) {
           navigate('/login?error=exchange_failed');
+          return;
+        }
+
+        const userEmail = response.data.socialProfile?.email || response.data.user?.email;
+        if (!isAccessAllowed(userEmail)) {
+          navigate('/login?error=maintenance_restricted');
           return;
         }
 
