@@ -14,6 +14,7 @@ export const ALLOWED_EMAILS: string[] = [
   'admin@suvix.in',
   'developer@suvix.in',
   'suvintm@gmail.com',
+  'suvintm19@gmail.com',
   'suvin@suvix.in',
   'test@suvix.in',
   // Add more authorized tester/developer emails here
