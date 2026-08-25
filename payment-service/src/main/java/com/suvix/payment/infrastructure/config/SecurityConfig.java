@@ -35,8 +35,8 @@ public class SecurityConfig {
             .cors(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/**", "/api/v1/payments/health", "/api/v1/payments/webhook").permitAll()
-                .requestMatchers("/api/v1/payments/**", "/api/v1/wallet/**", "/api/v1/escrow/**", "/api/v1/payouts/**").permitAll()
+                .requestMatchers("/actuator/**", "/api/v1/payments/health", "/api/v1/payments/webhook", "/api/v1/webhooks/**").permitAll()
+                .requestMatchers("/api/v1/subscriptions/**", "/api/v1/invoices/**", "/api/v1/payments/**", "/api/v1/wallet/**", "/api/v1/escrow/**", "/api/v1/payouts/**", "/api/v1/admin/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(

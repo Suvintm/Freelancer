@@ -30,6 +30,17 @@ public class SubscriptionService {
         return planRepository.findByIsActiveTrueOrderByTierLevelAsc();
     }
 
+    public List<SubscriptionPlan> getPlansByRole(String role) {
+        if (role == null || role.isBlank() || "all".equalsIgnoreCase(role)) {
+            return planRepository.findByIsActiveTrueOrderByTierLevelAsc();
+        }
+        List<SubscriptionPlan> rolePlans = planRepository.findByIsActiveTrueAndTargetRoleInOrderByTierLevelAsc(List.of(role.toLowerCase()));
+        if (rolePlans.isEmpty()) {
+            return planRepository.findByIsActiveTrueOrderByTierLevelAsc();
+        }
+        return rolePlans;
+    }
+
     @Transactional
     public SubscriptionResponse createSubscription(CreateSubscriptionRequest request, String userId) throws Exception {
         SubscriptionPlan plan = planRepository.findById(request.getPlanId())
