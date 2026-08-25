@@ -89,6 +89,10 @@ public class SubscriptionPlan {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
+    @Builder.Default
+    @Column(name = "target_role", length = 50)
+    private String targetRole = "all";
+
     @Column(name = "available_from")
     private Instant availableFrom;
 

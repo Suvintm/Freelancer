@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPlan, String> {
     List<SubscriptionPlan> findByIsActiveTrueOrderByTierLevelAsc();
+
+    List<SubscriptionPlan> findByIsActiveTrueAndTargetRoleInOrderByTierLevelAsc(List<String> targetRoles);
 }

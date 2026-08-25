@@ -32,7 +32,10 @@ public class ServiceSecretFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        if (path.contains("/health") || path.contains("/webhook") || path.contains("/actuator")) {
+        if (path.contains("/health") || path.contains("/webhook") || path.contains("/webhooks") || path.contains("/actuator")) {
+            UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("anonymous_webhook", null, Collections.emptyList());
+            SecurityContextHolder.getContext().setAuthentication(auth);
             filterChain.doFilter(request, response);
             return;
         }

@@ -80,12 +80,28 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(KafkaTemplate<String, String> kafkaTemplate) {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         // Manual acknowledgment — we confirm only after successful processing
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         factory.getContainerProperties().setMissingTopicsFatal(false);
+
+        // Dead Letter Queue (DLQ) recoverer: routes to {topic}.DLQ after retries
+        org.springframework.kafka.listener.DeadLetterPublishingRecoverer recoverer =
+                new org.springframework.kafka.listener.DeadLetterPublishingRecoverer(kafkaTemplate);
+
+        // 3 retry attempts with exponential backoff (1000ms, 2000ms, 4000ms)
+        org.springframework.kafka.support.ExponentialBackOffWithMaxRetries backOff =
+                new org.springframework.kafka.support.ExponentialBackOffWithMaxRetries(3);
+        backOff.setInitialInterval(1000L);
+        backOff.setMultiplier(2.0);
+        backOff.setMaxInterval(10000L);
+
+        org.springframework.kafka.listener.DefaultErrorHandler errorHandler =
+                new org.springframework.kafka.listener.DefaultErrorHandler(recoverer, backOff);
+
+        factory.setCommonErrorHandler(errorHandler);
         return factory;
     }
 }

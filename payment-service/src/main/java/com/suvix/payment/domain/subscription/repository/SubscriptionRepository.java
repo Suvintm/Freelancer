@@ -18,6 +18,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
         String userId, Subscription.SubscriptionStatus status
     );
 
+    @Query("SELECT s FROM Subscription s WHERE s.userId = :userId AND s.status IN (com.suvix.payment.domain.subscription.entity.Subscription.SubscriptionStatus.active, com.suvix.payment.domain.subscription.entity.Subscription.SubscriptionStatus.past_due, com.suvix.payment.domain.subscription.entity.Subscription.SubscriptionStatus.trialing, com.suvix.payment.domain.subscription.entity.Subscription.SubscriptionStatus.cancelling) ORDER BY s.createdAt DESC LIMIT 1")
+    Optional<Subscription> findActiveByUserId(@Param("userId") String userId);
+
     List<Subscription> findByUserIdOrderByCreatedAtDesc(String userId);
 
     @Query("SELECT s FROM Subscription s WHERE s.status = :status AND s.currentPeriodEnd <= :cutoff")
@@ -27,4 +30,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
     );
 
     Optional<Subscription> findByProviderSubscriptionId(String providerSubscriptionId);
+
+    long countByStatus(Subscription.SubscriptionStatus status);
+
+    List<Subscription> findByStatus(Subscription.SubscriptionStatus status);
 }
