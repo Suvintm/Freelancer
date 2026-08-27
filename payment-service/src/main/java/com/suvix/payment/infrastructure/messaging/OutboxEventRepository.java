@@ -14,4 +14,11 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
 
     @Query("SELECT o FROM OutboxEvent o WHERE o.status = :status ORDER BY o.createdAt ASC")
     List<OutboxEvent> findByStatusOrderByCreatedAtAsc(@Param("status") OutboxEvent.OutboxStatus status, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM OutboxEvent o WHERE o.status = :status AND o.publishedAt < :cutoff")
+    int deletePublishedEventsOlderThan(
+            @Param("status") OutboxEvent.OutboxStatus status,
+            @Param("cutoff") java.time.Instant cutoff
+    );
 }

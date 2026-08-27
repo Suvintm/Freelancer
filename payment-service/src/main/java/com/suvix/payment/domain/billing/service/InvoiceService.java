@@ -66,4 +66,17 @@ public class InvoiceService {
 
         return pdfBytes;
     }
+
+    /**
+     * Pre-warms invoice PDF asynchronously in Redis L2 cache
+     */
+    @org.springframework.scheduling.annotation.Async
+    public void prewarmInvoicePdfAsync(UUID invoiceId) {
+        try {
+            getInvoicePdf(invoiceId);
+            log.info("Asynchronously pre-warmed Redis PDF cache for invoiceId={}", invoiceId);
+        } catch (Exception e) {
+            log.warn("Failed to pre-warm invoice PDF for invoiceId={}: {}", invoiceId, e.getMessage());
+        }
+    }
 }

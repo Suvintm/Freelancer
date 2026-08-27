@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.suvix.payment.domain.billing.entity.Invoice;
 import com.suvix.payment.domain.billing.repository.InvoiceRepository;
 import com.suvix.payment.domain.billing.service.InvoiceNumberGenerator;
+import com.suvix.payment.domain.billing.service.InvoiceService;
 import com.suvix.payment.domain.payment.webhook.NormalizedWebhookEvent;
 import com.suvix.payment.domain.subscription.entity.Subscription;
 import com.suvix.payment.domain.subscription.entity.SubscriptionLedger;
@@ -37,6 +38,7 @@ public class SubscriptionLifecycleBillingService {
     private final SubscriptionLedgerRepository ledgerRepository;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceNumberGenerator invoiceNumberGenerator;
+    private final InvoiceService invoiceService;
     private final FeatureEntitlementService entitlementService;
     private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
@@ -117,6 +119,7 @@ public class SubscriptionLifecycleBillingService {
                 .build();
 
         invoiceRepository.save(invoice);
+        invoiceService.prewarmInvoicePdfAsync(invoice.getId());
 
         // 2. Double-Entry Ledger Entry
         SubscriptionLedger ledgerEntry = SubscriptionLedger.builder()

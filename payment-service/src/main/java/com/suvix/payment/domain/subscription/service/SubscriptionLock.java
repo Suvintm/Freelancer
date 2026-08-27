@@ -22,6 +22,12 @@ public class SubscriptionLock {
             "if redis.call('get', KEYS[1]) == ARGV[1] then " +
             "return redis.call('del', KEYS[1]) else return 0 end";
 
+    public static final long DEFAULT_LOCK_TIMEOUT_SECONDS = 15;
+
+    public String acquireLock(String userId, String operation) {
+        return acquireLock(userId, operation, DEFAULT_LOCK_TIMEOUT_SECONDS);
+    }
+
     public String acquireLock(String userId, String operation, long timeoutSeconds) {
         String lockKey = String.format("lock:subscription:%s:%s", userId, operation);
         String lockValue = UUID.randomUUID().toString();
@@ -31,6 +37,22 @@ public class SubscriptionLock {
 
         if (Boolean.TRUE.equals(acquired)) {
             return lockValue;
+        }
+        return null;
+    }
+
+    public String acquireLockWithRetry(String userId, String operation, long timeoutSeconds, int maxRetries, long delayMs) {
+        for (int i = 0; i < maxRetries; i++) {
+            String lock = acquireLock(userId, operation, timeoutSeconds);
+            if (lock != null) {
+                return lock;
+            }
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
         return null;
     }
@@ -48,6 +70,10 @@ public class SubscriptionLock {
             log.warn("Failed to release lock for key={}: {}", lockKey, e.getMessage());
             return false;
         }
+    }
+
+    public <T> T withLock(String userId, String operation, Supplier<T> action) {
+        return withLock(userId, operation, DEFAULT_LOCK_TIMEOUT_SECONDS, action);
     }
 
     public <T> T withLock(String userId, String operation, long timeoutSeconds, Supplier<T> action) {
