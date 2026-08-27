@@ -47,15 +47,15 @@ public class WebhookDispatcherService {
         // 2. Parse normalized event
         NormalizedWebhookEvent event = handler.parseEvent(rawPayload);
 
-        // 3. Deduplication check via Redis (48-hour TTL)
+        // 3. Deduplication check via Redis (12-hour optimal TTL to minimize RAM footprint)
         String deduplicationKey = String.format("webhook:processed:%s:%s", provider, event.getEventId());
         if (redisService.hasKey(deduplicationKey)) {
             log.info("Duplicate webhook event skipped: key={}", deduplicationKey);
             return true;
         }
 
-        // 4. Mark processed in Redis
-        redisService.setex(deduplicationKey, "processed", 172800); // 48 hours
+        // 4. Mark processed in Redis (12 hours TTL is sufficient for Razorpay/Stripe retry windows)
+        redisService.setex(deduplicationKey, "processed", 43200); // 12 hours
 
         // 5. Delegate to Core Subscription Lifecycle Billing Service
         billingService.processNormalizedWebhook(event);

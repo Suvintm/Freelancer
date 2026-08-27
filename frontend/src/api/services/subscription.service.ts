@@ -101,8 +101,10 @@ export const subscriptionService = {
   },
 
   // 2. Fetch User Entitlements & Active Subscription
-  getEntitlements: async () => {
-    const res = await api.get('/subscriptions/entitlements');
+  getEntitlements: async (userId?: string) => {
+    const res = await api.get('/subscriptions/entitlements', {
+      params: userId ? { userId } : {},
+    });
     return res.data;
   },
 
@@ -153,14 +155,18 @@ export const subscriptionService = {
   },
 
   // 9. Fetch Live Usage Summary Meters
-  getUsageSummary: async (): Promise<UsageSummary> => {
-    const res = await api.get('/subscriptions/usage-summary');
+  getUsageSummary: async (userId?: string): Promise<UsageSummary> => {
+    const res = await api.get('/subscriptions/usage-summary', {
+      params: userId ? { userId } : {},
+    });
     return res.data;
   },
 
   // 10. Fetch Billing Invoices History
-  getUserInvoices: async (): Promise<InvoiceItem[]> => {
-    const res = await api.get('/invoices');
+  getUserInvoices: async (userId?: string): Promise<InvoiceItem[]> => {
+    const res = await api.get('/invoices', {
+      params: userId ? { userId } : {},
+    });
     return Array.isArray(res.data) ? res.data : [];
   },
 
@@ -177,5 +183,55 @@ export const subscriptionService = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  // 12. Create Payment Order (Razorpay / Stripe)
+  createPaymentOrder: async (data: {
+    planId: string;
+    billingCycle: 'monthly' | 'annual';
+    amount: number;
+    currency?: string;
+    targetRole?: string;
+  }, idempotencyKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    const res = await api.post('/payments/create-order', {
+      amount: data.amount,
+      currency: data.currency || 'INR',
+      planId: data.planId,
+      billingCycle: data.billingCycle,
+      targetRole: data.targetRole,
+      type: 'SUBSCRIPTION_PAYMENT',
+    }, { headers });
+    return res.data;
+  },
+
+  // 13. Verify Payment & Activate Entitlements
+  verifyPayment: async (data: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    planId?: string;
+    billingCycle?: string;
+  }, idempotencyKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    const res = await api.post('/payments/verify', data, { headers });
+    return res.data;
+  },
+
+  // 14. Create Free Tier or Direct Subscription
+  createSubscription: async (data: {
+    planId: string;
+    billingCycle?: 'monthly' | 'annual';
+    provider?: string;
+    paymentMethodId?: string;
+  }) => {
+    const res = await api.post('/subscriptions/create', data);
+    return res.data;
   },
 };

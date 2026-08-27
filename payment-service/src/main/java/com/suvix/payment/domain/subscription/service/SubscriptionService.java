@@ -34,7 +34,8 @@ public class SubscriptionService {
         if (role == null || role.isBlank() || "all".equalsIgnoreCase(role)) {
             return planRepository.findByIsActiveTrueOrderByTierLevelAsc();
         }
-        List<SubscriptionPlan> rolePlans = planRepository.findByIsActiveTrueAndTargetRoleInOrderByTierLevelAsc(List.of(role.toLowerCase()));
+        List<String> roles = List.of(role.toLowerCase(), "all");
+        List<SubscriptionPlan> rolePlans = planRepository.findByIsActiveTrueAndTargetRoleInOrderByTierLevelAsc(roles);
         if (rolePlans.isEmpty()) {
             return planRepository.findByIsActiveTrueOrderByTierLevelAsc();
         }
