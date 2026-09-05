@@ -53,6 +53,8 @@ const LinkInBioDesigner = lazy(() => import('./linkinbio-v2/pages/BioStudioPage'
 const LinkInBioAnalytics = lazy(() => import('./linkinbio-v2/pages/BioAnalyticsPage'));
 const PublicBioVisitorPage = lazy(() => import('./linkinbio-v2/pages/PublicBioVisitorPage'));
 
+import { GatewayOfflineScreen } from './components/common/GatewayOfflineScreen';
+
 // Lightweight fallback for lazy-loaded route transitions
 function PageFallback() {
   return (
@@ -67,7 +69,8 @@ function PageFallback() {
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isInitialized } = useAuthInit();
+  const { isInitialized, isGatewayDown } = useAuthInit();
+  const [isGatewayOffline, setIsGatewayOffline] = useState(false);
   const [isCheckingServer, setIsCheckingServer] = useState(true);
   const token = useSelector(selectToken);
 
@@ -77,10 +80,24 @@ function App() {
     }
   }, [token]);
 
+  // Listen for global gateway health events
   useEffect(() => {
-    if (!isInitialized) return;
+    const handleGatewayDown = () => setIsGatewayOffline(true);
+    const handleGatewayUp = () => setIsGatewayOffline(false);
 
-    // 🛰️ SERVER HEALTH CHECK (Only after auth is initialized)
+    window.addEventListener('suvix:gateway-down', handleGatewayDown);
+    window.addEventListener('suvix:gateway-up', handleGatewayUp);
+
+    return () => {
+      window.removeEventListener('suvix:gateway-down', handleGatewayDown);
+      window.removeEventListener('suvix:gateway-up', handleGatewayUp);
+    };
+  }, []);
+
+  // 🛰️ FAST PARALLEL SERVER HEALTH CHECK
+  useEffect(() => {
+    let isMounted = true;
+
     const checkServer = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
@@ -89,39 +106,71 @@ function App() {
           try {
             baseUrl = new URL(apiUrl).origin;
           } catch {
-            // fallback if URL parsing fails
+            // fallback
           }
         } else {
-          if (baseUrl.endsWith('/api/v1')) {
-            baseUrl = baseUrl.slice(0, -7);
-          } else if (baseUrl.endsWith('/api')) {
-            baseUrl = baseUrl.slice(0, -4);
+          if (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -7);
+          else if (baseUrl.endsWith('/api')) baseUrl = baseUrl.slice(0, -4);
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+        const response = await fetch(`${baseUrl}/api/health`, {
+          signal: controller.signal,
+          cache: 'no-cache',
+        }).catch(async () => {
+          return await fetch(`${baseUrl}/health`, {
+            signal: controller.signal,
+            cache: 'no-cache',
+          });
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response && response.ok) {
+          if (isMounted) {
+            setIsGatewayOffline(false);
+            if (location.pathname === '/maintenance') {
+              navigate('/', { replace: true });
+            }
+          }
+        } else {
+          if (isMounted) {
+            setIsGatewayOffline(true);
           }
         }
-        
-        const response = await fetch(`${baseUrl}/api/health`, { 
-          signal: AbortSignal.timeout(8000) 
-        });
-        
-        if (response.ok && location.pathname === '/maintenance') {
-          navigate('/', { replace: true });
-        } else if (response.status === 503 && location.pathname !== '/maintenance') {
-          navigate('/maintenance', { replace: true });
-        }
       } catch {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-        if (!apiUrl.includes('localhost') && location.pathname !== '/maintenance') {
-          navigate('/maintenance', { replace: true });
+        if (isMounted) {
+          setIsGatewayOffline(true);
         }
       } finally {
-        setIsCheckingServer(false);
+        if (isMounted) {
+          setIsCheckingServer(false);
+        }
       }
     };
 
     checkServer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, navigate]);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [location.pathname, navigate]);
+
+  // 🚨 If API Gateway is down (Docker container stopped or network error), render Google/Meta-grade Offline Screen
+  if ((isGatewayOffline || isGatewayDown) && location.pathname !== '/maintenance') {
+    return (
+      <GatewayOfflineScreen
+        onRetrySuccess={() => {
+          setIsGatewayOffline(false);
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
+  // 🔄 Initial authentication/server resolution loader (short-lived)
   if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
     return (
       <div className="h-screen w-full bg-[#0A0A0A] flex items-center justify-center">

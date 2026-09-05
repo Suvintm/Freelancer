@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   ShieldCheck,
-  CreditCard,
-  QrCode,
   Check,
-  Lock,
   ArrowRight,
   AlertCircle,
   HelpCircle,
@@ -21,6 +18,7 @@ import type { PlanCardPresenter, WorkspaceRole } from '../rolePlanConfig';
 import razorpayLogoImg from '../../../assets/razorpay.png';
 import stripeLogoImg from '../../../assets/stripe.png';
 import walletLogoImg from '../../../assets/wallet.png';
+import logo from '../../../assets/logo.png';
 import {
   GooglePayLogo,
   PhonePeLogo,
@@ -277,7 +275,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 bg-zinc-50">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-              <Lock className="w-3.5 h-3.5" />
+               <img src={logo} alt="logo" className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -423,7 +421,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <div className="flex items-center gap-2">
-                        <img src={walletLogoImg} alt="Wallet" className="h-5 w-auto object-contain" />
+                        <img src={walletLogoImg} alt="Wallet" className="h-6 w-auto object-contain" />
                         <span className="text-xs font-semibold text-zinc-900">SuviX Creator Wallet</span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold border border-amber-200">
                           Instant 1-Click

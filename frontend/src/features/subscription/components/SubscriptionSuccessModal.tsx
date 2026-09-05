@@ -27,7 +27,6 @@ export const SubscriptionSuccessModal: React.FC<SubscriptionSuccessModalProps> =
   role,
   amountPaid = 0,
   paymentId,
-  isDarkMode = true,
 }) => {
   const navigate = useNavigate();
 

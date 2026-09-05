@@ -68,8 +68,36 @@ export const scheduleProactiveTokenRefresh = (delayMs = 13 * 60 * 1000) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('suvix:gateway-up'));
+    }
+    return response;
+  },
   async (error: AxiosError) => {
+    // 🛰️ Detect API Gateway Offline / Network Error / Bad Gateway
+    const isGatewayError =
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ETIMEDOUT' ||
+      error.message?.includes('Network Error') ||
+      error.message?.includes('Failed to fetch') ||
+      (error.response && error.response.status >= 502 && error.response.status <= 504);
+
+    if (isGatewayError && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('suvix:gateway-down', {
+          detail: {
+            code: error.code || 'ERR_CONNECTION_REFUSED',
+            status: error.response?.status || 503,
+            message: error.message || 'API Gateway Unreachable',
+            url: error.config?.url,
+            timestamp: Date.now(),
+          },
+        })
+      );
+    }
+
     const { config, response } = error;
     const originalRequest = config as InternalAxiosRequestConfig & { _retry?: boolean };
 
