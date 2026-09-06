@@ -22,8 +22,14 @@ public class InvoiceController {
 
     @GetMapping
     public ResponseEntity<List<Invoice>> getUserInvoices(
-            @RequestHeader("X-User-Id") String userId
+            @RequestHeader(value = "X-User-Id", required = false) String headerUserId,
+            @RequestParam(value = "userId", required = false) String paramUserId
     ) {
+        String userId = (headerUserId != null && !headerUserId.isBlank()) ? headerUserId : paramUserId;
+        System.out.println("  [JAVA PAYMENT-SERVICE] 🧾 GET /api/v1/invoices for user: " + userId);
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.ok(List.of());
+        }
         return ResponseEntity.ok(invoiceService.getUserInvoices(userId));
     }
 

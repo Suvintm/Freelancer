@@ -5,7 +5,7 @@ import { vpnCheckMiddleware } from "../../shared/middleware/vpn-check.middleware
 import { authRouter, oauthRouter } from "../../domains/auth/index.js";
 import { userRouter, profileRouter, publicProfileRouter } from "../../domains/user/index.js";
 import { notificationRouter } from "../../domains/notification/index.js";
-import { paymentGatewayRouter, subscriptionRouter } from "../../domains/payment/index.js";
+import { paymentGatewayRouter, subscriptionRouter, invoiceRouter } from "../../domains/payment/index.js";
 import { creatorRouter, instagramRouter } from "../../domains/creator/index.js";
 import { mediaRouter } from "../../domains/media/index.js";
 import { postRouter, storyRouter, commentRouter } from "../../domains/content/index.js";
@@ -44,6 +44,8 @@ v1Router.use("/messages", messagingRouter);
 v1Router.use("/polls", pollRouter);
 v1Router.use("/payment-gateway", paymentGatewayRouter);
 v1Router.use("/payments", subscriptionRouter);
+v1Router.use("/subscriptions", subscriptionRouter);
+v1Router.use("/invoices", invoiceRouter);
 v1Router.use("/linkinbio", linkinbioRouter);
 
 

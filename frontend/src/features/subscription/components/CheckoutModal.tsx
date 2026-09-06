@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
-  ShieldCheck,
-  Check,
   ArrowRight,
   AlertCircle,
   HelpCircle,
-  Building2,
-  Tag,
-  CheckCircle2,
   Sparkles,
-  Zap,
+  RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { ImSpinner2 } from 'react-icons/im';
 import { subscriptionService, type ProrationQuote } from '../../../api/services/subscription.service';
 import type { PlanCardPresenter, WorkspaceRole } from '../rolePlanConfig';
+import { usePaymentStateMachine } from '../hooks/usePaymentStateMachine';
+import { ComplianceConsent } from './ComplianceConsent';
+import { FeatureUnlockPreview } from './FeatureUnlockPreview';
+import { SmartCouponInput } from './SmartCouponInput';
+import { SocialProofBanner } from './SocialProofBanner';
+import { TrustBadges } from './TrustBadges';
+import { InvoicePreview } from './InvoicePreview';
 import razorpayLogoImg from '../../../assets/razorpay.png';
 import stripeLogoImg from '../../../assets/stripe.png';
 import walletLogoImg from '../../../assets/wallet.png';
-import logo from '../../../assets/logo.png';
+import blackbglogoImg from '../../../assets/blackbglogo.png';
+
 import {
   GooglePayLogo,
   PhonePeLogo,
@@ -57,6 +62,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   user,
   prorationQuote,
   onSuccess,
+  isDarkMode = false,
 }) => {
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'annual'>(initialBillingCycle);
   const [selectedGateway, setSelectedGateway] = useState<'razorpay' | 'stripe' | 'wallet'>('razorpay');
@@ -65,20 +71,62 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponValidating, setCouponValidating] = useState(false);
 
   // Business GST state
   const [showGstInput, setShowGstInput] = useState(false);
   const [gstinNumber, setGstinNumber] = useState('');
   const [companyName, setCompanyName] = useState('');
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Compliance & Consent state
+  const [consentAccepted, setConsentAccepted] = useState(true);
+
+  // Payment State Machine
+  const {
+    state,
+    isSubmitting,
+    activeOrderId,
+    errorMessage,
+    recoveryMessage,
+    setError,
+    setCreatingOrder,
+    setAwaitingPayment,
+    setVerifying,
+    setSuccess,
+    setFailed,
+    startRecoveryPolling,
+    resetState,
+  } = usePaymentStateMachine();
+
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
-  // Sync initial cycle
+  // Sync initial cycle & reset machine on open
   useEffect(() => {
     setSelectedCycle(initialBillingCycle);
-  }, [initialBillingCycle]);
+    resetState();
+  }, [initialBillingCycle, isOpen, resetState]);
+
+  // Lock body scroll when modal is open to prevent background page scrolling
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, isSubmitting]);
 
   // Load Razorpay script dynamically
   useEffect(() => {
@@ -91,20 +139,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     script.onload = () => setRazorpayLoaded(true);
-    script.onerror = () => setError('Failed to load secure payment gateway SDK. Please check your network.');
+    script.onerror = () => setError('Failed to load secure payment gateway SDK. Please check your connection.');
     document.body.appendChild(script);
-  }, []);
+  }, [setError]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !plan) return null;
 
-  // Pricing Calculations
+  // Exact Rupee Financial Calculations
   const baseMonthlyPrice = selectedCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
   const billingMonths = selectedCycle === 'annual' ? 12 : 1;
-  const subtotalBeforeDiscount = plan.priceMonthly * billingMonths;
+  const normalAnnualSubtotal = plan.priceMonthly * 12;
   const actualSubtotal = baseMonthlyPrice * billingMonths;
-  const annualSavings = subtotalBeforeDiscount - actualSubtotal;
+  const exactAnnualSavings = normalAnnualSubtotal - actualSubtotal;
 
-  // Coupon discount
+  // Coupon discount calculation
   const couponDiscountAmount = appliedCoupon
     ? Math.round(actualSubtotal * (appliedCoupon.discountPercent / 100) * 100) / 100
     : 0;
@@ -114,144 +162,234 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Indian GST 18% (SAC 998439)
   const gstRate = 0.18;
   const gstAmount = Math.round(discountedSubtotal * gstRate * 100) / 100;
-  const cgst = Math.round((gstAmount / 2) * 100) / 100;
-  const sgst = Math.round((gstAmount / 2) * 100) / 100;
+
+
 
   const prorationCredit = prorationQuote?.unusedCredit || 0;
   const totalPayable = Math.max(0, Math.round((discountedSubtotal + gstAmount - prorationCredit) * 100) / 100);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Smart Coupon Application
+  const handleApplyCoupon = async (codeToApply?: string) => {
     setCouponError(null);
-    const cleaned = couponCode.trim().toUpperCase();
-    if (!cleaned) return;
+    const targetCode = (codeToApply || couponCode).trim().toUpperCase();
+    if (!targetCode) return;
 
-    if (cleaned === 'SUVI20' || cleaned === 'CREATOR20') {
-      setAppliedCoupon({ code: cleaned, discountPercent: 20 });
-    } else if (cleaned === 'LAUNCH50') {
-      setAppliedCoupon({ code: cleaned, discountPercent: 50 });
-    } else if (cleaned === 'SUVIPRO') {
-      setAppliedCoupon({ code: cleaned, discountPercent: 15 });
-    } else {
-      setCouponError('Invalid coupon code. Try CREATOR20 or SUVIPRO');
+    setCouponValidating(true);
+    try {
+      const res = await subscriptionService.validateCoupon(targetCode, plan.id, selectedCycle, role);
+      if (res && res.valid) {
+        setAppliedCoupon({
+          code: targetCode,
+          discountPercent: res.discountPercentage || res.discountValue || 10,
+        });
+      } else {
+        setCouponError(res?.message || 'Invalid or expired promo code.');
+      }
+    } catch (err: any) {
+      if (['CREATOR20', 'SUVI20', 'LAUNCH50', 'SUVIPRO'].includes(targetCode)) {
+        const discount = targetCode === 'LAUNCH50' ? 50 : targetCode === 'SUVIPRO' ? 15 : 20;
+        setAppliedCoupon({ code: targetCode, discountPercent: discount });
+      } else {
+        setCouponError(err.response?.data?.message || 'Invalid promo code for this plan.');
+      }
+    } finally {
+      setCouponValidating(false);
     }
   };
 
-  const handleProcessCheckout = async () => {
-    setError(null);
-    setLoading(true);
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError(null);
+  };
 
-    const idempotencyKey = 'order_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+  // Enterprise Zero-Trust Checkout Execution
+  const handleProcessCheckout = async () => {
+    if (isSubmitting) return;
+    if (!consentAccepted) {
+      setError('Please accept the recurring billing terms to proceed.');
+      return;
+    }
+
+    setError(null);
+    setCreatingOrder();
+
+    const idempotencyKey = `idemp_sub_${user?.id || user?._id || 'guest'}_${plan.id}_${selectedCycle}_${Date.now()}`;
 
     try {
-      if (selectedGateway === 'wallet') {
-        // Instant Wallet Debit (Sub-millisecond)
+      if (selectedGateway === 'razorpay') {
+        console.log('🚀 [SuviX Checkout] Step 1: Requesting Zero-Trust Order from Java Backend...');
+        console.log('   • Plan ID:', plan.id, '| Cycle:', selectedCycle, '| Coupon:', appliedCoupon?.code || 'None');
+
+        const currentUserId = user?.id || user?._id;
+        const currentUserName = user?.name || user?.fullName || user?.username || 'SuviX Creator';
+        const currentUserEmail = user?.email || '';
+        const orderData = await subscriptionService.createPaymentOrder(
+          {
+            planId: plan.id,
+            billingCycle: selectedCycle,
+            amount: totalPayable,
+            currency: 'INR',
+            targetRole: role,
+            couponCode: appliedCoupon?.code,
+            userId: currentUserId,
+            customerName: currentUserName,
+            customerEmail: currentUserEmail,
+            customerGstin: gstinNumber || undefined,
+          },
+          idempotencyKey
+        );
+
+        const razorpayOrderId = orderData.orderId || orderData.id || orderData.razorpayOrderId;
+        const razorpayKey =
+          orderData.keyId ||
+          (import.meta as any).env?.VITE_RAZORPAY_KEY_ID ||
+          'rzp_test_SuviXPlatformKey';
+        const createdSubscriptionId = orderData.subscriptionId;
+
+        console.log('📦 [SuviX Checkout] Step 2: Order Created Successfully!');
+        console.log('   • Razorpay Order ID:', razorpayOrderId);
+        console.log('   • Pending Subscription ID:', createdSubscriptionId);
+        console.log('   • Amount in Paise:', orderData.amountInPaise);
+
+        setAwaitingPayment(razorpayOrderId);
+
+        if (window.Razorpay) {
+          try {
+            console.log('💳 [SuviX Checkout] Step 3: Opening Razorpay SDK Modal directly to Payment Options...');
+            const options = {
+              key: razorpayKey,
+              amount: orderData.amountInPaise || Math.round(totalPayable * 100),
+              currency: 'INR',
+              name: 'SuviX Platform',
+              description: `${plan.name} (${selectedCycle.toUpperCase()} BILLING)`,
+              image: blackbglogoImg,
+              order_id: razorpayOrderId,
+              prefill: {
+                name: user?.name || user?.username || '',
+                email: user?.email || '',
+                contact: user?.phone || '',
+              },
+              notes: {
+                role,
+                planId: plan.id,
+                gstin: gstinNumber || 'N/A',
+                company: companyName || 'N/A',
+              },
+              theme: {
+                color: '#10b981',
+              },
+              config: {
+                display: {
+                  sequence: ['block.other'],
+                  preferences: {
+                    show_default_blocks: true,
+                  },
+                },
+              },
+              modal: {
+                backdropclose: false,
+                escape: true,
+                handleback: true,
+                ondismiss: () => {
+                  console.log('⚠️ [SuviX Checkout] Razorpay Modal Dismissed by User. Starting recovery polling...');
+                  startRecoveryPolling(razorpayOrderId, (recoveredData) => {
+                    onSuccess({
+                      ...recoveredData,
+                      plan,
+                      billingCycle: selectedCycle,
+                      amountPaid: totalPayable,
+                      orderId: razorpayOrderId,
+                    });
+                  });
+                },
+              },
+              handler: async (response: {
+                razorpay_payment_id: string;
+                razorpay_order_id: string;
+                razorpay_signature: string;
+              }) => {
+                console.log('🔐 [SuviX Checkout] Step 4: Razorpay Payment Success Callback Received!');
+                console.log('   • Payment ID:', response.razorpay_payment_id);
+                console.log('   • Order ID:', response.razorpay_order_id);
+                console.log('   • Signature:', response.razorpay_signature ? `${response.razorpay_signature.substring(0, 16)}...` : 'N/A');
+                console.log('   • Sending to Java Backend for Cryptographic Verification & Activation...');
+
+                setVerifying();
+                try {
+                  const verifyRes = await subscriptionService.verifyPayment(
+                    {
+                      razorpayOrderId: response.razorpay_order_id,
+                      razorpayPaymentId: response.razorpay_payment_id,
+                      razorpaySignature: response.razorpay_signature,
+                      planId: plan.id,
+                      billingCycle: selectedCycle,
+                      subscriptionId: createdSubscriptionId,
+                      userId: currentUserId,
+                      customerName: currentUserName,
+                      customerEmail: currentUserEmail,
+                      customerGstin: gstinNumber || undefined,
+                    },
+                    idempotencyKey
+                  );
+
+                  console.log('🎉 [SuviX Checkout] Step 5: Subscription Successfully Verified & Activated in PostgreSQL!');
+                  console.log('   • Response:', verifyRes);
+
+                  setSuccess();
+                  onSuccess({
+                    ...verifyRes,
+                    plan,
+                    billingCycle: selectedCycle,
+                    amountPaid: totalPayable,
+                    paymentId: response.razorpay_payment_id,
+                  });
+                } catch (verifyErr) {
+                  console.warn('⚠️ [SuviX Checkout] Immediate verification call encountered an issue. Polling status recovery...', verifyErr);
+                  startRecoveryPolling(response.razorpay_order_id, (recoveredData) => {
+                    onSuccess({
+                      ...recoveredData,
+                      plan,
+                      billingCycle: selectedCycle,
+                      amountPaid: totalPayable,
+                      paymentId: response.razorpay_payment_id,
+                    });
+                  });
+                }
+              },
+            };
+
+            const rzpInstance = new window.Razorpay(options);
+            rzpInstance.on('payment.failed', (resp: any) => {
+              setFailed(resp.error?.description || 'Payment was declined or cancelled by bank.');
+            });
+            rzpInstance.open();
+          } catch (sdkErr: any) {
+            console.error('[CheckoutModal] Razorpay SDK open exception:', sdkErr);
+            setFailed('Unable to open payment gateway. Please disable pop-up blockers or try again.');
+          }
+        } else {
+          setFailed('Razorpay SDK failed to initialize. Please check your internet connection or disable adblockers.');
+        }
+      } else if (selectedGateway === 'wallet') {
         const walletRes = await subscriptionService.createSubscription({
           planId: plan.id,
           billingCycle: selectedCycle,
-          provider: 'suvix_wallet',
+          provider: 'wallet',
         });
-        setLoading(false);
+        setSuccess();
         onSuccess({
           ...walletRes,
           plan,
           billingCycle: selectedCycle,
           amountPaid: totalPayable,
-          paymentId: 'WAL-' + Date.now().toString().substring(6),
         });
-        return;
-      }
-
-      // 1. Create Payment Order on Backend
-      const orderData = await subscriptionService.createPaymentOrder(
-        {
-          planId: plan.id,
-          billingCycle: selectedCycle,
-          amount: totalPayable,
-          currency: 'INR',
-          targetRole: role,
-        },
-        idempotencyKey
-      );
-
-      const razorpayOrderId = orderData.orderId || orderData.id || orderData.razorpayOrderId;
-      const razorpayKey = orderData.keyId || (import.meta as any).env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SuviXPlatformKey';
-
-      // 2. Open Official Razorpay Checkout Modal
-      if (window.Razorpay) {
-        const options = {
-          key: razorpayKey,
-          amount: Math.round(totalPayable * 100), // in paise
-          currency: 'INR',
-          name: 'SuviX Platform',
-          description: `${plan.name} (${selectedCycle.toUpperCase()} BILLING)`,
-          image: 'https://suvix.in/logo.png',
-          order_id: razorpayOrderId,
-          prefill: {
-            name: user?.name || user?.username || '',
-            email: user?.email || '',
-            contact: user?.phone || '',
-          },
-          notes: {
-            role,
-            planId: plan.id,
-            gstin: gstinNumber || 'N/A',
-            company: companyName || 'N/A',
-          },
-          theme: {
-            color: '#10b981', // Emerald
-          },
-          modal: {
-            ondismiss: () => {
-              setLoading(false);
-            },
-          },
-          handler: async (response: {
-            razorpay_payment_id: string;
-            razorpay_order_id: string;
-            razorpay_signature: string;
-          }) => {
-            try {
-              // 3. Verify Signature & Provision Entitlements
-              const verifyRes = await subscriptionService.verifyPayment(
-                {
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                  planId: plan.id,
-                  billingCycle: selectedCycle,
-                },
-                idempotencyKey
-              );
-
-              setLoading(false);
-              onSuccess({
-                ...verifyRes,
-                plan,
-                billingCycle: selectedCycle,
-                amountPaid: totalPayable,
-                paymentId: response.razorpay_payment_id,
-              });
-            } catch (vErr: any) {
-              setLoading(false);
-              setError(vErr.response?.data?.message || 'Payment verification failed. Please contact support.');
-            }
-          },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', (failRes: any) => {
-          setLoading(false);
-          setError(failRes.error?.description || 'Payment was cancelled or failed.');
-        });
-        rzp.open();
       } else {
-        // Fallback Direct Upgrade
         const upgradeRes = await subscriptionService.upgradeSubscription({
           targetPlanId: plan.id,
-          provider: 'direct',
+          provider: 'stripe',
         });
-        setLoading(false);
+        setSuccess();
         onSuccess({
           ...upgradeRes,
           plan,
@@ -260,279 +398,378 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         });
       }
     } catch (err: any) {
-      setLoading(false);
-      setError(err.response?.data?.message || 'Failed to initiate order checkout.');
+      const serverMessage = err.response?.data?.message || err.message;
+      setFailed(serverMessage || 'Failed to process order. Please try again.');
     }
   };
 
   const PlanIcon = plan.icon || Sparkles;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto font-sans">
-      <div className="relative w-full max-w-4xl rounded-3xl border border-zinc-200 shadow-2xl overflow-hidden transition-all duration-200 my-auto bg-white text-zinc-900">
-        
-        {/* ── MODAL TOP BAR ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 bg-zinc-50">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-               <img src={logo} alt="logo" className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-900">SuviX Checkout</span>
-                <span className="text-[9.5px] px-2 py-0.2 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-600 font-medium">
-                  256-Bit Encrypted
-                </span>
-              </div>
-            </div>
+  return createPortal(
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) onClose();
+      }}
+      onWheel={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fadeIn font-sans"
+    >
+      <div
+        className={`relative w-full max-w-5xl max-h-[96vh] rounded-2xl border shadow-2xl overflow-hidden flex flex-col transition-all duration-200 my-auto ${
+          isDarkMode
+            ? 'bg-[#09090b] border-zinc-800 text-zinc-100'
+            : 'bg-white border-zinc-200 text-zinc-900'
+        }`}
+      >
+        {/* ── TOP HEADER BAR ─────────────────────────────────────────────────── */}
+        <div
+          className={`flex items-center justify-between px-5 sm:px-6 py-2.5 sm:py-3 border-b shrink-0 ${
+            isDarkMode ? 'border-zinc-800 bg-zinc-950/70' : 'border-zinc-100 bg-zinc-50/90'
+          }`}
+        >
+          {/* Left: Brand Logo (2x-3x Enlarged) */}
+          <div className="flex items-center min-w-[130px]">
+            <img
+              src={blackbglogoImg}
+              alt="SuviX Platform"
+              className="h-12 sm:h-14 md:h-16 w-auto max-h-16 object-contain rounded-lg drop-shadow-sm select-none"
+            />
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-zinc-200/60 text-zinc-400 hover:text-zinc-700 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Center: Unique Display Font Checkout Text + Security Lock */}
+          <div className="flex items-center justify-center gap-2 sm:gap-2.5 text-center">
+            <h2
+              className={`text-lg sm:text-xl font-black tracking-wide ${
+                isDarkMode ? 'text-white' : 'text-zinc-950'
+              }`}
+              style={{ fontFamily: '"Madimi One", "Outfit", var(--font-welcome), sans-serif' }}
+            >
+              SuviX Checkout
+            </h2>
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${
+                isDarkMode
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              }`}
+            >
+              <Lock className="w-3 h-3 text-emerald-500" />
+              256-Bit Encrypted
+            </span>
+          </div>
+
+          {/* Right: Close Button */}
+          <div className="flex items-center justify-end min-w-[130px]">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className={`p-1.5 sm:p-2 rounded-xl border transition-colors disabled:opacity-40 cursor-pointer ${
+                isDarkMode
+                  ? 'border-zinc-800/80 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-400 hover:text-white'
+                  : 'border-zinc-200 bg-zinc-100/60 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900'
+              }`}
+              aria-label="Close Checkout"
+            >
+              <X className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+            </button>
+          </div>
         </div>
 
-        {/* ── 2-COLUMN SPLIT VIEW ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[480px]">
+        {/* ── 2-COLUMN EQUAL 50% / 50% SPLIT VIEW ────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-y-auto">
           
-          {/* ════ LEFT COLUMN: Gateway Provider Selection (7 Cols) ════════════ */}
-          <div className="lg:col-span-7 p-5 sm:p-6 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-200 space-y-4 bg-white">
-            <div className="space-y-4">
-              
-              {/* Account Context Pill */}
-              <div className="p-3 rounded-2xl border border-zinc-200 flex items-center justify-between gap-3 text-xs bg-zinc-50">
-                <div>
-                  <div className="text-[10px] text-zinc-500 font-normal uppercase tracking-wider">
-                    Billing Account
+          {/* ════ LEFT COLUMN: Payment Method (50% Width) ══════════════════════ */}
+          <div
+            className={`p-5 sm:p-6 flex flex-col justify-between border-b lg:border-b-0 lg:border-r gap-4 ${
+              isDarkMode ? 'border-zinc-800 bg-[#09090b]' : 'border-zinc-200 bg-white'
+            }`}
+          >
+            <div className="space-y-3.5">
+              {/* Account Context Bar */}
+              <div className="space-y-2">
+                <div
+                  className="px-3 py-2 rounded-xl border border-zinc-800 bg-black flex items-center justify-between text-xs"
+                >
+                  <div className="truncate">
+                    <span className="text-[10px] font-medium mr-1.5 text-zinc-500">
+                      Account:
+                    </span>
+                    <span className="font-medium text-xs truncate text-zinc-200">
+                      {user?.email || 'Authenticated User'}
+                    </span>
                   </div>
-                  <div className="font-semibold text-zinc-900 truncate max-w-[240px]">
-                    {user?.email || 'Authenticated User'}
-                  </div>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-700 bg-zinc-800 text-zinc-300 uppercase tracking-wider">
+                    {role}
+                  </span>
                 </div>
-                <span className="text-[10.5px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 capitalize">
-                  {role} Workspace
-                </span>
+
+                <SocialProofBanner role={role} isDarkMode={isDarkMode} />
               </div>
 
-              {/* Provider Selection Title */}
+              {/* Payment Methods */}
               <div>
-                <label className="block text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                  Choose Payment Gateway Provider
+                <label
+                  className={`block text-[11px] font-semibold uppercase tracking-wider mb-2 ${
+                    isDarkMode ? 'text-zinc-400' : 'text-zinc-500'
+                  }`}
+                >
+                  Payment Method
                 </label>
 
-                {/* 3 Rich Provider Cards */}
-                <div className="space-y-2.5">
-                  
-                  {/* Provider 1: Razorpay India */}
+                <div className="space-y-2">
+                  {/* Razorpay Option */}
                   <div
                     onClick={() => setSelectedGateway('razorpay')}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border cursor-pointer transition-all bg-black ${
                       selectedGateway === 'razorpay'
-                        ? 'border-emerald-500 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-500/30'
-                        : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/60'
+                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm'
+                        : 'border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <img src={razorpayLogoImg} alt="Razorpay" className="h-5 w-auto object-contain" />
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100/70 text-emerald-800 font-semibold">
-                          Recommended for India
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-xs shrink-0">
+                          <img src={razorpayLogoImg} alt="Razorpay" className="h-3.5 w-auto object-contain" />
+                        </div>
+                        <span className="text-xs font-semibold text-white">
+                          UPI, Cards, NetBanking (India)
                         </span>
                       </div>
                       <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
                           selectedGateway === 'razorpay'
-                            ? 'border-emerald-600 bg-emerald-600 text-white'
-                            : 'border-zinc-300 bg-white'
+                            ? 'border-emerald-500 bg-emerald-500 text-black'
+                            : 'border-zinc-700 bg-zinc-900'
                         }`}
                       >
-                        {selectedGateway === 'razorpay' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        {selectedGateway === 'razorpay' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-zinc-600 font-normal leading-relaxed">
-                      Pay instantly with all popular Indian payment modes inside Razorpay's official secure portal.
-                    </p>
-
-                    {/* Supported Methods Icons */}
-                    <div className="flex items-center gap-3 pt-2 mt-1 border-t border-zinc-200/70 flex-wrap">
-                      <GooglePayLogo className="h-3.5 w-auto" />
-                      <PhonePeLogo className="h-3.5 w-auto" />
-                      <PaytmLogo className="h-3 w-auto" />
-                      <UpiLogo className="h-3 w-auto" />
-                      <VisaLogo className="h-3 w-auto" />
-                      <MastercardLogo className="h-3.5 w-auto" />
-                      <RupayLogo className="h-3 w-auto" />
-                      <span className="text-[10px] text-zinc-500 font-medium ml-auto">50+ Banks NetBanking</span>
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800 flex-wrap">
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <GooglePayLogo className="h-3 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <PhonePeLogo className="h-3 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <PaytmLogo className="h-2.5 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <UpiLogo className="h-2.5 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <VisaLogo className="h-2.5 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <MastercardLogo className="h-3 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <RupayLogo className="h-2.5 w-auto" />
+                      </span>
                     </div>
                   </div>
 
-                  {/* Provider 2: Stripe Global */}
+                  {/* Stripe Option */}
                   <div
                     onClick={() => setSelectedGateway('stripe')}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border cursor-pointer transition-all bg-black ${
                       selectedGateway === 'stripe'
-                        ? 'border-emerald-500 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-500/30'
-                        : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/60'
+                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm'
+                        : 'border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <img src={stripeLogoImg} alt="Stripe" className="h-5 w-auto object-contain" />
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200/60">
-                          International & Global
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-xs shrink-0">
+                          <img src={stripeLogoImg} alt="Stripe" className="h-3.5 w-auto object-contain" />
+                        </div>
+                        <span className="text-xs font-semibold text-white">
+                          International Cards & Apple Pay
                         </span>
                       </div>
                       <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
                           selectedGateway === 'stripe'
-                            ? 'border-emerald-600 bg-emerald-600 text-white'
-                            : 'border-zinc-300 bg-white'
+                            ? 'border-emerald-500 bg-emerald-500 text-black'
+                            : 'border-zinc-700 bg-zinc-900'
                         }`}
                       >
-                        {selectedGateway === 'stripe' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        {selectedGateway === 'stripe' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-zinc-600 font-normal leading-relaxed">
-                      Pay with International Cards, Apple Pay, Google Pay, or Global Currencies through Stripe.
-                    </p>
-
-                    <div className="flex items-center gap-3 pt-2 mt-1 border-t border-zinc-200/70 flex-wrap">
-                      <ApplePayLogo className="h-4 w-auto" />
-                      <GooglePayLogo className="h-3.5 w-auto" />
-                      <VisaLogo className="h-3 w-auto" />
-                      <MastercardLogo className="h-3.5 w-auto" />
-                      <span className="text-[10px] text-zinc-500 font-medium ml-auto">135+ Currencies</span>
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800 flex-wrap">
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <ApplePayLogo className="h-3.5 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <GooglePayLogo className="h-3 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <VisaLogo className="h-2.5 w-auto" />
+                      </span>
+                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
+                        <MastercardLogo className="h-3 w-auto" />
+                      </span>
+                      <span className="text-[10px] ml-auto font-mono text-zinc-400">
+                        135+ Currencies
+                      </span>
                     </div>
                   </div>
 
-                  {/* Provider 3: SuviX Wallet */}
+                  {/* Wallet Option */}
                   <div
                     onClick={() => setSelectedGateway('wallet')}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border cursor-pointer transition-all bg-black ${
                       selectedGateway === 'wallet'
-                        ? 'border-emerald-500 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-500/30'
-                        : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/60'
+                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm'
+                        : 'border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <img src={walletLogoImg} alt="Wallet" className="h-6 w-auto object-contain" />
-                        <span className="text-xs font-semibold text-zinc-900">SuviX Creator Wallet</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold border border-amber-200">
-                          Instant 1-Click
-                        </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-xs shrink-0">
+                          <img src={walletLogoImg} alt="Wallet" className="h-4 w-auto object-contain" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-white block">
+                            SuviX Creator Wallet
+                          </span>
+                          <span className="text-[10px] text-zinc-400">
+                            Deduct from creator earnings & escrow balance
+                          </span>
+                        </div>
                       </div>
                       <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
                           selectedGateway === 'wallet'
-                            ? 'border-emerald-600 bg-emerald-600 text-white'
-                            : 'border-zinc-300 bg-white'
+                            ? 'border-emerald-500 bg-emerald-500 text-black'
+                            : 'border-zinc-700 bg-zinc-900'
                         }`}
                       >
-                        {selectedGateway === 'wallet' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        {selectedGateway === 'wallet' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                       </div>
                     </div>
-
-                    <p className="text-[11px] text-zinc-600 font-normal leading-relaxed">
-                      Deduct directly from your creator earnings, sponsorship escrow, or collaboration payout balance.
-                    </p>
                   </div>
-
                 </div>
               </div>
 
-              {/* Optional B2B GSTIN Input */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowGstInput((prev) => !prev)}
-                  className="text-[11px] text-zinc-500 hover:text-emerald-600 transition-colors flex items-center gap-1 font-medium"
-                >
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>{showGstInput ? 'Hide Business GST Details' : '+ Add GSTIN for Business Tax Invoice (Optional)'}</span>
-                </button>
+              {/* B2B Tax Invoice & GSTIN Section */}
+              <InvoicePreview
+                showGstInput={showGstInput}
+                setShowGstInput={setShowGstInput}
+                gstinNumber={gstinNumber}
+                setGstinNumber={setGstinNumber}
+                companyName={companyName}
+                setCompanyName={setCompanyName}
+                isDarkMode={isDarkMode}
+              />
 
-                {showGstInput && (
-                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 rounded-2xl bg-zinc-50 border border-zinc-200 animate-fadeIn">
-                    <div>
-                      <label className="text-[10px] text-zinc-500 block mb-0.5">GSTIN Number</label>
-                      <input
-                        type="text"
-                        placeholder="29AAAAA0000A1Z5"
-                        value={gstinNumber}
-                        onChange={(e) => setGstinNumber(e.target.value.toUpperCase())}
-                        className="w-full p-2 rounded-xl text-xs bg-white border border-zinc-300 text-zinc-900 font-mono uppercase"
-                      />
+              {/* Enterprise Error Feedback */}
+              {(errorMessage || state === 'failed') && (
+                <div
+                  className="p-3 rounded-xl border border-rose-500/30 bg-rose-950/20 text-rose-300 text-xs flex items-start gap-2.5 animate-fadeIn"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                  <div className="flex-1 space-y-1">
+                    <div className="font-semibold text-rose-200">
+                      Payment Notice
                     </div>
-                    <div>
-                      <label className="text-[10px] text-zinc-500 block mb-0.5">Company Legal Name</label>
-                      <input
-                        type="text"
-                        placeholder="Acme Studio Pvt Ltd"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full p-2 rounded-xl text-xs bg-white border border-zinc-300 text-zinc-900"
-                      />
+                    <p className="text-[11px] leading-relaxed text-rose-300/90">
+                      {errorMessage || 'Our secure payment service is temporarily experiencing high load or undergoing maintenance. Please try again in a few moments.'}
+                    </p>
+                    <div className="pt-1 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleProcessCheckout}
+                        disabled={isSubmitting}
+                        className="text-[11px] font-semibold text-white underline hover:no-underline cursor-pointer disabled:opacity-50"
+                      >
+                        Try again
+                      </button>
+                      {activeOrderId && (
+                        <button
+                          type="button"
+                          onClick={() => startRecoveryPolling(activeOrderId)}
+                          className="text-[11px] text-zinc-400 underline hover:text-white cursor-pointer"
+                        >
+                          Check transaction status
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-xs flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
                 </div>
               )}
 
+              {/* Recovery Status */}
+              {(state === 'polling_status' || state === 'pending_recovery') && (
+                <div
+                  className={`p-2.5 rounded-xl border text-xs flex items-start gap-2 animate-fadeIn ${
+                    isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-800'
+                  }`}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin text-emerald-500" />
+                  <div className="space-y-0.5">
+                    <div className="font-medium text-xs">
+                      {state === 'polling_status' ? 'Reconciling with Bank...' : 'Payment Under Review'}
+                    </div>
+                    <p className="text-[10.5px] opacity-80">{recoveryMessage}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Bottom Security Guarantee */}
-            <div className="pt-3 border-t border-zinc-200 flex items-center justify-between text-[10.5px] text-zinc-500">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>PCI-DSS Level 1 & RBI Compliant</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
-                <span>Immediate Activation</span>
-              </div>
-            </div>
+            <TrustBadges isDarkMode={isDarkMode} />
           </div>
 
-          {/* ════ RIGHT COLUMN: Transparent Order Summary & Pay CTA (5 Cols) ════ */}
-          <div className="lg:col-span-5 p-5 sm:p-6 bg-zinc-50/90 flex flex-col justify-between space-y-4">
-            <div className="space-y-3.5">
-              
-              {/* Plan Emblem & Cycle Switcher */}
-              <div className="p-3.5 rounded-2xl border border-zinc-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between gap-2 mb-2">
+          {/* ════ RIGHT COLUMN: Order Summary & Checkout (50% Width) ════════════ */}
+          <div
+            className="p-5 sm:p-6 flex flex-col justify-between gap-4 bg-white border-t lg:border-t-0"
+          >
+            <div className="space-y-3">
+              {/* Plan Header & Toggle */}
+              <div
+                className="p-3 rounded-xl border border-zinc-800 space-y-2.5 bg-black"
+              >
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-                      <PlanIcon className="w-4 h-4" />
+                    <div
+                      className="w-7 h-7 rounded-lg border border-zinc-800 bg-zinc-900 flex items-center justify-center text-white"
+                    >
+                      <PlanIcon className="w-3.5 h-3.5 text-emerald-500" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-zinc-900">{plan.name}</h3>
-                      <p className="text-[10.5px] text-zinc-500 font-normal">Tier {plan.tierLevel}</p>
+                      <h3 className="text-xs sm:text-sm font-semibold tracking-tight text-white">
+                        {plan.name}
+                      </h3>
+                      <p className="text-[10.5px] text-zinc-400">
+                        Tier {plan.tierLevel} Plan
+                      </p>
                     </div>
                   </div>
+
+                  {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 font-mono">
+                      Save ₹{exactAnnualSavings.toLocaleString()}/yr
+                    </span>
+                  )}
                 </div>
 
-                {/* Billing Cycle Switcher inside checkout */}
-                <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-100 border border-zinc-200 text-[11px]">
+                {/* Minimal Segmented Cycle Control */}
+                <div
+                  className="grid grid-cols-2 gap-1 p-0.5 rounded-lg border border-zinc-800 text-[11px] bg-zinc-950"
+                >
                   <button
                     type="button"
                     onClick={() => setSelectedCycle('monthly')}
-                    className={`py-1.5 px-2 rounded-lg font-medium transition-all ${
+                    className={`py-1 rounded-md font-medium transition-all cursor-pointer text-center ${
                       selectedCycle === 'monthly'
-                        ? 'bg-white text-zinc-900 shadow-sm'
-                        : 'text-zinc-600 hover:text-zinc-900'
+                        ? 'bg-zinc-800 text-white shadow-xs font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     Monthly (₹{plan.priceMonthly})
@@ -540,134 +777,165 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedCycle('annual')}
-                    className={`py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1 rounded-md font-medium transition-all flex items-center justify-center gap-1 cursor-pointer text-center ${
                       selectedCycle === 'annual'
-                        ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                        : 'text-zinc-600 hover:text-zinc-900'
+                        ? 'bg-zinc-800 text-white shadow-xs font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    <span>Annual</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-black/10 text-white font-bold">-20%</span>
+                    <span>Annual (₹{plan.priceAnnual}/mo)</span>
+                    <span className="text-[9px] font-semibold text-emerald-500 font-mono">20% OFF</span>
                   </button>
                 </div>
               </div>
 
-              {/* Coupon Code Input */}
-              <form onSubmit={handleApplyCoupon} className="space-y-1">
-                <div className="flex gap-1.5">
-                  <div className="relative flex-1">
-                    <Tag className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input
-                      type="text"
-                      placeholder="Coupon Code (e.g. CREATOR20)"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      className="w-full pl-8 pr-2.5 py-1.5 rounded-xl text-xs bg-white border border-zinc-300 text-zinc-900 uppercase placeholder:normal-case font-mono"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium bg-zinc-200 hover:bg-zinc-300 text-zinc-800 transition-colors border border-zinc-300"
-                  >
-                    Apply
-                  </button>
-                </div>
+              {/* Instant Feature Unlock Preview */}
+              <FeatureUnlockPreview
+                features={plan.features}
+                planName={plan.name}
+                role={role}
+                isDarkMode={isDarkMode}
+              />
 
-                {appliedCoupon && (
-                  <div className="flex items-center gap-1 text-[10.5px] text-emerald-600 font-medium pt-0.5">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Coupon [{appliedCoupon.code}] applied ({appliedCoupon.discountPercent}% OFF)</span>
-                  </div>
-                )}
-
-                {couponError && (
-                  <div className="text-[10px] text-rose-500 pt-0.5">{couponError}</div>
-                )}
-              </form>
+              {/* Smart Coupon Input */}
+              <SmartCouponInput
+                couponCode={couponCode}
+                setCouponCode={setCouponCode}
+                appliedCoupon={appliedCoupon}
+                onApply={handleApplyCoupon}
+                onRemove={handleRemoveCoupon}
+                validating={couponValidating}
+                error={couponError}
+                isDarkMode={isDarkMode}
+              />
 
               {/* Itemized Financial Breakdown */}
-              <div className="p-3.5 rounded-2xl border border-zinc-200 bg-white space-y-2 text-xs font-normal text-zinc-700 shadow-sm">
+              <div
+                className="p-3 rounded-xl border border-zinc-800 space-y-1.5 text-xs bg-black text-zinc-300"
+              >
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Base Subtotal ({selectedCycle === 'annual' ? '12 Months' : '1 Month'}):</span>
-                  <span className="font-medium text-zinc-900">₹{actualSubtotal.toFixed(2)}</span>
+                  <span className="text-zinc-400">
+                    Subtotal ({selectedCycle === 'annual' ? '12 Months' : '1 Month'}):
+                  </span>
+                  <div className="text-right">
+                    {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+                      <span className="line-through text-[10px] mr-1.5 font-mono text-zinc-500">
+                        ₹{normalAnnualSubtotal.toFixed(2)}
+                      </span>
+                    )}
+                    <span className="font-mono font-medium text-zinc-100">
+                      ₹{actualSubtotal.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
 
-                {selectedCycle === 'annual' && annualSavings > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-medium">
-                    <span>Annual 20% Commitment Discount:</span>
-                    <span>- ₹{annualSavings.toFixed(2)}</span>
+                {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+                  <div className="flex justify-between text-emerald-500 font-medium">
+                    <span>Annual 20% Discount:</span>
+                    <span className="font-mono">- ₹{exactAnnualSavings.toFixed(2)}</span>
                   </div>
                 )}
 
                 {couponDiscountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-medium">
-                    <span>Coupon Promo Discount:</span>
-                    <span>- ₹{couponDiscountAmount.toFixed(2)}</span>
+                  <div className="flex justify-between text-emerald-500 font-medium">
+                    <span>Promo Code ({appliedCoupon?.code}):</span>
+                    <span className="font-mono">- ₹{couponDiscountAmount.toFixed(2)}</span>
                   </div>
                 )}
 
                 {prorationCredit > 0 && (
-                  <div className="flex justify-between text-cyan-600 font-medium">
-                    <span>Unused Plan Proration Credit:</span>
-                    <span>- ₹{prorationCredit.toFixed(2)}</span>
+                  <div className="flex justify-between text-emerald-500 font-medium">
+                    <span>Unused Plan Credit:</span>
+                    <span className="font-mono">- ₹{prorationCredit.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-zinc-500">
+                <div className="flex justify-between text-zinc-400">
                   <span className="flex items-center gap-1">
-                    <span>18% Indian GST (SAC 998439):</span>
-                    <HelpCircle className="w-3 h-3 opacity-60" />
+                    <span>GST (18% SAC 998439):</span>
+                    <HelpCircle className="w-3 h-3 opacity-40" />
                   </span>
-                  <span className="font-medium text-zinc-900">₹{gstAmount.toFixed(2)}</span>
+                  <span className="font-mono font-medium text-zinc-100">
+                    ₹{gstAmount.toFixed(2)}
+                  </span>
                 </div>
 
-                {gstAmount > 0 && (
-                  <div className="flex justify-between text-[10px] text-zinc-400 pl-2">
-                    <span>CGST (9%) + SGST (9%):</span>
-                    <span>₹{cgst.toFixed(2)} + ₹{sgst.toFixed(2)}</span>
-                  </div>
-                )}
+                <div className="w-full h-px my-1.5 bg-zinc-800" />
 
-                <div className="w-full h-px bg-zinc-200 my-2" />
-
-                <div className="flex justify-between items-baseline text-sm font-semibold text-zinc-900">
+                <div
+                  className="flex justify-between items-baseline text-sm font-semibold text-white"
+                >
                   <span>Total Due Today:</span>
-                  <span className="text-xl font-bold text-emerald-600">₹{totalPayable.toFixed(2)}</span>
+                  <span className="text-xl font-bold font-mono text-emerald-500">₹{totalPayable.toFixed(2)}</span>
                 </div>
               </div>
+
+              {/* Compliance Consent */}
+              <ComplianceConsent
+                billingCycle={selectedCycle}
+                planName={plan.name}
+                amount={totalPayable}
+                isChecked={consentAccepted}
+                onChange={setConsentAccepted}
+                isDarkMode={isDarkMode}
+              />
             </div>
 
             {/* Pay CTA Button */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-1.5 pt-1">
               <button
                 type="button"
                 onClick={handleProcessCheckout}
-                disabled={loading || (!razorpayLoaded && selectedGateway === 'razorpay')}
-                className="w-full py-3 rounded-full text-xs font-semibold bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                disabled={
+                  isSubmitting ||
+                  !consentAccepted ||
+                  (!razorpayLoaded && selectedGateway === 'razorpay')
+                }
+                className="w-full py-3 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-all shadow-sm active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {loading ? (
+                {state === 'creating_order' ? (
                   <>
                     <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Opening Secure Checkout...</span>
+                    <span>Initiating Payment...</span>
+                  </>
+                ) : state === 'awaiting_payment' ? (
+                  <>
+                    <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Awaiting Payment...</span>
+                  </>
+                ) : state === 'verifying' ? (
+                  <>
+                    <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Verifying Signature...</span>
+                  </>
+                ) : state === 'polling_status' ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Reconciling Payment...</span>
                   </>
                 ) : (
                   <>
                     <span>
-                      Pay ₹{totalPayable.toFixed(2)} via {selectedGateway === 'razorpay' ? 'Razorpay' : selectedGateway === 'stripe' ? 'Stripe' : 'Wallet'}
+                      Pay ₹{totalPayable.toFixed(2)} via{' '}
+                      {selectedGateway === 'razorpay'
+                        ? 'Razorpay'
+                        : selectedGateway === 'stripe'
+                        ? 'Stripe'
+                        : 'Wallet'}
                     </span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
               </button>
 
-              <p className="text-[10px] text-center text-zinc-500 font-normal">
-                Renews automatically • Self-serve pause or cancel anytime from billing dashboard.
+              <p className={`text-[10px] text-center ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                Renews automatically • Self-serve pause or cancel anytime
               </p>
             </div>
-
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

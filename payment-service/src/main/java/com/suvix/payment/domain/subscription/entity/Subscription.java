@@ -121,6 +121,28 @@ public class Subscription {
     @Column(name = "trial_end")
     private Instant trialEnd;
 
+    @Column(name = "plan_version_id")
+    private UUID planVersionId;
+
+    @Column(name = "enterprise_plan_id", length = 50)
+    private String enterprisePlanId;
+
+    @Builder.Default
+    @Column(name = "base_amount", precision = 19, scale = 4)
+    private BigDecimal baseAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "tax_amount", precision = 19, scale = 4)
+    private BigDecimal taxAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "total_amount", precision = 19, scale = 4)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "plan_snapshot", columnDefinition = "jsonb")
+    private String planSnapshot;
+
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String metadata;
@@ -154,11 +176,11 @@ public class Subscription {
     }
 
     public enum SubscriptionStatus {
-        incomplete, trialing, active, past_due, unpaid, cancelling, paused, expired, disputed, cancelled
+        incomplete, trialing, active, past_due, unpaid, cancelling, paused, expired, disputed, cancelled, payment_pending
     }
 
     public enum PaymentProvider {
-        razorpay, stripe, internal
+        razorpay, stripe, internal, free_starter
     }
 }
 

@@ -40,9 +40,13 @@ public class RazorpayProvider implements PaymentProvider {
 
     @Override
     public PaymentResponse createOrder(CreateOrderRequest request, String userId) throws Exception {
-        log.info("Creating Razorpay order for orderId={}, amount={}", request.getOrderId(), request.getAmount());
-
         int amountInPaise = request.getAmount().multiply(BigDecimal.valueOf(100)).intValue();
+
+        System.out.println("  ┌────────────────────────────────────────────────────────┐");
+        System.out.println("  │ 🚀 [RazorpayProvider] Calling Razorpay Orders API       │");
+        System.out.println("  │ Amount: ₹" + request.getAmount() + " (" + amountInPaise + " paise) | Receipt: " + request.getOrderId());
+        System.out.println("  │ Key ID: " + keyId + " | User: " + userId);
+        System.out.println("  └────────────────────────────────────────────────────────┘");
 
         JSONObject orderRequest = new JSONObject();
         orderRequest.put("amount", amountInPaise);
@@ -51,11 +55,14 @@ public class RazorpayProvider implements PaymentProvider {
         orderRequest.put("notes", new JSONObject().put("userId", userId).put("suvixOrderId", request.getOrderId()));
 
         Order order = razorpayClient.orders.create(orderRequest);
+        String razorpayOrderId = order.get("id").toString();
+
+        System.out.println("  ✅ [Razorpay API Response] Generated Razorpay Order ID: " + razorpayOrderId);
 
         return PaymentResponse.builder()
                 .success(true)
                 .orderId(request.getOrderId())
-                .razorpayOrderId(order.get("id").toString())
+                .razorpayOrderId(razorpayOrderId)
                 .amount(request.getAmount())
                 .currency("INR")
                 .keyId(keyId)
@@ -66,11 +73,28 @@ public class RazorpayProvider implements PaymentProvider {
 
     @Override
     public boolean verifySignature(VerifyPaymentRequest request) {
+        System.out.println("  ┌────────────────────────────────────────────────────────┐");
+        System.out.println("  │ 🔐 [RazorpayProvider] Verifying HMAC SHA-256 Signature  │");
+        System.out.println("  │ Razorpay Order ID:   " + request.getRazorpayOrderId());
+        System.out.println("  │ Razorpay Payment ID: " + request.getRazorpayPaymentId());
+        System.out.println("  └────────────────────────────────────────────────────────┘");
+
         try {
             String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
             String expected = new HmacUtils("HmacSHA256", keySecret).hmacHex(payload);
-            return expected.equals(request.getRazorpaySignature());
+            boolean isValid = expected.equals(request.getRazorpaySignature());
+
+            if (isValid) {
+                System.out.println("  ✅ [HMAC Verification SUCCESS] Signature matches cryptographic hash.");
+            } else {
+                System.out.println("  ❌ [HMAC Verification FAILED] Signature does not match expected hash!");
+                System.out.println("     • Expected: " + expected);
+                System.out.println("     • Received: " + request.getRazorpaySignature());
+            }
+
+            return isValid;
         } catch (Exception e) {
+            System.out.println("  ❌ [HMAC Verification ERROR] Exception during signature calculation: " + e.getMessage());
             log.error("HMAC signature verification failed", e);
             return false;
         }

@@ -1,53 +1,31 @@
 /**
- * Payment Gateway Routes
- * Routes for payment processing, verification, and webhooks
- *
- * MICROSERVICE MIGRATION NOTE:
- * ─────────────────────────────────────────────────────────
- * createPaymentOrder, verifyPayment, processRefund have been
- * migrated to the Java Payment Service (payment-service/).
- * Node.js now acts as an authenticated proxy for these routes.
- *
- * Kept in Node.js:
- *   ✅ getPaymentConfig  — just returns env vars, no logic
- *   ✅ handleWebhook     — Razorpay calls this directly (HMAC in Node is fine)
- *
- * Proxied to Java:
- *   🔀 createPaymentOrder → POST /api/v1/payments/create-order
- *   🔀 verifyPayment      → POST /api/v1/payments/verify
- *   🔀 processRefund      → POST /api/v1/payments/refund
+ * Payment Gateway Routes (Node.js Gateway Proxy)
+ * All transactions, escrow, and refunds are routed to Java Payment Microservice (Port 8080)
  */
 
 import express from "express";
 import authMiddleware from "../../shared/middleware/auth.middleware.js";
-// import { protectAdmin } from "../../shared/middleware/admin-auth.middleware.js";
 import { proxyToPaymentService } from "../../infrastructure/gateway/javaPayment.client.js";
 import { publicApiLimiter, heavyLimiter, interactionLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
-
-// ── RESTORED: Native Node (Java is not ready due to Kafka) ──────────────
-import {
-  getPaymentConfig,
-  handleWebhook,
-  verifyPaymentCallback,
-  createPaymentOrder,
-  verifyPayment,
-  processRefund,
-} from "./controllers/paymentGatewayController.js";
+import { getPaymentConfig } from "./controllers/paymentGatewayController.js";
 
 const router = express.Router();
 
 // ==================== PUBLIC ROUTES ====================
 
 /**
- * Razorpay webhook — stays in Node.js.
- * Razorpay calls this directly. HMAC verification happens here.
+ * Razorpay webhook — Forwarded to Java Webhook Controller
  */
-router.post("/webhook/razorpay", express.raw({ type: "application/json" }), handleWebhook);
+router.post("/webhook/razorpay", (req, res) =>
+  proxyToPaymentService(req, res, "post", "/webhooks/razorpay")
+);
 
 /**
  * Public Callback for Razorpay redirects (Mobile)
  */
-router.post("/callback", interactionLimiter, verifyPaymentCallback);
+router.post("/callback", interactionLimiter, (req, res) =>
+  proxyToPaymentService(req, res, "post", "/payments/verify")
+);
 
 // ==================== PROTECTED ROUTES ====================
 router.use(authMiddleware);
@@ -58,34 +36,24 @@ router.use(authMiddleware);
 router.get("/config", publicApiLimiter, getPaymentConfig);
 
 /**
- * POST /api/payment-gateway/create-order
- * Uses native Node.js Razorpay logic
+ * POST /api/payment-gateway/create-order -> Java Payment Service
  */
-router.post("/create-order", heavyLimiter, createPaymentOrder);
+router.post("/create-order", heavyLimiter, (req, res) =>
+  proxyToPaymentService(req, res, "post", "/payments/create-order")
+);
 
 /**
- * POST /api/payment-gateway/verify
- * Uses native Node.js Razorpay logic
+ * POST /api/payment-gateway/verify -> Java Payment Service
  */
-router.post("/verify", heavyLimiter, verifyPayment);
+router.post("/verify", heavyLimiter, (req, res) =>
+  proxyToPaymentService(req, res, "post", "/payments/verify")
+);
 
 /**
- * POST /api/payment-gateway/refund
+ * POST /api/payment-gateway/refund -> Java Payment Service
  */
-router.post("/refund", heavyLimiter, processRefund);
-
-/**
- * POST /api/payment-gateway/refund
- * MOVED TO ADMIN-SERVER
- */
-// router.post("/refund", protectAdmin, (req, res) =>
-//   proxyToPaymentService(req, res, "post", "/payments/refund")
-// );
+router.post("/refund", heavyLimiter, (req, res) =>
+  proxyToPaymentService(req, res, "post", "/payments/refund")
+);
 
 export default router;
-
-
-
-
-
-

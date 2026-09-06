@@ -50,7 +50,7 @@ export interface FaqItem {
   answer: string;
 }
 
-// ── 1. FALLBACK / CANONICAL PLANS PER ROLE (Matches V9 DB Seeds) ────────────
+// ── 1. FALLBACK / CANONICAL PLANS PER ROLE (For Offline / Network Resiliency) ──
 export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
   creator: {
     role: 'creator',
@@ -412,6 +412,100 @@ export const COMPARISON_MATRICES: Record<WorkspaceRole, { headers: string[]; row
   },
 };
 
+export interface ComparisonRow {
+  featureName: string;
+  tier1: string | boolean;
+  tier2: string | boolean;
+  tier3: string | boolean;
+  values?: (string | boolean)[];
+}
+
+/**
+ * Generates dynamic comparison table headers and rows directly from loaded database plans
+ */
+export function getDynamicComparisonMatrix(
+  plans: PlanCardPresenter[],
+  role: WorkspaceRole
+): { headers: string[]; rows: ComparisonRow[] } {
+  const baseMatrix = COMPARISON_MATRICES[role] || COMPARISON_MATRICES.creator;
+
+  if (!plans || plans.length === 0) {
+    return baseMatrix;
+  }
+
+  // Generate dynamic headers with live DB plan names and prices
+  const dynamicHeaders = [
+    'Feature / Capability',
+    ...plans.map((p) => `${p.name} (₹${p.priceMonthly}/mo)`),
+  ];
+
+  const dynamicRows: ComparisonRow[] = [];
+  const seenFeatureNames = new Set<string>();
+
+  // 1. DYNAMIC QUOTAS & LIMITS ROWS
+  const allQuotaLabels = new Set<string>();
+  plans.forEach((p) => {
+    p.quotas?.forEach((q) => allQuotaLabels.add(q.label));
+  });
+
+  allQuotaLabels.forEach((label) => {
+    const values = plans.map((p) => {
+      const match = p.quotas?.find((q) => q.label === label);
+      return match ? match.value : '-';
+    });
+
+    dynamicRows.push({
+      featureName: label,
+      tier1: values[0] ?? '-',
+      tier2: values[1] ?? '-',
+      tier3: values[2] ?? (values.length > 2 ? values[2] : ''),
+      values,
+    });
+    seenFeatureNames.add(label.toLowerCase());
+  });
+
+  // 2. DYNAMIC FEATURE ENTITLEMENTS (CHECKLIST ROWS)
+  const allFeatures = new Set<string>();
+  plans.forEach((p) => {
+    p.features?.forEach((f) => {
+      if (f && typeof f === 'string') {
+        allFeatures.add(f.trim());
+      }
+    });
+  });
+
+  allFeatures.forEach((feat) => {
+    // Normalize feature name for matching
+    const featClean = feat.replace(/[⭐💰✅]/g, '').trim().toLowerCase();
+    if (seenFeatureNames.has(featClean)) return;
+    seenFeatureNames.add(featClean);
+
+    const values = plans.map((p) => {
+      const hasFeature = p.features?.some((pf) => {
+        const pfClean = pf.replace(/[⭐💰✅]/g, '').trim().toLowerCase();
+        return pfClean.includes(featClean) || featClean.includes(pfClean);
+      });
+      return Boolean(hasFeature);
+    });
+
+    dynamicRows.push({
+      featureName: feat,
+      tier1: values[0] ?? false,
+      tier2: values[1] ?? false,
+      tier3: values[2] ?? (values.length > 2 ? values[2] : ''),
+      values,
+    });
+  });
+
+  // If no dynamic rows were created, fall back to canonical rows
+  const finalRows = dynamicRows.length > 0 ? dynamicRows : baseMatrix.rows;
+
+  return {
+    headers: dynamicHeaders,
+    rows: finalRows,
+  };
+}
+
 // ── 3. ENTERPRISE BILLING & PRORATION FAQS ───────────────────────────────────
 export const ENTERPRISE_FAQS: FaqItem[] = [
   {
@@ -441,7 +535,333 @@ export const ENTERPRISE_FAQS: FaqItem[] = [
   },
 ];
 
-// ── 4. DYNAMIC BACKEND PLAN NORMALIZER ──────────────────────────────────────
+// ── 4. DYNAMIC DATABASE FEATURE FORMATTERS ────────────────────────────────────
+
+/**
+ * Human-readable feature name lookup with verified icons/badges
+ */
+const KNOWN_FEATURE_TITLES: Record<string, string> = {
+  verifiedBadge: 'Verified Blue Badge on Profile ⭐',
+  verified_badge: 'Verified Blue Badge on Profile ⭐',
+  customDomain: 'Custom Apex Domain (yourname.com)',
+  custom_domain: 'Custom Apex Domain (yourname.com)',
+  analyticsDashboard: 'Advanced Audience & Link Analytics',
+  analytics: 'Audience & Traffic Analytics',
+  prioritySupport: 'Priority 24/7 Dedicated Support',
+  priority_support: 'Priority 24/7 Dedicated Support',
+  apiAccess: 'Developer API & Webhooks Access',
+  api_access: 'Developer API & Webhooks Access',
+  whiteLabel: 'White-Label Invoices & Workspaces',
+  white_label: 'White-Label Invoices & Workspaces',
+  teamCollaboration: 'Multi-Seat Team Collaboration',
+  team_collaboration: 'Multi-Seat Team Collaboration',
+  advancedSeo: 'Advanced SEO & Google Search Indexing',
+  monetizationTools: 'Direct Monetization & Payout Tools',
+  brandDealCrm: 'Brand Deal & Sponsorship CRM',
+  brand_deal_crm: 'Brand Deal & Sponsorship CRM',
+  customIntegrations: 'Custom Webhook & CRM Integrations',
+  adFree: '100% Ad-Free Experience Across SuviX',
+  ad_free_browsing: '100% Ad-Free Experience Across SuviX',
+  supporterBadge: 'Exclusive Supporter Badge on Profile ⭐',
+  supporter_badge: 'Exclusive Supporter Badge on Profile ⭐',
+  exclusiveChats: 'VIP Community Chat Room Access',
+  exclusive_chats: 'VIP Community Chat Room Access',
+  publicProfile: 'Public Creator Profile & Portfolio',
+  public_profile: 'Public Creator Profile & Portfolio',
+  portfolio: 'Public Freelancer Portfolio',
+  escrowProtection: 'Escrow Contract Protection',
+  escrow_protection: 'Escrow Contract Protection',
+  priorityJobFeed: 'Priority Job Feed Alerts',
+  priority_job_feed: 'Priority Job Feed Alerts',
+  clientGstInvoicing: 'Client Contract GST Invoicing',
+  client_gst_invoicing: 'Client Contract GST Invoicing',
+  videoVault1tb: '1 TB High-Speed Video Vault',
+  creatorDiscovery: 'Creator Discovery Search & AI Filters',
+  creator_discovery: 'Creator Discovery Search & AI Filters',
+  fraudDetection: 'Fraud & Fake Engagement Detection AI',
+  fraud_detection_analytics: 'Fraud & Fake Engagement Detection AI',
+  dedicatedManager: 'Dedicated Creator Success Manager',
+  dedicated_manager: 'Dedicated Creator Success Manager',
+  dedicated_account_manager: 'Dedicated Strategic Account Manager',
+  communityAccess: 'Community Channels & Feed Access',
+  community_access: 'Community Channels & Feed Access',
+  aiScriptGenerator: 'AI Script & Caption Generator',
+  ai_script_generator: 'AI Script & Caption Generator',
+};
+
+/**
+ * Format any arbitrary feature key/value pair into a human-readable title
+ */
+function formatFeatureKey(key: string, value: any): string | null {
+  if (value === false || value === 0 || value === null || value === undefined) {
+    return null;
+  }
+
+  // Check direct known dictionary
+  if (KNOWN_FEATURE_TITLES[key]) {
+    return KNOWN_FEATURE_TITLES[key];
+  }
+
+  // Handle specific extra parameter mappings
+  if (key === 'bioLinks') {
+    return value === -1 ? 'Unlimited Bio Links & Blocks' : `Add up to ${value} Bio Links`;
+  }
+  if (key === 'theme') {
+    return value === 'custom_css' ? 'Custom Bio Themes & CSS Styles' : 'Standard Link-in-Bio Theme';
+  }
+  if (key === 'escrowFeePercent') {
+    return value === 0
+      ? '0% Platform Commission on Escrows 💰'
+      : value === 5
+      ? 'Reduced 5% Platform Fee (Save 50%)'
+      : `Standard ${value}% Escrow Fee`;
+  }
+  if (key === 'apexDomain' && value === true) {
+    return 'Custom Apex Domain (yourname.com)';
+  }
+
+  // Fallback: Convert camelCase or snake_case to Title Case
+  if (value === true || typeof value === 'string' || typeof value === 'number') {
+    const formatted = key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/_/g, ' ')
+      .replace(/^\w/, (c) => c.toUpperCase())
+      .trim();
+    return formatted;
+  }
+
+  return null;
+}
+
+/**
+ * Extract 100% dynamic feature array from DB plan record
+ */
+export function extractPlanFeatures(plan: Plan | any): string[] {
+  if (!plan) return [];
+
+  const featuresList: string[] = [];
+
+  // 1. If backend explicitly returned an array of features
+  if (Array.isArray(plan.features)) {
+    plan.features.forEach((feat: any) => {
+      if (typeof feat === 'string' && feat.trim()) {
+        featuresList.push(feat.trim());
+      } else if (typeof feat === 'object' && feat !== null) {
+        const title = feat.title || feat.name || feat.featureKey || feat.key;
+        if (title && (feat.isEnabled !== false)) {
+          featuresList.push(KNOWN_FEATURE_TITLES[title] || title);
+        }
+      }
+    });
+  } else if (plan.features && typeof plan.features === 'object') {
+    // 2. Parse boolean feature flags from DB JSONB
+    Object.entries(plan.features).forEach(([key, val]) => {
+      if (key === 'extra' && val && typeof val === 'object') {
+        Object.entries(val).forEach(([extraKey, extraVal]) => {
+          const formatted = formatFeatureKey(extraKey, extraVal);
+          if (formatted) featuresList.push(formatted);
+        });
+      } else {
+        const formatted = formatFeatureKey(key, val);
+        if (formatted) featuresList.push(formatted);
+      }
+    });
+  }
+
+  // 3. Parse entitlements array if provided
+  if (Array.isArray(plan.entitlements)) {
+    plan.entitlements.forEach((ent: any) => {
+      if (ent.isEnabled) {
+        const title = KNOWN_FEATURE_TITLES[ent.featureKey] || formatFeatureKey(ent.featureKey, true);
+        if (title && !featuresList.includes(title)) {
+          featuresList.push(title);
+        }
+      }
+    });
+  }
+
+  // If no dynamic features resolved, return safe defaults
+  if (featuresList.length === 0) {
+    if (plan.tierLevel === 1) {
+      return ['Standard Profile', 'Community Access', 'Direct Messaging'];
+    }
+    return ['Verified Profile Badge ⭐', 'Priority Support (24/7)', 'Advanced Tools'];
+  }
+
+  // Deduplicate while preserving order
+  return Array.from(new Set(featuresList));
+}
+
+/**
+ * Extract 100% dynamic quota pill badges from DB limits JSONB
+ */
+export function extractPlanQuotas(plan: Plan | any): { label: string; value: string }[] {
+  if (!plan) return [];
+
+  // 1. Direct Server-Driven UI pass-through if quotas array is provided from DB
+  if (Array.isArray(plan.quotas) && plan.quotas.length > 0) {
+    return plan.quotas;
+  }
+
+  if (!plan.limits || typeof plan.limits !== 'object') {
+    return [];
+  }
+
+  const limitsObj = { ...plan.limits, ...(plan.limits.extra || {}) };
+  const quotas: { label: string; value: string }[] = [];
+
+  // Helper formatter
+  const addQuota = (label: string, val: any, suffix: string = '') => {
+    if (val === undefined || val === null) return;
+    const valueStr = val === -1 ? 'Unlimited' : `${val}${suffix}`;
+    quotas.push({ label, value: valueStr });
+  };
+
+  // Quotas for Creators & Freelancers
+  if (limitsObj.escrowFeePercent !== undefined) {
+    quotas.push({
+      label: 'Platform Escrow Fee',
+      value: limitsObj.escrowFeePercent === 0 ? '0% (Keep 100%)' : `${limitsObj.escrowFeePercent}% Commission`,
+    });
+  }
+
+  if (limitsObj.maxProjects !== undefined) {
+    addQuota(
+      plan.targetRole === 'editor' ? 'Active Service Listings' : 'Active Services / Gigs',
+      limitsObj.maxProjects,
+      limitsObj.maxProjects === -1 ? '' : ' Active'
+    );
+  }
+
+  if (limitsObj.maxStorageGb !== undefined) {
+    const gb = limitsObj.maxStorageGb;
+    const valStr = gb >= 1000 ? `${gb / 1000} TB Vault` : `${gb} GB`;
+    quotas.push({
+      label: plan.targetRole === 'editor' ? 'Project Video Vault' : 'Media Cloud Storage',
+      value: valStr,
+    });
+  }
+
+  if (limitsObj.maxAiGenerations !== undefined && limitsObj.maxAiGenerations !== 0) {
+    addQuota('AI Script Generations', limitsObj.maxAiGenerations, limitsObj.maxAiGenerations === -1 ? '' : ' / month');
+  }
+
+  if (limitsObj.maxMonthlyBids !== undefined) {
+    addQuota('Monthly Job Proposals', limitsObj.maxMonthlyBids, limitsObj.maxMonthlyBids === -1 ? ' Bids' : ' Bids / month');
+  }
+
+  if (limitsObj.maxOpenCampaigns !== undefined) {
+    addQuota('Open Campaign Postings', limitsObj.maxOpenCampaigns, limitsObj.maxOpenCampaigns === -1 ? '' : ' Active');
+  }
+
+  if (limitsObj.creatorDiscovery !== undefined || limitsObj.creatorDiscoverySearches !== undefined) {
+    const searches = limitsObj.creatorDiscoverySearches ?? limitsObj.creatorDiscovery;
+    addQuota('Creator Discovery Searches', searches, searches === -1 ? '' : ' / month');
+  }
+
+  if (limitsObj.maxTeamMembers !== undefined && limitsObj.maxTeamMembers > 1) {
+    addQuota('Workspace Team Seats', limitsObj.maxTeamMembers, limitsObj.maxTeamMembers === 1 ? ' Seat' : ' Seats');
+  }
+
+  if (limitsObj.maxDailyMessages !== undefined) {
+    addQuota('Daily Messages', limitsObj.maxDailyMessages, limitsObj.maxDailyMessages === -1 ? '' : ' / day');
+  }
+
+  return quotas;
+}
+
+/**
+ * Dynamically map plan icons from DB or role/tier characteristics
+ */
+const ICON_MAP: Record<string, any> = {
+  Send,
+  User,
+  Rocket,
+  Building2,
+  Sparkles,
+  Scissors,
+  Crown,
+  Briefcase,
+  Zap,
+};
+
+export function mapPlanIcon(plan: Plan | any, role: WorkspaceRole): any {
+  if (plan.icon && ICON_MAP[plan.icon]) {
+    return ICON_MAP[plan.icon];
+  }
+
+  const slug = (plan.slug || plan.id || '').toLowerCase();
+  const name = (plan.name || '').toLowerCase();
+  const tier = plan.tierLevel || 1;
+
+  if (slug.includes('elite') || name.includes('elite') || slug.includes('crown') || tier === 3) {
+    return role === 'editor' || role === 'brand' ? Building2 : Crown;
+  }
+  if (slug.includes('pro') || name.includes('pro') || slug.includes('starter') || tier === 2) {
+    return role === 'editor' ? Zap : Rocket;
+  }
+  if (role === 'editor') return Scissors;
+  if (role === 'brand') return Briefcase;
+  if (role === 'user') return tier === 2 ? Sparkles : User;
+  return Send;
+}
+
+/**
+ * Converts a database Plan record into a full PlanCardPresenter
+ */
+export function dynamicPlanToPresenter(
+  backendPlan: Plan | any,
+  role: WorkspaceRole
+): PlanCardPresenter {
+  const tierLevel = Number(backendPlan.tierLevel || 1);
+  const priceMonthly = Number(backendPlan.priceMonthly ?? 0);
+  
+  // Calculate dynamic annual monthly-equivalent
+  let priceAnnual = priceMonthly;
+  if (backendPlan.pricing?.annual?.monthlyEquivalent) {
+    priceAnnual = Number(backendPlan.pricing.annual.monthlyEquivalent);
+  } else if (backendPlan.priceAnnual && Number(backendPlan.priceAnnual) > 0) {
+    priceAnnual = Math.round(Number(backendPlan.priceAnnual) / 12);
+  } else if (priceMonthly > 0) {
+    priceAnnual = Math.round(priceMonthly * 0.8);
+  }
+
+  const isPopular = Boolean(backendPlan.isPopular || backendPlan.is_popular || tierLevel === 2);
+  const badge = backendPlan.badge || (isPopular ? 'MOST POPULAR' : tierLevel === 3 ? 'VIP' : undefined);
+
+  let buttonText = 'Start Free Trial';
+  if (tierLevel === 1) {
+    buttonText = role === 'user' ? 'Join Free' : 'Get Started Free';
+  } else if (priceMonthly >= 2500) {
+    buttonText = 'Contact Sales';
+  }
+
+  const features = extractPlanFeatures(backendPlan);
+  const quotas = extractPlanQuotas(backendPlan);
+  const icon = mapPlanIcon(backendPlan, role);
+
+  return {
+    id: backendPlan.id,
+    key: backendPlan.slug || backendPlan.id,
+    name: backendPlan.name || (tierLevel === 1 ? 'Starter' : tierLevel === 2 ? 'Pro' : 'Elite'),
+    subtitle: backendPlan.description || (tierLevel === 1 ? 'Get started for free' : 'For scaling professionals'),
+    tierLevel,
+    priceMonthly,
+    priceAnnual,
+    isPopular,
+    badge,
+    buttonText,
+    icon,
+    features,
+    quotas,
+  };
+}
+
+/**
+ * ── 5. 100% DYNAMIC BACKEND PLAN NORMALIZER ────────────────────────────────
+ * When backend plans are loaded from the database, builds all UI cards dynamically
+ * from the database records. Falls back to offline presets only upon network failure.
+ */
 export function mergeBackendPlansWithPresenter(
   backendPlans: Plan[],
   role: WorkspaceRole
@@ -453,14 +873,15 @@ export function mergeBackendPlansWithPresenter(
     return fallbacks;
   }
 
+  const roleLower = (role || 'creator').toLowerCase();
+
   // Filter backend plans matching role or 'all' safely
   const matchingBackendPlans = backendPlans.filter((p) => {
     if (!p) return false;
-    const targetRole = p.targetRole ? p.targetRole.toLowerCase() : '';
-    const planSlug = p.slug ? p.slug.toLowerCase() : '';
-    const planName = p.name ? p.name.toLowerCase() : '';
-    const planId = p.id ? p.id.toLowerCase() : '';
-    const roleLower = (role || 'creator').toLowerCase();
+    const targetRole = (p.targetRole || '').toLowerCase();
+    const planSlug = (p.slug || '').toLowerCase();
+    const planName = (p.name || '').toLowerCase();
+    const planId = (p.id || '').toLowerCase();
 
     return (
       targetRole === roleLower ||
@@ -468,7 +889,7 @@ export function mergeBackendPlansWithPresenter(
       planSlug.includes(roleLower) ||
       planName.includes(roleLower) ||
       planId.includes(roleLower) ||
-      (roleLower === 'creator' && p.tierLevel === 1)
+      (roleLower === 'creator' && p.tierLevel === 1 && !targetRole)
     );
   });
 
@@ -476,57 +897,11 @@ export function mergeBackendPlansWithPresenter(
     return fallbacks;
   }
 
-  return fallbacks.map((fb) => {
-    // Find matching backend plan by tierLevel, id, slug, or name safely
-    const matchedBackend = matchingBackendPlans.find((bp) => {
-      if (!bp) return false;
-      const bpSlug = bp.slug ? bp.slug.toLowerCase() : '';
-      const bpId = bp.id ? bp.id.toLowerCase() : '';
-      const bpName = bp.name ? bp.name.toLowerCase() : '';
-      const fbKey = (fb.key || '').toLowerCase();
-      const fbId = (fb.id || '').toLowerCase();
-      const fbName = (fb.name || '').toLowerCase();
+  // Sort matching plans by tierLevel ascending (1 -> 2 -> 3)
+  const sortedPlans = [...matchingBackendPlans].sort(
+    (a, b) => (a.tierLevel || 1) - (b.tierLevel || 1)
+  );
 
-      return (
-        bp.tierLevel === fb.tierLevel ||
-        (fbKey && bpSlug.includes(fbKey)) ||
-        (fbId && bpId === fbId) ||
-        (fbName && bpName.includes(fbName))
-      );
-    });
-
-    if (!matchedBackend) {
-      return fb;
-    }
-
-    // Extract dynamic features & quotas from backend if present
-    const dynamicQuotas = [...fb.quotas];
-    if (matchedBackend.limits && typeof matchedBackend.limits === 'object') {
-      Object.entries(matchedBackend.limits).forEach(([limKey, val]) => {
-        const readableKey = limKey.replace(/_/g, ' ').replace('max ', '');
-        const readableVal = val === -1 ? 'Unlimited' : String(val);
-        const existingIdx = dynamicQuotas.findIndex((q) =>
-          q.label.toLowerCase().includes(readableKey.toLowerCase())
-        );
-        if (existingIdx !== -1) {
-          dynamicQuotas[existingIdx] = {
-            ...dynamicQuotas[existingIdx],
-            value: readableVal,
-          };
-        }
-      });
-    }
-
-    return {
-      ...fb,
-      id: matchedBackend.id || fb.id,
-      name: matchedBackend.name || fb.name,
-      priceMonthly: matchedBackend.priceMonthly ?? fb.priceMonthly,
-      priceAnnual: matchedBackend.priceAnnual
-        ? Math.round(matchedBackend.priceAnnual / 12)
-        : fb.priceAnnual,
-      isPopular: fb.isPopular || matchedBackend.isPopular,
-      quotas: dynamicQuotas,
-    };
-  });
+  // Convert EVERY matching database plan into a dynamic presenter card
+  return sortedPlans.map((bp) => dynamicPlanToPresenter(bp, role));
 }

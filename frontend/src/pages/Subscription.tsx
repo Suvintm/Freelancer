@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/authSlice';
@@ -10,9 +11,9 @@ import darkLogo from '../assets/darklogo.png';
 
 import {
   ROLE_CONFIGS,
-  COMPARISON_MATRICES,
   ENTERPRISE_FAQS,
   mergeBackendPlansWithPresenter,
+  getDynamicComparisonMatrix,
 } from '../features/subscription/rolePlanConfig';
 import type { WorkspaceRole, PlanCardPresenter } from '../features/subscription/rolePlanConfig';
 import { CheckoutModal } from '../features/subscription/components/CheckoutModal';
@@ -119,28 +120,29 @@ export default function Subscription() {
     }, 5000);
   }, []);
 
-  // 1. Initial Load: Fetch Plans, Entitlements, Usage & Invoices
+  // 1. Initial Load: Fetch Consolidated Dashboard in 1 Single Roundtrip
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const fetchedPlans = await subscriptionService.getPlans(selectedRole).catch(() => []);
-      setPlans(fetchedPlans);
-      setRolePlansCache((prev) => ({ ...prev, [selectedRole]: fetchedPlans }));
+      const dashboard = await subscriptionService.getDashboard(selectedRole, user?.id).catch(() => null);
+      if (dashboard && dashboard.plans?.length > 0) {
+        setPlans(dashboard.plans);
+        setRolePlansCache((prev) => ({ ...prev, [selectedRole]: dashboard.plans }));
+        if (dashboard.activeSubscription) setActivePlan(dashboard.activeSubscription);
+        if (dashboard.usageSummary) setUsageSummary(dashboard.usageSummary);
+      } else {
+        // Fallback to getPlans if dashboard route not ready
+        const fetchedPlans = await subscriptionService.getPlans(selectedRole).catch(() => []);
+        setPlans(fetchedPlans);
+        setRolePlansCache((prev) => ({ ...prev, [selectedRole]: fetchedPlans }));
+      }
 
-      // Only fetch user-specific entitlements/invoices if authenticated
+      // Fetch user invoices non-blockingly if logged in
       if (user?.id) {
-        const [entitlements, usage, userInvoices] = await Promise.all([
-          subscriptionService.getEntitlements(user.id).catch(() => null),
-          subscriptionService.getUsageSummary(user.id).catch(() => null),
-          subscriptionService.getUserInvoices(user.id).catch(() => []),
-        ]);
-
-        if (entitlements) setActivePlan(entitlements);
-        if (usage) setUsageSummary(usage);
-        if (userInvoices) setInvoices(userInvoices);
+        subscriptionService.getUserInvoices(user.id).then(setInvoices).catch(() => {});
       }
     } catch (err: any) {
-      console.warn('Subscription plans notice:', err);
+      console.warn('Subscription dashboard notice:', err);
     } finally {
       setLoading(false);
     }
@@ -149,6 +151,60 @@ export default function Subscription() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Handle Return from Netbanking / 3D-Secure Browser Redirects
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rzpPaymentId = params.get('razorpay_payment_id');
+    const rzpOrderId = params.get('razorpay_order_id');
+    const rzpSignature = params.get('razorpay_signature');
+
+    if (rzpOrderId) {
+      console.log('🔄 [SuviX Subscription] Detected Razorpay redirect callback params:', { rzpOrderId, rzpPaymentId });
+      // Clear query params from browser URL without triggering reload
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      const reconcileRedirectPayment = async () => {
+        try {
+          if (rzpPaymentId && rzpSignature) {
+            const verifyRes = await subscriptionService.verifyPayment({
+              razorpayOrderId: rzpOrderId,
+              razorpayPaymentId: rzpPaymentId,
+              razorpaySignature: rzpSignature,
+            });
+            triggerToast('Payment verified and subscription activated successfully!', 'success');
+            setSuccessData({
+              plan: plans.find((p) => p.id === verifyRes?.planId) || activePlan || plans[1] || plans[0],
+              billingCycle: 'monthly',
+              amountPaid: verifyRes?.amount || 0,
+              paymentId: rzpPaymentId,
+            });
+            setShowSuccessModal(true);
+          } else {
+            const statusRes = await subscriptionService.getPaymentStatus(rzpOrderId);
+            const statusObj = statusRes?.data || statusRes || {};
+            const rawStatus = (statusObj?.status || '').toString().toUpperCase();
+            if (statusObj?.subscriptionActive || ['SUCCESS', 'PAID', 'COMPLETED', 'ACTIVE'].includes(rawStatus)) {
+              triggerToast('Subscription activated successfully!', 'success');
+              setSuccessData({
+                plan: plans.find((p) => p.id === statusObj?.planId) || activePlan || plans[1] || plans[0],
+                billingCycle: 'monthly',
+                amountPaid: statusObj?.amount || 0,
+                paymentId: rzpPaymentId || statusObj?.paymentId,
+              });
+              setShowSuccessModal(true);
+            }
+          }
+          await loadData();
+        } catch (err: any) {
+          console.warn('[SuviX Subscription] Reconcile error:', err);
+          await loadData();
+        }
+      };
+
+      reconcileRedirectPayment();
+    }
+  }, [plans, activePlan, loadData, triggerToast]);
 
   // 2. Role Switch Handler (With Instant Client-Side Cache)
   const handleRoleChange = async (role: WorkspaceRole) => {
@@ -163,7 +219,8 @@ export default function Subscription() {
 
     setActionLoading('role-switch');
     try {
-      const rolePlans = await subscriptionService.getPlans(role);
+      const dashboard = await subscriptionService.getDashboard(role, user?.id).catch(() => null);
+      const rolePlans = dashboard?.plans || (await subscriptionService.getPlans(role));
       setPlans(rolePlans);
       setRolePlansCache((prev) => ({ ...prev, [role]: rolePlans }));
     } catch (err: any) {
@@ -183,8 +240,8 @@ export default function Subscription() {
   }, [plans, selectedRole]);
 
   const comparisonMatrix = useMemo(() => {
-    return COMPARISON_MATRICES[selectedRole] || COMPARISON_MATRICES.creator;
-  }, [selectedRole]);
+    return getDynamicComparisonMatrix(displayPlans, selectedRole);
+  }, [displayPlans, selectedRole]);
 
   // 4. Enterprise Checkout Handlers
   const handlePlanCardClick = async (displayPlan: PlanCardPresenter) => {
@@ -319,7 +376,7 @@ export default function Subscription() {
   }
 
   return (
-    <div className={`w-full min-h-full font-sans transition-colors duration-200 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-zinc-900'}`}>
+    <div className={`w-full min-h-screen font-sans transition-colors duration-200 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-zinc-900'}`}>
       
       {/* BACKGROUND GLOWS */}
       {isDarkMode ? (
@@ -491,12 +548,13 @@ export default function Subscription() {
                 (activePlan.planName && p.name.toLowerCase().includes(activePlan.planName.toLowerCase()))
             ) || displayPlans[0];
 
-            const daysRemaining = activePlan.periodEnd
-              ? Math.max(0, Math.ceil((new Date(activePlan.periodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+            const periodEndVal = activePlan.periodEnd || activePlan.currentPeriodEnd;
+            const daysRemaining = periodEndVal
+              ? Math.max(0, Math.ceil((new Date(periodEndVal).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
               : null;
 
-            const formattedRenewal = activePlan.periodEnd
-              ? new Date(activePlan.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const formattedRenewal = periodEndVal
+              ? new Date(periodEndVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
               : 'Lifetime Free';
 
             const roleAccentColor =
@@ -711,32 +769,79 @@ export default function Subscription() {
         </section>
 
         {/* ── 3. DYNAMIC PRICING CARDS GRID (Compact, Sleek, Above the Fold) ── */}
-        <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3.5 sm:gap-4 items-stretch`}>
-          {displayPlans.map((displayPlan) => {
-            const Icon = displayPlan.icon;
-            const price = billingCycle === 'annual' ? displayPlan.priceAnnual : displayPlan.priceMonthly;
-            
-            const isCurrentPlan = activePlan && (
-              (activePlan.planId && activePlan.planId === displayPlan.id) ||
-              (activePlan.tierLevel === displayPlan.tierLevel && (activePlan.role === selectedRole || !activePlan.role)) ||
-              (activePlan.planName && activePlan.planName.toLowerCase().includes(displayPlan.name.toLowerCase()))
-            );
-
-            return (
+        {loading && plans.length === 0 ? (
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 items-stretch">
+            {[1, 2, 3].map((idx) => (
               <div
-                key={displayPlan.key}
-                className={`relative rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-200 shadow-xl border ${
-                  isDarkMode
-                    ? displayPlan.isPopular
-                      ? 'bg-[#101013] border-white/30 hover:border-white/50 text-white scale-[1.01]'
-                      : 'bg-[#101013] border-white/10 hover:border-white/20 text-white'
-                    : displayPlan.isPopular
-                    ? 'bg-[#0e0e11] border-zinc-700 text-white scale-[1.01]'
-                    : 'bg-[#0e0e11] border-zinc-800 text-white'
+                key={idx}
+                className={`animate-pulse rounded-2xl p-4 flex flex-col justify-between border min-h-[380px] ${
+                  isDarkMode ? 'bg-[#101013]/60 border-white/5' : 'bg-zinc-100 border-zinc-200'
                 }`}
               >
-                {/* Popular Pill Badge */}
-                {displayPlan.isPopular && (
+                <div className="space-y-3">
+                  <div className="w-8 h-8 rounded-full bg-white/10" />
+                  <div className="w-3/4 h-5 rounded bg-white/10" />
+                  <div className="w-1/2 h-3 rounded bg-white/5" />
+                  <div className="w-2/5 h-8 rounded bg-white/10 my-4" />
+                  <div className="space-y-2 pt-2">
+                    <div className="w-full h-3 rounded bg-white/5" />
+                    <div className="w-5/6 h-3 rounded bg-white/5" />
+                    <div className="w-4/6 h-3 rounded bg-white/5" />
+                  </div>
+                </div>
+                <div className="w-full h-9 rounded-full bg-white/10 mt-6" />
+              </div>
+            ))}
+          </section>
+        ) : (
+          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3.5 sm:gap-4 items-stretch`}>
+            {displayPlans.map((displayPlan) => {
+              const Icon = displayPlan.icon;
+              const price = billingCycle === 'annual' ? displayPlan.priceAnnual : displayPlan.priceMonthly;
+              
+              const isCurrentPlan = activePlan && (
+                (activePlan.planId && activePlan.planId === displayPlan.id) ||
+                (activePlan.tierLevel === displayPlan.tierLevel && (activePlan.role === selectedRole || !activePlan.role)) ||
+                (activePlan.planName && activePlan.planName.toLowerCase().includes(displayPlan.name.toLowerCase()))
+              );
+
+              const isUpgrade = activePlan && activePlan.tierLevel && displayPlan.tierLevel > activePlan.tierLevel;
+              const isDowngrade = activePlan && activePlan.tierLevel && displayPlan.tierLevel < activePlan.tierLevel;
+
+              let buttonLabel = displayPlan.buttonText;
+              if (isCurrentPlan) {
+                buttonLabel = 'Current Plan';
+              } else if (isUpgrade) {
+                buttonLabel = 'Upgrade';
+              } else if (isDowngrade) {
+                buttonLabel = 'Downgrade';
+              }
+
+              return (
+                <div
+                  key={displayPlan.key}
+                  className={`relative rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-200 shadow-xl border ${
+                    isCurrentPlan
+                      ? isDarkMode
+                        ? 'bg-[#101013] border-emerald-500/50 shadow-emerald-950/20 text-white ring-1 ring-emerald-500/30'
+                        : 'bg-white border-emerald-500 shadow-emerald-100 text-zinc-900 ring-1 ring-emerald-400/30'
+                      : isDarkMode
+                      ? displayPlan.isPopular
+                        ? 'bg-[#101013] border-white/30 hover:border-white/50 text-white scale-[1.01]'
+                        : 'bg-[#101013] border-white/10 hover:border-white/20 text-white'
+                      : displayPlan.isPopular
+                      ? 'bg-[#0e0e11] border-zinc-700 text-white scale-[1.01]'
+                      : 'bg-[#0e0e11] border-zinc-800 text-white'
+                  }`}
+                >
+                {/* Active Plan or Popular Pill Badge */}
+                {isCurrentPlan ? (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                    <span className="text-[8.5px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-md font-mono bg-emerald-500 text-black border border-emerald-400">
+                      CURRENT PLAN
+                    </span>
+                  </div>
+                ) : displayPlan.isPopular ? (
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2">
                     <span
                       className={`text-[8.5px] font-medium uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-md font-mono ${
@@ -748,13 +853,15 @@ export default function Subscription() {
                       {displayPlan.badge || 'MOST POPULAR'}
                     </span>
                   </div>
-                )}
+                ) : null}
 
                 <div>
                   {/* Icon Box */}
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center mb-2 border ${
-                      isDarkMode
+                      isCurrentPlan
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : isDarkMode
                         ? displayPlan.isPopular
                           ? 'bg-white/10 text-white border-white/20'
                           : 'bg-white/5 text-zinc-300 border-white/10'
@@ -809,19 +916,21 @@ export default function Subscription() {
                   disabled={isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
                   className={`w-full py-2 rounded-full text-xs font-medium transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 ${
                     isCurrentPlan
-                      ? 'bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-default'
+                      ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default'
                       : displayPlan.isPopular
                       ? 'bg-white text-black hover:bg-zinc-200'
                       : 'bg-white/10 text-white hover:bg-white/20 border border-white/15'
                   }`}
                 >
                   {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isCurrentPlan ? 'Current Plan' : displayPlan.buttonText}</span>
+                  {isCurrentPlan && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <span>{buttonLabel}</span>
                 </button>
               </div>
             );
           })}
-        </section>
+          </section>
+        )}
 
         {/* ── 4. EXPANDABLE FEATURE COMPARISON MATRIX ───────────────────────── */}
         <section
@@ -873,28 +982,44 @@ export default function Subscription() {
                       <td className={`py-3.5 pl-2 font-normal ${isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}`}>
                         {row.featureName}
                       </td>
-                      <td className="py-3.5">
-                        {typeof row.tier1 === 'boolean' ? (
-                          row.tier1 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
-                        ) : (
-                          <span className={isDarkMode ? 'text-zinc-400 font-normal' : 'text-zinc-600 font-normal'}>{row.tier1}</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 font-normal">
-                        {typeof row.tier2 === 'boolean' ? (
-                          row.tier2 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
-                        ) : (
-                          <span className={isDarkMode ? 'text-white font-normal' : 'text-zinc-900 font-normal'}>{row.tier2}</span>
-                        )}
-                      </td>
-                      {row.tier3 !== '' && (
-                        <td className="py-3.5 font-medium">
-                          {typeof row.tier3 === 'boolean' ? (
-                            row.tier3 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
-                          ) : (
-                            <span className="text-emerald-400 font-medium">{row.tier3}</span>
+                      {row.values && row.values.length > 0 ? (
+                        row.values.map((val, vIdx) => (
+                          <td key={vIdx} className="py-3.5">
+                            {typeof val === 'boolean' ? (
+                              val ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                            ) : (
+                              <span className={vIdx === row.values!.length - 1 && val !== '-' ? 'text-emerald-400 font-medium' : isDarkMode ? 'text-zinc-300 font-normal' : 'text-zinc-700 font-normal'}>
+                                {val}
+                              </span>
+                            )}
+                          </td>
+                        ))
+                      ) : (
+                        <>
+                          <td className="py-3.5">
+                            {typeof row.tier1 === 'boolean' ? (
+                              row.tier1 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                            ) : (
+                              <span className={isDarkMode ? 'text-zinc-400 font-normal' : 'text-zinc-600 font-normal'}>{row.tier1}</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 font-normal">
+                            {typeof row.tier2 === 'boolean' ? (
+                              row.tier2 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                            ) : (
+                              <span className={isDarkMode ? 'text-white font-normal' : 'text-zinc-900 font-normal'}>{row.tier2}</span>
+                            )}
+                          </td>
+                          {row.tier3 !== '' && (
+                            <td className="py-3.5 font-medium">
+                              {typeof row.tier3 === 'boolean' ? (
+                                row.tier3 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                              ) : (
+                                <span className="text-emerald-400 font-medium">{row.tier3}</span>
+                              )}
+                            </td>
                           )}
-                        </td>
+                        </>
                       )}
                     </tr>
                   ))}
@@ -1119,153 +1244,183 @@ export default function Subscription() {
 
 
       {/* ── 9. PAUSE MODAL ────────────────────────────────────────────────── */}
-      {showPauseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      {showPauseModal &&
+        createPortal(
           <div
-            className={`w-full max-w-sm rounded-3xl p-6 border shadow-2xl ${
-              isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
-            }`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowPauseModal(false);
+            }}
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
           >
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-base font-semibold">Pause Subscription</h3>
-              <button onClick={() => setShowPauseModal(false)}><X className="w-4 h-4" /></button>
-            </div>
-            <p className="text-xs text-zinc-400 mb-4 leading-relaxed font-normal">
-              Temporarily freeze your billing for up to 90 days. You will not be charged while paused.
-            </p>
-            <label className="text-xs font-medium block mb-1">Pause Duration:</label>
-            <select
-              value={pauseDays}
-              onChange={(e) => setPauseDays(Number(e.target.value))}
-              className={`w-full p-2.5 rounded-xl text-xs border mb-4 font-normal ${
-                isDarkMode ? 'bg-zinc-900 border-white/10 text-white' : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+            <div
+              className={`w-full max-w-sm rounded-3xl p-6 border shadow-2xl ${
+                isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
               }`}
             >
-              <option value={15}>15 Days</option>
-              <option value={30}>30 Days (Recommended)</option>
-              <option value={60}>60 Days</option>
-              <option value={90}>90 Days</option>
-            </select>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowPauseModal(false)}
-                className="flex-1 py-2 rounded-full text-xs font-medium border border-white/15 text-zinc-400"
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-base font-semibold">Pause Subscription</h3>
+                <button onClick={() => setShowPauseModal(false)}><X className="w-4 h-4" /></button>
+              </div>
+              <p className="text-xs text-zinc-400 mb-4 leading-relaxed font-normal">
+                Temporarily freeze your billing for up to 90 days. You will not be charged while paused.
+              </p>
+              <label className="text-xs font-medium block mb-1">Pause Duration:</label>
+              <select
+                value={pauseDays}
+                onChange={(e) => setPauseDays(Number(e.target.value))}
+                className={`w-full p-2.5 rounded-xl text-xs border mb-4 font-normal ${
+                  isDarkMode ? 'bg-zinc-900 border-white/10 text-white' : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                }`}
               >
-                Keep Active
-              </button>
-              <button
-                onClick={handleConfirmPause}
-                disabled={actionLoading === 'pause'}
-                className="flex-1 py-2 rounded-full text-xs font-medium bg-amber-500 text-black hover:bg-amber-400"
-              >
-                Confirm Pause
-              </button>
+                <option value={15}>15 Days</option>
+                <option value={30}>30 Days (Recommended)</option>
+                <option value={60}>60 Days</option>
+                <option value={90}>90 Days</option>
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowPauseModal(false)}
+                  className="flex-1 py-2 rounded-full text-xs font-medium border border-white/15 text-zinc-400"
+                >
+                  Keep Active
+                </button>
+                <button
+                  onClick={handleConfirmPause}
+                  disabled={actionLoading === 'pause'}
+                  className="flex-1 py-2 rounded-full text-xs font-medium bg-amber-500 text-black hover:bg-amber-400"
+                >
+                  Confirm Pause
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ── 10. CANCEL MODAL ──────────────────────────────────────────────── */}
-      {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      {showCancelModal &&
+        createPortal(
           <div
-            className={`w-full max-w-sm rounded-3xl p-6 border shadow-2xl ${
-              isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
-            }`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowCancelModal(false);
+            }}
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
           >
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-base font-semibold text-rose-400">Cancel Subscription</h3>
-              <button onClick={() => setShowCancelModal(false)}><X className="w-4 h-4" /></button>
-            </div>
-            <p className="text-xs text-zinc-400 mb-3 leading-relaxed font-normal">
-              Your benefits will remain active until the end of your billing cycle. You will not be billed again.
-            </p>
-            <textarea
-              placeholder="Reason for cancellation (optional)..."
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              rows={2}
-              className={`w-full p-2.5 rounded-xl text-xs border mb-4 font-normal ${
-                isDarkMode ? 'bg-zinc-900 border-white/10 text-white' : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+            <div
+              className={`w-full max-w-sm rounded-3xl p-6 border shadow-2xl ${
+                isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
               }`}
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 py-2 rounded-full text-xs font-medium border border-white/15"
-              >
-                Keep Plan
-              </button>
-              <button
-                onClick={handleConfirmCancel}
-                disabled={actionLoading === 'cancel'}
-                className="flex-1 py-2 rounded-full text-xs font-medium bg-rose-600 text-white hover:bg-rose-500"
-              >
-                Cancel Plan
-              </button>
+            >
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-base font-semibold text-rose-400">Cancel Subscription</h3>
+                <button onClick={() => setShowCancelModal(false)}><X className="w-4 h-4" /></button>
+              </div>
+              <p className="text-xs text-zinc-400 mb-3 leading-relaxed font-normal">
+                Your benefits will remain active until the end of your billing cycle. You will not be billed again.
+              </p>
+              <textarea
+                placeholder="Reason for cancellation (optional)..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={2}
+                className={`w-full p-2.5 rounded-xl text-xs border mb-4 font-normal ${
+                  isDarkMode ? 'bg-zinc-900 border-white/10 text-white' : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                }`}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 py-2 rounded-full text-xs font-medium border border-white/15"
+                >
+                  Keep Plan
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  disabled={actionLoading === 'cancel'}
+                  className="flex-1 py-2 rounded-full text-xs font-medium bg-rose-600 text-white hover:bg-rose-500"
+                >
+                  Cancel Plan
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ── 11. INVOICE HISTORY MODAL ─────────────────────────────────────── */}
-      {showInvoicesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      {showInvoicesModal &&
+        createPortal(
           <div
-            className={`w-full max-w-lg rounded-3xl p-6 sm:p-7 border shadow-2xl max-h-[85vh] flex flex-col ${
-              isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
-            }`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowInvoicesModal(false);
+            }}
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
           >
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5" />
-                <h3 className="text-base font-semibold">Billing & Invoices</h3>
+            <div
+              className={`w-full max-w-lg rounded-3xl p-6 sm:p-7 border shadow-2xl max-h-[85vh] flex flex-col ${
+                isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
+              }`}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  <h3 className="text-base font-semibold">Billing & Invoices</h3>
+                </div>
+                <button onClick={() => setShowInvoicesModal(false)}><X className="w-4 h-4" /></button>
               </div>
-              <button onClick={() => setShowInvoicesModal(false)}><X className="w-4 h-4" /></button>
-            </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {invoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between ${
-                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-zinc-50 border-zinc-200'
-                  }`}
-                >
-                  <div>
-                    <div className="font-semibold text-xs">{inv.invoiceNumber}</div>
-                    <div className="text-[11px] text-zinc-400 font-normal">
-                      {inv.invoiceDate} • <span className="text-emerald-400 font-medium uppercase">{inv.status}</span>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {invoices.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className={`p-3.5 rounded-2xl border flex items-center justify-between ${
+                      isDarkMode ? 'bg-white/5 border-white/10' : 'bg-zinc-50 border-zinc-200'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-semibold text-xs">{inv.invoiceNumber}</div>
+                      <div className="text-[11px] text-zinc-400 font-normal">
+                        {inv.invoiceDate} • <span className="text-emerald-400 font-medium uppercase">{inv.status}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-xs">₹{inv.totalAmount}</span>
+                      <button
+                        onClick={() => handleDownloadPdf(inv)}
+                        disabled={actionLoading === 'invoice-' + inv.id}
+                        className={`p-2 rounded-xl border transition-all ${
+                          isDarkMode ? 'border-white/10 hover:bg-white/10' : 'border-zinc-300 hover:bg-zinc-200'
+                        }`}
+                      >
+                        {actionLoading === 'invoice-' + inv.id ? (
+                          <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-xs">₹{inv.totalAmount}</span>
-                    <button
-                      onClick={() => handleDownloadPdf(inv)}
-                      disabled={actionLoading === 'invoice-' + inv.id}
-                      className={`p-2 rounded-xl border transition-all ${
-                        isDarkMode ? 'border-white/10 hover:bg-white/10' : 'border-zinc-300 hover:bg-zinc-200'
-                      }`}
-                    >
-                      {actionLoading === 'invoice-' + inv.id ? (
-                        <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ── 12. ENTERPRISE CHECKOUT & ORDER REVIEW MODAL ──────────────────── */}
       {selectedCheckoutPlan && (
         <CheckoutModal
           isOpen={showCheckoutModal}
-          onClose={() => setShowCheckoutModal(false)}
+          onClose={() => {
+            setShowCheckoutModal(false);
+            setSelectedCheckoutPlan(null);
+          }}
           plan={selectedCheckoutPlan}
           billingCycle={billingCycle}
           role={selectedRole}
