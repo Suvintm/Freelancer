@@ -8,9 +8,6 @@ on:
       - '.github/workflows/payment-service-ci.yml'
   pull_request:
     branches: [main, master]
-    paths:
-      - 'payment-service/**'
-      - '.github/workflows/payment-service-ci.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
