@@ -476,13 +476,13 @@ export function getDynamicComparisonMatrix(
 
   allFeatures.forEach((feat) => {
     // Normalize feature name for matching
-    const featClean = feat.replace(/[⭐💰✅]/g, '').trim().toLowerCase();
+    const featClean = feat.replace(/[⭐💰✅]/gu, '').trim().toLowerCase();
     if (seenFeatureNames.has(featClean)) return;
     seenFeatureNames.add(featClean);
 
     const values = plans.map((p) => {
       const hasFeature = p.features?.some((pf) => {
-        const pfClean = pf.replace(/[⭐💰✅]/g, '').trim().toLowerCase();
+        const pfClean = pf.replace(/[⭐💰✅]/gu, '').trim().toLowerCase();
         return pfClean.includes(featClean) || featClean.includes(pfClean);
       });
       return Boolean(hasFeature);

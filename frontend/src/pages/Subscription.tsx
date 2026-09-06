@@ -223,7 +223,7 @@ export default function Subscription() {
       const rolePlans = dashboard?.plans || (await subscriptionService.getPlans(role));
       setPlans(rolePlans);
       setRolePlansCache((prev) => ({ ...prev, [role]: rolePlans }));
-    } catch (err: any) {
+    } catch (_err: any) {
       triggerToast('Failed to load ' + role + ' plans from backend', 'error');
     } finally {
       setActionLoading(null);
@@ -243,6 +243,30 @@ export default function Subscription() {
     return getDynamicComparisonMatrix(displayPlans, selectedRole);
   }, [displayPlans, selectedRole]);
 
+  const activePlanPresenter = useMemo(() => {
+    if (!activePlan) return null;
+    return displayPlans.find(
+      (p) =>
+        (activePlan.planId && p.id === activePlan.planId) ||
+        (activePlan.tierLevel && p.tierLevel === activePlan.tierLevel) ||
+        (activePlan.planName && p.name.toLowerCase().includes(activePlan.planName.toLowerCase()))
+    ) || displayPlans[0];
+  }, [activePlan, displayPlans]);
+
+  const [nowTimestamp] = useState(() => Date.now());
+
+  const activePlanTimeInfo = useMemo(() => {
+    if (!activePlan) return { daysRemaining: null, formattedRenewal: 'Lifetime Free' };
+    const periodEndVal = activePlan.periodEnd || activePlan.currentPeriodEnd;
+    const daysRemaining = periodEndVal
+      ? Math.max(0, Math.ceil((new Date(periodEndVal).getTime() - nowTimestamp) / (1000 * 60 * 60 * 24)))
+      : null;
+    const formattedRenewal = periodEndVal
+      ? new Date(periodEndVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'Lifetime Free';
+    return { daysRemaining, formattedRenewal };
+  }, [activePlan, nowTimestamp]);
+
   // 4. Enterprise Checkout Handlers
   const handlePlanCardClick = async (displayPlan: PlanCardPresenter) => {
     if (!user) {
@@ -250,12 +274,14 @@ export default function Subscription() {
       return;
     }
 
-    if (displayPlan.tierLevel === 1) {
-      if (activePlan?.tierLevel === 1) {
-        triggerToast('You are already on the Free Starter tier.', 'info');
-        return;
-      }
-      setActionLoading('starter-' + displayPlan.id);
+    // Guard against re-purchasing active tier
+    if (activePlan && activePlan.tierLevel === displayPlan.tierLevel && displayPlan.tierLevel > 0) {
+      triggerToast(`You are already subscribed to the ${displayPlan.name} plan!`, 'info');
+      return;
+    }
+
+    if (displayPlan.tierLevel === 0) {
+      setActionLoading(displayPlan.id);
       try {
         await subscriptionService.createSubscription({
           planId: displayPlan.id,
@@ -273,8 +299,10 @@ export default function Subscription() {
     }
 
     if (displayPlan.priceMonthly >= 2500) {
-      window.location.href =
-        'mailto:contact@suvix.in?subject=' + encodeURIComponent(displayPlan.name + ' Enterprise Plan Inquiry');
+      window.open(
+        'mailto:contact@suvix.in?subject=' + encodeURIComponent(displayPlan.name + ' Enterprise Plan Inquiry'),
+        '_blank'
+      );
       return;
     }
 
@@ -357,7 +385,7 @@ export default function Subscription() {
     try {
       await subscriptionService.downloadInvoicePdf(inv.id, inv.invoiceNumber);
       triggerToast('Downloaded ' + inv.invoiceNumber + '.pdf', 'success');
-    } catch (err: any) {
+    } catch (_err: any) {
       triggerToast('Failed to download invoice PDF', 'error');
     } finally {
       setActionLoading(null);
@@ -541,21 +569,8 @@ export default function Subscription() {
 
           {/* ── RIGHT COLUMN: Professional Dynamic Active Plan Hub ─────────── */}
           {activePlan && (() => {
-            const activePresenter = displayPlans.find(
-              (p) =>
-                (activePlan.planId && p.id === activePlan.planId) ||
-                (activePlan.tierLevel && p.tierLevel === activePlan.tierLevel) ||
-                (activePlan.planName && p.name.toLowerCase().includes(activePlan.planName.toLowerCase()))
-            ) || displayPlans[0];
-
-            const periodEndVal = activePlan.periodEnd || activePlan.currentPeriodEnd;
-            const daysRemaining = periodEndVal
-              ? Math.max(0, Math.ceil((new Date(periodEndVal).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-              : null;
-
-            const formattedRenewal = periodEndVal
-              ? new Date(periodEndVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-              : 'Lifetime Free';
+            const activePresenter = activePlanPresenter || displayPlans[0];
+            const { daysRemaining, formattedRenewal } = activePlanTimeInfo;
 
             const roleAccentColor =
               selectedRole === 'creator'
