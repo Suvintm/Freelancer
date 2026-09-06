@@ -78,10 +78,10 @@ public class PaymentTransaction {
     @Column(name = "payout_id")
     private UUID payoutId;
 
-    @Column(name = "idempotency_key", nullable = false, unique = true, length = 64)
+    @Column(name = "idempotency_key", nullable = false, unique = true, length = 255)
     private String idempotencyKey;
 
-    @Column(name = "correlation_id", length = 64)
+    @Column(name = "correlation_id", length = 255)
     private String correlationId;
 
     @Column(columnDefinition = "TEXT")

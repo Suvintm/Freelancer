@@ -5,17 +5,29 @@ export interface Plan {
   name: string;
   slug: string;
   description: string;
+  subtitle?: string;
   targetRole: 'creator' | 'editor' | 'brand' | 'user' | 'all';
   tierLevel: number;
   priceMonthly: number;
   priceAnnual: number;
   currency: string;
   trialDays: number;
-  features: Record<string, boolean>;
-  limits: Record<string, number>;
   badge?: string;
+  icon?: string;
+  buttonText?: string;
   isPopular?: boolean;
   isActive: boolean;
+  displayOrder?: number;
+  // Server-Driven UI (SDUI) ready-to-render feature arrays from DB
+  features: string[] | Record<string, any>;
+  quotas?: { label: string; value: string }[];
+  limits?: Record<string, any>;
+  featureFlags?: Record<string, any>;
+  limitValues?: Record<string, any>;
+  pricing?: {
+    monthly?: { amount: number; currency: string; taxRate: number; totalWithTax: number };
+    annual?: { amount: number; monthlyEquivalent: number; savingsPercent: number; currency: string; taxRate: number; totalWithTax: number };
+  };
 }
 
 export interface UserSubscription {
@@ -91,18 +103,46 @@ export interface InvoiceItem {
   lineItems: string;
 }
 
+export interface SubscriptionDashboardData {
+  plans: Plan[];
+  activeSubscription?: any;
+  usageSummary?: any;
+  role: string;
+  currency: string;
+}
+
 export const subscriptionService = {
+  // 0. Single-Roundtrip Consolidated Dashboard Bootstrap
+  getDashboard: async (role?: string, userId?: string): Promise<SubscriptionDashboardData> => {
+    const res = await api.get('/subscriptions/dashboard', {
+      params: {
+        ...(role ? { role } : {}),
+        ...(userId ? { userId } : {}),
+      },
+    });
+    const raw = res.data?.data || res.data || {};
+    return {
+      plans: Array.isArray(raw.plans) ? raw.plans : [],
+      activeSubscription: raw.activeSubscription || null,
+      usageSummary: raw.usageSummary || null,
+      role: raw.role || role || 'creator',
+      currency: raw.currency || 'INR',
+    };
+  },
+
   // 1. Fetch Plans (Filtered by Workspace Role)
   getPlans: async (role?: string): Promise<Plan[]> => {
     const res = await api.get('/subscriptions/plans', {
       params: role ? { role } : {},
     });
-    return Array.isArray(res.data) ? res.data : (res.data.plans || []);
+    return Array.isArray(res.data) ? res.data : (res.data?.data?.plans || res.data?.plans || []);
   },
 
   // 2. Fetch User Entitlements & Active Subscription
-  getEntitlements: async () => {
-    const res = await api.get('/subscriptions/entitlements');
+  getEntitlements: async (userId?: string) => {
+    const res = await api.get('/subscriptions/entitlements', {
+      params: userId ? { userId } : {},
+    });
     return res.data;
   },
 
@@ -153,14 +193,18 @@ export const subscriptionService = {
   },
 
   // 9. Fetch Live Usage Summary Meters
-  getUsageSummary: async (): Promise<UsageSummary> => {
-    const res = await api.get('/subscriptions/usage-summary');
+  getUsageSummary: async (userId?: string): Promise<UsageSummary> => {
+    const res = await api.get('/subscriptions/usage-summary', {
+      params: userId ? { userId } : {},
+    });
     return res.data;
   },
 
   // 10. Fetch Billing Invoices History
-  getUserInvoices: async (): Promise<InvoiceItem[]> => {
-    const res = await api.get('/invoices');
+  getUserInvoices: async (userId?: string): Promise<InvoiceItem[]> => {
+    const res = await api.get('/invoices', {
+      params: userId ? { userId } : {},
+    });
     return Array.isArray(res.data) ? res.data : [];
   },
 
@@ -177,5 +221,96 @@ export const subscriptionService = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  // 12. Promotional Coupon Validation
+  validateCoupon: async (code: string, planId?: string, billingCycle?: string, role?: string) => {
+    const res = await api.post('/subscriptions/coupon/validate', {
+      code,
+      planId,
+      billingCycle: billingCycle || 'monthly',
+      role,
+    });
+    return res.data;
+  },
+
+  // 13. Create Payment Order (Razorpay / Stripe) with Zero-Trust server calculation
+  createPaymentOrder: async (data: {
+    planId: string;
+    billingCycle: 'monthly' | 'annual';
+    amount?: number;
+    currency?: string;
+    targetRole?: string;
+    couponCode?: string;
+    userId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerGstin?: string;
+  }, idempotencyKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    if (data.userId) {
+      headers['X-User-Id'] = data.userId;
+    }
+    const res = await api.post('/payments/create-order', {
+      userId: data.userId,
+      amount: data.amount,
+      currency: data.currency || 'INR',
+      planId: data.planId,
+      billingCycle: data.billingCycle,
+      targetRole: data.targetRole,
+      couponCode: data.couponCode,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerGstin: data.customerGstin,
+      orderType: 'subscription',
+      type: 'SUBSCRIPTION_PAYMENT',
+    }, { headers });
+    return res.data;
+  },
+
+  // 14. Verify Payment & Activate Entitlements
+  verifyPayment: async (data: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    planId?: string;
+    billingCycle?: string;
+    subscriptionId?: string;
+    userId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerGstin?: string;
+  }, idempotencyKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    if (data.userId) {
+      headers['X-User-Id'] = data.userId;
+    }
+    const res = await api.post('/payments/verify', data, { headers });
+    return res.data;
+  },
+
+  // 15. Create Free Tier or Direct Subscription
+  createSubscription: async (data: {
+    planId: string;
+    billingCycle?: 'monthly' | 'annual';
+    provider?: string;
+    paymentMethodId?: string;
+  }) => {
+    const res = await api.post('/subscriptions/create', data);
+    return res.data;
+  },
+
+  // 16. Poll Payment Status for Automatic Reconcile & Tab Drop Recovery
+  getPaymentStatus: async (orderId: string) => {
+    const res = await api.get('/subscriptions/status', {
+      params: { orderId },
+    });
+    return res.data;
   },
 };

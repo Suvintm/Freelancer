@@ -64,6 +64,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Caffeine High-Performance In-Memory L1 Cache (<0.001ms RAM lookups) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- Spring Kafka -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

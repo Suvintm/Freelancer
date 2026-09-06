@@ -155,7 +155,7 @@ export const RightSidebar = () => {
 
           return (
             <Link
-              key={item.path}
+              key={`${item.label}-${item.path}`}
               to={item.path}
               className={`
                 flex items-center h-11 rounded-xl transition-all duration-200 cursor-pointer flex-shrink-0 relative group/item

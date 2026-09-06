@@ -27,7 +27,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isLinkInBioStudio = location.pathname.startsWith('/link-in-bio/studio') || location.pathname.startsWith('/link-in-bio/design');
   const isLinkInBioPage = location.pathname === '/link-in-bio';
   const isCommunityPage = location.pathname.startsWith('/community');
-  const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage || isCommunityPage || isLinkInBioPage || isLinkInBioStudio;
+  const isSubscriptionPage = location.pathname === '/subscription';
+  const isFullPage = isExplorePage || isNotificationsPage || isChatPage || isCreatorToolsPage || isCommunityPage || isLinkInBioPage || isLinkInBioStudio || isSubscriptionPage;
   const isNoPaddingMobile = isFullPage || isProfilePage || isNearbyPage || isHomePage;
   const { isDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -71,7 +72,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
                 <ReactLenis className="flex-1 overflow-y-auto scrollbar-hide">
                   <main className="w-full h-full">
                     <div className={
-                      location.pathname === '/home'
+                      location.pathname === '/home' || isSubscriptionPage
                         ? "w-full min-h-full pb-32"
                         : (isNoPaddingMobile ? "w-full min-h-full lg:max-w-4xl lg:mx-auto lg:px-0 lg:pt-0 lg:pb-32 pb-32" : "max-w-4xl mx-auto px-4 pt-5 lg:pt-6 lg:px-8 lg:pb-32 pb-32")
                     }>

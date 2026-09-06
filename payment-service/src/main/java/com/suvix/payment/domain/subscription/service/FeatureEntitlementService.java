@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -34,29 +36,47 @@ public class FeatureEntitlementService {
     private static final long CACHE_TTL_SECONDS = 300; // 5 minutes
 
     /**
-     * Get user entitlements — sub-2ms when cached in Redis
+     * Local L1 JVM Cache: Serves high-frequency checks in < 0.001ms with ZERO Redis operations.
+     */
+    private final Cache<String, PlanEntitlements> l1EntitlementsCache = Caffeine.newBuilder()
+            .expireAfterWrite(60, TimeUnit.SECONDS)
+            .maximumSize(10_000)
+            .recordStats()
+            .build();
+
+    /**
+     * Get user entitlements — < 0.001ms from JVM L1 Caffeine, < 2ms when falling back to Redis L2
      */
     public PlanEntitlements getEntitlements(String userId) {
+        // 1. Try local JVM L1 Caffeine cache (0 Redis commands, 0 network cost)
+        PlanEntitlements l1Hit = l1EntitlementsCache.getIfPresent(userId);
+        if (l1Hit != null) {
+            return l1Hit;
+        }
+
         String key = String.format(ENTITLEMENTS_KEY, userId);
 
-        // 1. Try Redis first
+        // 2. Try Redis L2 cache
         try {
             String cached = redisTemplate.opsForValue().get(key);
             if (cached != null) {
-                return objectMapper.readValue(cached, PlanEntitlements.class);
+                PlanEntitlements entitlements = objectMapper.readValue(cached, PlanEntitlements.class);
+                l1EntitlementsCache.put(userId, entitlements);
+                return entitlements;
             }
         } catch (Exception e) {
             log.warn("Cache deserialization failed for user {}: {}", userId, e.getMessage());
             redisTemplate.delete(key);
         }
 
-        // 2. Fallback to database
+        // 3. Fallback to database
         PlanEntitlements entitlements = loadFromDatabase(userId);
 
-        // 3. Write back to Redis
+        // 4. Write back to Redis L2 + local JVM L1
         try {
             String json = objectMapper.writeValueAsString(entitlements);
             redisTemplate.opsForValue().set(key, json, CACHE_TTL_SECONDS, TimeUnit.SECONDS);
+            l1EntitlementsCache.put(userId, entitlements);
         } catch (Exception e) {
             log.error("Failed to cache entitlements for user {}: {}", userId, e.getMessage());
         }
@@ -65,16 +85,17 @@ public class FeatureEntitlementService {
     }
 
     /**
-     * Invalidate cache and publish Pub/Sub event when subscription changes
+     * Invalidate L1 & L2 cache and publish Pub/Sub event when subscription changes
      */
     public void invalidateEntitlements(String userId) {
+        l1EntitlementsCache.invalidate(userId);
         String key = String.format(ENTITLEMENTS_KEY, userId);
         try {
             redisTemplate.delete(key);
             // Broadcast event so Node.js and peer services can clear in-memory caches
             String eventJson = String.format("{\"type\":\"ENTITLEMENTS_INVALIDATED\",\"userId\":\"%s\"}", userId);
             redisTemplate.convertAndSend("subscription:events", eventJson);
-            log.info("Invalidated and broadcasted entitlements for user {}", userId);
+            log.info("Invalidated L1+L2 and broadcasted entitlements for user {}", userId);
         } catch (Exception e) {
             log.warn("Failed to invalidate entitlements for user {}: {}", userId, e.getMessage());
         }

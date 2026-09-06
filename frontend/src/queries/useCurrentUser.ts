@@ -31,7 +31,23 @@ export const useAuthInit = () => {
   const token = useSelector(selectToken);
   const isInitialized = useSelector(selectIsInitialized);
 
-  const { data: user, isSuccess, isLoading } = useCurrentUser();
+  const { data: user, isSuccess, isLoading, isError, error } = useCurrentUser();
+
+  // Helper to detect if failure is caused by an unreachable API gateway
+  const isNetworkOrGatewayError = (err: any) => {
+    if (!err) return false;
+    const isNetworkErr =
+      err.code === 'ERR_NETWORK' ||
+      err.code === 'ECONNREFUSED' ||
+      err.code === 'ETIMEDOUT' ||
+      err.message?.includes('Network Error') ||
+      err.message?.includes('Failed to fetch') ||
+      !err.response;
+    const isServerError = err.response?.status >= 500;
+    return isNetworkErr || isServerError;
+  };
+
+  const isGatewayDown = isError && isNetworkOrGatewayError(error);
 
   useEffect(() => {
     if (!token) {
@@ -45,9 +61,21 @@ export const useAuthInit = () => {
     }
   }, [isSuccess, user, dispatch]);
 
+  useEffect(() => {
+    if (isError) {
+      // 🛡️ CRITICAL: If the backend container is offline, never trap the user in an infinite loading spinner!
+      // Mark initialization complete so the UI can render the Gateway Offline screen gracefully.
+      dispatch(setInitialized(true));
+    }
+  }, [isError, dispatch]);
+
   return {
-    isInitialized: isInitialized || !token,
-    isLoading: isLoading && !!token,
+    isInitialized: isInitialized || !token || isError,
+    isLoading: isLoading && !!token && !isError,
+    isError,
+    isGatewayDown,
+    error,
     user,
   };
 };
+

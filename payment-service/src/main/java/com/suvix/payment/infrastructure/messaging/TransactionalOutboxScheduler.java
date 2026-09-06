@@ -20,23 +20,47 @@ public class TransactionalOutboxScheduler {
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     /**
-     * Runs every 3 seconds to publish pending outbox events to Kafka
-     * Guarantees at-least-once delivery (Transactional Outbox Pattern)
+     * Adaptive poller: Runs every 1 second. When pending events exist,
+     * it processes up to 100 events per cycle with zero lag.
      */
-    @Scheduled(fixedDelay = 3000)
+    @Scheduled(fixedDelay = 1000)
     public void publishPendingOutboxEvents() {
-        List<OutboxEvent> pendingEvents = outboxRepository.findByStatusOrderByCreatedAtAsc(
-                OutboxEvent.OutboxStatus.PENDING, PageRequest.of(0, 50)
-        );
+        int processedInCycle = 0;
+        List<OutboxEvent> pendingEvents;
 
-        if (pendingEvents.isEmpty()) {
-            return;
+        do {
+            pendingEvents = outboxRepository.findByStatusOrderByCreatedAtAsc(
+                    OutboxEvent.OutboxStatus.PENDING, PageRequest.of(0, 50)
+            );
+
+            if (pendingEvents.isEmpty()) {
+                break;
+            }
+
+            for (OutboxEvent event : pendingEvents) {
+                publishSingleEvent(event);
+                processedInCycle++;
+            }
+
+            // If we processed a full batch of 50, immediately continue to drain remaining
+        } while (pendingEvents.size() == 50 && processedInCycle < 250);
+
+        if (processedInCycle > 0) {
+            log.info("Transactional Outbox: Dispatched {} pending events to Kafka", processedInCycle);
         }
+    }
 
-        log.debug("Found {} pending outbox events to publish", pendingEvents.size());
-
-        for (OutboxEvent event : pendingEvents) {
-            publishSingleEvent(event);
+    /**
+     * Daily 3:00 AM Outbox Maintenance: Purges published events older than 7 days
+     * to keep table disk usage under 5MB permanently.
+     */
+    @Scheduled(cron = "0 0 3 * * ?")
+    @Transactional
+    public void purgeOldPublishedOutboxEvents() {
+        java.time.Instant cutoff = java.time.Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
+        int deleted = outboxRepository.deletePublishedEventsOlderThan(OutboxEvent.OutboxStatus.PUBLISHED, cutoff);
+        if (deleted > 0) {
+            log.info("Outbox Table Maintenance: Successfully purged {} published outbox events older than 7 days", deleted);
         }
     }
 

@@ -17,7 +17,7 @@ import java.time.Instant;
 public class IdempotencyKeyRecord {
 
     @Id
-    @Column(length = 64)
+    @Column(length = 255)
     private String id;
 
     @Enumerated(EnumType.STRING)
