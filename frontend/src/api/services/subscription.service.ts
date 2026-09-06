@@ -243,6 +243,9 @@ export const subscriptionService = {
     targetRole?: string;
     couponCode?: string;
     userId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerGstin?: string;
   }, idempotencyKey?: string) => {
     const headers: Record<string, string> = {};
     if (idempotencyKey) {
@@ -259,6 +262,9 @@ export const subscriptionService = {
       billingCycle: data.billingCycle,
       targetRole: data.targetRole,
       couponCode: data.couponCode,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerGstin: data.customerGstin,
       orderType: 'subscription',
       type: 'SUBSCRIPTION_PAYMENT',
     }, { headers });
@@ -274,6 +280,9 @@ export const subscriptionService = {
     billingCycle?: string;
     subscriptionId?: string;
     userId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerGstin?: string;
   }, idempotencyKey?: string) => {
     const headers: Record<string, string> = {};
     if (idempotencyKey) {

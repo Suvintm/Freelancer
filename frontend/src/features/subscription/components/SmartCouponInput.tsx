@@ -27,7 +27,7 @@ export const SmartCouponInput: React.FC<SmartCouponInputProps> = ({
   onRemove,
   validating,
   error,
-  isDarkMode = false,
+  isDarkMode: _isDarkMode = false,
 }) => {
   // Auto-apply from URL params
   useEffect(() => {

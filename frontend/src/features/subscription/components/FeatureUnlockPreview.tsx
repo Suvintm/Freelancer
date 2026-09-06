@@ -12,7 +12,7 @@ export const FeatureUnlockPreview: React.FC<FeatureUnlockPreviewProps> = ({
   features,
   planName,
   role: _role,
-  isDarkMode = false,
+  isDarkMode: _isDarkMode = false,
 }) => {
   if (!features || features.length === 0) return null;
 

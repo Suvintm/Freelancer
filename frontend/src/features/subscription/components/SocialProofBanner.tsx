@@ -23,7 +23,7 @@ const HIGHLIGHTS = [
 
 export const SocialProofBanner: React.FC<SocialProofBannerProps> = ({
   role: _role,
-  isDarkMode = false,
+  isDarkMode: _isDarkMode = false,
 }) => {
   const [index, setIndex] = useState(0);
 

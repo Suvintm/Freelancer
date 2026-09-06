@@ -16,7 +16,7 @@ export const ComplianceConsent: React.FC<ComplianceConsentProps> = ({
   amount,
   isChecked,
   onChange,
-  isDarkMode = false,
+  isDarkMode: _isDarkMode = false,
 }) => {
   const [showRbiDetails, setShowRbiDetails] = useState(false);
 
