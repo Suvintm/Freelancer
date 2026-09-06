@@ -31,19 +31,23 @@ public class Payout {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
+    @Builder.Default
     @Column(nullable = false, length = 3)
     private String currency = "INR";
 
+    @Builder.Default
     @Column(name = "platform_fee", nullable = false, precision = 19, scale = 4)
     private BigDecimal platformFee = BigDecimal.ZERO;
 
     @Column(name = "net_amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal netAmount;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PayoutStatus status = PayoutStatus.pending;
 
+    @Builder.Default
     @Column(nullable = false, length = 20)
     private String provider = "razorpayx";
 
@@ -53,6 +57,7 @@ public class Payout {
     @Column(name = "provider_batch_id", length = 100)
     private String providerBatchId;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "destination_type", nullable = false, length = 20)
     private DestinationType destinationType = DestinationType.bank_account;
@@ -60,6 +65,7 @@ public class Payout {
     @Column(name = "destination_encrypted", nullable = false, columnDefinition = "TEXT")
     private String destinationEncrypted;
 
+    @Builder.Default
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 

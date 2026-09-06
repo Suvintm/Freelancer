@@ -34,6 +34,7 @@ public class UsageTracking {
     @Column(name = "usage_period", nullable = false, length = 20)
     private String usagePeriod;
 
+    @Builder.Default
     @Column(name = "usage_count", nullable = false)
     private int usageCount = 0;
 

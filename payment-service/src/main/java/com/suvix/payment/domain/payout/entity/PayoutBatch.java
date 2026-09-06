@@ -25,19 +25,24 @@ public class PayoutBatch {
     @Column(name = "provider_batch_id", unique = true, length = 100)
     private String providerBatchId;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BatchStatus status = BatchStatus.processing;
 
+    @Builder.Default
     @Column(name = "total_count", nullable = false)
     private int totalCount = 0;
 
+    @Builder.Default
     @Column(name = "total_amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "completed_count", nullable = false)
     private int completedCount = 0;
 
+    @Builder.Default
     @Column(name = "failed_count", nullable = false)
     private int failedCount = 0;
 

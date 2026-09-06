@@ -12,6 +12,7 @@ public class CreateSubscriptionRequest {
     @NotBlank(message = "Plan ID is required")
     private String planId;
 
+    @Builder.Default
     private String provider = "razorpay";
 
     private String customerEmail;

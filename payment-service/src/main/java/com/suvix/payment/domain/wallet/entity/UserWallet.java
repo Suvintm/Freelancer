@@ -27,21 +27,27 @@ public class UserWallet {
     @Column(name = "user_id", nullable = false, unique = true, length = 50)
     private String userId;
 
+    @Builder.Default
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "hold_balance", nullable = false, precision = 19, scale = 4)
     private BigDecimal holdBalance = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "total_earned", nullable = false, precision = 19, scale = 4)
     private BigDecimal totalEarned = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "total_withdrawn", nullable = false, precision = 19, scale = 4)
     private BigDecimal totalWithdrawn = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(nullable = false, length = 3)
     private String currency = "INR";
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "kyc_status", nullable = false, length = 20)
     private KycStatus kycStatus = KycStatus.pending;

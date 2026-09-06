@@ -17,14 +17,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      auto-startup: ${KAFKA_AUTO_STARTUP:false}
     properties:
-      security.protocol: SASL_SSL
-      sasl.mechanism: PLAIN
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:SASL_SSL}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:PLAIN}
       sasl.jaas.config: >
         org.apache.kafka.common.security.plain.PlainLoginModule required
-        username="${KAFKA_API_KEY}"
-        password="${KAFKA_API_SECRET}";
+        username="${KAFKA_API_KEY:}"
+        password="${KAFKA_API_SECRET:}";
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
