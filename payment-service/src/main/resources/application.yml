@@ -5,6 +5,9 @@
 #   application-cloud.yml  → production (Upstash Kafka)
 # ============================================================
 
+server:
+  port: ${PORT:${SERVER_PORT:8080}}
+
 spring:
   application:
     name: payment-service
@@ -22,7 +25,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     open-in-view: false
     properties:
       hibernate:

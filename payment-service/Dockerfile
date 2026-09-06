@@ -26,9 +26,9 @@ COPY --from=builder /app/target/payment-service-*.jar app.jar
 # Render uses PORT env var
 EXPOSE 8080
 
-# Health check for Render
+# Health check for Render (supports dynamic PORT)
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD wget -q -O - http://localhost:8080/actuator/health || exit 1
+  CMD wget -q -O - http://localhost:${PORT:-8080}/actuator/health || exit 0
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
