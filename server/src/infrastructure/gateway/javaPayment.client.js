@@ -28,7 +28,7 @@ const httpsAgent = new https.Agent({
  */
 export const paymentServiceClient = axios.create({
   baseURL: PAYMENT_SERVICE_URL,
-  timeout: 15000,  // 15s timeout for payment operations
+  timeout: 45000,  // 45s timeout to gracefully support cold starts on Render
   httpAgent,
   httpsAgent,
   headers: {
