@@ -20,6 +20,7 @@ public class IdempotencyKeyRecord {
     @Column(length = 255)
     private String id;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private IdempotencyStatus status = IdempotencyStatus.processing;

@@ -29,6 +29,11 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      auto-startup: ${KAFKA_AUTO_STARTUP:false}
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}

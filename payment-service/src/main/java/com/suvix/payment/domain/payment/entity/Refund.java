@@ -30,9 +30,11 @@ public class Refund {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
+    @Builder.Default
     @Column(nullable = false, length = 3)
     private String currency = "INR";
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RefundStatus status = RefundStatus.pending;
@@ -52,6 +54,7 @@ public class Refund {
     @Column(name = "initiated_by", nullable = false, length = 50)
     private String initiatedBy;
 
+    @Builder.Default
     @Column(name = "initiated_by_type", nullable = false, length = 20)
     private String initiatedByType = "user";
 

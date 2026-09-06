@@ -24,7 +24,9 @@ public class CreateEscrowRequest {
     @DecimalMin(value = "1.00")
     private BigDecimal amount;
 
+    @Builder.Default
     private String releaseCondition = "content_delivered";
 
+    @Builder.Default
     private int expirationDays = 30;
 }

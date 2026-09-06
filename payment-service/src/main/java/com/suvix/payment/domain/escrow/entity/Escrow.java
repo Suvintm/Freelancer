@@ -38,16 +38,20 @@ public class Escrow {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
+    @Builder.Default
     @Column(nullable = false, length = 3)
     private String currency = "INR";
 
+    @Builder.Default
     @Column(name = "platform_fee", nullable = false, precision = 19, scale = 4)
     private BigDecimal platformFee = BigDecimal.ZERO;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EscrowStatus status = EscrowStatus.held;
 
+    @Builder.Default
     @Column(name = "release_condition", nullable = false, length = 50)
     private String releaseCondition = "manual_approval";
 

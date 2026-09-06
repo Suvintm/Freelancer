@@ -16,5 +16,6 @@ public class CancelSubscriptionRequest {
 
     private String reason;
 
+    @Builder.Default
     private boolean immediate = false;
 }
