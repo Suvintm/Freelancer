@@ -75,30 +75,31 @@ export const getUserSubscriptionData = async (userId) => {
     const sub = await prisma.subscription.findFirst({
       where: {
         userId: userId,
-        status: { in: ["active", "trial"] },
-        endDate: { gte: new Date() }
+        status: "active",
+        current_period_end: { gte: new Date() }
+      },
+      include: {
+        plan: true
       },
       orderBy: {
-        endDate: "desc"
+        current_period_end: "desc"
       }
     });
 
     if (!sub) return null;
 
-    // Determine features based on planTier
-    const allFeatures = ["nearby_pro", "verified_badge", "yt_analytics", "portfolio_link", "priority_explore", "ai_suggestions", "team_collab"];
-    let features = [];
-    
-    if (sub.planTier === "creator") features = ["nearby_pro", "portfolio_link", "priority_explore"];
-    else if (sub.planTier === "pro") features = ["nearby_pro", "portfolio_link", "priority_explore", "verified_badge", "yt_analytics", "ai_suggestions"];
-    else if (sub.planTier === "elite") features = allFeatures;
+    const plan = sub.plan;
+    const featuresObj = plan?.features || {};
+    const features = typeof featuresObj === "object" ? Object.keys(featuresObj) : [];
 
     return {
-      tier: sub.planTier,
+      tier: plan?.tier_level === 2 ? "business" : plan?.tier_level === 1 ? "pro" : "free",
+      planId: sub.planId,
+      planName: plan?.name || "Pro Plan",
       features,
-      expiresAt: sub.endDate,
-      isTrial: sub.isTrial,
-      daysRemaining: Math.max(0, Math.ceil((new Date(sub.endDate) - new Date()) / (1000 * 60 * 60 * 24)))
+      expiresAt: sub.current_period_end,
+      isTrial: false,
+      daysRemaining: Math.max(0, Math.ceil((new Date(sub.current_period_end) - new Date()) / (1000 * 60 * 60 * 24)))
     };
   } catch (error) {
     logger.error(`Error fetching subscription for user ${userId}:`, error);
@@ -122,7 +123,23 @@ export const refresh = asyncHandler(async (req, res) => {
   const { id: userId, familyId } = decoded;
   const hashedToken = hashToken(refreshToken);
 
+  // 1. Check if token is in active session cache
   const storedData = await redis.get(`refresh_token:${hashedToken}`);
+
+  // 2. If not found in active sessions, check the 30-second Grace Period cache (Auth0 standard)
+  if (!storedData && redisAvailable) {
+    const graceData = await redis.get(`rotated_token:${hashedToken}`);
+    if (graceData) {
+      logger.info(`[AUTH] Grace period hit for rotated token: user ${userId} (family: ${familyId})`);
+      try {
+        const gracePayload = JSON.parse(graceData);
+        res.cookie("refreshToken", gracePayload.refreshToken, cookieOptions);
+        return res.status(200).json(gracePayload);
+      } catch (parseErr) {
+        // Continue to standard validation if parsing fails
+      }
+    }
+  }
 
   if (!storedData) {
     if (redisAvailable) {
@@ -202,9 +219,23 @@ export const refresh = asyncHandler(async (req, res) => {
     },
   });
 
+  const responsePayload = {
+    success: true,
+    token: newAccessToken,
+    refreshToken: newRefreshToken,
+    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+    refreshExpiresAt: Date.now() + (REFRESH_TOKEN_TTL_SECONDS * 1000),
+    user: formatAuthResponse(user),
+  };
+
+  // Pipeline atomic update:
+  // 1. Delete old refresh token from active pool
+  // 2. Add old token to rotated_token grace cache with 30s TTL
+  // 3. Save new refresh token in active pool
   await redis
     .pipeline()
     .del(`refresh_token:${hashedToken}`)
+    .set(`rotated_token:${hashedToken}`, JSON.stringify(responsePayload), "EX", 30) // 30s Grace Period
     .srem(`token_family:${familyId}`, hashedToken)
     .set(
       `refresh_token:${newHashedToken}`,
@@ -220,16 +251,7 @@ export const refresh = asyncHandler(async (req, res) => {
   await deleteCache(CacheKey.userProfile(userId));
 
   res.cookie("refreshToken", newRefreshToken, cookieOptions);
-  res.status(200).json({
-    success: true,
-    token: newAccessToken,
-    refreshToken: newRefreshToken,
-    accessTokenExpiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
-    // ✅ FIX (Bug 4): Return the new refresh token expiry so the mobile vault
-    // can store the correct 30-day window instead of keeping the old stale date.
-    refreshExpiresAt: Date.now() + (REFRESH_TOKEN_TTL_SECONDS * 1000),
-    user: formatAuthResponse(user),
-  });
+  res.status(200).json(responsePayload);
 });
 
 // ─── Login ─────────────────────────────────────────────────────────────────

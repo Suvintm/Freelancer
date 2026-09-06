@@ -1,111 +1,316 @@
 import { api } from '../client';
 
 export interface Plan {
-  _id: string;
+  id: string;
   name: string;
   slug: string;
-  feature: string;
-  planTier: 'free' | 'creator' | 'pro' | 'elite';
-  duration: string;
-  durationDays: number;
-  price: number;
-  originalPrice?: number;
-  currency: string;
-  discountPercent?: number;
-  trialDays: number;
-  features: string[];
   description: string;
+  subtitle?: string;
+  targetRole: 'creator' | 'editor' | 'brand' | 'user' | 'all';
+  tierLevel: number;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency: string;
+  trialDays: number;
   badge?: string;
+  icon?: string;
+  buttonText?: string;
+  isPopular?: boolean;
   isActive: boolean;
-  sortOrder: number;
+  displayOrder?: number;
+  // Server-Driven UI (SDUI) ready-to-render feature arrays from DB
+  features: string[] | Record<string, any>;
+  quotas?: { label: string; value: string }[];
+  limits?: Record<string, any>;
+  featureFlags?: Record<string, any>;
+  limitValues?: Record<string, any>;
+  pricing?: {
+    monthly?: { amount: number; currency: string; taxRate: number; totalWithTax: number };
+    annual?: { amount: number; monthlyEquivalent: number; savingsPercent: number; currency: string; taxRate: number; totalWithTax: number };
+  };
 }
 
 export interface UserSubscription {
-  _id: string;
-  user: string;
-  plan: string | Plan;
+  id: string;
+  userId: string;
+  plan?: Plan;
+  planId: string;
   planName: string;
-  planType: string;
-  feature: string;
-  status: 'active' | 'cancelled' | 'expired' | 'trial' | 'payment_pending';
-  startDate: string;
-  endDate: string;
-  amount: number;
+  status: 'active' | 'cancelling' | 'paused' | 'past_due' | 'unpaid' | 'expired' | 'trialing';
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  pausedAt?: string;
+  pauseResumesAt?: string;
+  gracePeriodEndsAt?: string;
+  prorationCredit?: number;
+}
+
+export interface ProrationQuote {
+  currentPlanId: string;
+  currentPlanName: string;
+  targetPlanId: string;
+  targetPlanName: string;
+  currentPlanPrice: number;
+  targetPlanPrice: number;
+  unusedCredit: number;
+  netSubtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  remainingDays: number;
+  remainingSeconds: number;
+  totalPeriodSeconds: number;
+  currentPeriodEnd: string;
+}
+
+export interface UsageFeatureDetail {
+  featureName: string;
+  currentUsage: number;
+  maxLimit: number;
+  remainingQuota: number;
+  usagePercentage: number;
+  isUnlimited: boolean;
+  isOverage: boolean;
+  overageUnits: number;
+}
+
+export interface UsageSummary {
+  userId: string;
+  planId: string;
+  planName: string;
+  usagePeriod: string;
+  periodResetAt?: string;
+  featureUsages: Record<string, UsageFeatureDetail>;
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoiceNumber: string;
+  userId: string;
+  customerName: string;
+  customerEmail: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
   currency: string;
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
-  razorpaySignature?: string;
-  autoRenew: boolean;
-  isTrial: boolean;
-  createdAt: string;
-  updatedAt: string;
-  planTier?: string;
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+  invoiceDate: string;
+  paidAt?: string;
+  isProrated: boolean;
+  prorationCredit: number;
+  lineItems: string;
+}
+
+export interface SubscriptionDashboardData {
+  plans: Plan[];
+  activeSubscription?: any;
+  usageSummary?: any;
+  role: string;
+  currency: string;
 }
 
 export const subscriptionService = {
-  getPlans: async (): Promise<{ success: boolean; plans: Plan[] }> => {
-    const res = await api.get('/payments/plans');
-    return res.data;
-  },
-
-  getMySubscriptions: async (): Promise<{ success: boolean; subscriptions: UserSubscription[] }> => {
-    const res = await api.get('/payments/my');
-    return res.data;
-  },
-
-  checkSubscriptionStatus: async (feature: string): Promise<{
-    success: boolean;
-    hasSubscription: boolean;
-    subscription: UserSubscription | null;
-    hasUsedTrial: boolean;
-    feature: string;
-  }> => {
-    const res = await api.get(`/payments/check/${feature}`);
-    return res.data;
-  },
-
-  startTrial: async (planId: string): Promise<{
-    success: boolean;
-    message: string;
-    subscription: UserSubscription;
-  }> => {
-    const res = await api.post('/payments/start-trial', { planId });
-    return res.data;
-  },
-
-  createOrder: async (planId: string): Promise<{
-    success: boolean;
-    orderId: string;
-    amount: number;
-    currency: string;
-    subscriptionId: string;
-    keyId: string;
-    plan: {
-      name: string;
-      duration: string;
-      features: string[];
+  // 0. Single-Roundtrip Consolidated Dashboard Bootstrap
+  getDashboard: async (role?: string, userId?: string): Promise<SubscriptionDashboardData> => {
+    const res = await api.get('/subscriptions/dashboard', {
+      params: {
+        ...(role ? { role } : {}),
+        ...(userId ? { userId } : {}),
+      },
+    });
+    const raw = res.data?.data || res.data || {};
+    return {
+      plans: Array.isArray(raw.plans) ? raw.plans : [],
+      activeSubscription: raw.activeSubscription || null,
+      usageSummary: raw.usageSummary || null,
+      role: raw.role || role || 'creator',
+      currency: raw.currency || 'INR',
     };
-  }> => {
-    const res = await api.post('/payments/create-order', { planId });
+  },
+
+  // 1. Fetch Plans (Filtered by Workspace Role)
+  getPlans: async (role?: string): Promise<Plan[]> => {
+    const res = await api.get('/subscriptions/plans', {
+      params: role ? { role } : {},
+    });
+    return Array.isArray(res.data) ? res.data : (res.data?.data?.plans || res.data?.plans || []);
+  },
+
+  // 2. Fetch User Entitlements & Active Subscription
+  getEntitlements: async (userId?: string) => {
+    const res = await api.get('/subscriptions/entitlements', {
+      params: userId ? { userId } : {},
+    });
     return res.data;
   },
 
+  // 3. Get Real-Time Proration Quote for Plan Upgrade
+  getQuoteUpgrade: async (targetPlanId: string): Promise<ProrationQuote> => {
+    const res = await api.get('/subscriptions/quote-upgrade', {
+      params: { targetPlanId },
+    });
+    return res.data;
+  },
+
+  // 4. Execute Immediate Plan Upgrade
+  upgradeSubscription: async (data: {
+    targetPlanId: string;
+    provider?: string;
+    providerPaymentId?: string;
+  }) => {
+    const res = await api.post('/subscriptions/upgrade', data);
+    return res.data;
+  },
+
+  // 5. Schedule Plan Downgrade for Period End
+  downgradeSubscription: async (data: {
+    targetPlanId: string;
+    reason?: string;
+    feedback?: string;
+  }) => {
+    const res = await api.post('/subscriptions/downgrade', data);
+    return res.data;
+  },
+
+  // 6. Pause Subscription
+  pauseSubscription: async (data: { pauseDays: number; reason?: string }) => {
+    const res = await api.post('/subscriptions/pause', data);
+    return res.data;
+  },
+
+  // 7. Resume Paused Subscription
+  resumeSubscription: async () => {
+    const res = await api.post('/subscriptions/resume');
+    return res.data;
+  },
+
+  // 8. Cancel Subscription
+  cancelSubscription: async (data: { reason?: string; feedback?: string }) => {
+    const res = await api.post('/subscriptions/cancel', data);
+    return res.data;
+  },
+
+  // 9. Fetch Live Usage Summary Meters
+  getUsageSummary: async (userId?: string): Promise<UsageSummary> => {
+    const res = await api.get('/subscriptions/usage-summary', {
+      params: userId ? { userId } : {},
+    });
+    return res.data;
+  },
+
+  // 10. Fetch Billing Invoices History
+  getUserInvoices: async (userId?: string): Promise<InvoiceItem[]> => {
+    const res = await api.get('/invoices', {
+      params: userId ? { userId } : {},
+    });
+    return Array.isArray(res.data) ? res.data : [];
+  },
+
+  // 11. Download GST Invoice PDF
+  downloadInvoicePdf: async (invoiceId: string, invoiceNumber: string) => {
+    const res = await api.get(`/invoices/${invoiceId}/pdf`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${invoiceNumber || 'Invoice'}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  // 12. Promotional Coupon Validation
+  validateCoupon: async (code: string, planId?: string, billingCycle?: string, role?: string) => {
+    const res = await api.post('/subscriptions/coupon/validate', {
+      code,
+      planId,
+      billingCycle: billingCycle || 'monthly',
+      role,
+    });
+    return res.data;
+  },
+
+  // 13. Create Payment Order (Razorpay / Stripe) with Zero-Trust server calculation
+  createPaymentOrder: async (data: {
+    planId: string;
+    billingCycle: 'monthly' | 'annual';
+    amount?: number;
+    currency?: string;
+    targetRole?: string;
+    couponCode?: string;
+    userId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerGstin?: string;
+  }, idempotencyKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    if (data.userId) {
+      headers['X-User-Id'] = data.userId;
+    }
+    const res = await api.post('/payments/create-order', {
+      userId: data.userId,
+      amount: data.amount,
+      currency: data.currency || 'INR',
+      planId: data.planId,
+      billingCycle: data.billingCycle,
+      targetRole: data.targetRole,
+      couponCode: data.couponCode,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerGstin: data.customerGstin,
+      orderType: 'subscription',
+      type: 'SUBSCRIPTION_PAYMENT',
+    }, { headers });
+    return res.data;
+  },
+
+  // 14. Verify Payment & Activate Entitlements
   verifyPayment: async (data: {
-    orderId: string;
-    paymentId: string;
-    signature: string;
-    subscriptionId: string;
-  }): Promise<{ success: boolean; message: string; subscription: UserSubscription }> => {
-    const res = await api.post('/payments/verify-payment', data);
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    planId?: string;
+    billingCycle?: string;
+    subscriptionId?: string;
+    userId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerGstin?: string;
+  }, idempotencyKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    if (data.userId) {
+      headers['X-User-Id'] = data.userId;
+    }
+    const res = await api.post('/payments/verify', data, { headers });
     return res.data;
   },
 
-  cancelSubscription: async (id: string): Promise<{
-    success: boolean;
-    message: string;
-    subscription: UserSubscription;
-  }> => {
-    const res = await api.post(`/payments/cancel/${id}`);
+  // 15. Create Free Tier or Direct Subscription
+  createSubscription: async (data: {
+    planId: string;
+    billingCycle?: 'monthly' | 'annual';
+    provider?: string;
+    paymentMethodId?: string;
+  }) => {
+    const res = await api.post('/subscriptions/create', data);
+    return res.data;
+  },
+
+  // 16. Poll Payment Status for Automatic Reconcile & Tab Drop Recovery
+  getPaymentStatus: async (orderId: string) => {
+    const res = await api.get('/subscriptions/status', {
+      params: { orderId },
+    });
     return res.data;
   },
 };

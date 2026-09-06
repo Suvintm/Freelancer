@@ -93,8 +93,14 @@ export const updateMyBasicInfo = asyncHandler(async (req, res) => {
     bio: updated.bio || "",
   };
 
-  // 🧹 [CACHE] Invalidate user cache and broadcast surgical update
-  await deleteCache(CacheKey.userProfile(userId));
+  // 🧹 [CACHE] Invalidate user cache, public profile, and bio caches to ensure fresh DB sync
+  const usernameToInvalidate = (updated.username || profile.username || "").toLowerCase();
+  await deleteCache([
+    CacheKey.userProfile(userId),
+    `public_profile:${usernameToInvalidate}`,
+    `bio:public:${usernameToInvalidate}:main`,
+    `bio:public:${usernameToInvalidate}`,
+  ]);
   
   // 🛰️ [SOCKET] Surgical Broadcast for real-time profile persistence
   emitToUser(userId, "user:profile_updated", { 

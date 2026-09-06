@@ -31,13 +31,14 @@ const router = express.Router();
 // User routes (protected)
 router.use(authMiddleware);
 
-// 🔀 PROXIED → Java Payment Service
+router.get("/status",        (req, res) => proxyToPaymentService(req, res, "get", "/payments/status"));
 router.get("/history",       (req, res) => proxyToPaymentService(req, res, "get", "/payments/history"));
 router.get("/stats",         (req, res) => proxyToPaymentService(req, res, "get", "/payments/stats"));
 router.get("/:id/receipt",   (req, res) => proxyToPaymentService(req, res, "get", `/payments/${req.params.id}/receipt`));
 router.get("/:id",           (req, res) => proxyToPaymentService(req, res, "get", `/payments/${req.params.id}`));
 
 export default router;
+
 
 
 

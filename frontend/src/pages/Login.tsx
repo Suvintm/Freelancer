@@ -17,16 +17,18 @@ import { Turnstile } from '@marsidev/react-turnstile';
 import { useDispatch } from 'react-redux';
 import { clearTempSignupData, resetYoutubeDiscovery, setTempSignupData } from '../store/slices/onboardingSlice';
 import { useLogin } from '../mutations/useLogin';
+import { isAccessAllowed, RESTRICTED_ACCESS_MESSAGE } from '../config/accessControl.config';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 // Maps OAuth error codes returned from /oauth-success to human-readable messages
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  no_code:         'Google sign-in was cancelled. Please try again.',
-  exchange_failed: 'Google authentication failed. Please try again.',
-  server_error:    'A server error occurred. Please try again later.',
-  no_account:      'No account found for this Google profile. Please sign up first.',
-  server_busy:     'Server busy ! Please try again later or contact SuviX team.',
+  no_code:                'Google sign-in was cancelled. Please try again.',
+  exchange_failed:        'Google authentication failed. Please try again.',
+  server_error:           'A server error occurred. Please try again later.',
+  no_account:             'No account found for this Google profile. Please sign up first.',
+  server_busy:            'Server busy ! Please try again later or contact SuviX team.',
+  maintenance_restricted: RESTRICTED_ACCESS_MESSAGE,
 };
 
 export default function Login() {
@@ -63,6 +65,11 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!isAccessAllowed(form.email)) {
+      setError(RESTRICTED_ACCESS_MESSAGE);
+      return;
+    }
 
     if (!turnstileToken) {
       setError('Please complete the security check.');

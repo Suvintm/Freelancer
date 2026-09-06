@@ -29,6 +29,7 @@ import { useSignup } from '../mutations/useSignup';
 import type { RootState } from '../store';
 import { authService } from '../api/services/auth.service';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
+import { isAccessAllowed, RESTRICTED_ACCESS_MESSAGE } from '../config/accessControl.config';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -203,6 +204,7 @@ export default function Signup() {
     e.preventDefault();
 
     // Client-side completeness check before hitting the backend
+    if (!isAccessAllowed(form.email)) { setError(RESTRICTED_ACCESS_MESSAGE); return; }
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
 

@@ -7,7 +7,7 @@
 # ============================================================
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:${SERVER_PORT:8080}}
 
 spring:
   jpa:
@@ -18,14 +18,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      auto-startup: ${KAFKA_AUTO_STARTUP:false}
     properties:
-      security.protocol: SASL_SSL
-      sasl.mechanism: SCRAM-SHA-256
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:SASL_SSL}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:SCRAM-SHA-256}
       sasl.jaas.config: >
         org.apache.kafka.common.security.scram.ScramLoginModule required
-        username="${KAFKA_API_KEY}"
-        password="${KAFKA_API_SECRET}";
+        username="${KAFKA_API_KEY:}"
+        password="${KAFKA_API_SECRET:}";
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer

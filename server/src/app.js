@@ -37,13 +37,17 @@ export function createApp() {
   app.use(metricsMiddleware);
 
   // ============ CORE PROXY & REQUEST TRACING ============
-  app.set("trust proxy", true);
+  app.set("trust proxy", 1);
 
   app.use((req, res, next) => {
     req.realIp = req.headers["x-real-ip"] || req.ip;
     req.requestId = req.headers["x-request-id"] || req.headers["x-correlation-id"] || crypto.randomUUID();
     res.setHeader("X-Request-ID", req.requestId);
-    logger.info(`[REQ] ${req.method} ${req.originalUrl} | IP: ${req.realIp} | ID: ${req.requestId}`);
+
+    const isViaGateway = Boolean(req.headers["x-request-id"] || req.headers["x-real-ip"] || req.headers["x-forwarded-for"]);
+    const gatewayTag = isViaGateway ? "🛡️ [CALL FROM API GATEWAY]" : "🌐 [DIRECT CALL]";
+
+    logger.info(`${gatewayTag} ${req.method} ${req.originalUrl} | IP: ${req.realIp} | ID: ${req.requestId}`);
     next();
   });
 
@@ -55,12 +59,52 @@ export function createApp() {
     contentSecurityPolicy: process.env.NODE_ENV === "production" ? {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://checkout.razorpay.com"],
+        scriptSrc: ["'self'", "https://checkout.razorpay.com", "https://challenges.cloudflare.com"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com"],
-        fontSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", process.env.FRONTEND_URL, process.env.ADMIN_URL, "wss:", "ws:"].filter(Boolean),
-        frameSrc: ["'self'", "https://api.razorpay.com"],
+        imgSrc: [
+          "'self'", 
+          "data:", 
+          "blob:",
+          "https://res.cloudinary.com", 
+          "https://lh3.googleusercontent.com", 
+          "https://challenges.cloudflare.com",
+          "https://*.amazonaws.com",
+          "https://*.s3.amazonaws.com",
+          "https://*.s3.ap-south-1.amazonaws.com",
+          "https://cdn.suvix.in",
+          "https://*.cloudfront.net",
+          "https://images.unsplash.com",
+          "https://*.ytimg.com",
+          "https://*.ggpht.com"
+        ],
+        mediaSrc: [
+          "'self'",
+          "blob:",
+          "data:",
+          "https://*.amazonaws.com",
+          "https://*.s3.amazonaws.com",
+          "https://*.s3.ap-south-1.amazonaws.com",
+          "https://cdn.suvix.in",
+          "https://*.cloudfront.net",
+          "https://res.cloudinary.com"
+        ],
+        fontSrc: ["'self'", "data:", "https://challenges.cloudflare.com"],
+        connectSrc: [
+          "'self'", 
+          process.env.FRONTEND_URL, 
+          process.env.ADMIN_URL, 
+          "https://suvix.in",
+          "https://api.suvix.in",
+          "https://cdn.suvix.in",
+          "https://challenges.cloudflare.com",
+          "https://*.amazonaws.com",
+          "https://*.s3.amazonaws.com",
+          "https://*.s3.ap-south-1.amazonaws.com",
+          "https://*.cloudfront.net",
+          "wss:", 
+          "ws:"
+        ].filter(Boolean),
+        frameSrc: ["'self'", "https://api.razorpay.com", "https://challenges.cloudflare.com"],
         formAction: ["'self'", "https://accounts.google.com"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
@@ -90,7 +134,7 @@ export function createApp() {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id", "Idempotency-Key", "X-Service-Secret", "X-User-Id", "X-User-Role"],
   }));
 
   app.use("/api", publicApiLimiter);

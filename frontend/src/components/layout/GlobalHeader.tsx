@@ -20,6 +20,8 @@ import defaultProfile from '../../assets/defaultprofile.png';
 import LottieComponent from 'lottie-react';
 import upgradeLottieAnimation from '../../assets/lottie/upgrade_lottie.json';
 
+import { api } from '../../api/client';
+
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
@@ -32,6 +34,13 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
   const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
+  const [isPayLoading, setIsPayLoading] = useState(false);
+  const [payResultModal, setPayResultModal] = useState<{
+    isOpen: boolean;
+    success: boolean;
+    message: string;
+    data?: any;
+  } | null>(null);
 
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
@@ -422,6 +431,56 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               Test Upload
             </button>
 
+            <button
+              onClick={async () => {
+                setIsPayLoading(true);
+                try {
+                  const testOrderId = `suvix_order_${Date.now()}`;
+                  const idempotencyKey = `idemp_${Date.now()}`;
+                  
+                  // Calls Nginx Gateway -> Java Payment Service: POST /api/v1/payments/create-order
+                  const response = await api.post('/payments/create-order', {
+                    orderId: testOrderId,
+                    amount: 499.00,
+                    currency: 'INR',
+                    clientId: user?.id || 'client_test_user',
+                    editorId: 'editor_test_user',
+                    provider: 'razorpay'
+                  }, {
+                    headers: {
+                      'Idempotency-Key': idempotencyKey
+                    }
+                  });
+
+                  setPayResultModal({
+                    isOpen: true,
+                    success: true,
+                    message: '✅ Java Payment Service Order Created!',
+                    data: response.data
+                  });
+                } catch (error: any) {
+                  setPayResultModal({
+                    isOpen: true,
+                    success: false,
+                    message: error?.response?.data?.message || error.message || 'Failed to call Java Payment Service',
+                    data: error?.response?.data || null
+                  });
+                } finally {
+                  setIsPayLoading(false);
+                }
+              }}
+              disabled={isPayLoading}
+              className="
+                inline-flex items-center justify-center gap-1.5 h-8 px-3.5 mr-2 rounded-full
+                bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50
+                text-[13px] font-bold text-white cursor-pointer
+                shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all shrink-0
+              "
+            >
+              <Zap size={13} className={isPayLoading ? "animate-spin" : ""} />
+              {isPayLoading ? "Calling Java..." : "Test Pay (Java)"}
+            </button>
+
             <button 
               onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
               className="
@@ -565,6 +624,51 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
           </div>
         </div>
       </div>
+
+      {/* Java Payment Service Result Modal */}
+      {payResultModal?.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in">
+          <div className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl animate-in zoom-in-95 ${
+            isDarkMode ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'
+          }`}>
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-800/40">
+              <div className="flex items-center gap-2">
+                <span className={`w-3 h-3 rounded-full ${payResultModal.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <h3 className="text-[16px] font-bold">Java Payment Service Response</h3>
+              </div>
+              <button 
+                onClick={() => setPayResultModal(null)}
+                className="text-zinc-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3">
+              <p className={`text-[14px] font-semibold ${payResultModal.success ? 'text-emerald-400' : 'text-red-400'}`}>
+                {payResultModal.message}
+              </p>
+
+              {payResultModal.data && (
+                <div className={`p-3 rounded-xl font-mono text-[12px] max-h-60 overflow-y-auto ${
+                  isDarkMode ? 'bg-black/50 text-zinc-300' : 'bg-zinc-100 text-zinc-800'
+                }`}>
+                  <pre>{JSON.stringify(payResultModal.data, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setPayResultModal(null)}
+                className="px-5 py-2 rounded-xl text-sm font-semibold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

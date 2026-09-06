@@ -26,9 +26,8 @@ export const requireSubscription = (feature) => {
       const subscription = await prisma.subscription.findFirst({
         where: {
           userId,
-          feature: { in: [feature, "all"] },
-          status: { in: ["active", "trial"] },
-          endDate: { gte: new Date() }
+          status: "active",
+          current_period_end: { gte: new Date() }
         },
         include: { plan: true }
       });
@@ -67,9 +66,8 @@ export const checkSubscription = (feature) => {
         const subscription = await prisma.subscription.findFirst({
           where: {
             userId,
-            feature: { in: [feature, "all"] },
-            status: { in: ["active", "trial"] },
-            endDate: { gte: new Date() }
+            status: "active",
+            current_period_end: { gte: new Date() }
           },
           include: { plan: true }
         });
