@@ -134,7 +134,7 @@ export function createApp() {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id", "Idempotency-Key", "X-Service-Secret", "X-User-Id", "X-User-Role"],
   }));
 
   app.use("/api", publicApiLimiter);
