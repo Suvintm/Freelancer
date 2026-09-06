@@ -65,8 +65,10 @@ public class FeatureEntitlementService {
                 return entitlements;
             }
         } catch (Exception e) {
-            log.warn("Cache deserialization failed for user {}: {}", userId, e.getMessage());
-            redisTemplate.delete(key);
+            log.warn("Cache read/deserialization failed for user {}: {}", userId, e.getMessage());
+            try {
+                redisTemplate.delete(key);
+            } catch (Exception ignored) {}
         }
 
         // 3. Fallback to database

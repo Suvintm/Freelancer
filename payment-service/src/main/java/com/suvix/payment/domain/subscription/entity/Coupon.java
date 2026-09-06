@@ -45,10 +45,12 @@ public class Coupon {
     private int timesRedeemed = 0;
 
     @Builder.Default
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "applicable_roles", columnDefinition = "jsonb", nullable = false)
     private String applicableRoles = "[\"all\"]";
 
     @Builder.Default
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "applicable_plans", columnDefinition = "jsonb", nullable = false)
     private String applicablePlans = "[\"all\"]";
 
