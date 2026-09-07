@@ -19,11 +19,11 @@ export interface Plan {
   isActive: boolean;
   displayOrder?: number;
   // Server-Driven UI (SDUI) ready-to-render feature arrays from DB
-  features: string[] | Record<string, any>;
+  features: string[] | Record<string, unknown>;
   quotas?: { label: string; value: string }[];
-  limits?: Record<string, any>;
-  featureFlags?: Record<string, any>;
-  limitValues?: Record<string, any>;
+  limits?: Record<string, unknown>;
+  featureFlags?: Record<string, unknown>;
+  limitValues?: Record<string, unknown>;
   pricing?: {
     monthly?: { amount: number; currency: string; taxRate: number; totalWithTax: number };
     annual?: { amount: number; monthlyEquivalent: number; savingsPercent: number; currency: string; taxRate: number; totalWithTax: number };
@@ -105,8 +105,8 @@ export interface InvoiceItem {
 
 export interface SubscriptionDashboardData {
   plans: Plan[];
-  activeSubscription?: any;
-  usageSummary?: any;
+  activeSubscription?: UserSubscription | null;
+  usageSummary?: UsageSummary | null;
   role: string;
   currency: string;
 }

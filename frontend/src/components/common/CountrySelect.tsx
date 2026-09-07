@@ -30,7 +30,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
     return detectBrowserCountry();
   });
 
-  const initialDetectedRef = useRef<CountryData>(selectedCountry);
+  const [initialDetectedCountry, setInitialDetectedCountry] = useState<CountryData>(selectedCountry);
   const [isManualOverride, setIsManualOverride] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,17 +44,17 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
       const match = findCountryByName(value) || findCountryByCode(value);
       if (match && match.code !== selectedCountry.code) {
         setSelectedCountry(match);
-        if (match.code !== initialDetectedRef.current.code) {
+        if (match.code !== initialDetectedCountry.code) {
           setIsManualOverride(true);
         }
       }
     }
-  }, [value]);
+  }, [value, selectedCountry.code, initialDetectedCountry.code]);
 
   // Keep track of first detection
   useEffect(() => {
     if (!isDetecting && selectedCountry && !isManualOverride) {
-      initialDetectedRef.current = selectedCountry;
+      setInitialDetectedCountry(selectedCountry);
     }
   }, [isDetecting, selectedCountry, isManualOverride]);
 
@@ -84,7 +84,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
 
   const handleSelect = (c: CountryData) => {
     setSelectedCountry(c);
-    setIsManualOverride(c.code !== initialDetectedRef.current.code);
+    setIsManualOverride(c.code !== initialDetectedCountry.code);
     setIsOpen(false);
     setSearchQuery('');
     onChange(c);
@@ -92,7 +92,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
 
   const handleResetToDetected = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const detected = initialDetectedRef.current;
+    const detected = initialDetectedCountry;
     setSelectedCountry(detected);
     setIsManualOverride(false);
     setIsOpen(false);
@@ -172,7 +172,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
                 type="button"
                 onClick={handleResetToDetected}
                 className="text-[10px] font-bold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-300/80 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
-                title={`Reset to detected country: ${initialDetectedRef.current.name}`}
+                title={`Reset to detected country: ${initialDetectedCountry.name}`}
               >
                 <Edit3 size={10} className="text-zinc-500 shrink-0" />
                 <span>Manual</span>
