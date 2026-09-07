@@ -20,7 +20,7 @@ import java.time.Duration;
 @Configuration
 public class RedisConfig {
 
-    @Value("${spring.data.redis.url:${REDIS_URL:}}")
+    @Value("${spring.data.redis.url:${REDIS_URL:${UPSTASH_REDIS_URL:}}}")
     private String redisUrl;
 
     @Value("${spring.data.redis.host:localhost}")
@@ -35,14 +35,22 @@ public class RedisConfig {
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+        boolean useSsl = false;
 
         if (redisUrl != null && !redisUrl.isBlank()) {
             try {
-                log.info("Configuring Redis using shared REDIS_URL");
-                URI uri = URI.create(redisUrl.startsWith("https://") 
-                    ? redisUrl.replace("https://", "rediss://default:" + System.getenv("REDIS_TOKEN") + "@") + ":6379" 
-                    : redisUrl);
-                
+                log.info("Configuring Redis using shared URL");
+                String cleanUrl = redisUrl.trim();
+                if (cleanUrl.startsWith("https://")) {
+                    String token = System.getenv("REDIS_TOKEN");
+                    cleanUrl = cleanUrl.replace("https://", "rediss://default:" + (token != null ? token : "") + "@") + ":6379";
+                }
+
+                URI uri = URI.create(cleanUrl);
+                if ("rediss".equalsIgnoreCase(uri.getScheme())) {
+                    useSsl = true;
+                }
+
                 redisConfig.setHostName(uri.getHost());
                 redisConfig.setPort(uri.getPort() > 0 ? uri.getPort() : 6379);
 
@@ -77,11 +85,15 @@ public class RedisConfig {
                 .autoReconnect(true)
                 .build();
 
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+        LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration.builder()
                 .commandTimeout(Duration.ofSeconds(5))
-                .clientOptions(clientOptions)
-                .build();
+                .clientOptions(clientOptions);
 
+        if (useSsl || "true".equalsIgnoreCase(System.getenv("REDIS_SSL"))) {
+            clientConfigBuilder.useSsl();
+        }
+
+        LettuceClientConfiguration clientConfig = clientConfigBuilder.build();
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig, clientConfig);
         factory.setValidateConnection(false); // Non-blocking lazy validation
         return factory;
