@@ -31,12 +31,12 @@ describe("💳 Payment & Subscription Gateway Tests", () => {
     it("CRITICAL: should verify Razorpay payment signature math using crypto HMAC-SHA256", () => {
       const orderId = "order_test_abc123";
       const paymentId = "pay_test_xyz456";
-      const secret = "test_razorpay_secret_key_99";
+      const testKey = "mock_key_for_testing";
 
       // Build signature the same way Razorpay standard expects: HMAC-SHA256(orderId + "|" + paymentId)
       const payload = `${orderId}|${paymentId}`;
       const expectedSignature = crypto
-        .createHmac("sha256", secret)
+        .createHmac("sha256", testKey)
         .update(payload)
         .digest("hex");
 
@@ -46,19 +46,19 @@ describe("💳 Payment & Subscription Gateway Tests", () => {
 
       // Recomputed signature must match exactly
       const recomputedSignature = crypto
-        .createHmac("sha256", secret)
+        .createHmac("sha256", testKey)
         .update(payload)
         .digest("hex");
       expect(recomputedSignature).toBe(expectedSignature);
     });
 
     it("CRITICAL: should reject webhook payloads with tampered bodies", () => {
-      const secret = "whsec_test_webhook_secret_key";
+      const testKey = "mock_key_for_testing";
       const rawBody = JSON.stringify({ event: "order.paid", id: "evt_123" });
-      const signature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+      const signature = crypto.createHmac("sha256", testKey).update(rawBody).digest("hex");
 
       const tamperedBody = JSON.stringify({ event: "order.paid", id: "evt_123", amount: 0 });
-      const tamperedSignature = crypto.createHmac("sha256", secret).update(tamperedBody).digest("hex");
+      const tamperedSignature = crypto.createHmac("sha256", testKey).update(tamperedBody).digest("hex");
 
       expect(tamperedSignature).not.toBe(signature);
     });
