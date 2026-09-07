@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AtSign,
-  Phone,
   Globe,
   Shield,
   ArrowRight,
@@ -23,8 +22,11 @@ import { authService } from '../../api/services/auth.service';
 import { api } from '../../api/client';
 import { OnboardingSyncOverlay } from '../../components/onboarding/OnboardingSyncOverlay';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { PhoneCountryInput } from '../../components/common/PhoneCountryInput';
+import { CountrySelect } from '../../components/common/CountrySelect';
+import { detectBrowserCountry, findCountryByName } from '../../data/countries';
+
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
-const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'United Arab Emirates', 'Saudi Arabia', 'Singapore'];
 
 /**
  * WEB EQUIVALENT OF MOBILE'S complete-profile.tsx
@@ -51,11 +53,25 @@ export default function CompleteProfile() {
     username: '',
     phone: '',
     motherTongue: 'English',
-    country: 'India',
+    country: detectBrowserCountry().name,
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
+  // Zero-cost auto-detect country via Cloudflare edge header
+  useEffect(() => {
+    let isMounted = true;
+    authService.detectCountry().then((data) => {
+      if (isMounted && data?.countryName) {
+        setForm((prev) => ({
+          ...prev,
+          country: data.countryName,
+        }));
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
@@ -140,6 +156,8 @@ export default function CompleteProfile() {
 
       let payload: Record<string, unknown> | FormData;
 
+      const prefCurr = findCountryByName(form.country)?.currency || (form.country === 'India' ? 'INR' : 'USD');
+
       if (profilePicture) {
         const formData = new FormData();
         formData.append('fullName', form.fullName.trim() || socialProfile!.name);
@@ -148,6 +166,7 @@ export default function CompleteProfile() {
         formData.append('phone', form.phone);
         formData.append('motherTongue', form.motherTongue);
         formData.append('country', form.country);
+        formData.append('preferredCurrency', prefCurr);
         formData.append('googleId', socialProfile!.googleId);
         formData.append('authProvider', 'google');
         formData.append('categoryId', (tempSignupData?.categoryId as string) || '');
@@ -179,6 +198,7 @@ export default function CompleteProfile() {
           phone: form.phone,
           motherTongue: form.motherTongue,
           country: form.country,
+          preferredCurrency: prefCurr,
           googleId: socialProfile!.googleId,
           authProvider: 'google',
           categoryId: tempSignupData?.categoryId ?? null,
@@ -603,18 +623,18 @@ export default function CompleteProfile() {
                 {/* Mobile Number */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-zinc-700">Mobile Number</label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={form.phone}
-                      onChange={handleChange}
-                      placeholder="+91 99999 99999"
-                      required
-                      className="w-full bg-white border border-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none transition-all"
-                    />
-                  </div>
+                  <PhoneCountryInput
+                    value={form.phone}
+                    country={form.country}
+                    onChange={(fullPhone, c) => {
+                      setForm((prev) => ({ ...prev, phone: fullPhone, country: c.name }));
+                    }}
+                    onCountryChange={(c) => {
+                      setForm((prev) => ({ ...prev, country: c.name }));
+                    }}
+                    required
+                    variant="suvix-light"
+                  />
                 </div>
 
                 {/* Language & Country Grid */}
@@ -640,21 +660,17 @@ export default function CompleteProfile() {
 
                   {/* Country */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-zinc-700">Country</label>
-                    <div className="relative">
-                      <Globe className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <select
-                        name="country"
-                        value={form.country}
-                        onChange={handleChange}
-                        className="w-full bg-white border border-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 rounded-xl pl-10 pr-8 py-2.5 text-sm text-zinc-900 focus:outline-none transition-all cursor-pointer appearance-none"
-                      >
-                        {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-zinc-400">
-                        <Globe size={13} />
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-zinc-700">Country</label>
+                      <span className="text-[10px] text-zinc-400 font-medium">Auto-detected</span>
                     </div>
+                    <CountrySelect
+                      value={form.country}
+                      onChange={(c) => {
+                        setForm((prev) => ({ ...prev, country: c.name }));
+                      }}
+                      variant="suvix-light"
+                    />
                   </div>
                 </div>
               </div>

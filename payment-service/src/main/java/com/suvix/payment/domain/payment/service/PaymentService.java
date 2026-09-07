@@ -148,25 +148,35 @@ public class PaymentService {
         boolean isAnnual = "annual".equalsIgnoreCase(request.getBillingCycle()) ||
                 "year".equalsIgnoreCase(request.getBillingInterval());
 
+        String targetCurrency = (request.getCurrency() != null && !request.getCurrency().isBlank()) 
+                ? request.getCurrency().toUpperCase() 
+                : "INR";
+        boolean isUsd = "USD".equalsIgnoreCase(targetCurrency);
+        String currencySymbol = isUsd ? "$" : "₹";
+
+        BigDecimal monthlyPrice = plan.getMonthlyPriceForCurrency(targetCurrency);
+        BigDecimal annualPrice = plan.getAnnualPriceForCurrency(targetCurrency);
+
         System.out.println("  📋 Plan Found: [" + plan.getId() + "] " + plan.getName() + " (Tier " + plan.getTierLevel() + ")");
         System.out.println("     • Target Role:       " + plan.getTargetRole());
+        System.out.println("     • Target Currency:   " + targetCurrency);
         System.out.println("     • Billing Interval:  " + (isAnnual ? "ANNUAL (Yearly)" : "MONTHLY"));
-        System.out.println("     • Base Monthly Price: ₹" + plan.getPriceMonthly());
-        System.out.println("     • Base Annual Price:  ₹" + plan.getPriceAnnual());
+        System.out.println("     • Base Monthly Price: " + currencySymbol + monthlyPrice);
+        System.out.println("     • Base Annual Price:  " + currencySymbol + annualPrice);
 
         // Zero-Trust Server Calculation: Base Subtotal
         BigDecimal baseSubtotal;
         if (isAnnual) {
-            if (plan.getPriceAnnual() != null && plan.getPriceAnnual().compareTo(BigDecimal.ZERO) > 0) {
-                baseSubtotal = plan.getPriceAnnual();
+            if (annualPrice != null && annualPrice.compareTo(BigDecimal.ZERO) > 0) {
+                baseSubtotal = annualPrice;
             } else {
-                baseSubtotal = plan.getPriceMonthly().multiply(BigDecimal.valueOf(12)).multiply(BigDecimal.valueOf(0.8));
+                baseSubtotal = monthlyPrice.multiply(BigDecimal.valueOf(12)).multiply(BigDecimal.valueOf(0.8)).setScale(2, RoundingMode.HALF_UP);
             }
         } else {
-            baseSubtotal = plan.getPriceMonthly();
+            baseSubtotal = monthlyPrice;
         }
 
-        System.out.println("     • Calculated Subtotal: ₹" + baseSubtotal);
+        System.out.println("     • Calculated Subtotal: " + currencySymbol + baseSubtotal);
 
         // Enterprise Zero-Trust Guard: Prevent duplicate purchases of the same active plan
         if (userId != null && !userId.isBlank()) {
@@ -181,7 +191,7 @@ public class PaymentService {
             }
         }
 
-        // Handle Free Starter Tier Directly (0 INR)
+        // Handle Free Starter Tier Directly (0 Amount)
         if (baseSubtotal.compareTo(BigDecimal.ZERO) == 0 || plan.getTierLevel() == 0) {
             System.out.println("  🎁 [Free Starter Activation] No payment required. Activating immediately.");
             Instant now = Instant.now();
@@ -190,6 +200,7 @@ public class PaymentService {
             Subscription freeSub = Subscription.builder()
                     .userId(userId)
                     .plan(plan)
+                    .currency(targetCurrency)
                     .status(Subscription.SubscriptionStatus.active)
                     .provider(Subscription.PaymentProvider.free_starter)
                     .currentPeriodStart(now)
@@ -201,6 +212,7 @@ public class PaymentService {
                             "planId", plan.getId(),
                             "planName", plan.getName(),
                             "tierLevel", plan.getTierLevel(),
+                            "currency", targetCurrency,
                             "billingCycle", "lifetime",
                             "activatedAt", now.toString()
                     )))
@@ -213,7 +225,7 @@ public class PaymentService {
                     .subscriptionId(freeSub.getId())
                     .amount(BigDecimal.ZERO)
                     .amountInPaise(0L)
-                    .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
+                    .currency(targetCurrency)
                     .status("active")
                     .message("Free Starter tier activated successfully")
                     .build();
@@ -237,7 +249,7 @@ public class PaymentService {
             if (couponRes.isValid()) {
                 appliedCouponCode = couponRes.getCode();
                 couponDiscountAmount = couponRes.getDiscountAmount();
-                System.out.println("  ✅ Coupon Validated: " + appliedCouponCode + " -> Discount: ₹" + couponDiscountAmount);
+                System.out.println("  ✅ Coupon Validated: " + appliedCouponCode + " -> Discount: " + currencySymbol + couponDiscountAmount);
             } else {
                 System.out.println("  ⚠️ Coupon Invalid: " + couponRes.getMessage());
             }
@@ -245,33 +257,45 @@ public class PaymentService {
 
         BigDecimal discountedSubtotal = baseSubtotal.subtract(couponDiscountAmount).max(BigDecimal.ZERO);
 
-        // Indian GST 18% (SAC 998439) with CGST 9% and SGST 9%
-        BigDecimal gstAmount = discountedSubtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal cgst = gstAmount.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-        BigDecimal sgst = gstAmount.subtract(cgst);
-        BigDecimal totalAmount = discountedSubtotal.add(gstAmount).setScale(2, RoundingMode.HALF_UP);
+        // Tax Calculation: 18% GST for INR, 0% for USD (Export of Services)
+        BigDecimal gstAmount = BigDecimal.ZERO;
+        BigDecimal cgst = BigDecimal.ZERO;
+        BigDecimal sgst = BigDecimal.ZERO;
+        BigDecimal totalAmount = discountedSubtotal;
+
+        if (!isUsd) {
+            gstAmount = discountedSubtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
+            cgst = gstAmount.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
+            sgst = gstAmount.subtract(cgst);
+            totalAmount = discountedSubtotal.add(gstAmount).setScale(2, RoundingMode.HALF_UP);
+        }
+
         long amountInPaise = totalAmount.multiply(BigDecimal.valueOf(100)).longValue();
 
         String receiptId = "sub_" + (userId.length() > 6 ? userId.substring(userId.length() - 6) : userId)
                 + "_" + (System.currentTimeMillis() % 100000000);
 
         System.out.println("  ┌────────────────────────────────────────────────────────┐");
-        System.out.println("  │ 🧾 [Invoice Tax Breakdown - SAC 998439]                │");
-        System.out.println("  │ Base Subtotal:        ₹" + String.format("%-10s", baseSubtotal) + "                      │");
-        System.out.println("  │ Coupon Discount:    - ₹" + String.format("%-10s", couponDiscountAmount) + "                      │");
-        System.out.println("  │ Taxable Amount:       ₹" + String.format("%-10s", discountedSubtotal) + "                      │");
-        System.out.println("  │ CGST (9%):          + ₹" + String.format("%-10s", cgst) + "                      │");
-        System.out.println("  │ SGST (9%):          + ₹" + String.format("%-10s", sgst) + "                      │");
-        System.out.println("  │ Total GST (18%):    + ₹" + String.format("%-10s", gstAmount) + "                      │");
-        System.out.println("  │ Total Payable:        ₹" + String.format("%-10s", totalAmount) + " (" + amountInPaise + " paise)       │");
+        System.out.println("  │ 🧾 [Invoice Tax Breakdown - " + (isUsd ? "USD Export" : "SAC 998439") + "]                │");
+        System.out.println("  │ Base Subtotal:        " + currencySymbol + String.format("%-10s", baseSubtotal) + "                      │");
+        System.out.println("  │ Coupon Discount:    - " + currencySymbol + String.format("%-10s", couponDiscountAmount) + "                      │");
+        System.out.println("  │ Taxable Amount:       " + currencySymbol + String.format("%-10s", discountedSubtotal) + "                      │");
+        if (!isUsd) {
+            System.out.println("  │ CGST (9%):          + ₹" + String.format("%-10s", cgst) + "                      │");
+            System.out.println("  │ SGST (9%):          + ₹" + String.format("%-10s", sgst) + "                      │");
+            System.out.println("  │ Total GST (18%):    + ₹" + String.format("%-10s", gstAmount) + "                      │");
+        }
+        System.out.println("  │ Total Payable:        " + currencySymbol + String.format("%-10s", totalAmount) + " (" + amountInPaise + " cents/paise) │");
         System.out.println("  └────────────────────────────────────────────────────────┘");
 
         // Override request with server-calculated amounts
         request.setAmount(totalAmount);
         request.setOrderId(receiptId);
-        request.setCurrency("INR");
+        request.setCurrency(targetCurrency);
 
-        PaymentProvider provider = providerFactory.getProvider(request.getProvider());
+        PaymentProvider provider = (request.getProvider() != null && !request.getProvider().isBlank())
+                ? providerFactory.getProvider(request.getProvider())
+                : providerFactory.getProviderByCurrency(targetCurrency);
         PaymentResponse providerResponse = provider.createOrder(request, userId);
 
         // Build Immutable Plan Snapshot JSONB
@@ -279,11 +303,12 @@ public class PaymentService {
         snapshotMap.put("planId", plan.getId());
         snapshotMap.put("planName", plan.getName());
         snapshotMap.put("planTier", plan.getTierLevel());
+        snapshotMap.put("currency", targetCurrency);
         snapshotMap.put("billingCycle", isAnnual ? "annual" : "monthly");
         snapshotMap.put("baseSubtotal", baseSubtotal);
         snapshotMap.put("couponDiscountAmount", couponDiscountAmount);
         snapshotMap.put("appliedCoupon", appliedCouponCode != null ? appliedCouponCode : "none");
-        snapshotMap.put("gstRate", 18);
+        snapshotMap.put("gstRate", isUsd ? 0 : 18);
         snapshotMap.put("gstAmount", gstAmount);
         snapshotMap.put("cgst", cgst);
         snapshotMap.put("sgst", sgst);
@@ -310,9 +335,10 @@ public class PaymentService {
         Subscription pendingSubscription = Subscription.builder()
                 .userId(userId)
                 .plan(plan)
+                .currency(targetCurrency)
                 .status(Subscription.SubscriptionStatus.payment_pending)
-                .provider(Subscription.PaymentProvider.razorpay)
-                .providerSubscriptionId(providerResponse.getRazorpayOrderId())
+                .provider(Subscription.PaymentProvider.valueOf(provider.getProviderName().toLowerCase()))
+                .providerSubscriptionId(providerResponse.getRazorpayOrderId() != null ? providerResponse.getRazorpayOrderId() : providerResponse.getOrderId())
                 .currentPeriodStart(startDate)
                 .currentPeriodEnd(endDate)
                 .baseAmount(baseSubtotal)
@@ -323,7 +349,7 @@ public class PaymentService {
 
         pendingSubscription = subscriptionRepository.save(pendingSubscription);
         System.out.println("  💾 [PostgreSQL Save] Created pending subscription record: ID=" + pendingSubscription.getId()
-                + " | Status=payment_pending | RazorpayOrderId=" + providerResponse.getRazorpayOrderId());
+                + " | Currency=" + targetCurrency + " | Status=payment_pending | ProviderOrderId=" + pendingSubscription.getProviderSubscriptionId());
 
         // Build response
         Map<String, Object> planInfo = Map.of(

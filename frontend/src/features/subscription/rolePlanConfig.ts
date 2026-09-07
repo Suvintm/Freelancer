@@ -30,6 +30,7 @@ export interface PlanCardPresenter {
   tierLevel: number;
   priceMonthly: number;
   priceAnnual: number;
+  currency?: string;
   isPopular?: boolean;
   badge?: string;
   buttonText: string;

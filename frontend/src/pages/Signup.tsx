@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Phone,
   Globe,
   AtSign,
   Loader2,
@@ -30,10 +29,12 @@ import type { RootState } from '../store';
 import { authService } from '../api/services/auth.service';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 import { isAccessAllowed, RESTRICTED_ACCESS_MESSAGE } from '../config/accessControl.config';
+import { PhoneCountryInput } from '../components/common/PhoneCountryInput';
+import { CountrySelect } from '../components/common/CountrySelect';
+import { detectBrowserCountry, findCountryByName } from '../data/countries';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
-const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'United Arab Emirates', 'Saudi Arabia', 'Singapore'];
 
 // ── Step progress indicator ───────────────────────────────────────────────────
 // Shows user where they are in the registration flow
@@ -107,7 +108,7 @@ export default function Signup() {
     phone: '',
     password: '',
     motherTongue: 'English',
-    country: 'India',
+    country: detectBrowserCountry().name,
     website: tempSignupData?.companyWebsite || ''
   });
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +123,20 @@ export default function Signup() {
   const navigate = useNavigate();
   const isBrandClient = roleSlug === 'brand' || roleSlug === 'social_promoter' || tempSignupData?.categorySlug === 'brand';
   const isSocialUser = authMethod === 'google' && !!socialProfile;
+
+  // Zero-Cost Edge + MaxMind Country Auto-detection
+  useEffect(() => {
+    let isMounted = true;
+    authService.detectCountry().then((data) => {
+      if (isMounted && data?.countryName) {
+        setForm((prev) => {
+          // If country hasn't been manually altered to something custom, sync with edge detection
+          return { ...prev, country: data.countryName };
+        });
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   // 🔐 PRODUCTION GUARD: Signup requires a role to have been selected first.
   useEffect(() => {
@@ -245,6 +260,7 @@ export default function Signup() {
         discoveryToken: tempSignupData?.discoveryToken ?? null,
         googleId: isSocialUser ? socialProfile?.googleId : undefined,
         authProvider: isSocialUser ? 'google' : 'local',
+        preferredCurrency: findCountryByName(form.country)?.currency || (form.country === 'India' ? 'INR' : 'USD'),
         profilePicture,
         pushToken: enableNotifications ? 'web_push_token_placeholder' : undefined,
         turnstileToken
@@ -456,8 +472,22 @@ export default function Signup() {
                 </div>
 
                 {/* Phone + Language/Website */}
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Phone" name="phone" placeholder="+91..." icon={<Phone size={16} />} value={form.phone} onChange={handleChange} required />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Phone Number</label>
+                    <PhoneCountryInput
+                      value={form.phone}
+                      country={form.country}
+                      onChange={(fullPhone, c) => {
+                        setForm((prev) => ({ ...prev, phone: fullPhone, country: c.name }));
+                      }}
+                      onCountryChange={(c) => {
+                        setForm((prev) => ({ ...prev, country: c.name }));
+                      }}
+                      required
+                      variant="suvix-dark"
+                    />
+                  </div>
 
                   {isBrandClient ? (
                     <InputField 
@@ -489,18 +519,17 @@ export default function Signup() {
 
                 {/* Country */}
                 <div className="space-y-1">
-                  <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Country</label>
-                  <div className="relative">
-                    <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <select
-                      name="country"
-                      value={form.country}
-                      onChange={handleChange}
-                      className="suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400 appearance-none"
-                    >
-                      {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                  <div className="flex items-center justify-between">
+                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Country</label>
+                    <span className="text-[10px] text-zinc-400 font-medium">Auto-detected</span>
                   </div>
+                  <CountrySelect
+                    value={form.country}
+                    onChange={(c) => {
+                      setForm((prev) => ({ ...prev, country: c.name }));
+                    }}
+                    variant="suvix-dark"
+                  />
                 </div>
 
                 {/* YouTube Channel Preview (yt_influencer only) */}

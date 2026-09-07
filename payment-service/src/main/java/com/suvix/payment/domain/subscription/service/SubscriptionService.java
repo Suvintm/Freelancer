@@ -156,21 +156,29 @@ public class SubscriptionService {
                 buttonText = "user".equalsIgnoreCase(plan.getTargetRole()) ? "Join Free" : "Get Started Free";
             }
 
-            BigDecimal monthlyAmount = plan.getPriceMonthly();
-            BigDecimal annualAmount = (plan.getPriceAnnual() != null && plan.getPriceAnnual().compareTo(BigDecimal.ZERO) > 0)
-                    ? plan.getPriceAnnual()
-                    : monthlyAmount.multiply(BigDecimal.valueOf(12)).multiply(BigDecimal.valueOf(0.8));
+            BigDecimal monthlyAmount = plan.getMonthlyPriceForCurrency(targetCurrency);
+            BigDecimal annualAmount = plan.getAnnualPriceForCurrency(targetCurrency);
+            if (annualAmount == null || annualAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                if (monthlyAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    annualAmount = monthlyAmount.multiply(BigDecimal.valueOf(12)).multiply(BigDecimal.valueOf(0.8)).setScale(2, RoundingMode.HALF_UP);
+                } else {
+                    annualAmount = BigDecimal.ZERO;
+                }
+            }
 
-            BigDecimal gstRate = new BigDecimal("18.00");
-            BigDecimal monthlyTotalWithTax = monthlyAmount.multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal annualTotalWithTax = annualAmount.multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal monthlyEquivalent = annualAmount.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
+            boolean isUsd = "USD".equalsIgnoreCase(targetCurrency);
+            BigDecimal gstRate = isUsd ? BigDecimal.ZERO : new BigDecimal("18.00");
+            BigDecimal monthlyTotalWithTax = isUsd ? monthlyAmount : monthlyAmount.multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal annualTotalWithTax = isUsd ? annualAmount : annualAmount.multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal monthlyEquivalent = annualAmount.compareTo(BigDecimal.ZERO) > 0
+                    ? annualAmount.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
 
             Map<String, Object> monthlyPricing = Map.of(
                     "amount", monthlyAmount,
                     "currency", targetCurrency,
                     "taxRate", gstRate,
-                    "taxInclusive", false,
+                    "taxInclusive", isUsd,
                     "totalWithTax", monthlyTotalWithTax
             );
 
@@ -180,7 +188,7 @@ public class SubscriptionService {
                     "savingsPercent", 20,
                     "currency", targetCurrency,
                     "taxRate", gstRate,
-                    "taxInclusive", false,
+                    "taxInclusive", isUsd,
                     "totalWithTax", annualTotalWithTax
             );
 
@@ -189,9 +197,10 @@ public class SubscriptionService {
                     "annual", annualPricing
             );
 
+            String currencySymbol = isUsd ? "$" : "₹";
             System.out.println("     • Plan: [" + plan.getId() + "] " + plan.getName()
-                    + " | Monthly: ₹" + monthlyAmount + " (₹" + monthlyTotalWithTax + " incl. GST)"
-                    + " | Annual: ₹" + annualAmount + " (₹" + annualTotalWithTax + " incl. GST)"
+                    + " | Monthly: " + currencySymbol + monthlyAmount + " (" + currencySymbol + monthlyTotalWithTax + (isUsd ? "" : " incl. GST") + ")"
+                    + " | Annual: " + currencySymbol + annualAmount + " (" + currencySymbol + annualTotalWithTax + (isUsd ? "" : " incl. GST") + ")"
                     + " | Features: " + featureList.size());
 
             return PlanPresenterDto.builder()

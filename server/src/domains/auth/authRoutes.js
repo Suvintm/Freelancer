@@ -18,6 +18,7 @@ import {
   verifyEmail,
   resendVerificationCode
 } from "./controllers/auth.controller.js";
+import { detectCountry } from "./controllers/countryGeoController.js";
 import { authenticate } from "../../shared/middleware/auth.middleware.js";
 
 import { authLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
@@ -40,6 +41,7 @@ router.post("/validate-signup", validateSignup);
 router.post("/validate-vault", validateVault); // Sanitizer for mobile app
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerificationCode);
+router.get("/detect-country", detectCountry);
 
 // ============ PRIVATE ROUTES ============
 router.get("/me", authenticate, getMe);

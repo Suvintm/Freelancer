@@ -78,6 +78,8 @@ export interface SignupPayload {
   fullName?: string;
   phone?: string;
   motherTongue?: string;
+  country?: string;
+  preferredCurrency?: string;
   categoryId?: string;
   categorySlug?: string;
   role?: string;

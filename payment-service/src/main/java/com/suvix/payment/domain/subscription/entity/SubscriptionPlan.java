@@ -57,6 +57,14 @@ public class SubscriptionPlan {
     private BigDecimal priceAnnual = BigDecimal.ZERO;
 
     @Builder.Default
+    @Column(name = "price_monthly_usd", nullable = false, precision = 19, scale = 4)
+    private BigDecimal priceMonthlyUsd = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "price_annual_usd", nullable = false, precision = 19, scale = 4)
+    private BigDecimal priceAnnualUsd = BigDecimal.ZERO;
+
+    @Builder.Default
     @Column(name = "trial_days", nullable = false)
     private int trialDays = 0;
 
@@ -109,6 +117,20 @@ public class SubscriptionPlan {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    public BigDecimal getMonthlyPriceForCurrency(String currency) {
+        if (currency != null && "USD".equalsIgnoreCase(currency)) {
+            return priceMonthlyUsd != null ? priceMonthlyUsd : BigDecimal.ZERO;
+        }
+        return priceMonthly != null ? priceMonthly : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getAnnualPriceForCurrency(String currency) {
+        if (currency != null && "USD".equalsIgnoreCase(currency)) {
+            return priceAnnualUsd != null ? priceAnnualUsd : BigDecimal.ZERO;
+        }
+        return priceAnnual != null ? priceAnnual : BigDecimal.ZERO;
+    }
 
     public enum BillingInterval {
         month, year, week

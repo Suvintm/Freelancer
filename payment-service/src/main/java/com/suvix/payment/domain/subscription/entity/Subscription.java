@@ -139,6 +139,10 @@ public class Subscription {
     @Column(name = "total_amount", precision = 19, scale = 4)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    @Builder.Default
+    @Column(nullable = false, length = 3)
+    private String currency = "INR";
+
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "plan_snapshot", columnDefinition = "jsonb")
     private String planSnapshot;

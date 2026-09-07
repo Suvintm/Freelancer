@@ -57,4 +57,13 @@ export const authService = {
     const res = await api.post('/auth/resend-verification', { email });
     return res.data;
   },
+
+  detectCountry: async () => {
+    try {
+      const res = await api.get('/auth/detect-country');
+      return res.data;
+    } catch {
+      return null;
+    }
+  },
 };
