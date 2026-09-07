@@ -245,8 +245,8 @@ export default function Subscription() {
   }, [selectedRole]);
 
   const displayPlans = useMemo(() => {
-    return mergeBackendPlansWithPresenter(plans, selectedRole);
-  }, [plans, selectedRole]);
+    return mergeBackendPlansWithPresenter(plans, selectedRole, userCurrency);
+  }, [plans, selectedRole, userCurrency]);
 
   const isUsd = useMemo(() => {
     return (displayPlans[0]?.currency || userCurrency || 'INR').toUpperCase() === 'USD';
@@ -289,6 +289,11 @@ export default function Subscription() {
       return;
     }
 
+    if (displayPlan.isOfflineFallback && displayPlan.tierLevel > 1) {
+      triggerToast('Service is currently synchronizing with the payment cluster. Please retry in a few moments.', 'info');
+      return;
+    }
+
     // Guard against re-purchasing active tier
     if (activePlan && activePlan.tierLevel === displayPlan.tierLevel && displayPlan.tierLevel > 0) {
       triggerToast(`You are already subscribed to the ${displayPlan.name} plan!`, 'info');
@@ -313,7 +318,7 @@ export default function Subscription() {
       return;
     }
 
-    if (displayPlan.priceMonthly >= 2500) {
+    if (displayPlan.priceMonthly && displayPlan.priceMonthly >= 2500) {
       window.open(
         'mailto:contact@suvix.in?subject=' + encodeURIComponent(displayPlan.name + ' Enterprise Plan Inquiry'),
         '_blank'
@@ -827,7 +832,9 @@ export default function Subscription() {
           <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3.5 sm:gap-4 items-stretch`}>
             {displayPlans.map((displayPlan) => {
               const Icon = displayPlan.icon;
+              const isOffline = Boolean(displayPlan.isOfflineFallback && displayPlan.tierLevel > 1);
               const price = billingCycle === 'annual' ? displayPlan.priceAnnual : displayPlan.priceMonthly;
+              const formattedPrice = price !== null && price !== undefined ? `${currencySymbol}${price}` : '--';
               
               const isCurrentPlan = activePlan && (
                 (activePlan.planId && activePlan.planId === displayPlan.id) ||
@@ -839,7 +846,9 @@ export default function Subscription() {
               const isDowngrade = activePlan && activePlan.tierLevel && displayPlan.tierLevel < activePlan.tierLevel;
 
               let buttonLabel = displayPlan.buttonText;
-              if (isCurrentPlan) {
+              if (isOffline) {
+                buttonLabel = 'Unavailable';
+              } else if (isCurrentPlan) {
                 buttonLabel = 'Current Plan';
               } else if (isUpgrade) {
                 buttonLabel = 'Upgrade';
@@ -911,8 +920,10 @@ export default function Subscription() {
 
                   {/* Price */}
                   <div className="flex items-baseline gap-1 mt-1.5 mb-2">
-                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">{currencySymbol}{price}</span>
-                    <span className="text-[10px] font-normal text-zinc-400">/ month</span>
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">{formattedPrice}</span>
+                    {price !== null && price !== undefined && (
+                      <span className="text-[10px] font-normal text-zinc-400">/ month</span>
+                    )}
                   </div>
 
                   {/* Quota Highlights Pills */}
@@ -943,13 +954,15 @@ export default function Subscription() {
                 {/* Action CTA Button */}
                 <button
                   onClick={() => handlePlanCardClick(displayPlan)}
-                  disabled={isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
-                  className={`w-full py-2 rounded-full text-xs font-medium transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 ${
-                    isCurrentPlan
+                  disabled={isOffline || isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
+                  className={`w-full py-2 rounded-full text-xs font-medium transition-all shadow-md flex items-center justify-center gap-1.5 ${
+                    isOffline
+                      ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed'
+                      : isCurrentPlan
                       ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default'
                       : displayPlan.isPopular
-                      ? 'bg-white text-black hover:bg-zinc-200'
-                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/15'
+                      ? 'bg-white text-black hover:bg-zinc-200 active:scale-95'
+                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/15 active:scale-95'
                   }`}
                 >
                   {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
