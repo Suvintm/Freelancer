@@ -64,8 +64,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onSuccess,
   isDarkMode = false,
 }) => {
+  const isUsd = (plan.currency || '').toUpperCase() === 'USD';
+  const currencySymbol = isUsd ? '$' : '₹';
+
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'annual'>(initialBillingCycle);
-  const [selectedGateway, setSelectedGateway] = useState<'razorpay' | 'stripe' | 'wallet'>('razorpay');
+  const [selectedGateway, setSelectedGateway] = useState<'razorpay' | 'stripe' | 'wallet'>(
+    isUsd ? 'stripe' : 'razorpay'
+  );
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -103,8 +108,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Sync initial cycle & reset machine on open
   useEffect(() => {
     setSelectedCycle(initialBillingCycle);
+    if ((plan.currency || '').toUpperCase() === 'USD') {
+      setSelectedGateway('stripe');
+    }
     resetState();
-  }, [initialBillingCycle, isOpen, resetState]);
+  }, [initialBillingCycle, isOpen, plan?.currency, resetState]);
 
   // Lock body scroll when modal is open to prevent background page scrolling
   useEffect(() => {
@@ -145,7 +153,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen || !plan) return null;
 
-  // Exact Rupee Financial Calculations
+  // Exact Financial Calculations
   const baseMonthlyPrice = selectedCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
   const billingMonths = selectedCycle === 'annual' ? 12 : 1;
   const normalAnnualSubtotal = plan.priceMonthly * 12;
@@ -159,11 +167,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const discountedSubtotal = Math.max(0, actualSubtotal - couponDiscountAmount);
 
-  // Indian GST 18% (SAC 998439)
-  const gstRate = 0.18;
-  const gstAmount = Math.round(discountedSubtotal * gstRate * 100) / 100;
-
-
+  // Indian GST 18% (SAC 998439) for INR, 0% for USD
+  const gstRate = isUsd ? 0 : 0.18;
+  const gstAmount = isUsd ? 0 : Math.round(discountedSubtotal * gstRate * 100) / 100;
 
   const prorationCredit = prorationQuote?.unusedCredit || 0;
   const totalPayable = Math.max(0, Math.round((discountedSubtotal + gstAmount - prorationCredit) * 100) / 100);
@@ -214,22 +220,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setError(null);
     setCreatingOrder();
 
-    const idempotencyKey = `idemp_sub_${user?.id || user?._id || 'guest'}_${plan.id}_${selectedCycle}_${Date.now()}`;
+    const currentUserId = user?.id || user?._id;
+    const currentUserName = user?.name || user?.fullName || user?.username || 'SuviX Creator';
+    const currentUserEmail = user?.email || '';
+    const idempotencyKey = `idemp_sub_${currentUserId || 'guest'}_${plan.id}_${selectedCycle}_${Date.now()}`;
 
     try {
       if (selectedGateway === 'razorpay') {
         console.log('🚀 [SuviX Checkout] Step 1: Requesting Zero-Trust Order from Java Backend...');
         console.log('   • Plan ID:', plan.id, '| Cycle:', selectedCycle, '| Coupon:', appliedCoupon?.code || 'None');
 
-        const currentUserId = user?.id || user?._id;
-        const currentUserName = user?.name || user?.fullName || user?.username || 'SuviX Creator';
-        const currentUserEmail = user?.email || '';
+        const orderCurrency = plan.currency || (isUsd ? 'USD' : 'INR');
         const orderData = await subscriptionService.createPaymentOrder(
           {
             planId: plan.id,
             billingCycle: selectedCycle,
             amount: totalPayable,
-            currency: 'INR',
+            currency: orderCurrency,
             targetRole: role,
             couponCode: appliedCoupon?.code,
             userId: currentUserId,
@@ -250,7 +257,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         console.log('📦 [SuviX Checkout] Step 2: Order Created Successfully!');
         console.log('   • Razorpay Order ID:', razorpayOrderId);
         console.log('   • Pending Subscription ID:', createdSubscriptionId);
-        console.log('   • Amount in Paise:', orderData.amountInPaise);
+        console.log('   • Amount in Paise/Cents:', orderData.amountInPaise);
 
         setAwaitingPayment(razorpayOrderId);
 
@@ -260,7 +267,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             const options = {
               key: razorpayKey,
               amount: orderData.amountInPaise || Math.round(totalPayable * 100),
-              currency: 'INR',
+              currency: orderCurrency,
               name: 'SuviX Platform',
               description: `${plan.name} (${selectedCycle.toUpperCase()} BILLING)`,
               image: blackbglogoImg,
@@ -754,7 +761,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                   {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
                     <span className="text-[10px] px-2 py-0.5 rounded-md font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 font-mono">
-                      Save ₹{exactAnnualSavings.toLocaleString()}/yr
+                      Save {currencySymbol}{exactAnnualSavings.toLocaleString()}/yr
                     </span>
                   )}
                 </div>
@@ -772,7 +779,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    Monthly (₹{plan.priceMonthly})
+                    Monthly ({currencySymbol}{plan.priceMonthly})
                   </button>
                   <button
                     type="button"
@@ -783,7 +790,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    <span>Annual (₹{plan.priceAnnual}/mo)</span>
+                    <span>Annual ({currencySymbol}{plan.priceAnnual}/mo)</span>
                     <span className="text-[9px] font-semibold text-emerald-500 font-mono">20% OFF</span>
                   </button>
                 </div>
@@ -820,11 +827,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <div className="text-right">
                     {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
                       <span className="line-through text-[10px] mr-1.5 font-mono text-zinc-500">
-                        ₹{normalAnnualSubtotal.toFixed(2)}
+                        {currencySymbol}{normalAnnualSubtotal.toFixed(2)}
                       </span>
                     )}
                     <span className="font-mono font-medium text-zinc-100">
-                      ₹{actualSubtotal.toFixed(2)}
+                      {currencySymbol}{actualSubtotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -832,33 +839,35 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
                   <div className="flex justify-between text-emerald-500 font-medium">
                     <span>Annual 20% Discount:</span>
-                    <span className="font-mono">- ₹{exactAnnualSavings.toFixed(2)}</span>
+                    <span className="font-mono">- {currencySymbol}{exactAnnualSavings.toFixed(2)}</span>
                   </div>
                 )}
 
                 {couponDiscountAmount > 0 && (
                   <div className="flex justify-between text-emerald-500 font-medium">
                     <span>Promo Code ({appliedCoupon?.code}):</span>
-                    <span className="font-mono">- ₹{couponDiscountAmount.toFixed(2)}</span>
+                    <span className="font-mono">- {currencySymbol}{couponDiscountAmount.toFixed(2)}</span>
                   </div>
                 )}
 
                 {prorationCredit > 0 && (
                   <div className="flex justify-between text-emerald-500 font-medium">
                     <span>Unused Plan Credit:</span>
-                    <span className="font-mono">- ₹{prorationCredit.toFixed(2)}</span>
+                    <span className="font-mono">- {currencySymbol}{prorationCredit.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-zinc-400">
-                  <span className="flex items-center gap-1">
-                    <span>GST (18% SAC 998439):</span>
-                    <HelpCircle className="w-3 h-3 opacity-40" />
-                  </span>
-                  <span className="font-mono font-medium text-zinc-100">
-                    ₹{gstAmount.toFixed(2)}
-                  </span>
-                </div>
+                {!isUsd && (
+                  <div className="flex justify-between text-zinc-400">
+                    <span className="flex items-center gap-1">
+                      <span>GST (18% SAC 998439):</span>
+                      <HelpCircle className="w-3 h-3 opacity-40" />
+                    </span>
+                    <span className="font-mono font-medium text-zinc-100">
+                      ₹{gstAmount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="w-full h-px my-1.5 bg-zinc-800" />
 
@@ -866,7 +875,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   className="flex justify-between items-baseline text-sm font-semibold text-white"
                 >
                   <span>Total Due Today:</span>
-                  <span className="text-xl font-bold font-mono text-emerald-500">₹{totalPayable.toFixed(2)}</span>
+                  <span className="text-xl font-bold font-mono text-emerald-500">{currencySymbol}{totalPayable.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -916,7 +925,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 ) : (
                   <>
                     <span>
-                      Pay ₹{totalPayable.toFixed(2)} via{' '}
+                      Pay {currencySymbol}{totalPayable.toFixed(2)} via{' '}
                       {selectedGateway === 'razorpay'
                         ? 'Razorpay'
                         : selectedGateway === 'stripe'

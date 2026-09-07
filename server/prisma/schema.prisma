@@ -100,6 +100,7 @@ model UserProfile {
   categoryId            String?            @map("role_category_id") @db.Uuid
   content_interests     String[]           @default([])
   preferences_completed Boolean            @default(false)
+  preferred_currency    String?            @default("INR") @map("preferred_currency") @db.VarChar(3)
   preferred_language    String?            @db.VarChar(50)
   preferred_region      String?            @db.VarChar(100)
   preferred_vibe        String?            @db.VarChar(50)
@@ -964,6 +965,8 @@ model SubscriptionPlan {
   billing_interval   String         @db.VarChar(20)
   price_monthly      Decimal        @default(0) @db.Decimal(19, 4)
   price_annual       Decimal        @default(0) @db.Decimal(19, 4)
+  price_monthly_usd  Decimal?       @default(0) @map("price_monthly_usd") @db.Decimal(19, 4)
+  price_annual_usd   Decimal?       @default(0) @map("price_annual_usd") @db.Decimal(19, 4)
   features           Json           @default("{}")
   limits             Json           @default("{}")
   display_order      Int            @default(0)

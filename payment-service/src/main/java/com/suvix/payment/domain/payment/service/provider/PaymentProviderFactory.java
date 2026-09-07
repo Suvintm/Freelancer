@@ -22,7 +22,13 @@ public class PaymentProviderFactory {
         if (provider == null) {
             throw new IllegalArgumentException("Unsupported payment provider: " + providerName);
         }
-
         return provider;
+    }
+
+    public PaymentProvider getProviderByCurrency(String currency) {
+        if (currency != null && "USD".equalsIgnoreCase(currency)) {
+            return getProvider("stripe");
+        }
+        return getProvider("razorpay");
     }
 }
