@@ -156,9 +156,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   if (!isOpen || !plan) return null;
 
   // Exact Financial Calculations
-  const baseMonthlyPrice = selectedCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
+  const monthlyPrice = Number(plan.priceMonthly ?? 0);
+  const annualPrice = Number(plan.priceAnnual ?? monthlyPrice);
+  const baseMonthlyPrice = selectedCycle === 'annual' ? annualPrice : monthlyPrice;
   const billingMonths = selectedCycle === 'annual' ? 12 : 1;
-  const normalAnnualSubtotal = plan.priceMonthly * 12;
+  const normalAnnualSubtotal = monthlyPrice * 12;
   const actualSubtotal = baseMonthlyPrice * billingMonths;
   const exactAnnualSavings = normalAnnualSubtotal - actualSubtotal;
 

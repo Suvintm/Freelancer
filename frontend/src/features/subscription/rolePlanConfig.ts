@@ -28,8 +28,8 @@ export interface PlanCardPresenter {
   name: string;
   subtitle: string;
   tierLevel: number;
-  priceMonthly: number;
-  priceAnnual: number;
+  priceMonthly: number | null;
+  priceAnnual: number | null;
   currency?: string;
   isPopular?: boolean;
   badge?: string;
@@ -37,6 +37,7 @@ export interface PlanCardPresenter {
   icon: any;
   features: string[];
   quotas: { label: string; value: string }[];
+  isOfflineFallback?: boolean;
 }
 
 export interface ComparisonRow {
@@ -70,6 +71,7 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         priceAnnual: 0,
         buttonText: 'Get Started Free',
         icon: Send,
+        isOfflineFallback: true,
         features: [
           'Public Creator Profile',
           'Add up to 5 Bio Links',
@@ -90,12 +92,13 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Creator Pro',
         subtitle: 'For fast-growing content creators',
         tierLevel: 2,
-        priceMonthly: 499,
-        priceAnnual: 399,
+        priceMonthly: null,
+        priceAnnual: null,
         isPopular: true,
         badge: 'MOST POPULAR',
-        buttonText: 'Start Free Trial',
+        buttonText: 'Unavailable',
         icon: Rocket,
+        isOfflineFallback: true,
         features: [
           'Verified Blue Badge on Profile ⭐',
           'Unlimited Bio Links & Blocks',
@@ -117,10 +120,11 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Creator Elite',
         subtitle: 'Custom domain & agency scale',
         tierLevel: 3,
-        priceMonthly: 1499,
-        priceAnnual: 1199,
-        buttonText: 'Start Free Trial',
+        priceMonthly: null,
+        priceAnnual: null,
+        buttonText: 'Unavailable',
         icon: Crown,
+        isOfflineFallback: true,
         features: [
           'Everything in Creator Pro',
           'Custom Apex Domain (yourname.com)',
@@ -155,6 +159,7 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         priceAnnual: 0,
         buttonText: 'Get Started Free',
         icon: Scissors,
+        isOfflineFallback: true,
         features: [
           'Public Freelancer Portfolio',
           'Escrow Contract Protection',
@@ -174,12 +179,13 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Freelancer Pro',
         subtitle: 'Lower fees & verified editor clout',
         tierLevel: 2,
-        priceMonthly: 399,
-        priceAnnual: 319,
+        priceMonthly: null,
+        priceAnnual: null,
         isPopular: true,
         badge: 'MOST POPULAR',
-        buttonText: 'Start Free Trial',
+        buttonText: 'Unavailable',
         icon: Zap,
+        isOfflineFallback: true,
         features: [
           'Reduced 5% Platform Fee (Save 50%)',
           'Verified Creative Badge ⭐',
@@ -201,10 +207,11 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Studio Agency',
         subtitle: '0% commission & multi-editor team',
         tierLevel: 3,
-        priceMonthly: 1199,
-        priceAnnual: 959,
-        buttonText: 'Start Free Trial',
+        priceMonthly: null,
+        priceAnnual: null,
+        buttonText: 'Unavailable',
         icon: Building2,
+        isOfflineFallback: true,
         features: [
           '0% Platform Commission on All Escrows 💰',
           'Unlimited Client Job Proposals',
@@ -239,6 +246,7 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         priceAnnual: 0,
         buttonText: 'Get Started Free',
         icon: Briefcase,
+        isOfflineFallback: true,
         features: [
           'Browse Verified Creator Catalog',
           'Direct Hire via Escrow Protection',
@@ -257,12 +265,13 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Brand Starter',
         subtitle: 'For growing brands & studios',
         tierLevel: 2,
-        priceMonthly: 999,
-        priceAnnual: 799,
+        priceMonthly: null,
+        priceAnnual: null,
         isPopular: true,
         badge: 'MOST POPULAR',
-        buttonText: 'Start Free Trial',
+        buttonText: 'Unavailable',
         icon: Rocket,
+        isOfflineFallback: true,
         features: [
           'Verified Brand Badge ⭐',
           'Creator Discovery Search & Filters',
@@ -283,10 +292,11 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Brand Scale',
         subtitle: 'Unlimited campaigns & enterprise CRM',
         tierLevel: 3,
-        priceMonthly: 2999,
-        priceAnnual: 2399,
-        buttonText: 'Contact Sales',
+        priceMonthly: null,
+        priceAnnual: null,
+        buttonText: 'Unavailable',
         icon: Building2,
+        isOfflineFallback: true,
         features: [
           'Unlimited Campaign Postings',
           'Unlimited Creator Discovery Searches',
@@ -320,6 +330,7 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         priceAnnual: 0,
         buttonText: 'Join Free',
         icon: User,
+        isOfflineFallback: true,
         features: [
           'Follow Creators & Channels',
           'Public Community Feed & Posts',
@@ -337,12 +348,13 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         name: 'Supporter Pass',
         subtitle: 'VIP creator clout & ad-free experience',
         tierLevel: 2,
-        priceMonthly: 99,
-        priceAnnual: 79,
+        priceMonthly: null,
+        priceAnnual: null,
         isPopular: true,
         badge: 'BEST VALUE',
-        buttonText: 'Get Supporter Pass',
+        buttonText: 'Unavailable',
         icon: Sparkles,
+        isOfflineFallback: true,
         features: [
           '100% Ad-Free Experience Across SuviX',
           'Exclusive Supporter Badge on Profile ⭐',
@@ -439,7 +451,8 @@ export function getDynamicComparisonMatrix(
     'Feature / Capability',
     ...plans.map((p) => {
       const sym = (p.currency || '').toUpperCase() === 'USD' ? '$' : '₹';
-      return `${p.name} (${sym}${p.priceMonthly}/mo)`;
+      const priceStr = p.priceMonthly !== null && p.priceMonthly !== undefined ? `${sym}${p.priceMonthly}/mo` : '--';
+      return `${p.name} (${priceStr})`;
     }),
   ];
 
@@ -859,6 +872,7 @@ export function dynamicPlanToPresenter(
     icon,
     features,
     quotas,
+    isOfflineFallback: false,
   };
 }
 
@@ -869,13 +883,20 @@ export function dynamicPlanToPresenter(
  */
 export function mergeBackendPlansWithPresenter(
   backendPlans: Plan[],
-  role: WorkspaceRole
+  role: WorkspaceRole,
+  currency: string = 'INR'
 ): PlanCardPresenter[] {
   const config = ROLE_CONFIGS[role] || ROLE_CONFIGS.creator;
-  const fallbacks = config.fallbackPlans;
 
   if (!backendPlans || !Array.isArray(backendPlans) || backendPlans.length === 0) {
-    return fallbacks;
+    return config.fallbackPlans.map((fp) => ({
+      ...fp,
+      currency: currency.toUpperCase(),
+      priceMonthly: fp.tierLevel === 1 ? 0 : null,
+      priceAnnual: fp.tierLevel === 1 ? 0 : null,
+      buttonText: fp.tierLevel === 1 ? fp.buttonText : 'Unavailable',
+      isOfflineFallback: true,
+    }));
   }
 
   const roleLower = (role || 'creator').toLowerCase();
@@ -899,7 +920,14 @@ export function mergeBackendPlansWithPresenter(
   });
 
   if (matchingBackendPlans.length === 0) {
-    return fallbacks;
+    return config.fallbackPlans.map((fp) => ({
+      ...fp,
+      currency: currency.toUpperCase(),
+      priceMonthly: fp.tierLevel === 1 ? 0 : null,
+      priceAnnual: fp.tierLevel === 1 ? 0 : null,
+      buttonText: fp.tierLevel === 1 ? fp.buttonText : 'Unavailable',
+      isOfflineFallback: true,
+    }));
   }
 
   // Sort matching plans by tierLevel ascending (1 -> 2 -> 3)
