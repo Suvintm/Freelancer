@@ -123,28 +123,33 @@ const mockCacheModule = {
 vi.mock("../utils/cache.js", () => mockCacheModule);
 vi.mock("../src/shared/utils/cache.js", () => mockCacheModule);
 
-// ─── Mock Razorpay (Legacy & Monolith Paths) ──────────────────────────────────
-const mockRazorpayModule = {
-  default: null,
-  isRazorpayConfigured: vi.fn(() => true), // Pretend it's configured
-  getRazorpayKeyId: vi.fn(() => "rzp_test_mock_key"),
-  verifyWebhookSignature: vi.fn((body, sig) => !!sig), // Only valid if signature exists
-  verifyPaymentSignature: vi.fn(() => true),
+// ─── Mock Java Payment Microservice Gateway ──────────────────────────────────
+export const mockPaymentServiceResponses = {
+  plans: { plans: [{ id: "starter-plan", name: "Starter", priceMonthly: 0, currency: "INR" }], currency: "INR" },
+  dashboard: { plans: [], activeSubscription: null, role: "creator", currency: "INR" },
+  createOrder: { success: true, orderId: "order_mock_123", amount: 50000, currency: "INR" },
+  verify: { success: true, status: "active" },
 };
 
-vi.mock("../src/domains/payment/services/razorpay.config.js", () => mockRazorpayModule);
-
-vi.mock("../services/RazorpayProvider.js", () => ({
-  RazorpayProvider: vi.fn().mockImplementation(() => ({
-    createOrder: vi.fn().mockResolvedValue({
-      orderId: "order_mock_123",
-      amount: 50000,
-      currency: "INR",
-    }),
-    verifyPayment: vi.fn().mockResolvedValue({ success: true }),
-    processRefund: vi.fn().mockResolvedValue({ refundId: "refund_mock_456" }),
-    createPayout: vi.fn().mockResolvedValue({ payoutId: "payout_mock_789" }),
-  })),
+vi.mock("../src/infrastructure/gateway/javaPayment.client.js", () => ({
+  paymentServiceClient: {
+    get: vi.fn().mockResolvedValue({ data: Buffer.from("%PDF-1.4"), headers: { "content-type": "application/pdf" } }),
+    post: vi.fn().mockResolvedValue({ data: { success: true } }),
+  },
+  callPaymentService: vi.fn(async ({ path }) => {
+    if (path.includes("/dashboard")) return mockPaymentServiceResponses.dashboard;
+    if (path.includes("/plans")) return mockPaymentServiceResponses.plans;
+    if (path.includes("/create-order") || path.includes("/create")) return mockPaymentServiceResponses.createOrder;
+    if (path.includes("/verify")) return mockPaymentServiceResponses.verify;
+    return { success: true };
+  }),
+  proxyToPaymentService: vi.fn(async (req, res, method, path) => {
+    if (path.includes("/dashboard")) return res.status(200).json(mockPaymentServiceResponses.dashboard);
+    if (path.includes("/plans")) return res.status(200).json(mockPaymentServiceResponses.plans);
+    if (path.includes("/create-order") || path.includes("/create")) return res.status(200).json(mockPaymentServiceResponses.createOrder);
+    if (path.includes("/verify")) return res.status(200).json(mockPaymentServiceResponses.verify);
+    return res.status(200).json({ success: true, method, path });
+  }),
 }));
 
 // ─── Mock Firebase Admin ──────────────────────────────────────────────────────

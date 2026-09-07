@@ -4,10 +4,14 @@
  */
 
 import express from "express";
+import protect from "../../shared/middleware/auth.middleware.js";
 import { proxyToPaymentService, paymentServiceClient } from "../../infrastructure/gateway/javaPayment.client.js";
 import { publicApiLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
 
 const router = express.Router();
+
+// Require authentication for all invoice operations
+router.use(protect);
 
 /**
  * GET /api/v1/invoices -> Java Payment Service /api/v1/invoices
@@ -40,11 +44,16 @@ router.get("/:id/pdf", publicApiLimiter, async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="Invoice-${invoiceId}.pdf"`);
-    if (response.headers['content-length']) {
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoiceId}.pdf"`);
+    if (response.headers?.['content-length']) {
       res.setHeader('Content-Length', response.headers['content-length']);
     }
-    response.data.pipe(res);
+
+    if (typeof response.data?.pipe === 'function') {
+      response.data.pipe(res);
+    } else {
+      res.send(response.data);
+    }
   } catch (err) {
     console.error('[InvoiceRoutes] Failed to stream invoice PDF:', err.message);
     const status = err.response?.status || 500;

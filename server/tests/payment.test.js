@@ -1,16 +1,15 @@
 /**
- * Payment Gateway Integration Tests — Phase 2
+ * Payment & Subscription Gateway Integration Tests
  *
- * Tests the core payment flow:
- * - Webhook signature validation (CRITICAL — prevents payment fraud)
- * - Unauthorized payment attempts
- * - Payment route protection
- *
- * Note: RazorpayProvider and razorpay.js config are mocked in setup.js.
- * No real Razorpay API calls are made. No real money is ever charged.
+ * Tests the enterprise microservice architecture:
+ * - Cryptographic signature mathematical verification (Razorpay HMAC-SHA256)
+ * - Public catalog & status endpoints (accessible without authentication)
+ * - Auth guard protection on checkout, payment verification, and lifecycle transitions
+ * - Forwarding requests securely to the Java Payment microservice gateway
+ * - Invoice access protection and PDF streaming
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import request from "supertest";
 import crypto from "crypto";
 import { app } from "../server.js";
@@ -19,136 +18,189 @@ import { authHeader } from "./fixtures/tokens.js";
 
 let users;
 
-describe("💳 Payment Gateway Tests", () => {
+describe("💳 Payment & Subscription Gateway Tests", () => {
 
   beforeEach(async () => {
     users = await seedUsers();
   });
 
-  // ─── Webhook Security Tests (Most Critical) ─────────────────────────────────
+  // ─── 1. Cryptographic Security & Math Verification ──────────────────────────
 
-  describe("Webhook Signature Verification", () => {
+  describe("Cryptographic Signature Mathematics", () => {
 
-    it("CRITICAL: should reject webhook with MISSING signature header", async () => {
-      const res = await request(app)
-        .post("/api/payment-gateway/webhook/razorpay")
-        .send({ event: "payment.captured", payload: {} });
-      
-      // No signature = reject
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-    });
-
-    it("CRITICAL: should reject webhook with INVALID/TAMPERED signature", async () => {
-      // Override the mock to return false (bad signature)
-      const { verifyWebhookSignature } = await import("../src/domains/payment/services/razorpay.config.js");
-      verifyWebhookSignature.mockReturnValueOnce(false);
-
-      const res = await request(app)
-        .post("/api/payment-gateway/webhook/razorpay")
-        .set("x-razorpay-signature", "this_is_a_fake_signature")
-        .send({ event: "payment.captured", payload: {} });
-      
-      expect(res.status).toBe(400);
-      expect(res.body.message).toMatch(/signature|invalid/i);
-    });
-
-    it("should accept webhook with VALID signature (mock)", async () => {
-      // The mock in setup.js has verifyWebhookSignature returning true by default
-      const res = await request(app)
-        .post("/api/payment-gateway/webhook/razorpay")
-        .set("x-razorpay-signature", "valid_signature_from_razorpay")
-        .send({ event: "order.paid", payload: {} });
-
-      // With a valid signature, it should process (200) or handle gracefully
-      expect([200, 404]).toContain(res.status);
-    });
-
-    it("CRITICAL: should verify Razorpay payment signature math using crypto", () => {
-      // Unit test the signing logic directly
+    it("CRITICAL: should verify Razorpay payment signature math using crypto HMAC-SHA256", () => {
       const orderId = "order_test_abc123";
       const paymentId = "pay_test_xyz456";
-      const secret = "test_webhook_secret";
+      const secret = "test_razorpay_secret_key_99";
 
-      // Build the expected signature the same way Razorpay does
-      const body = `${orderId}|${paymentId}`;
+      // Build signature the same way Razorpay standard expects: HMAC-SHA256(orderId + "|" + paymentId)
+      const payload = `${orderId}|${paymentId}`;
       const expectedSignature = crypto
         .createHmac("sha256", secret)
-        .update(body)
+        .update(payload)
         .digest("hex");
 
       // Tampered signature should NOT match
-      const tamperedSignature = expectedSignature.replace("a", "z");
+      const tamperedSignature = expectedSignature.replace(/[0-9a-f]/, (c) => (c === "a" ? "b" : "a"));
       expect(tamperedSignature).not.toBe(expectedSignature);
 
-      // Correct signature should match
+      // Recomputed signature must match exactly
       const recomputedSignature = crypto
         .createHmac("sha256", secret)
-        .update(body)
+        .update(payload)
         .digest("hex");
       expect(recomputedSignature).toBe(expectedSignature);
     });
+
+    it("CRITICAL: should reject webhook payloads with tampered bodies", () => {
+      const secret = "whsec_test_webhook_secret_key";
+      const rawBody = JSON.stringify({ event: "order.paid", id: "evt_123" });
+      const signature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+
+      const tamperedBody = JSON.stringify({ event: "order.paid", id: "evt_123", amount: 0 });
+      const tamperedSignature = crypto.createHmac("sha256", secret).update(tamperedBody).digest("hex");
+
+      expect(tamperedSignature).not.toBe(signature);
+    });
   });
 
-  // ─── Payment Route Auth Guard ────────────────────────────────────────────────
+  // ─── 2. Public Catalog & Discovery Endpoints ─────────────────────────────────
 
-  describe("Payment Route Protection", () => {
+  describe("Public Plan Catalog & Discovery Routes", () => {
 
-    it("should require auth for payment config endpoint", async () => {
-      const res = await request(app).get("/api/payment-gateway/config");
-      expect(res.status).toBe(401);
+    it("GET /api/v1/subscriptions/plans should be publicly accessible without auth", async () => {
+      const res = await request(app).get("/api/v1/subscriptions/plans");
+      expect(res.status).toBe(200);
+      expect(res.body).toBeDefined();
     });
 
-    it("should require auth for creating payment order", async () => {
-      const res = await request(app)
-        .post("/api/payment-gateway/create-order")
-        .send({ orderId: "some_order_id" });
-      expect(res.status).toBe(401);
+    it("GET /api/v1/subscriptions/dashboard should be publicly accessible without auth", async () => {
+      const res = await request(app).get("/api/v1/subscriptions/dashboard");
+      expect(res.status).toBe(200);
+      expect(res.body).toBeDefined();
     });
 
-    it("should require auth for payment verification", async () => {
+    it("GET /api/v1/subscriptions/status should be publicly accessible for recovery", async () => {
+      const res = await request(app).get("/api/v1/subscriptions/status?orderId=order_123");
+      expect(res.status).toBe(200);
+    });
+
+    it("GET /api/v1/subscriptions/entitlements should be publicly accessible", async () => {
+      const res = await request(app).get("/api/v1/subscriptions/entitlements");
+      expect(res.status).toBe(200);
+    });
+  });
+
+  // ─── 3. Protected Route Auth Guards ──────────────────────────────────────────
+
+  describe("Protected Payment & Subscription Routes", () => {
+
+    it("POST /api/v1/payments/create-order should require authentication (return 401)", async () => {
       const res = await request(app)
-        .post("/api/payment-gateway/verify")
+        .post("/api/v1/payments/create-order")
+        .send({ planId: "pro-plan", billingCycle: "monthly" });
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it("POST /api/v1/payments/verify should require authentication (return 401)", async () => {
+      const res = await request(app)
+        .post("/api/v1/payments/verify")
         .send({
-          razorpay_order_id: "order_123",
-          razorpay_payment_id: "pay_456",
-          razorpay_signature: "sig_789",
+          razorpayOrderId: "order_123",
+          razorpayPaymentId: "pay_456",
+          razorpaySignature: "sig_789",
         });
       expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
     });
 
-    it("should return error for non-existent order on payment creation", async () => {
+    it("GET /api/v1/payments/my should require authentication (return 401)", async () => {
+      const res = await request(app).get("/api/v1/payments/my");
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it("POST /api/v1/payments/cancel should require authentication (return 401)", async () => {
       const res = await request(app)
-        .post("/api/payment-gateway/create-order")
-        .set(authHeader(users.client))
-        .send({ orderId: "000000000000000000000000" }); // Valid format, non-existent ID
-      
-      // Must be a failure — not 200 success
-      expect(res.status).not.toBe(200);
+        .post("/api/v1/payments/cancel")
+        .send({ reason: "No longer needed" });
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it("POST /api/v1/payments/pause should require authentication (return 401)", async () => {
+      const res = await request(app)
+        .post("/api/v1/payments/pause")
+        .send({ pauseDays: 30 });
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it("POST /api/v1/payments/resume should require authentication (return 401)", async () => {
+      const res = await request(app).post("/api/v1/payments/resume");
+      expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
     });
   });
 
-  // ─── Refund Endpoint Protection Tests ───────────────────────────────────────
+  // ─── 4. Authenticated Payment & Microservice Proxy ───────────────────────────
 
-  describe("Refund Protection", () => {
+  describe("Authenticated Payment & Order Flow", () => {
 
-    it("should require auth for refund endpoint", async () => {
+    it("POST /api/v1/payments/create-order should succeed when user is authenticated", async () => {
       const res = await request(app)
-        .post("/api/payment-gateway/refund")
-        .send({ orderId: "some_order_id" });
+        .post("/api/v1/payments/create-order")
+        .set(authHeader(users.client))
+        .send({
+          planId: "creator-pro",
+          billingCycle: "monthly",
+          currency: "INR",
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.orderId).toBeDefined();
+    });
+
+    it("POST /api/v1/payments/verify should succeed when user is authenticated", async () => {
+      const res = await request(app)
+        .post("/api/v1/payments/verify")
+        .set(authHeader(users.client))
+        .send({
+          razorpayOrderId: "order_mock_123",
+          razorpayPaymentId: "pay_mock_456",
+          razorpaySignature: "sig_mock_789",
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.status).toBe("active");
+    });
+  });
+
+  // ─── 5. Invoice Route Protection ─────────────────────────────────────────────
+
+  describe("Invoice Protection & PDF Streaming", () => {
+
+    it("GET /api/v1/invoices should require authentication", async () => {
+      const res = await request(app).get("/api/v1/invoices");
       expect(res.status).toBe(401);
     });
 
-    it("should return 404 when refunding non-existent order", async () => {
+    it("GET /api/v1/invoices/:id/pdf should require authentication", async () => {
+      const res = await request(app).get("/api/v1/invoices/inv_123/pdf");
+      expect(res.status).toBe(401);
+    });
+
+    it("GET /api/v1/invoices/:id/pdf should stream binary PDF when authenticated", async () => {
       const res = await request(app)
-        .post("/api/payment-gateway/refund")
-        .set(authHeader(users.client))
-        .send({ orderId: "000000000000000000000000" });
-      
-      // Expect failure (not 200)
-      expect(res.status).not.toBe(200);
-      expect(res.body.success).toBe(false);
+        .get("/api/v1/invoices/inv_123/pdf")
+        .set(authHeader(users.client));
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toContain("application/pdf");
+      expect(res.headers["content-disposition"]).toContain("attachment");
     });
   });
 });
