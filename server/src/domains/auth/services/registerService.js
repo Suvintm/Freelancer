@@ -48,6 +48,7 @@ export const registerFullUser = async (userData) => {
     website,
     role = null,
     discoveryToken = null,
+    preferredCurrency = null,
   } = userData;
 
   const normalizedEmail = email.toLowerCase().trim();
@@ -268,6 +269,7 @@ export const registerFullUser = async (userData) => {
             phone: phone || null,
             categoryId: selectedCategory?.id || null,
             website: website || null,
+            preferred_currency: preferredCurrency || (country === "India" || country === "IN" ? "INR" : "USD"),
           },
         });
 
