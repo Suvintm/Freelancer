@@ -31,7 +31,7 @@ import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOv
 import { isAccessAllowed, RESTRICTED_ACCESS_MESSAGE } from '../config/accessControl.config';
 import { PhoneCountryInput } from '../components/common/PhoneCountryInput';
 import { CountrySelect } from '../components/common/CountrySelect';
-import { detectBrowserCountry, findCountryByName } from '../data/countries';
+import { detectBrowserCountry, findCountryByName, autoDetectCountryAsync } from '../data/countries';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
@@ -113,28 +113,35 @@ export default function Signup() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDetectingCountry, setIsDetectingCountry] = useState(true);
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [enableNotifications, setEnableNotifications] = useState(false);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
 
   const navigate = useNavigate();
   const isBrandClient = roleSlug === 'brand' || roleSlug === 'social_promoter' || tempSignupData?.categorySlug === 'brand';
   const isSocialUser = authMethod === 'google' && !!socialProfile;
 
-  // Zero-Cost Edge + MaxMind Country Auto-detection
+  // Zero-Cost Multi-tier Country Auto-detection
   useEffect(() => {
     let isMounted = true;
-    authService.detectCountry().then((data) => {
-      if (isMounted && data?.countryName) {
-        setForm((prev) => {
-          // If country hasn't been manually altered to something custom, sync with edge detection
-          return { ...prev, country: data.countryName };
-        });
-      }
-    });
+    setIsDetectingCountry(true);
+    autoDetectCountryAsync(() => authService.detectCountry())
+      .then((detected) => {
+        if (isMounted && detected?.name) {
+          setForm((prev) => ({
+            ...prev,
+            country: detected.name,
+          }));
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsDetectingCountry(false);
+      });
     return () => { isMounted = false; };
   }, []);
 
@@ -209,6 +216,7 @@ export default function Signup() {
     form.username.trim() &&
     form.email.trim() &&
     form.phone.trim() &&
+    isPhoneValid &&
     (isSocialUser || form.password.trim()) &&
     (!isBrandClient || form.website.trim()) &&
     userStatus === 'available' &&
@@ -222,6 +230,7 @@ export default function Signup() {
     if (!isAccessAllowed(form.email)) { setError(RESTRICTED_ACCESS_MESSAGE); return; }
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
+    if (!isPhoneValid) { setError('Please enter a valid phone number for your selected country.'); return; }
 
     if (!isSocialUser && !form.password) { setError('Password is required.'); return; }
 
@@ -478,8 +487,11 @@ export default function Signup() {
                     <PhoneCountryInput
                       value={form.phone}
                       country={form.country}
-                      onChange={(fullPhone, c) => {
+                      isDetecting={isDetectingCountry}
+                      onValidityChange={setIsPhoneValid}
+                      onChange={(fullPhone, c, _national, valid) => {
                         setForm((prev) => ({ ...prev, phone: fullPhone, country: c.name }));
+                        if (typeof valid === 'boolean') setIsPhoneValid(valid);
                       }}
                       onCountryChange={(c) => {
                         setForm((prev) => ({ ...prev, country: c.name }));
@@ -520,11 +532,13 @@ export default function Signup() {
                 {/* Country */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Country</label>
-                    <span className="text-[10px] text-zinc-400 font-medium">Auto-detected</span>
+                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
+                      Your Country (for pricing &amp; billing)
+                    </label>
                   </div>
                   <CountrySelect
                     value={form.country}
+                    isDetecting={isDetectingCountry}
                     onChange={(c) => {
                       setForm((prev) => ({ ...prev, country: c.name }));
                     }}

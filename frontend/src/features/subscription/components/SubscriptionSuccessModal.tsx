@@ -18,6 +18,8 @@ interface SubscriptionSuccessModalProps {
   role: WorkspaceRole;
   amountPaid?: number;
   paymentId?: string;
+  currency?: string;
+  currencySymbol?: string;
   isDarkMode?: boolean;
 }
 
@@ -29,9 +31,13 @@ export const SubscriptionSuccessModal: React.FC<SubscriptionSuccessModalProps> =
   role,
   amountPaid = 0,
   paymentId,
+  currency,
+  currencySymbol,
   isDarkMode = false,
 }) => {
   const navigate = useNavigate();
+  const isUsd = (currency || plan?.currency || '').toUpperCase() === 'USD';
+  const sym = currencySymbol || (isUsd ? '$' : '₹');
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -139,7 +145,7 @@ export const SubscriptionSuccessModal: React.FC<SubscriptionSuccessModalProps> =
                   Tier {plan.tierLevel}
                 </span>
               </div>
-              <span className="font-bold text-emerald-400 text-sm">₹{amountPaid.toFixed(2)}</span>
+              <span className="font-bold text-emerald-400 text-sm">{sym}{amountPaid.toFixed(2)}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">

@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { parsePhoneNumberFromString, isValidPhoneNumber } from "libphonenumber-js";
 import prisma from "../../../infrastructure/database/postgres.js";
 import { hashPassword } from "./password.service.js";
 import { ApiError } from "../../../shared/kernel/errors.js";
@@ -53,6 +54,42 @@ export const registerFullUser = async (userData) => {
 
   const normalizedEmail = email.toLowerCase().trim();
   const normalizedUsername = username.toLowerCase().trim();
+
+  // Normalize phone to E.164 format if valid
+  let normalizedPhone = phone ? String(phone).trim() : null;
+  if (normalizedPhone) {
+    try {
+      const parsed = parsePhoneNumberFromString(normalizedPhone);
+      if (parsed && parsed.isValid()) {
+        normalizedPhone = parsed.format('E.164');
+      }
+    } catch {
+      // Keep sanitized input as fallback
+    }
+  }
+
+  // 🛡️ Silent Multi-Signal Trust & Risk Assessment (Non-blocking background audit)
+  let riskScore = 0;
+  const riskSignals = [];
+  const clientIp = userData.clientIp;
+  const edgeCountry = userData.edgeCountry || userData.detectedCountry;
+
+  if (edgeCountry && country) {
+    const isMismatch =
+      edgeCountry.toUpperCase() !== country.toUpperCase() &&
+      !(country.toLowerCase() === "india" && edgeCountry.toUpperCase() === "IN") &&
+      !(country.toLowerCase() === "united states" && edgeCountry.toUpperCase() === "US");
+    if (isMismatch) {
+      riskScore += 10; // Weak signal: global mobility/travel/VPN is normal for creators
+      riskSignals.push(`GEO_MISMATCH(declared=${country}, ip=${edgeCountry})`);
+    }
+  }
+
+  logger.info(
+    `🛡️ [TRUST-SCORE] Evaluated registration for @${normalizedUsername}: Score=${riskScore} Signals=[${
+      riskSignals.join(", ") || "CLEAN"
+    }] IP=${clientIp || "unknown"}`
+  );
 
   // 1. Conflict Check: Email or Username
   const existingUser = await prisma.user.findFirst({
@@ -266,7 +303,7 @@ export const registerFullUser = async (userData) => {
             profile_picture: profilePictureUrl || null,
             mother_tongue: motherTongue || null,
             location_country: country,
-            phone: phone || null,
+            phone: normalizedPhone || null,
             categoryId: selectedCategory?.id || null,
             website: website || null,
             preferred_currency: preferredCurrency || (country === "India" || country === "IN" ? "INR" : "USD"),

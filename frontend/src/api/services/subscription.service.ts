@@ -19,11 +19,11 @@ export interface Plan {
   isActive: boolean;
   displayOrder?: number;
   // Server-Driven UI (SDUI) ready-to-render feature arrays from DB
-  features: string[] | Record<string, any>;
+  features: string[] | Record<string, unknown>;
   quotas?: { label: string; value: string }[];
-  limits?: Record<string, any>;
-  featureFlags?: Record<string, any>;
-  limitValues?: Record<string, any>;
+  limits?: Record<string, unknown>;
+  featureFlags?: Record<string, unknown>;
+  limitValues?: Record<string, unknown>;
   pricing?: {
     monthly?: { amount: number; currency: string; taxRate: number; totalWithTax: number };
     annual?: { amount: number; monthlyEquivalent: number; savingsPercent: number; currency: string; taxRate: number; totalWithTax: number };
@@ -105,19 +105,20 @@ export interface InvoiceItem {
 
 export interface SubscriptionDashboardData {
   plans: Plan[];
-  activeSubscription?: any;
-  usageSummary?: any;
+  activeSubscription?: UserSubscription | null;
+  usageSummary?: UsageSummary | null;
   role: string;
   currency: string;
 }
 
 export const subscriptionService = {
   // 0. Single-Roundtrip Consolidated Dashboard Bootstrap
-  getDashboard: async (role?: string, userId?: string): Promise<SubscriptionDashboardData> => {
+  getDashboard: async (role?: string, userId?: string, currency?: string): Promise<SubscriptionDashboardData> => {
     const res = await api.get('/subscriptions/dashboard', {
       params: {
         ...(role ? { role } : {}),
         ...(userId ? { userId } : {}),
+        ...(currency ? { currency } : {}),
       },
     });
     const raw = res.data?.data || res.data || {};
@@ -126,14 +127,17 @@ export const subscriptionService = {
       activeSubscription: raw.activeSubscription || null,
       usageSummary: raw.usageSummary || null,
       role: raw.role || role || 'creator',
-      currency: raw.currency || 'INR',
+      currency: raw.currency || currency || 'INR',
     };
   },
 
   // 1. Fetch Plans (Filtered by Workspace Role)
-  getPlans: async (role?: string): Promise<Plan[]> => {
+  getPlans: async (role?: string, currency?: string): Promise<Plan[]> => {
     const res = await api.get('/subscriptions/plans', {
-      params: role ? { role } : {},
+      params: {
+        ...(role ? { role } : {}),
+        ...(currency ? { currency } : {}),
+      },
     });
     return Array.isArray(res.data) ? res.data : (res.data?.data?.plans || res.data?.plans || []);
   },

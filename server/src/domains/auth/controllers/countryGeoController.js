@@ -1,4 +1,4 @@
-import { getClientIP } from "../../../shared/middleware/geo-check.middleware.js";
+import { getClientIP, getCountryByIP } from "../../../shared/middleware/geo-check.middleware.js";
 import logger from "../../../infrastructure/monitoring/logger.js";
 
 // Comprehensive Country Metadata Lookup Map (ISO 2-letter -> details)
@@ -88,7 +88,16 @@ export const detectCountry = async (req, res) => {
 
     const clientIp = getClientIP(req);
 
-    // 2. If Cloudflare header is missing (e.g. local dev / staging), default to IN
+    // 2. If Cloudflare header is missing, resolve client IP via MaxMind GeoLite2
+    if (!countryCode && clientIp) {
+      const geoIpCountry = getCountryByIP(clientIp);
+      if (geoIpCountry) {
+        countryCode = geoIpCountry;
+        source = "maxmind_geolite2";
+      }
+    }
+
+    // 3. Fallback if still unresolved (default to IN)
     if (!countryCode) {
       source = "fallback";
       countryCode = "IN";

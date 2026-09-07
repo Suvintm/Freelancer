@@ -58,6 +58,12 @@ export interface AuthUser {
   }>;
   bio?: string;
   website?: string;
+  phone?: string;
+  location_country?: string;
+  country?: string;
+  preferred_currency?: string;
+  preferredCurrency?: string;
+  profile?: any;
   followers?: number;
   following?: number;
   followingIds?: string[];
@@ -69,6 +75,7 @@ export interface AuthUser {
     daysRemaining?: number;
     planTier?: string;
   };
+  [key: string]: any;
 }
 
 export interface SignupPayload {

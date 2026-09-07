@@ -110,6 +110,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setSelectedCycle(initialBillingCycle);
     if ((plan.currency || '').toUpperCase() === 'USD') {
       setSelectedGateway('stripe');
+    } else {
+      setSelectedGateway('razorpay');
     }
     resetState();
   }, [initialBillingCycle, isOpen, plan?.currency, resetState]);
@@ -527,11 +529,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <div className="space-y-2">
                   {/* Razorpay Option */}
                   <div
-                    onClick={() => setSelectedGateway('razorpay')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all bg-black ${
-                      selectedGateway === 'razorpay'
-                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm'
-                        : 'border-zinc-800 hover:border-zinc-700'
+                    onClick={() => {
+                      if (!isUsd) setSelectedGateway('razorpay');
+                    }}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isUsd
+                        ? 'opacity-50 cursor-not-allowed bg-zinc-950/50 border-zinc-800/60'
+                        : selectedGateway === 'razorpay'
+                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm cursor-pointer bg-black'
+                        : 'border-zinc-800 hover:border-zinc-700 cursor-pointer bg-black'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -543,15 +549,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           UPI, Cards, NetBanking (India)
                         </span>
                       </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                          selectedGateway === 'razorpay'
-                            ? 'border-emerald-500 bg-emerald-500 text-black'
-                            : 'border-zinc-700 bg-zinc-900'
-                        }`}
-                      >
-                        {selectedGateway === 'razorpay' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
+                      {isUsd ? (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
+                          <Lock className="w-2.5 h-2.5 text-zinc-500" />
+                          INR Only
+                        </span>
+                      ) : (
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                            selectedGateway === 'razorpay'
+                              ? 'border-emerald-500 bg-emerald-500 text-black'
+                              : 'border-zinc-700 bg-zinc-900'
+                          }`}
+                        >
+                          {selectedGateway === 'razorpay' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800 flex-wrap">
@@ -581,11 +594,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                   {/* Stripe Option */}
                   <div
-                    onClick={() => setSelectedGateway('stripe')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all bg-black ${
-                      selectedGateway === 'stripe'
-                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm'
-                        : 'border-zinc-800 hover:border-zinc-700'
+                    onClick={() => {
+                      if (isUsd) setSelectedGateway('stripe');
+                    }}
+                    className={`p-3 rounded-xl border transition-all ${
+                      !isUsd
+                        ? 'opacity-50 cursor-not-allowed bg-zinc-950/50 border-zinc-800/60'
+                        : selectedGateway === 'stripe'
+                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm cursor-pointer bg-black'
+                        : 'border-zinc-800 hover:border-zinc-700 cursor-pointer bg-black'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -597,15 +614,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           International Cards & Apple Pay
                         </span>
                       </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                          selectedGateway === 'stripe'
-                            ? 'border-emerald-500 bg-emerald-500 text-black'
-                            : 'border-zinc-700 bg-zinc-900'
-                        }`}
-                      >
-                        {selectedGateway === 'stripe' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
+                      {!isUsd ? (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
+                          <Lock className="w-2.5 h-2.5 text-zinc-500" />
+                          USD Plans Only
+                        </span>
+                      ) : (
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                            selectedGateway === 'stripe'
+                              ? 'border-emerald-500 bg-emerald-500 text-black'
+                              : 'border-zinc-700 bg-zinc-900'
+                          }`}
+                        >
+                          {selectedGateway === 'stripe' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800 flex-wrap">
@@ -884,6 +908,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 billingCycle={selectedCycle}
                 planName={plan.name}
                 amount={totalPayable}
+                currencySymbol={currencySymbol}
+                isUsd={isUsd}
                 isChecked={consentAccepted}
                 onChange={setConsentAccepted}
                 isDarkMode={isDarkMode}

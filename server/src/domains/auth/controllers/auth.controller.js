@@ -690,6 +690,8 @@ export const registerFull = asyncHandler(async (req, res) => {
     authProvider: req.body.authProvider || "local",
     role: req.body.role || null,
     discoveryToken: req.body.discoveryToken || null,
+    clientIp: req.ip || req.connection?.remoteAddress,
+    edgeCountry: req.headers["cf-ipcountry"] || null,
   };
 
   const userWithProfile = await registerService(userData);

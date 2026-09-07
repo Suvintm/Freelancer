@@ -24,7 +24,7 @@ import { OnboardingSyncOverlay } from '../../components/onboarding/OnboardingSyn
 import { Turnstile } from '@marsidev/react-turnstile';
 import { PhoneCountryInput } from '../../components/common/PhoneCountryInput';
 import { CountrySelect } from '../../components/common/CountrySelect';
-import { detectBrowserCountry, findCountryByName } from '../../data/countries';
+import { detectBrowserCountry, findCountryByName, autoDetectCountryAsync } from '../../data/countries';
 
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
 
@@ -57,19 +57,26 @@ export default function CompleteProfile() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDetectingCountry, setIsDetectingCountry] = useState(true);
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
-  // Zero-cost auto-detect country via Cloudflare edge header
+  // Zero-cost auto-detect country via Multi-tier Edge + Browser heuristics
   useEffect(() => {
     let isMounted = true;
-    authService.detectCountry().then((data) => {
-      if (isMounted && data?.countryName) {
-        setForm((prev) => ({
-          ...prev,
-          country: data.countryName,
-        }));
-      }
-    });
+    setIsDetectingCountry(true);
+    autoDetectCountryAsync(() => authService.detectCountry())
+      .then((detected) => {
+        if (isMounted && detected?.name) {
+          setForm((prev) => ({
+            ...prev,
+            country: detected.name,
+          }));
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsDetectingCountry(false);
+      });
     return () => { isMounted = false; };
   }, []);
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
@@ -144,7 +151,7 @@ export default function CompleteProfile() {
     e.preventDefault();
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
-    if (!form.phone) { setError('Phone number is required.'); return; }
+    if (!form.phone || !isPhoneValid) { setError('Please enter a valid phone number for your selected country.'); return; }
 
     setIsLoading(true);
     setError(null);
@@ -626,8 +633,11 @@ export default function CompleteProfile() {
                   <PhoneCountryInput
                     value={form.phone}
                     country={form.country}
-                    onChange={(fullPhone, c) => {
+                    isDetecting={isDetectingCountry}
+                    onValidityChange={setIsPhoneValid}
+                    onChange={(fullPhone, c, _national, valid) => {
                       setForm((prev) => ({ ...prev, phone: fullPhone, country: c.name }));
+                      if (typeof valid === 'boolean') setIsPhoneValid(valid);
                     }}
                     onCountryChange={(c) => {
                       setForm((prev) => ({ ...prev, country: c.name }));
@@ -661,11 +671,13 @@ export default function CompleteProfile() {
                   {/* Country */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-zinc-700">Country</label>
-                      <span className="text-[10px] text-zinc-400 font-medium">Auto-detected</span>
+                      <label className="text-xs font-semibold text-zinc-700">
+                        Your Country (for pricing &amp; billing)
+                      </label>
                     </div>
                     <CountrySelect
                       value={form.country}
+                      isDetecting={isDetectingCountry}
                       onChange={(c) => {
                         setForm((prev) => ({ ...prev, country: c.name }));
                       }}
