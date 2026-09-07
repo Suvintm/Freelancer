@@ -58,6 +58,10 @@ public class InvoicePdfService {
             Color borderColor = new Color(226, 232, 240); // Slate 200
             Color emeraldSuccess = new Color(22, 163, 74);// Emerald 600
 
+            boolean isUsd = "USD".equalsIgnoreCase(invoice.getCurrency());
+            String currSymbol = isUsd ? "$" : "₹";
+            String currCode = isUsd ? "USD" : "INR";
+
             Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, darkBrand);
             Font companyHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, darkBrand);
             Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
@@ -109,7 +113,8 @@ public class InvoicePdfService {
             rightHeader.setHorizontalAlignment(Element.ALIGN_RIGHT);
             rightHeader.setPaddingBottom(8);
 
-            Paragraph invTitle = new Paragraph("TAX INVOICE", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, primaryIndigo));
+            String invTitleText = isUsd ? "COMMERCIAL INVOICE / RECEIPT" : "TAX INVOICE";
+            Paragraph invTitle = new Paragraph(invTitleText, FontFactory.getFont(FontFactory.HELVETICA_BOLD, isUsd ? 14 : 18, primaryIndigo));
             invTitle.setAlignment(Element.ALIGN_RIGHT);
             rightHeader.addElement(invTitle);
 
@@ -121,7 +126,8 @@ public class InvoicePdfService {
             invDate.setAlignment(Element.ALIGN_RIGHT);
             rightHeader.addElement(invDate);
 
-            Paragraph posPara = new Paragraph("Place of Supply: 29 - Karnataka (India)", mutedFont);
+            String placeOfSupplyText = isUsd ? "Place of Supply: International Export (LUT: Sec 16)" : "Place of Supply: 29 - Karnataka (India)";
+            Paragraph posPara = new Paragraph(placeOfSupplyText, mutedFont);
             posPara.setAlignment(Element.ALIGN_RIGHT);
             rightHeader.addElement(posPara);
 
@@ -195,7 +201,7 @@ public class InvoicePdfService {
             addHeaderCell(itemsTable, "SAC Code", headerFont, darkBrand);
             addHeaderCell(itemsTable, "Qty", headerFont, darkBrand);
             addHeaderCell(itemsTable, "Unit Rate", headerFont, darkBrand);
-            addHeaderCell(itemsTable, "Amount (" + invoice.getCurrency() + ")", headerFont, darkBrand);
+            addHeaderCell(itemsTable, "Amount (" + currCode + ")", headerFont, darkBrand);
 
             // Dynamic Item Description from database entity
             String itemDesc = "SuviX SaaS Subscription Access";
@@ -225,16 +231,16 @@ public class InvoicePdfService {
             addRowCell(itemsTable, itemDesc, normalFont, Element.ALIGN_LEFT);
             addRowCell(itemsTable, itemSac, normalFont, Element.ALIGN_CENTER);
             addRowCell(itemsTable, "1", normalFont, Element.ALIGN_CENTER);
-            addRowCell(itemsTable, String.format("₹%.2f", invoice.getSubtotal()), normalFont, Element.ALIGN_RIGHT);
-            addRowCell(itemsTable, String.format("₹%.2f", invoice.getSubtotal()), normalFont, Element.ALIGN_RIGHT);
+            addRowCell(itemsTable, String.format("%s%.2f", currSymbol, invoice.getSubtotal()), normalFont, Element.ALIGN_RIGHT);
+            addRowCell(itemsTable, String.format("%s%.2f", currSymbol, invoice.getSubtotal()), normalFont, Element.ALIGN_RIGHT);
 
             // Proration row if applicable
             if (invoice.isProrated() && invoice.getProrationCredit().compareTo(BigDecimal.ZERO) > 0) {
                 addRowCell(itemsTable, "Proration / Upgrade Unused Balance Credit", italicFont(), Element.ALIGN_LEFT);
                 addRowCell(itemsTable, "-", italicFont(), Element.ALIGN_CENTER);
                 addRowCell(itemsTable, "1", italicFont(), Element.ALIGN_CENTER);
-                addRowCell(itemsTable, "- ₹" + String.format("%.2f", invoice.getProrationCredit()), italicFont(), Element.ALIGN_RIGHT);
-                addRowCell(itemsTable, "- ₹" + String.format("%.2f", invoice.getProrationCredit()), italicFont(), Element.ALIGN_RIGHT);
+                addRowCell(itemsTable, "- " + currSymbol + String.format("%.2f", invoice.getProrationCredit()), italicFont(), Element.ALIGN_RIGHT);
+                addRowCell(itemsTable, "- " + currSymbol + String.format("%.2f", invoice.getProrationCredit()), italicFont(), Element.ALIGN_RIGHT);
             }
 
             document.add(itemsTable);
@@ -265,12 +271,12 @@ public class InvoicePdfService {
             try {
                 String qrData = String.format("GSTIN:%s|INV:%s|DATE:%s|TOTAL:%.2f|TAX:%.2f|IRN:AUTH-VERIFIED",
                         platformGstin, invoice.getInvoiceNumber(), invoice.getInvoiceDate(),
-                        invoice.getTotalAmount(), gst.getTotalTax());
+                        invoice.getTotalAmount(), isUsd ? BigDecimal.ZERO : gst.getTotalTax());
                 Image qrImage = generateQrCodeImage(qrData, 75, 75);
                 if (qrImage != null) {
                     qrImage.setAlignment(Element.ALIGN_CENTER);
                     qrCell.addElement(qrImage);
-                    Paragraph scanPara = new Paragraph("Scan with any GST verification app to authenticate e-invoice", smallFont);
+                    Paragraph scanPara = new Paragraph(isUsd ? "Scan to verify digital commercial invoice" : "Scan with any GST verification app to authenticate e-invoice", smallFont);
                     scanPara.setAlignment(Element.ALIGN_CENTER);
                     scanPara.setSpacingBefore(3);
                     qrCell.addElement(scanPara);
@@ -289,19 +295,24 @@ public class InvoicePdfService {
             totalsSubTable.setWidthPercentage(100);
             totalsSubTable.setWidths(new float[]{60, 40});
 
-            addTotalRow(totalsSubTable, "Taxable Subtotal:", String.format("₹%.2f", gst.getTaxableAmount()), normalFont);
-
-            if (gst.getCgstAmount().compareTo(BigDecimal.ZERO) > 0) {
-                addTotalRow(totalsSubTable, "CGST (9.0%):", String.format("₹%.2f", gst.getCgstAmount()), normalFont);
-                addTotalRow(totalsSubTable, "SGST (9.0%):", String.format("₹%.2f", gst.getSgstAmount()), normalFont);
-            } else if (gst.getIgstAmount().compareTo(BigDecimal.ZERO) > 0) {
-                addTotalRow(totalsSubTable, "IGST (18.0%):", String.format("₹%.2f", gst.getIgstAmount()), normalFont);
+            if (isUsd) {
+                addTotalRow(totalsSubTable, "Taxable Subtotal:", String.format("$%.2f", invoice.getSubtotal()), normalFont);
+                addTotalRow(totalsSubTable, "Tax (0.0% Export LUT):", "$0.00", normalFont);
             } else {
-                addTotalRow(totalsSubTable, "GST (Export / LUT):", "₹0.00", normalFont);
+                addTotalRow(totalsSubTable, "Taxable Subtotal:", String.format("₹%.2f", gst.getTaxableAmount()), normalFont);
+
+                if (gst.getCgstAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    addTotalRow(totalsSubTable, "CGST (9.0%):", String.format("₹%.2f", gst.getCgstAmount()), normalFont);
+                    addTotalRow(totalsSubTable, "SGST (9.0%):", String.format("₹%.2f", gst.getSgstAmount()), normalFont);
+                } else if (gst.getIgstAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    addTotalRow(totalsSubTable, "IGST (18.0%):", String.format("₹%.2f", gst.getIgstAmount()), normalFont);
+                } else {
+                    addTotalRow(totalsSubTable, "GST (Export / LUT):", "₹0.00", normalFont);
+                }
             }
 
             if (invoice.isProrated() && invoice.getProrationCredit().compareTo(BigDecimal.ZERO) > 0) {
-                addTotalRow(totalsSubTable, "Proration Discount:", String.format("- ₹%.2f", invoice.getProrationCredit()), italicFont());
+                addTotalRow(totalsSubTable, "Proration Discount:", String.format("- %s%.2f", currSymbol, invoice.getProrationCredit()), italicFont());
             }
 
             PdfPCell lineCell1 = new PdfPCell();
@@ -315,8 +326,8 @@ public class InvoicePdfService {
             totalsSubTable.addCell(lineCell1);
             totalsSubTable.addCell(lineCell2);
 
-            addTotalRow(totalsSubTable, "Grand Total (INR):",
-                    String.format("₹%.2f", invoice.getTotalAmount()),
+            addTotalRow(totalsSubTable, "Grand Total (" + currCode + "):",
+                    String.format("%s%.2f", currSymbol, invoice.getTotalAmount()),
                     FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, darkBrand));
 
             totalsCell.addElement(totalsSubTable);
@@ -335,11 +346,11 @@ public class InvoicePdfService {
             footerCell.setBorderColor(borderColor);
             footerCell.setPaddingTop(8);
 
-            Paragraph footer = new Paragraph(
-                    "This is a digitally generated Tax Invoice issued in compliance with Rule 46 of the Indian CGST/SGST Rules, 2017. " +
-                    "No physical signature is required. For any billing questions, reach us at billing@suvix.in.",
-                    smallFont
-            );
+            String footerDisclaimer = isUsd
+                    ? "This is a digitally generated commercial invoice for SaaS subscription services. Zero-rated export of services under Section 16 of the Indian IGST Act, 2017. No physical signature is required. For any billing questions, reach us at billing@suvix.in."
+                    : "This is a digitally generated Tax Invoice issued in compliance with Rule 46 of the Indian CGST/SGST Rules, 2017. No physical signature is required. For any billing questions, reach us at billing@suvix.in.";
+
+            Paragraph footer = new Paragraph(footerDisclaimer, smallFont);
             footer.setAlignment(Element.ALIGN_CENTER);
             footerCell.addElement(footer);
             footerTable.addCell(footerCell);

@@ -113,11 +113,12 @@ export interface SubscriptionDashboardData {
 
 export const subscriptionService = {
   // 0. Single-Roundtrip Consolidated Dashboard Bootstrap
-  getDashboard: async (role?: string, userId?: string): Promise<SubscriptionDashboardData> => {
+  getDashboard: async (role?: string, userId?: string, currency?: string): Promise<SubscriptionDashboardData> => {
     const res = await api.get('/subscriptions/dashboard', {
       params: {
         ...(role ? { role } : {}),
         ...(userId ? { userId } : {}),
+        ...(currency ? { currency } : {}),
       },
     });
     const raw = res.data?.data || res.data || {};
@@ -126,14 +127,17 @@ export const subscriptionService = {
       activeSubscription: raw.activeSubscription || null,
       usageSummary: raw.usageSummary || null,
       role: raw.role || role || 'creator',
-      currency: raw.currency || 'INR',
+      currency: raw.currency || currency || 'INR',
     };
   },
 
   // 1. Fetch Plans (Filtered by Workspace Role)
-  getPlans: async (role?: string): Promise<Plan[]> => {
+  getPlans: async (role?: string, currency?: string): Promise<Plan[]> => {
     const res = await api.get('/subscriptions/plans', {
-      params: role ? { role } : {},
+      params: {
+        ...(role ? { role } : {}),
+        ...(currency ? { currency } : {}),
+      },
     });
     return Array.isArray(res.data) ? res.data : (res.data?.data?.plans || res.data?.plans || []);
   },

@@ -120,11 +120,20 @@ export default function Subscription() {
     }, 5000);
   }, []);
 
+  // Determine user preferred currency (USD for US/international, INR for India)
+  const userCurrency = useMemo(() => {
+    const raw = user?.preferred_currency || (user as any)?.preferredCurrency;
+    if (raw) return String(raw).toUpperCase();
+    const country = user?.location_country || (user as any)?.country;
+    if (country && country !== 'India') return 'USD';
+    return 'INR';
+  }, [user]);
+
   // 1. Initial Load: Fetch Consolidated Dashboard in 1 Single Roundtrip
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const dashboard = await subscriptionService.getDashboard(selectedRole, user?.id).catch(() => null);
+      const dashboard = await subscriptionService.getDashboard(selectedRole, user?.id, userCurrency).catch(() => null);
       if (dashboard && dashboard.plans?.length > 0) {
         setPlans(dashboard.plans);
         setRolePlansCache((prev) => ({ ...prev, [selectedRole]: dashboard.plans }));
@@ -132,7 +141,7 @@ export default function Subscription() {
         if (dashboard.usageSummary) setUsageSummary(dashboard.usageSummary);
       } else {
         // Fallback to getPlans if dashboard route not ready
-        const fetchedPlans = await subscriptionService.getPlans(selectedRole).catch(() => []);
+        const fetchedPlans = await subscriptionService.getPlans(selectedRole, userCurrency).catch(() => []);
         setPlans(fetchedPlans);
         setRolePlansCache((prev) => ({ ...prev, [selectedRole]: fetchedPlans }));
       }
@@ -146,7 +155,7 @@ export default function Subscription() {
     } finally {
       setLoading(false);
     }
-  }, [selectedRole, user?.id]);
+  }, [selectedRole, user?.id, userCurrency]);
 
   useEffect(() => {
     loadData();
@@ -219,8 +228,8 @@ export default function Subscription() {
 
     setActionLoading('role-switch');
     try {
-      const dashboard = await subscriptionService.getDashboard(role, user?.id).catch(() => null);
-      const rolePlans = dashboard?.plans || (await subscriptionService.getPlans(role));
+      const dashboard = await subscriptionService.getDashboard(role, user?.id, userCurrency).catch(() => null);
+      const rolePlans = dashboard?.plans || (await subscriptionService.getPlans(role, userCurrency));
       setPlans(rolePlans);
       setRolePlansCache((prev) => ({ ...prev, [role]: rolePlans }));
     } catch (_err: any) {
@@ -238,6 +247,12 @@ export default function Subscription() {
   const displayPlans = useMemo(() => {
     return mergeBackendPlansWithPresenter(plans, selectedRole);
   }, [plans, selectedRole]);
+
+  const isUsd = useMemo(() => {
+    return (displayPlans[0]?.currency || userCurrency || 'INR').toUpperCase() === 'USD';
+  }, [displayPlans, userCurrency]);
+
+  const currencySymbol = isUsd ? '$' : '₹';
 
   const comparisonMatrix = useMemo(() => {
     return getDynamicComparisonMatrix(displayPlans, selectedRole);
@@ -896,7 +911,7 @@ export default function Subscription() {
 
                   {/* Price */}
                   <div className="flex items-baseline gap-1 mt-1.5 mb-2">
-                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">₹{price}</span>
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">{currencySymbol}{price}</span>
                     <span className="text-[10px] font-normal text-zinc-400">/ month</span>
                   </div>
 
@@ -1405,7 +1420,9 @@ export default function Subscription() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-semibold text-xs">₹{inv.totalAmount}</span>
+                      <span className="font-semibold text-xs">
+                        {(inv.currency || '').toUpperCase() === 'USD' ? '$' : '₹'}{inv.totalAmount}
+                      </span>
                       <button
                         onClick={() => handleDownloadPdf(inv)}
                         disabled={actionLoading === 'invoice-' + inv.id}
@@ -1459,6 +1476,8 @@ export default function Subscription() {
           role={selectedRole}
           amountPaid={successData.amountPaid}
           paymentId={successData.paymentId}
+          currency={successData.plan?.currency || userCurrency}
+          currencySymbol={currencySymbol}
           isDarkMode={isDarkMode}
         />
       )}

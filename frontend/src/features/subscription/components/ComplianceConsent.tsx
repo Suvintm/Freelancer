@@ -5,6 +5,8 @@ interface ComplianceConsentProps {
   billingCycle: 'monthly' | 'annual';
   planName: string;
   amount: number;
+  currencySymbol?: string;
+  isUsd?: boolean;
   isChecked: boolean;
   onChange: (checked: boolean) => void;
   isDarkMode?: boolean;
@@ -14,6 +16,8 @@ export const ComplianceConsent: React.FC<ComplianceConsentProps> = ({
   billingCycle,
   planName,
   amount,
+  currencySymbol = '₹',
+  isUsd = false,
   isChecked,
   onChange,
   isDarkMode: _isDarkMode = false,
@@ -53,7 +57,7 @@ export const ComplianceConsent: React.FC<ComplianceConsentProps> = ({
             className="cursor-pointer text-[11px] font-normal text-zinc-300"
           >
             I authorize recurring billing for <strong>{planName}</strong> at{' '}
-            <strong className="text-white">₹{amount.toFixed(2)}</strong>/{billingCycle === 'annual' ? 'yr' : 'mo'}. Pause or cancel anytime.
+            <strong className="text-white">{currencySymbol}{amount.toFixed(2)}</strong>/{billingCycle === 'annual' ? 'yr' : 'mo'}. Pause or cancel anytime.
           </p>
 
           <button
@@ -61,7 +65,7 @@ export const ComplianceConsent: React.FC<ComplianceConsentProps> = ({
             onClick={() => setShowRbiDetails(!showRbiDetails)}
             className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-200 cursor-pointer"
           >
-            <span>RBI e-mandate protection policy</span>
+            <span>{isUsd ? 'Subscription Protection & Cancellation Policy' : 'RBI e-mandate protection policy'}</span>
             {showRbiDetails ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
           </button>
         </div>

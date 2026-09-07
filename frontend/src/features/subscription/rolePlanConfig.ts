@@ -437,7 +437,10 @@ export function getDynamicComparisonMatrix(
   // Generate dynamic headers with live DB plan names and prices
   const dynamicHeaders = [
     'Feature / Capability',
-    ...plans.map((p) => `${p.name} (₹${p.priceMonthly}/mo)`),
+    ...plans.map((p) => {
+      const sym = (p.currency || '').toUpperCase() === 'USD' ? '$' : '₹';
+      return `${p.name} (${sym}${p.priceMonthly}/mo)`;
+    }),
   ];
 
   const dynamicRows: ComparisonRow[] = [];
@@ -849,6 +852,7 @@ export function dynamicPlanToPresenter(
     tierLevel,
     priceMonthly,
     priceAnnual,
+    currency: (backendPlan.currency || 'INR').toUpperCase(),
     isPopular,
     badge,
     buttonText,

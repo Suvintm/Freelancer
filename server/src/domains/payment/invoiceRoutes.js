@@ -4,7 +4,7 @@
  */
 
 import express from "express";
-import { proxyToPaymentService } from "../../infrastructure/gateway/javaPayment.client.js";
+import { proxyToPaymentService, paymentServiceClient } from "../../infrastructure/gateway/javaPayment.client.js";
 import { publicApiLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
 
 const router = express.Router();
@@ -24,10 +24,36 @@ router.get("/:id", publicApiLimiter, (req, res) =>
 );
 
 /**
- * GET /api/v1/invoices/:id/pdf -> Java Payment Service /api/v1/invoices/:id/pdf
+ * GET /api/v1/invoices/:id/pdf -> Stream binary PDF from Java Payment Service
  */
-router.get("/:id/pdf", publicApiLimiter, (req, res) =>
-  proxyToPaymentService(req, res, "get", `/invoices/${req.params.id}/pdf`)
-);
+router.get("/:id/pdf", publicApiLimiter, async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] || req.user?._id || req.user?.id || 'anonymous';
+    const invoiceId = req.params.id;
+
+    const response = await paymentServiceClient.get(`/api/v1/invoices/${invoiceId}/pdf`, {
+      responseType: 'stream',
+      headers: {
+        'X-User-Id': userId,
+        'X-Request-Id': req.headers['x-request-id'] || `req_pdf_${Date.now()}`,
+      },
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Invoice-${invoiceId}.pdf"`);
+    if (response.headers['content-length']) {
+      res.setHeader('Content-Length', response.headers['content-length']);
+    }
+    response.data.pipe(res);
+  } catch (err) {
+    console.error('[InvoiceRoutes] Failed to stream invoice PDF:', err.message);
+    const status = err.response?.status || 500;
+    return res.status(status).json({
+      success: false,
+      error: 'INVOICE_PDF_ERROR',
+      message: 'Unable to retrieve invoice PDF. Please try again later.',
+    });
+  }
+});
 
 export default router;

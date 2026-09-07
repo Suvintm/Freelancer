@@ -11,12 +11,18 @@ import { asyncHandler } from "../../../shared/middleware/error-handler.middlewar
 import { invalidatePlanCache } from "../middleware/planCache.js";
 
 export const getPlans = asyncHandler(async (req, res) => {
+  if (!req.query.currency && req.user) {
+    req.query.currency = req.user?.preferred_currency || (req.user?.location_country === 'India' ? 'INR' : 'USD');
+  }
   return proxyToPaymentService(req, res, 'get', '/subscriptions/plans');
 });
 
 export const getSubscriptionDashboard = asyncHandler(async (req, res) => {
   const userId = req.user?._id || req.user?.id || req.query.userId;
   if (userId) req.query.userId = userId;
+  if (!req.query.currency) {
+    req.query.currency = req.user?.preferred_currency || (req.user?.location_country === 'India' ? 'INR' : 'USD');
+  }
   return proxyToPaymentService(req, res, 'get', '/subscriptions/dashboard');
 });
 
