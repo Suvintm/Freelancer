@@ -39,22 +39,37 @@ const COUNTRY_CURRENCY_MAP = {
 };
 
 /**
- * Get gateway provider based on user's country
+ * Get gateway provider based on user's country or plan currency
+ * Production Rule: Indian rails (INR) -> Razorpay (UPI, RuPay, Domestic)
+ *                  Global rails (USD/EUR/GBP) -> Stripe
  */
+export const getProviderByCurrency = async (currency = "INR") => {
+  const normalized = String(currency).toUpperCase().trim();
+  const settings = await getEffectiveSettings();
+
+  if (normalized === "INR" && settings.razorpayEnabled) {
+    return new RazorpayProvider();
+  }
+
+  // Future: Stripe Provider for International USD
+  // if (settings.stripeEnabled) {
+  //   return new StripeProvider();
+  // }
+
+  if (settings.razorpayEnabled) {
+    return new RazorpayProvider();
+  }
+
+  return null;
+};
+
 const getProvider = async (country) => {
-
-
   const settings = await getEffectiveSettings();
   const countryConfig = COUNTRY_CURRENCY_MAP[country] || COUNTRY_CURRENCY_MAP["IN"];
   
   if (countryConfig.gateway === "razorpay" && settings.razorpayEnabled) {
     return new RazorpayProvider();
   }
-  
-  // Future: Stripe for international
-  // if (countryConfig.gateway === "stripe" && settings.stripeEnabled) {
-  //   return new StripeProvider();
-  // }
   
   // Default to Razorpay for India
   if (country === "IN" && settings.razorpayEnabled) {
