@@ -1,4 +1,4 @@
-﻿title = "SuviX Gitleaks Configuration"
+title = "SuviX Gitleaks Configuration"
 
 [extend]
 useDefault = true
@@ -6,14 +6,15 @@ useDefault = true
 [allowlist]
 description = "Allowlist for test fixtures, mock secrets, and documentation"
 paths = [
-  '''(?i)server/tests/''',
-  '''(?i)payment-service/src/test/''',
-  '''(?i)\.test\.[jt]sx?$''',
-  '''(?i)\.spec\.[jt]sx?$''',
-  '''(?i)tests?/fixtures/''',
-  '''(?i)scratch/''',
-  '''(?i)package-lock\.json''',
+  '''server/tests/.*''',
+  '''payment-service/src/test/.*''',
+  '''tests?/fixtures/.*''',
+  '''scratch/.*''',
 ]
 regexes = [
-  '''(?i)(test|dummy|mock|fake|sample|example|suvix_dev_secret|rzp_test)''',
+  '''(?i)test_razorpay''',
+  '''(?i)suvix_dev_secret''',
+  '''(?i)rzp_test''',
+  '''(?i)whsec_test''',
+  '''(?i)mock_key''',
 ]
