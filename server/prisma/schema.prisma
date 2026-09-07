@@ -1182,6 +1182,7 @@ model Subscription {
   baseAmount               Decimal?         @default(0) @map("base_amount") @db.Decimal(19, 4)
   taxAmount                Decimal?         @default(0) @map("tax_amount") @db.Decimal(19, 4)
   totalAmount              Decimal?         @default(0) @map("total_amount") @db.Decimal(19, 4)
+  currency                 String           @default("INR") @db.VarChar(3)
   status                   String           @default("incomplete") @db.VarChar(20)
   provider                 String           @default("razorpay") @db.VarChar(20)
   provider_subscription_id String?          @db.VarChar(100)
@@ -2021,10 +2022,17 @@ enum CommunityPlatform {
 }
 
 enum SubscriptionStatus {
-  trial
+  incomplete
+  trialing
   active
+  past_due
+  unpaid
+  cancelling
+  paused
   expired
+  disputed
   cancelled
+  trial
   payment_pending
 }
 

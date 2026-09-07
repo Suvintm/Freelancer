@@ -132,6 +132,7 @@ database_schemas_overview.md
 # Log and Output files
 *.txt
 *.sql
+!payment-service/src/main/resources/db/migration/*.sql
 *.log
 
 guide
