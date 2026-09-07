@@ -6,6 +6,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import './styles/globals.css';
+import 'flag-icons/css/flag-icons.min.css';
 import App from './App.tsx';
 import { ThemeProvider } from './context/ThemeProvider';
 import { initSentry } from './utils/sentry';

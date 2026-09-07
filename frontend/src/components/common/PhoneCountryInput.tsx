@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { ChevronDown, Search, X, Loader2, Check } from 'lucide-react';
+import { isValidPhoneNumber, type CountryCode, AsYouType } from 'libphonenumber-js';
 import type { CountryData } from '../../data/countries';
 import { COUNTRIES, findCountryByCode, findCountryByName, detectBrowserCountry } from '../../data/countries';
 
 interface PhoneCountryInputProps {
   value: string;
-  onChange: (fullValue: string, country: CountryData, nationalNumber: string) => void;
+  onChange: (fullValue: string, country: CountryData, nationalNumber: string, isValid?: boolean) => void;
   country?: string; // Country name (e.g. 'India') or ISO code (e.g. 'IN')
   onCountryChange?: (country: CountryData) => void;
+  onValidityChange?: (isValid: boolean) => void;
   required?: boolean;
   disabled?: boolean;
+  isDetecting?: boolean;
   placeholder?: string;
   className?: string;
-  variant?: 'suvix-dark' | 'suvix-light'; // suvix-dark has !border-2 !border-black; suvix-light has border-zinc-300
+  variant?: 'suvix-dark' | 'suvix-light';
 }
 
 export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
@@ -20,8 +23,10 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
   onChange,
   country,
   onCountryChange,
+  onValidityChange,
   required = false,
   disabled = false,
+  isDetecting = false,
   placeholder = '98765 43210',
   className = '',
   variant = 'suvix-dark',
@@ -38,6 +43,7 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [nationalNumber, setNationalNumber] = useState('');
+  const [isValid, setIsValid] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -52,25 +58,41 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
     }
   }, [country]);
 
+  const checkValidation = (num: string, cCode: string): boolean => {
+    if (!num || num.trim().length < 4) return false;
+    try {
+      return isValidPhoneNumber(num, cCode as CountryCode);
+    } catch {
+      return false;
+    }
+  };
+
   // Parse initial or incoming value
   useEffect(() => {
     if (!value) {
       setNationalNumber('');
+      setIsValid(false);
       return;
     }
 
-    // If value already includes dial code (e.g. "+91 9876543210" or "+919876543210")
+    let parsedNumber = value;
+    let currentCountry = selectedCountry;
+
     if (value.startsWith('+')) {
       const matchedDial = COUNTRIES.find((c) => value.startsWith(c.dialCode));
       if (matchedDial) {
+        currentCountry = matchedDial;
         setSelectedCountry(matchedDial);
-        const numberPart = value.slice(matchedDial.dialCode.length).trim();
-        setNationalNumber(numberPart);
-        return;
+        parsedNumber = value.slice(matchedDial.dialCode.length).trim();
       }
+    } else {
+      parsedNumber = value.replace(/^\+?[0-9]*\s*/, '');
     }
 
-    setNationalNumber(value.replace(/^\+?[0-9]*\s*/, ''));
+    setNationalNumber(parsedNumber);
+    const valid = checkValidation(parsedNumber, currentCountry.code);
+    setIsValid(valid);
+    onValidityChange?.(valid);
   }, []);
 
   // Filter countries based on search
@@ -106,16 +128,37 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
     if (onCountryChange) {
       onCountryChange(c);
     }
-    const full = nationalNumber ? `${c.dialCode} ${nationalNumber}` : '';
-    onChange(full, c, nationalNumber);
+    const clean = nationalNumber.replace(/[^\d]/g, '');
+    const valid = checkValidation(clean, c.code);
+    setIsValid(valid);
+    onValidityChange?.(valid);
+    const full = clean ? `${c.dialCode} ${clean}` : '';
+    onChange(full, c, clean, valid);
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow digits and spaces
-    const clean = e.target.value.replace(/[^\d\s-]/g, '');
-    setNationalNumber(clean);
-    const full = clean.trim() ? `${selectedCountry.dialCode} ${clean.trim()}` : '';
-    onChange(full, selectedCountry, clean.trim());
+    const rawInput = e.target.value.replace(/[^\d\s-]/g, '');
+    const rawDigits = rawInput.replace(/[^\d]/g, '');
+
+    // Format using AsYouType formatter for national format
+    let formattedDisplay = rawInput;
+    try {
+      const formatter = new AsYouType(selectedCountry.code as CountryCode);
+      const asYouTypeResult = formatter.input(rawDigits);
+      if (asYouTypeResult) {
+        formattedDisplay = asYouTypeResult;
+      }
+    } catch {
+      formattedDisplay = rawInput;
+    }
+
+    setNationalNumber(formattedDisplay);
+    const valid = checkValidation(rawDigits, selectedCountry.code);
+    setIsValid(valid);
+    onValidityChange?.(valid);
+
+    const full = rawDigits ? `${selectedCountry.dialCode} ${rawDigits}` : '';
+    onChange(full, selectedCountry, rawDigits, valid);
   };
 
   const isDark = variant === 'suvix-dark';
@@ -125,16 +168,25 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
       {/* Country Flag & Dial Code Trigger */}
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || isDetecting}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex items-center gap-1.5 h-10 px-2.5 shrink-0 rounded-l-xl select-none transition-all cursor-pointer font-medium text-xs sm:text-[13px] ${
+        className={`flex items-center gap-1.5 h-10 px-2.5 shrink-0 rounded-l-xl select-none transition-all font-medium text-xs sm:text-[13px] ${
+          disabled || isDetecting ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+        } ${
           isDark
             ? 'bg-zinc-100 hover:bg-zinc-200 border-2 border-r-0 border-black text-black'
             : 'bg-zinc-50 hover:bg-zinc-100 border border-r-0 border-zinc-300 text-zinc-900'
         }`}
         title={`${selectedCountry.name} (${selectedCountry.dialCode})`}
       >
-        <span className="text-base leading-none">{selectedCountry.flag}</span>
+        {isDetecting ? (
+          <Loader2 size={13} className="animate-spin text-zinc-500" />
+        ) : (
+          <span
+            className={`fi fi-${selectedCountry.code.toLowerCase()} rounded-[2px] shadow-2xs shrink-0 inline-block`}
+            style={{ width: '1.25em', height: '0.9em' }}
+          />
+        )}
         <span className="font-bold text-[12px]">{selectedCountry.dialCode}</span>
         <ChevronDown
           size={13}
@@ -143,23 +195,35 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
       </button>
 
       {/* Phone Number Input */}
-      <input
-        type="tel"
-        value={nationalNumber}
-        onChange={handleNumberChange}
-        required={required}
-        disabled={disabled}
-        placeholder={placeholder}
-        autoComplete="tel-national"
-        className={`w-full h-10 pr-3 pl-2.5 rounded-r-xl text-xs sm:text-[13px] font-medium tracking-wide focus:outline-none transition-all placeholder:text-zinc-400 ${
-          isDark
-            ? 'suvix-input !h-10 !rounded-l-none bg-white !border-2 !border-black text-black'
-            : 'bg-white border border-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 rounded-r-xl text-zinc-900'
-        }`}
-      />
+      <div className="relative flex-1">
+        <input
+          type="tel"
+          value={nationalNumber}
+          onChange={handleNumberChange}
+          required={required}
+          disabled={disabled}
+          placeholder={placeholder}
+          autoComplete="tel-national"
+          className={`w-full h-10 pr-8 pl-2.5 rounded-r-xl text-xs sm:text-[13px] font-medium tracking-wide focus:outline-none transition-all placeholder:text-zinc-400 ${
+            isDark
+              ? 'suvix-input !h-10 !rounded-l-none bg-white !border-2 !border-black text-black'
+              : 'bg-white border border-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 rounded-r-xl text-zinc-900'
+          }`}
+        />
+
+        {/* Real-time Validity Indicator */}
+        {isValid && nationalNumber.length >= 4 && (
+          <span
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-200/70 w-4.5 h-4.5 rounded-full"
+            title="Valid phone format"
+          >
+            <Check size={11} strokeWidth={3} />
+          </span>
+        )}
+      </div>
 
       {/* Searchable Country Dropdown Modal */}
-      {isOpen && (
+      {isOpen && !isDetecting && (
         <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-72 animate-in fade-in zoom-in-95 duration-150">
           {/* Search Box */}
           <div className="p-2.5 border-b border-zinc-100 bg-zinc-50/70 flex items-center gap-2">
@@ -198,7 +262,10 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <span className="text-base shrink-0 leading-none">{c.flag}</span>
+                      <span
+                        className={`fi fi-${c.code.toLowerCase()} rounded-[2px] shadow-2xs shrink-0 inline-block`}
+                        style={{ width: '1.25em', height: '0.9em' }}
+                      />
                       <span className="truncate">{c.name}</span>
                     </div>
                     <span className="font-mono text-[11px] text-zinc-400 shrink-0 ml-2">

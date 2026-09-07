@@ -6,20 +6,46 @@ import logger from "../../infrastructure/monitoring/logger.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import fs from "fs";
+
 let geoReader;
 
 // Load MaxMind DB
 const loadGeoIP = async () => {
-  try {
-    const dbPath = path.join(__dirname, "../geoip/GeoLite2-Country.mmdb");
-    geoReader = await maxmind.open(dbPath);
-    logger.info("✅ GeoIP Database loaded successfully");
-  } catch (error) {
-    logger.warn("⚠️ GeoIP Database not found at startup. Ensure MAXMIND_LICENSE_KEY is set and build script ran.");
+  const candidatePaths = [
+    path.resolve(process.cwd(), "geoip/GeoLite2-Country.mmdb"),
+    path.resolve(__dirname, "../../../geoip/GeoLite2-Country.mmdb"),
+    path.resolve(__dirname, "../geoip/GeoLite2-Country.mmdb"),
+  ];
+
+  for (const dbPath of candidatePaths) {
+    if (fs.existsSync(dbPath)) {
+      try {
+        geoReader = await maxmind.open(dbPath);
+        logger.info(`✅ GeoIP Database loaded successfully from ${dbPath}`);
+        return;
+      } catch (err) {
+        logger.warn(`Failed to open GeoIP DB at ${dbPath}: ${err.message}`);
+      }
+    }
   }
+  logger.warn("⚠️ GeoIP Database not found. Set MAXMIND_LICENSE_KEY or run geoip script.");
 };
 
 loadGeoIP();
+
+/**
+ * Lookup ISO-2 country code by IP using local MaxMind reader
+ */
+export const getCountryByIP = (ip) => {
+  if (!geoReader || !ip) return null;
+  try {
+    const lookup = geoReader.get(ip);
+    return lookup?.country?.iso_code || null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Get real client IP address correctly across Cloudflare, Nginx Gateway, and Render

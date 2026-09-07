@@ -187,9 +187,33 @@ export const COUNTRIES: CountryData[] = [
 /**
  * Common timezone to ISO-2 country code mapping for instant zero-latency client pre-fill
  */
+/**
+ * Enhanced Timezone Map
+ */
 const TIMEZONE_MAP: Record<string, string> = {
   'Asia/Kolkata': 'IN',
   'Asia/Calcutta': 'IN',
+  'Asia/Delhi': 'IN',
+  'Asia/Bombay': 'IN',
+  'Asia/Colombo': 'LK',
+  'Asia/Kathmandu': 'NP',
+  'Asia/Dhaka': 'BD',
+  'Asia/Karachi': 'PK',
+  'Asia/Dubai': 'AE',
+  'Asia/Muscat': 'OM',
+  'Asia/Riyadh': 'SA',
+  'Asia/Qatar': 'QA',
+  'Asia/Kuwait': 'KW',
+  'Asia/Bahrain': 'BH',
+  'Asia/Singapore': 'SG',
+  'Asia/Kuala_Lumpur': 'MY',
+  'Asia/Jakarta': 'ID',
+  'Asia/Bangkok': 'TH',
+  'Asia/Manila': 'PH',
+  'Asia/Ho_Chi_Minh': 'VN',
+  'Asia/Tokyo': 'JP',
+  'Asia/Seoul': 'KR',
+  'Asia/Hong_Kong': 'HK',
   'America/New_York': 'US',
   'America/Chicago': 'US',
   'America/Denver': 'US',
@@ -197,66 +221,144 @@ const TIMEZONE_MAP: Record<string, string> = {
   'America/Phoenix': 'US',
   'America/Anchorage': 'US',
   'Pacific/Honolulu': 'US',
-  'Europe/London': 'GB',
-  'Europe/Belfast': 'GB',
-  'Asia/Dubai': 'AE',
+  'America/Detroit': 'US',
+  'America/Indiana/Indianapolis': 'US',
   'America/Toronto': 'CA',
   'America/Vancouver': 'CA',
-  'Australia/Sydney': 'AU',
-  'Australia/Melbourne': 'AU',
-  'Australia/Brisbane': 'AU',
-  'Australia/Perth': 'AU',
-  'Asia/Singapore': 'SG',
-  'Asia/Riyadh': 'SA',
+  'America/Montreal': 'CA',
+  'America/Edmonton': 'CA',
+  'Europe/London': 'GB',
+  'Europe/Belfast': 'GB',
+  'Europe/Dublin': 'IE',
   'Europe/Berlin': 'DE',
   'Europe/Paris': 'FR',
   'Europe/Amsterdam': 'NL',
-  'Asia/Tokyo': 'JP',
-  'Asia/Seoul': 'KR',
-  'America/Sao_Paulo': 'BR',
-  'America/Mexico_City': 'MX',
-  'Africa/Johannesburg': 'ZA',
-  'Africa/Lagos': 'NG',
-  'Africa/Nairobi': 'KE',
-  'Asia/Manila': 'PH',
-  'Asia/Jakarta': 'ID',
-  'Asia/Kuala_Lumpur': 'MY',
-  'Pacific/Auckland': 'NZ',
-  'Europe/Dublin': 'IE',
-  'Europe/Madrid': 'ES',
   'Europe/Rome': 'IT',
+  'Europe/Madrid': 'ES',
   'Europe/Stockholm': 'SE',
   'Europe/Zurich': 'CH',
   'Europe/Oslo': 'NO',
   'Europe/Copenhagen': 'DK',
-  'Asia/Karachi': 'PK',
-  'Asia/Dhaka': 'BD',
-  'Asia/Colombo': 'LK',
-  'Asia/Kathmandu': 'NP',
-  'Asia/Qatar': 'QA',
-  'Asia/Kuwait': 'KW',
-  'Asia/Muscat': 'OM',
-  'Asia/Bahrain': 'BH',
-  'Asia/Bangkok': 'TH',
-  'Asia/Ho_Chi_Minh': 'VN',
-  'Africa/Cairo': 'EG',
+  'Europe/Vienna': 'AT',
+  'Europe/Brussels': 'BE',
+  'Europe/Warsaw': 'PL',
+  'Europe/Prague': 'CZ',
+  'Europe/Lisbon': 'PT',
+  'Europe/Athens': 'GR',
   'Europe/Istanbul': 'TR',
+  'Australia/Sydney': 'AU',
+  'Australia/Melbourne': 'AU',
+  'Australia/Brisbane': 'AU',
+  'Australia/Perth': 'AU',
+  'Australia/Adelaide': 'AU',
+  'Pacific/Auckland': 'NZ',
+  'America/Sao_Paulo': 'BR',
+  'America/Mexico_City': 'MX',
+  'America/Bogota': 'CO',
+  'America/Buenos_Aires': 'AR',
+  'America/Santiago': 'CL',
+  'Africa/Johannesburg': 'ZA',
+  'Africa/Lagos': 'NG',
+  'Africa/Nairobi': 'KE',
+  'Africa/Cairo': 'EG',
 };
 
 /**
- * Instant client-side browser country detection (0ms) using resolved timezone
+ * Instant client-side browser country detection (0ms) using timezone, offset, and language heuristics
  */
 export function detectBrowserCountry(): CountryData {
   try {
+    // 1. Check IANA Timezone string
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz && TIMEZONE_MAP[tz]) {
-      const match = findCountryByCode(TIMEZONE_MAP[tz]);
-      if (match) return match;
+    if (tz) {
+      if (TIMEZONE_MAP[tz]) {
+        const match = findCountryByCode(TIMEZONE_MAP[tz]);
+        if (match) return match;
+      }
+      if (tz.includes('Calcutta') || tz.includes('Kolkata') || tz.includes('Delhi') || tz.includes('India')) {
+        return findCountryByCode('IN') || COUNTRIES[0];
+      }
+    }
+
+    // 2. Check Timezone Offset (Minutes from UTC)
+    // Indian Standard Time (IST) is UTC+5:30 -> offset is exactly -330
+    const offset = new Date().getTimezoneOffset();
+    if (offset === -330) {
+      return findCountryByCode('IN') || COUNTRIES[0];
+    } else if (offset === -345) {
+      return findCountryByCode('NP') || COUNTRIES[0];
+    } else if (offset === -360) {
+      return findCountryByCode('BD') || COUNTRIES[0];
+    } else if (offset === -240) {
+      return findCountryByCode('AE') || COUNTRIES[0];
+    } else if (offset === -180) {
+      return findCountryByCode('SA') || COUNTRIES[0];
+    } else if (offset === -480) {
+      return findCountryByCode('SG') || COUNTRIES[0];
+    }
+
+    // 3. Check Browser Languages
+    const langs = navigator.languages || [navigator.language];
+    for (const lang of langs) {
+      if (lang) {
+        const upper = lang.toUpperCase();
+        if (upper.includes('-IN') || upper === 'HI' || upper.startsWith('HI-') || upper.startsWith('TA-') || upper.startsWith('TE-') || upper.startsWith('MR-') || upper.startsWith('BN-')) {
+          return findCountryByCode('IN') || COUNTRIES[0];
+        } else if (upper.includes('-GB')) {
+          return findCountryByCode('GB') || COUNTRIES[0];
+        } else if (upper.includes('-CA')) {
+          return findCountryByCode('CA') || COUNTRIES[0];
+        } else if (upper.includes('-AU')) {
+          return findCountryByCode('AU') || COUNTRIES[0];
+        } else if (upper.includes('-AE')) {
+          return findCountryByCode('AE') || COUNTRIES[0];
+        } else if (upper.includes('-US')) {
+          return findCountryByCode('US') || COUNTRIES[0];
+        }
+      }
     }
   } catch {
     // ignore
   }
   return COUNTRIES[0]; // Defaults to India
+}
+
+/**
+ * Multi-tiered async country detector (Backend Edge -> Fallback Edge -> Browser)
+ */
+export async function autoDetectCountryAsync(backendDetector?: () => Promise<{ countryCode?: string; countryName?: string } | null>): Promise<CountryData> {
+  // 1. Try Backend Detector (Cloudflare Edge / MaxMind)
+  if (backendDetector) {
+    try {
+      const res = await backendDetector();
+      if (res?.countryCode) {
+        const match = findCountryByCode(res.countryCode) || (res.countryName ? findCountryByName(res.countryName) : undefined);
+        if (match) return match;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Try Free Public Edge JSON Endpoint (Zero-token fallback)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1500);
+    const edgeRes = await fetch('https://api.country.is', { signal: controller.signal });
+    clearTimeout(timer);
+    if (edgeRes.ok) {
+      const data = await edgeRes.json();
+      if (data?.country) {
+        const match = findCountryByCode(data.country);
+        if (match) return match;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Instant Browser Heuristics Fallback
+  return detectBrowserCountry();
 }
 
 export function findCountryByCode(code: string): CountryData | undefined {

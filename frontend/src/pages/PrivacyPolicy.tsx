@@ -86,7 +86,32 @@ export default function PrivacyPolicy() {
           </div>
         </motion.section>
 
-        {/* 3. Security */}
+        {/* 3. IP Geolocation & Regional Pricing */}
+        <motion.section 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-zinc-900 text-emerald-500' : 'bg-emerald-50 text-emerald-600'}`}>
+              <Globe size={20} />
+            </div>
+            <h2 className="text-lg font-bold uppercase tracking-wide">3. IP Geolocation &amp; Regional Pricing</h2>
+          </div>
+          <div className={`space-y-3 text-xs sm:text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+            <p>
+              We process your network IP address and edge headers at connection time to automatically detect your approximate country of access. This information is utilized solely to provide localized subscription pricing, display appropriate billing currencies, format phone country codes, and prevent fraudulent proxy abuse. We never record or track precise real-time GPS coordinates.
+            </p>
+            <p className="text-[11px] text-zinc-400">
+              * This product includes GeoLite2 data created by MaxMind, available from{' '}
+              <a href="https://www.maxmind.com" target="_blank" rel="noreferrer" className="underline hover:text-zinc-300">
+                https://www.maxmind.com
+              </a>.
+            </p>
+          </div>
+        </motion.section>
+
+        {/* 4. Security & Contact */}
         <motion.section 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -94,9 +119,9 @@ export default function PrivacyPolicy() {
         >
           <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-zinc-900 text-green-500' : 'bg-green-50 text-green-600'}`}>
-              <Globe size={20} />
+              <Shield size={20} />
             </div>
-            <h2 className="text-lg font-bold uppercase tracking-wide">3. Contact Us</h2>
+            <h2 className="text-lg font-bold uppercase tracking-wide">4. Contact Us</h2>
           </div>
           <p className={`text-xs sm:text-sm leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
             If you have any questions or suggestions regarding our Privacy Policy, please contact our Compliance Officer at <span className="text-rose-500 font-semibold">privacy@suvix.app</span>.
