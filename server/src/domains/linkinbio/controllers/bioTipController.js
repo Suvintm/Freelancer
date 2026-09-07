@@ -1,7 +1,19 @@
-﻿import prisma from '../../../infrastructure/database/postgres.js';
-import { RazorpayProvider } from '../../payment/services/razorpay.client.js';
-import { getRazorpayKeyId, verifyPaymentSignature, isRazorpayConfigured } from '../../payment/services/razorpay.config.js';
+import crypto from 'crypto';
+import prisma from '../../../infrastructure/database/postgres.js';
 import bioAnalyticsRepository from '../repositories/bioAnalyticsRepository.js';
+
+const getRazorpayKeyId = () => process.env.RAZORPAY_KEY_ID || 'rzp_test_mock_key';
+const getRazorpayKeySecret = () => process.env.RAZORPAY_KEY_SECRET || '';
+const isRazorpayConfigured = () => !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+
+const verifyPaymentSignature = ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
+  const secret = getRazorpayKeySecret();
+  if (!secret) return false;
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+  const generatedSignature = hmac.digest('hex');
+  return generatedSignature === razorpay_signature;
+};
 
 export class BioTipController {
   /**
@@ -41,24 +53,33 @@ export class BioTipController {
 
       // Create Razorpay Order
       if (isRazorpayConfigured()) {
-        const provider = new RazorpayProvider();
-        const razorpayOrder = await provider.createOrder({
-          amount: parseFloat(amount),
-          currency,
-          orderId: orderReceipt,
-          notes: {
-            type: 'linkinbio_tip',
-            pageId,
-            creatorUserId: page.userId,
-            visitorName: visitorName || 'Supporter',
-            tipMessage: tipMessage || '',
+        const auth = Buffer.from(`${getRazorpayKeyId()}:${getRazorpayKeySecret()}`).toString('base64');
+        const response = await fetch('https://api.razorpay.com/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${auth}`,
           },
+          body: JSON.stringify({
+            amount: Math.round(parseFloat(amount) * 100),
+            currency,
+            receipt: orderReceipt,
+            notes: {
+              type: 'linkinbio_tip',
+              pageId,
+              creatorUserId: page.userId,
+              visitorName: visitorName || 'Supporter',
+              tipMessage: tipMessage || '',
+            },
+          }),
         });
+
+        const razorpayOrder = await response.json();
 
         return res.status(200).json({
           success: true,
           data: {
-            orderId: razorpayOrder.orderId,
+            orderId: razorpayOrder.id || razorpayOrder.orderId,
             amount: parseFloat(amount),
             currency,
             keyId: getRazorpayKeyId(),
