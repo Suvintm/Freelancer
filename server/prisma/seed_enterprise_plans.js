@@ -28,6 +28,8 @@ async function seedEnterprisePlans() {
       tierLevel: 1,
       priceMonthly: 0,
       priceAnnual: 0,
+      priceMonthlyUsd: 0,
+      priceAnnualUsd: 0,
       featureList: [
         'Public Creator Profile',
         'Add up to 5 Bio Links',
@@ -87,7 +89,9 @@ async function seedEnterprisePlans() {
       sortOrder: 2,
       tierLevel: 2,
       priceMonthly: 499,
-      priceAnnual: 4790, // ~399/mo (Save 20%)
+      priceAnnual: 4788, // ₹399/mo (Save 20%)
+      priceMonthlyUsd: 19,
+      priceAnnualUsd: 180, // $15/mo (Save 21%)
       featureList: [
         'Verified Blue Badge on Profile ⭐',
         'Unlimited Bio Links & Blocks',
@@ -148,7 +152,9 @@ async function seedEnterprisePlans() {
       sortOrder: 3,
       tierLevel: 3,
       priceMonthly: 1499,
-      priceAnnual: 14390, // ~1199/mo (Save 20%)
+      priceAnnual: 14388, // ₹1199/mo (Save 20%)
+      priceMonthlyUsd: 49,
+      priceAnnualUsd: 468, // $39/mo (Save 20%)
       featureList: [
         'Everything in Creator Pro',
         'Custom Apex Domain (yourname.com)',
@@ -212,6 +218,8 @@ async function seedEnterprisePlans() {
       tierLevel: 1,
       priceMonthly: 0,
       priceAnnual: 0,
+      priceMonthlyUsd: 0,
+      priceAnnualUsd: 0,
       featureList: [
         'Public Freelancer Portfolio',
         'Escrow Contract Protection',
@@ -268,7 +276,9 @@ async function seedEnterprisePlans() {
       sortOrder: 2,
       tierLevel: 2,
       priceMonthly: 399,
-      priceAnnual: 3790, // ~319/mo (Save 20%)
+      priceAnnual: 3828, // ₹319/mo (Save 20%)
+      priceMonthlyUsd: 15,
+      priceAnnualUsd: 144, // $12/mo (Save 20%)
       featureList: [
         'Reduced 5% Platform Fee (Save 50%)',
         'Verified Creative Badge ⭐',
@@ -328,7 +338,9 @@ async function seedEnterprisePlans() {
       sortOrder: 3,
       tierLevel: 3,
       priceMonthly: 1199,
-      priceAnnual: 11490, // ~959/mo (Save 20%)
+      priceAnnual: 11508, // ₹959/mo (Save 20%)
+      priceMonthlyUsd: 39,
+      priceAnnualUsd: 372, // $31/mo (Save 21%)
       featureList: [
         '0% Platform Commission on All Escrows 💰',
         'Unlimited Client Job Proposals',
@@ -391,6 +403,8 @@ async function seedEnterprisePlans() {
       tierLevel: 1,
       priceMonthly: 0,
       priceAnnual: 0,
+      priceMonthlyUsd: 0,
+      priceAnnualUsd: 0,
       featureList: [
         'Browse Verified Creator Catalog',
         'Direct Hire via Escrow Protection',
@@ -446,7 +460,9 @@ async function seedEnterprisePlans() {
       sortOrder: 2,
       tierLevel: 2,
       priceMonthly: 999,
-      priceAnnual: 9590, // ~799/mo (Save 20%)
+      priceAnnual: 9588, // ₹799/mo (Save 20%)
+      priceMonthlyUsd: 29,
+      priceAnnualUsd: 276, // $23/mo (Save 21%)
       featureList: [
         'Verified Brand Badge ⭐',
         'Creator Discovery Search & Filters',
@@ -504,7 +520,9 @@ async function seedEnterprisePlans() {
       sortOrder: 3,
       tierLevel: 3,
       priceMonthly: 2999,
-      priceAnnual: 28790, // ~2399/mo (Save 20%)
+      priceAnnual: 28788, // ₹2399/mo (Save 20%)
+      priceMonthlyUsd: 89,
+      priceAnnualUsd: 852, // $71/mo (Save 20%)
       featureList: [
         'Unlimited Campaign Postings',
         'Unlimited Creator Discovery Searches',
@@ -566,6 +584,8 @@ async function seedEnterprisePlans() {
       tierLevel: 1,
       priceMonthly: 0,
       priceAnnual: 0,
+      priceMonthlyUsd: 0,
+      priceAnnualUsd: 0,
       featureList: [
         'Follow Creators & Channels',
         'Public Community Feed & Posts',
@@ -619,7 +639,9 @@ async function seedEnterprisePlans() {
       sortOrder: 2,
       tierLevel: 2,
       priceMonthly: 99,
-      priceAnnual: 950, // ~79/mo (Save 20%)
+      priceAnnual: 948, // ₹79/mo (Save 20%)
+      priceMonthlyUsd: 4,
+      priceAnnualUsd: 36, // $3/mo (Save 25%)
       featureList: [
         '100% Ad-Free Experience Across SuviX',
         'Exclusive Supporter Badge on Profile ⭐',
@@ -735,21 +757,21 @@ async function seedEnterprisePlans() {
       },
     });
 
-    // 5. Create Monthly Price
+    // 5. Create Monthly Price (INR)
     await prisma.planPrice.create({
       data: {
         planVersionId: version.id,
         billingInterval: 'month',
         currency: 'INR',
         amount: item.priceMonthly,
-        isTaxInclusive: false,
+        isTaxInclusive: true,
         taxRate: 18.0,
         trialDays: item.tierLevel > 1 ? 3 : 0,
         isActive: true,
       },
     });
 
-    // 6. Create Annual Price (if applicable)
+    // 6. Create Annual Price (INR)
     if (item.priceAnnual > 0) {
       await prisma.planPrice.create({
         data: {
@@ -757,7 +779,7 @@ async function seedEnterprisePlans() {
           billingInterval: 'year',
           currency: 'INR',
           amount: item.priceAnnual,
-          isTaxInclusive: false,
+          isTaxInclusive: true,
           taxRate: 18.0,
           trialDays: 3,
           isActive: true,
@@ -765,7 +787,36 @@ async function seedEnterprisePlans() {
       });
     }
 
-    // 7. Upsert Entitlements
+    // 7. Create USD Monthly & Annual Prices
+    await prisma.planPrice.create({
+      data: {
+        planVersionId: version.id,
+        billingInterval: 'month',
+        currency: 'USD',
+        amount: item.priceMonthlyUsd ?? 0,
+        isTaxInclusive: true,
+        taxRate: 0.0,
+        trialDays: item.tierLevel > 1 ? 3 : 0,
+        isActive: true,
+      },
+    });
+
+    if ((item.priceAnnualUsd ?? 0) > 0) {
+      await prisma.planPrice.create({
+        data: {
+          planVersionId: version.id,
+          billingInterval: 'year',
+          currency: 'USD',
+          amount: item.priceAnnualUsd,
+          isTaxInclusive: true,
+          taxRate: 0.0,
+          trialDays: 3,
+          isActive: true,
+        },
+      });
+    }
+
+    // 8. Upsert Entitlements
     for (const ent of item.entitlements) {
       await prisma.planEntitlement.upsert({
         where: {
@@ -787,7 +838,7 @@ async function seedEnterprisePlans() {
       });
     }
 
-    // 8. Upsert into subscription_plans table (Java Entity & Supabase Table)
+    // 9. Upsert into subscription_plans table (Java Entity & Supabase Table)
     // Packages rich SDUI presentation manifest alongside technical flags
     const sduiFeaturesPayload = {
       list: item.featureList,
@@ -804,11 +855,12 @@ async function seedEnterprisePlans() {
     await prisma.$executeRawUnsafe(
       `INSERT INTO subscription_plans (
         id, name, description, tier_level, billing_interval,
-        price_monthly, price_annual, features, limits,
+        price_monthly, price_annual, price_monthly_usd, price_annual_usd,
+        features, limits,
         display_order, is_popular, badge, is_active, target_role,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11, $12, $13, $14, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13, $14, $15, $16, NOW(), NOW()
       ) ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         description = EXCLUDED.description,
@@ -816,6 +868,8 @@ async function seedEnterprisePlans() {
         billing_interval = EXCLUDED.billing_interval,
         price_monthly = EXCLUDED.price_monthly,
         price_annual = EXCLUDED.price_annual,
+        price_monthly_usd = EXCLUDED.price_monthly_usd,
+        price_annual_usd = EXCLUDED.price_annual_usd,
         features = EXCLUDED.features,
         limits = EXCLUDED.limits,
         display_order = EXCLUDED.display_order,
@@ -831,6 +885,8 @@ async function seedEnterprisePlans() {
       'month',
       item.priceMonthly,
       item.priceAnnual,
+      item.priceMonthlyUsd ?? 0,
+      item.priceAnnualUsd ?? 0,
       JSON.stringify(sduiFeaturesPayload),
       JSON.stringify(sduiLimitsPayload),
       item.sortOrder,
