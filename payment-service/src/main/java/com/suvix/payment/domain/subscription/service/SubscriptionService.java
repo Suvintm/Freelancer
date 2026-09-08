@@ -156,39 +156,49 @@ public class SubscriptionService {
                 buttonText = "user".equalsIgnoreCase(plan.getTargetRole()) ? "Join Free" : "Get Started Free";
             }
 
-            BigDecimal monthlyAmount = plan.getMonthlyPriceForCurrency(targetCurrency);
-            BigDecimal annualAmount = plan.getAnnualPriceForCurrency(targetCurrency);
-            if (annualAmount == null || annualAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            BigDecimal monthlyAmount = plan.getMonthlyPriceForCurrency(targetCurrency).setScale(0, RoundingMode.HALF_UP);
+            BigDecimal annualAmount = plan.getAnnualPriceForCurrency(targetCurrency).setScale(0, RoundingMode.HALF_UP);
+            if (annualAmount.compareTo(BigDecimal.ZERO) <= 0) {
                 if (monthlyAmount.compareTo(BigDecimal.ZERO) > 0) {
-                    annualAmount = monthlyAmount.multiply(BigDecimal.valueOf(12)).multiply(BigDecimal.valueOf(0.8)).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal annualMonthlyEquiv = monthlyAmount.multiply(BigDecimal.valueOf(0.8)).setScale(0, RoundingMode.HALF_UP);
+                    annualAmount = annualMonthlyEquiv.multiply(BigDecimal.valueOf(12));
                 } else {
                     annualAmount = BigDecimal.ZERO;
                 }
             }
 
+            BigDecimal monthlyEquivalent = annualAmount.compareTo(BigDecimal.ZERO) > 0
+                    ? annualAmount.divide(BigDecimal.valueOf(12), 0, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
+            int savingsPercent = 0;
+            if (monthlyAmount.compareTo(BigDecimal.ZERO) > 0 && monthlyEquivalent.compareTo(BigDecimal.ZERO) > 0 && monthlyEquivalent.compareTo(monthlyAmount) < 0) {
+                BigDecimal diff = monthlyAmount.subtract(monthlyEquivalent);
+                savingsPercent = diff.multiply(BigDecimal.valueOf(100))
+                        .divide(monthlyAmount, 0, RoundingMode.HALF_UP)
+                        .intValue();
+            }
+
             boolean isUsd = "USD".equalsIgnoreCase(targetCurrency);
             BigDecimal gstRate = isUsd ? BigDecimal.ZERO : new BigDecimal("18.00");
-            BigDecimal monthlyTotalWithTax = isUsd ? monthlyAmount : monthlyAmount.multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal annualTotalWithTax = isUsd ? annualAmount : annualAmount.multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal monthlyEquivalent = annualAmount.compareTo(BigDecimal.ZERO) > 0
-                    ? annualAmount.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
+            BigDecimal monthlyTotalWithTax = monthlyAmount;
+            BigDecimal annualTotalWithTax = annualAmount;
 
             Map<String, Object> monthlyPricing = Map.of(
                     "amount", monthlyAmount,
                     "currency", targetCurrency,
                     "taxRate", gstRate,
-                    "taxInclusive", isUsd,
+                    "taxInclusive", true,
                     "totalWithTax", monthlyTotalWithTax
             );
 
             Map<String, Object> annualPricing = Map.of(
                     "amount", annualAmount,
                     "monthlyEquivalent", monthlyEquivalent,
-                    "savingsPercent", 20,
+                    "savingsPercent", savingsPercent,
                     "currency", targetCurrency,
                     "taxRate", gstRate,
-                    "taxInclusive", isUsd,
+                    "taxInclusive", true,
                     "totalWithTax", annualTotalWithTax
             );
 
@@ -200,7 +210,7 @@ public class SubscriptionService {
             String currencySymbol = isUsd ? "$" : "₹";
             System.out.println("     • Plan: [" + plan.getId() + "] " + plan.getName()
                     + " | Monthly: " + currencySymbol + monthlyAmount + " (" + currencySymbol + monthlyTotalWithTax + (isUsd ? "" : " incl. GST") + ")"
-                    + " | Annual: " + currencySymbol + annualAmount + " (" + currencySymbol + annualTotalWithTax + (isUsd ? "" : " incl. GST") + ")"
+                    + " | Annual: " + currencySymbol + annualAmount + " (" + currencySymbol + annualTotalWithTax + (isUsd ? "" : " incl. GST") + ", Equiv: " + currencySymbol + monthlyEquivalent + "/mo, Save " + savingsPercent + "%)"
                     + " | Features: " + featureList.size());
 
             return PlanPresenterDto.builder()
@@ -213,7 +223,7 @@ public class SubscriptionService {
                     .tierLevel(plan.getTierLevel())
                     .version(plan.getVersion())
                     .priceMonthly(monthlyAmount)
-                    .priceAnnual(annualAmount)
+                    .priceAnnual(monthlyEquivalent)
                     .currency(targetCurrency)
                     .trialDays(plan.getTrialDays())
                     .isPopular(plan.isPopular())

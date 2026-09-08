@@ -25,14 +25,11 @@ import {
   Check,
   X,
   Download,
-  PauseCircle,
-  PlayCircle,
   Receipt,
   Twitter,
   Instagram,
   Youtube,
   Linkedin,
-  Zap,
   ShieldCheck,
   TrendingUp,
   Headphones,
@@ -50,8 +47,6 @@ import {
   Send,
   Star,
   ArrowRight,
-  Heart,
-  Shield,
 } from 'lucide-react';
 import { ImSpinner2 } from 'react-icons/im';
 
@@ -95,7 +90,7 @@ export default function Subscription() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [rolePlansCache, setRolePlansCache] = useState<Partial<Record<WorkspaceRole, Plan[]>>>({});
   const [activePlan, setActivePlan] = useState<any>(null);
-  const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
+  const [_usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -313,33 +308,16 @@ export default function Subscription() {
 
   const currencySymbol = isUsd ? '$' : '₹';
 
+  const maxSavingsPercent = useMemo(() => {
+    const validSavings = displayPlans
+      .map((p) => p.savingsPercent)
+      .filter((s): s is number => typeof s === 'number' && s > 0);
+    return validSavings.length > 0 ? Math.max(...validSavings) : 20;
+  }, [displayPlans]);
+
   const comparisonMatrix = useMemo(() => {
     return getDynamicComparisonMatrix(displayPlans, selectedRole);
   }, [displayPlans, selectedRole]);
-
-  const activePlanPresenter = useMemo(() => {
-    if (!activePlan) return null;
-    return displayPlans.find(
-      (p) =>
-        (activePlan.planId && p.id === activePlan.planId) ||
-        (activePlan.tierLevel && p.tierLevel === activePlan.tierLevel) ||
-        (activePlan.planName && p.name.toLowerCase().includes(activePlan.planName.toLowerCase()))
-    ) || displayPlans[0];
-  }, [activePlan, displayPlans]);
-
-  const [nowTimestamp] = useState(() => Date.now());
-
-  const activePlanTimeInfo = useMemo(() => {
-    if (!activePlan) return { daysRemaining: null, formattedRenewal: 'Lifetime Free' };
-    const periodEndVal = activePlan.periodEnd || activePlan.currentPeriodEnd;
-    const daysRemaining = periodEndVal
-      ? Math.max(0, Math.ceil((new Date(periodEndVal).getTime() - nowTimestamp) / (1000 * 60 * 60 * 24)))
-      : null;
-    const formattedRenewal = periodEndVal
-      ? new Date(periodEndVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : 'Lifetime Free';
-    return { daysRemaining, formattedRenewal };
-  }, [activePlan, nowTimestamp]);
 
   // 4. Enterprise Checkout Handlers
   const handlePlanCardClick = async (displayPlan: PlanCardPresenter) => {
@@ -425,19 +403,6 @@ export default function Subscription() {
       await loadData();
     } catch (err: any) {
       triggerToast(err.response?.data?.message || 'Failed to pause subscription', 'error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleResumeSubscription = async () => {
-    setActionLoading('resume');
-    try {
-      await subscriptionService.resumeSubscription();
-      triggerToast('Subscription resumed successfully!', 'success');
-      await loadData();
-    } catch (err: any) {
-      triggerToast(err.response?.data?.message || 'Failed to resume subscription', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -622,7 +587,7 @@ export default function Subscription() {
                       : 'bg-zinc-200 text-zinc-800'
                   }`}
                 >
-                  {plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback) ? 'Save --' : 'Save 20%'}
+                  {plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback) ? 'Save --' : `Save ${maxSavingsPercent}%`}
                 </span>
               </button>
             </div>
@@ -793,8 +758,10 @@ export default function Subscription() {
               const isPopular = !isOffline && (displayPlan.isPopular || displayPlan.tierLevel === 2);
               const tierBadgeText = isOffline ? '--' : (displayPlan.tierLevel === 1 ? 'For Beginners' : displayPlan.tierLevel === 2 ? 'Most Popular' : 'For Agencies');
 
-              // Strikethrough comparison calculation (e.g., $19 with strikethrough $24)
-              const originalMonthlyPrice = (!isOffline && displayPlan.priceMonthly) ? Math.round(displayPlan.priceMonthly * 1.25) : null;
+              // Strikethrough comparison calculation: on annual view, show monthly price as crossed-out anchor
+              const originalMonthlyPrice = (!isOffline && billingCycle === 'annual' && displayPlan.priceMonthly && displayPlan.priceAnnual && displayPlan.priceMonthly > displayPlan.priceAnnual)
+                ? displayPlan.priceMonthly
+                : null;
 
               return (
                 <div
@@ -873,7 +840,7 @@ export default function Subscription() {
 
                       {displayPlan.tierLevel > 1 && (
                         <p className={`text-[11px] font-bold mt-0.5 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>
-                          {isOffline ? 'Save --' : 'Save 20% with yearly'}
+                          {isOffline ? 'Save --' : `Save ${displayPlan.savingsPercent || maxSavingsPercent}% with yearly`}
                         </p>
                       )}
                     </div>

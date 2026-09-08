@@ -8,21 +8,25 @@ import {
   Sparkles,
   RefreshCw,
   Lock,
+  User as UserIcon,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Tag,
+  ShieldCheck,
+  Shield,
+  FileText,
+  CreditCard,
 } from 'lucide-react';
 import { ImSpinner2 } from 'react-icons/im';
 import { subscriptionService, type ProrationQuote } from '../../../api/services/subscription.service';
 import type { PlanCardPresenter, WorkspaceRole } from '../rolePlanConfig';
 import { usePaymentStateMachine } from '../hooks/usePaymentStateMachine';
-import { ComplianceConsent } from './ComplianceConsent';
-import { FeatureUnlockPreview } from './FeatureUnlockPreview';
-import { SmartCouponInput } from './SmartCouponInput';
-import { SocialProofBanner } from './SocialProofBanner';
-import { TrustBadges } from './TrustBadges';
-import { InvoicePreview } from './InvoicePreview';
 import razorpayLogoImg from '../../../assets/razorpay.png';
 import stripeLogoImg from '../../../assets/stripe.png';
-import walletLogoImg from '../../../assets/wallet.png';
+import logoImg from '../../../assets/logo.png';
 import blackbglogoImg from '../../../assets/blackbglogo.png';
+import whitebglogoImg from '../../../assets/whitebglogo.png';
 
 import {
   GooglePayLogo,
@@ -31,7 +35,6 @@ import {
   UpiLogo,
   VisaLogo,
   MastercardLogo,
-  RupayLogo,
   ApplePayLogo,
 } from './PaymentLogos';
 
@@ -72,16 +75,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     isUsd ? 'stripe' : 'razorpay'
   );
 
+  // Expandable sections
+  const [isRazorpayExpanded, setIsRazorpayExpanded] = useState(true);
+  const [showGstInput, setShowGstInput] = useState(false);
+  const [gstinNumber, setGstinNumber] = useState('');
+  const [companyName, setCompanyName] = useState('');
+
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponValidating, setCouponValidating] = useState(false);
-
-  // Business GST state
-  const [showGstInput, setShowGstInput] = useState(false);
-  const [gstinNumber, setGstinNumber] = useState('');
-  const [companyName, setCompanyName] = useState('');
 
   // Compliance & Consent state
   const [consentAccepted, setConsentAccepted] = useState(true);
@@ -90,7 +94,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const {
     state,
     isSubmitting,
-    activeOrderId,
     errorMessage,
     recoveryMessage,
     setError,
@@ -116,7 +119,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     resetState();
   }, [initialBillingCycle, isOpen, plan?.currency, resetState]);
 
-  // Lock body scroll when modal is open to prevent background page scrolling
+  // Lock body scroll when modal is open
   useEffect(() => {
     if (!isOpen) return;
     const originalOverflow = document.body.style.overflow;
@@ -155,28 +158,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen || !plan) return null;
 
-  // Exact Financial Calculations
-  const monthlyPrice = Number(plan.priceMonthly ?? 0);
-  const annualPrice = Number(plan.priceAnnual ?? monthlyPrice);
-  const baseMonthlyPrice = selectedCycle === 'annual' ? annualPrice : monthlyPrice;
-  const billingMonths = selectedCycle === 'annual' ? 12 : 1;
+  // Exact Financial Calculations with Clean Integers & Dynamic Savings
+  const monthlyPrice = Math.round(Number(plan.priceMonthly ?? 0));
+  const annualMonthlyEquivalent = Math.round(Number(plan.priceAnnual ?? monthlyPrice));
+  const savingsPercent = plan.savingsPercent || (monthlyPrice > 0 ? Math.round(((monthlyPrice - annualMonthlyEquivalent) / monthlyPrice) * 100) : 0);
+
   const normalAnnualSubtotal = monthlyPrice * 12;
-  const actualSubtotal = baseMonthlyPrice * billingMonths;
+  const actualSubtotal = selectedCycle === 'annual' ? (plan.priceAnnualTotal || annualMonthlyEquivalent * 12) : monthlyPrice;
   const exactAnnualSavings = normalAnnualSubtotal - actualSubtotal;
 
   // Coupon discount calculation
   const couponDiscountAmount = appliedCoupon
-    ? Math.round(actualSubtotal * (appliedCoupon.discountPercent / 100) * 100) / 100
+    ? Math.round(actualSubtotal * (appliedCoupon.discountPercent / 100))
     : 0;
 
   const discountedSubtotal = Math.max(0, actualSubtotal - couponDiscountAmount);
 
-  // Indian GST 18% (SAC 998439) for INR, 0% for USD
-  const gstRate = isUsd ? 0 : 0.18;
-  const gstAmount = isUsd ? 0 : Math.round(discountedSubtotal * gstRate * 100) / 100;
+  // Tax-Inclusive Pricing (MRP Standard for B2C SaaS / Creator Subscriptions)
+  // Advertised price is the exact total payable amount (clean round integers like Netflix/Spotify/YouTube)
+  const prorationCredit = Math.round(prorationQuote?.unusedCredit || 0);
+  const totalPayable = Math.max(0, discountedSubtotal - prorationCredit);
 
-  const prorationCredit = prorationQuote?.unusedCredit || 0;
-  const totalPayable = Math.max(0, Math.round((discountedSubtotal + gstAmount - prorationCredit) * 100) / 100);
+  // GST 18% (SAC 998439) is included within the total price and back-calculated for compliance
+  const taxableBase = isUsd ? totalPayable : Math.round((totalPayable / 1.18) * 100) / 100;
+  const gstAmount = isUsd ? 0 : Math.round((totalPayable - taxableBase) * 100) / 100;
 
   // Smart Coupon Application
   const handleApplyCoupon = async (codeToApply?: string) => {
@@ -231,9 +236,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     try {
       if (selectedGateway === 'razorpay') {
-        console.log('🚀 [SuviX Checkout] Step 1: Requesting Zero-Trust Order from Java Backend...');
-        console.log('   • Plan ID:', plan.id, '| Cycle:', selectedCycle, '| Coupon:', appliedCoupon?.code || 'None');
-
         const orderCurrency = plan.currency || (isUsd ? 'USD' : 'INR');
         const orderData = await subscriptionService.createPaymentOrder(
           {
@@ -258,23 +260,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           'rzp_test_SuviXPlatformKey';
         const createdSubscriptionId = orderData.subscriptionId;
 
-        console.log('📦 [SuviX Checkout] Step 2: Order Created Successfully!');
-        console.log('   • Razorpay Order ID:', razorpayOrderId);
-        console.log('   • Pending Subscription ID:', createdSubscriptionId);
-        console.log('   • Amount in Paise/Cents:', orderData.amountInPaise);
-
         setAwaitingPayment(razorpayOrderId);
 
         if (window.Razorpay) {
           try {
-            console.log('💳 [SuviX Checkout] Step 3: Opening Razorpay SDK Modal directly to Payment Options...');
+            const razorpayImage =
+              typeof whitebglogoImg === 'string' && whitebglogoImg.startsWith('http')
+                ? whitebglogoImg
+                : `${window.location.origin}${whitebglogoImg.startsWith('/') ? '' : '/'}${whitebglogoImg}`;
+
             const options = {
               key: razorpayKey,
               amount: orderData.amountInPaise || Math.round(totalPayable * 100),
               currency: orderCurrency,
               name: 'SuviX Platform',
               description: `${plan.name} (${selectedCycle.toUpperCase()} BILLING)`,
-              image: blackbglogoImg,
+              image: razorpayImage,
               order_id: razorpayOrderId,
               prefill: {
                 name: user?.name || user?.username || '',
@@ -288,7 +289,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 company: companyName || 'N/A',
               },
               theme: {
-                color: '#10b981',
+                color: '#000000',
               },
               config: {
                 display: {
@@ -303,7 +304,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 escape: true,
                 handleback: true,
                 ondismiss: () => {
-                  console.log('⚠️ [SuviX Checkout] Razorpay Modal Dismissed by User. Starting recovery polling...');
                   startRecoveryPolling(razorpayOrderId, (recoveredData) => {
                     onSuccess({
                       ...recoveredData,
@@ -320,12 +320,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 razorpay_order_id: string;
                 razorpay_signature: string;
               }) => {
-                console.log('🔐 [SuviX Checkout] Step 4: Razorpay Payment Success Callback Received!');
-                console.log('   • Payment ID:', response.razorpay_payment_id);
-                console.log('   • Order ID:', response.razorpay_order_id);
-                console.log('   • Signature:', response.razorpay_signature ? `${response.razorpay_signature.substring(0, 16)}...` : 'N/A');
-                console.log('   • Sending to Java Backend for Cryptographic Verification & Activation...');
-
                 setVerifying();
                 try {
                   const verifyRes = await subscriptionService.verifyPayment(
@@ -344,9 +338,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     idempotencyKey
                   );
 
-                  console.log('🎉 [SuviX Checkout] Step 5: Subscription Successfully Verified & Activated in PostgreSQL!');
-                  console.log('   • Response:', verifyRes);
-
                   setSuccess();
                   onSuccess({
                     ...verifyRes,
@@ -356,7 +347,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     paymentId: response.razorpay_payment_id,
                   });
                 } catch (verifyErr) {
-                  console.warn('⚠️ [SuviX Checkout] Immediate verification call encountered an issue. Polling status recovery...', verifyErr);
+                  console.warn('Immediate verification call error:', verifyErr);
                   startRecoveryPolling(response.razorpay_order_id, (recoveredData) => {
                     onSuccess({
                       ...recoveredData,
@@ -416,6 +407,760 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const PlanIcon = plan.icon || Sparkles;
 
+  // Formatted user email & name
+  const userEmail = user?.email || 'suvintm19@gmail.com';
+  const userRoleBadge = (role || user?.role || 'creator').toUpperCase();
+
+  // Highlighted features for What's included
+  const displayFeatures = plan.features && plan.features.length > 0
+    ? plan.features.slice(0, 6)
+    : [
+        'Verified Badge on Profile ⭐',
+        'Priority AI Script & Caption Generator',
+        'Unlimited Bio Links & Blocks',
+        'Advanced Audience Analytics',
+        'Custom Bio Themes & CSS Styles',
+        'Priority Support (24/7)',
+      ];
+
+  // ── MODULAR SECTIONS FOR RESPONSIVE DUAL-VIEW (Laptop 2-Col / Mobile Single-Screen) ──
+  const renderAccount = (isCompactMobile = false) => (
+    <div
+      className={`rounded-xl sm:rounded-2xl border flex items-center justify-between gap-2 transition-all ${
+        isCompactMobile ? 'p-1.5 px-2.5' : 'p-2.5 sm:p-3'
+      } ${
+        isDarkMode ? 'bg-[#121215] border-zinc-800/80' : 'bg-white border-zinc-200 shadow-xs'
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <div className={`${isCompactMobile ? 'w-6 h-6' : 'w-7 h-7 sm:w-8 sm:h-8'} rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shrink-0`}>
+          <UserIcon className={isCompactMobile ? 'w-3 h-3' : 'w-3.5 h-3.5 sm:w-4 sm:h-4'} />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`font-bold truncate text-zinc-900 dark:text-white ${isCompactMobile ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
+              {userEmail}
+            </span>
+            <span className="text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10 uppercase tracking-wide">
+              {userRoleBadge}
+            </span>
+          </div>
+          <p className="text-[9px] sm:text-[10px] text-zinc-500 font-normal leading-tight">
+            Signed in to SuviX
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {}}
+        className={`rounded-lg border font-bold transition-all shrink-0 cursor-pointer ${
+          isCompactMobile ? 'px-2 py-0.5 text-[9.5px]' : 'px-3 py-1 text-[11px]'
+        } ${
+          isDarkMode
+            ? 'border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200'
+            : 'border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 shadow-xs'
+        }`}
+      >
+        Change
+      </button>
+    </div>
+  );
+
+  const renderPlanCard = (isCompactMobile = false) => (
+    <div className={`rounded-xl sm:rounded-2xl bg-[#0a0a0c] text-white border border-white/10 shadow-lg ${
+      isCompactMobile ? 'p-2 space-y-1.5' : 'p-3.5 sm:p-4 space-y-2.5'
+    }`}>
+      {/* Top Plan Row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`${isCompactMobile ? 'w-6 h-6 rounded-lg' : 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl'} bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0`}>
+            <PlanIcon className={isCompactMobile ? 'w-3.5 h-3.5' : 'w-4 h-4 sm:w-4.5 sm:h-4.5'} />
+          </div>
+          <div className="min-w-0">
+            <h3 className={`font-extrabold tracking-tight text-white truncate ${isCompactMobile ? 'text-xs' : 'text-sm sm:text-base'}`}>
+              {plan.name}
+            </h3>
+            <p className={`text-zinc-400 font-medium leading-tight truncate ${isCompactMobile ? 'text-[9px]' : 'text-[10.5px]'}`}>
+              Tier {plan.tierLevel} Plan &bull; {plan.subtitle || 'For fast-growing creators'}
+            </p>
+          </div>
+        </div>
+
+        {exactAnnualSavings > 0 && (
+          <span className={`font-extrabold rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono tracking-tight shrink-0 ${
+            isCompactMobile ? 'text-[8px] px-1.5 py-0.2' : 'text-[10px] px-2.5 py-0.5'
+          }`}>
+            Save {currencySymbol}{exactAnnualSavings.toLocaleString()}/yr
+          </span>
+        )}
+      </div>
+
+      {/* Monthly / Annual Toggle Switch */}
+      <div className={`grid grid-cols-2 rounded-xl bg-zinc-900 border border-zinc-800 font-bold ${
+        isCompactMobile ? 'p-0.5 text-[9.5px]' : 'p-1 text-[11px] sm:text-xs'
+      }`}>
+        <button
+          type="button"
+          onClick={() => setSelectedCycle('monthly')}
+          className={`rounded-lg transition-all text-center cursor-pointer ${
+            isCompactMobile ? 'py-1' : 'py-1.5 sm:py-2'
+          } ${
+            selectedCycle === 'monthly'
+              ? 'bg-white text-black shadow-md font-extrabold'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          Monthly {currencySymbol}{monthlyPrice}/mo
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedCycle('annual')}
+          className={`rounded-lg transition-all flex items-center justify-center gap-1 text-center cursor-pointer ${
+            isCompactMobile ? 'py-1' : 'py-1.5 sm:py-2'
+          } ${
+            selectedCycle === 'annual'
+              ? 'bg-white text-black shadow-md font-extrabold'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <span>Annual {currencySymbol}{annualMonthlyEquivalent}/mo</span>
+          {savingsPercent > 0 && (
+            <span className={`font-black px-1.5 py-0.2 rounded-full uppercase tracking-tight ${
+              isCompactMobile ? 'text-[7px]' : 'text-[8.5px] sm:text-[9px]'
+            } ${
+              selectedCycle === 'annual'
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-emerald-500/20 text-emerald-400'
+            }`}>
+              {savingsPercent}% OFF
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* What's Included */}
+      <div className="space-y-0.5 pt-1 border-t border-white/5">
+        <div className={`font-bold text-zinc-300 ${isCompactMobile ? 'text-[9px]' : 'text-[11px]'}`}>
+          What's included
+        </div>
+
+        <div className={`grid grid-cols-2 gap-x-2 gap-y-0.5 text-zinc-300 font-normal ${
+          isCompactMobile ? 'text-[8.5px]' : 'text-[10.5px] sm:text-[11px]'
+        }`}>
+          {(isCompactMobile ? displayFeatures.slice(0, 4) : displayFeatures).map((feat, idx) => (
+            <div key={idx} className="flex items-start gap-1">
+              <Check className={`${isCompactMobile ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'} text-white stroke-[3] shrink-0 mt-0.5`} />
+              <span className="leading-tight truncate">{feat}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPaymentMethods = (isCompactMobile = false) => (
+    <div className={isCompactMobile ? 'space-y-1' : 'space-y-2'}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <CreditCard className={`${isCompactMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-zinc-900 dark:text-white`} />
+          <h3 className={`font-extrabold text-zinc-900 dark:text-white ${isCompactMobile ? 'text-[10.5px]' : 'text-xs sm:text-sm'}`}>
+            Payment Method
+          </h3>
+        </div>
+        <span className={`font-medium text-zinc-500 flex items-center gap-1 ${isCompactMobile ? 'text-[8.5px]' : 'text-[10px]'}`}>
+          <Lock className="w-2.5 h-2.5 text-zinc-400" />
+          Secured by {selectedGateway === 'stripe' ? 'Stripe' : 'Razorpay'}
+        </span>
+      </div>
+
+      <div className={isCompactMobile ? 'space-y-1' : 'space-y-1.5 sm:space-y-2'}>
+        {/* OPTION A: RAZORPAY */}
+        <div
+          onClick={() => {
+            if (!isUsd) setSelectedGateway('razorpay');
+          }}
+          className={`rounded-xl border transition-all cursor-pointer ${
+            isCompactMobile ? 'p-1.5 px-2' : 'p-2.5 sm:p-3'
+          } ${
+            isUsd
+              ? 'opacity-40 cursor-not-allowed bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800'
+              : selectedGateway === 'razorpay'
+              ? isDarkMode
+                ? 'border-2 border-white bg-[#121215] shadow-md'
+                : 'border-2 border-black bg-white shadow-sm'
+              : isDarkMode
+              ? 'border border-zinc-800 bg-[#121215] hover:border-zinc-700'
+              : 'border border-zinc-200 bg-white hover:border-zinc-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`rounded-full border flex items-center justify-center transition-all shrink-0 ${
+                  isCompactMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'
+                } ${
+                  selectedGateway === 'razorpay'
+                    ? 'border-black dark:border-white bg-black dark:bg-white'
+                    : 'border-zinc-400 dark:border-zinc-600'
+                }`}
+              >
+                {selectedGateway === 'razorpay' && (
+                  <div className={`${isCompactMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'} rounded-full bg-white dark:bg-black`} />
+                )}
+              </div>
+
+              <img
+                src={razorpayLogoImg}
+                alt="Razorpay"
+                className={`${isCompactMobile ? 'h-3' : 'h-3.5'} w-auto object-contain shrink-0`}
+              />
+
+              <div className="min-w-0 truncate">
+                <div className={`font-extrabold leading-tight text-zinc-900 dark:text-white truncate ${isCompactMobile ? 'text-[10px]' : 'text-xs'}`}>
+                  UPI, Cards, NetBanking (India)
+                </div>
+                {!isCompactMobile && (
+                  <div className="text-[10px] text-zinc-500 font-normal truncate">
+                    Pay securely using UPI, Credit/Debit Cards, NetBanking
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsRazorpayExpanded((prev) => !prev);
+              }}
+              className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 shrink-0 cursor-pointer"
+            >
+              {isRazorpayExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+
+          {isRazorpayExpanded && (
+            <div className="flex items-center gap-1 pt-1 mt-1 border-t border-zinc-100 dark:border-zinc-800 flex-wrap">
+              <div className="bg-white border border-zinc-200 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs">
+                <UpiLogo className="h-2 w-auto" />
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs">
+                <GooglePayLogo className="h-2 w-auto" />
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs">
+                <PhonePeLogo className="h-2 w-auto" />
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs">
+                <PaytmLogo className="h-1.5 w-auto" />
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs">
+                <VisaLogo className="h-1.5 w-auto" />
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs">
+                <MastercardLogo className="h-2 w-auto" />
+              </div>
+              <div className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 flex items-center justify-center shadow-xs text-[7.5px] sm:text-[8.5px] font-bold text-zinc-600 dark:text-zinc-300">
+                ••• More
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* OPTION B: STRIPE */}
+        <div
+          onClick={() => {
+            if (isUsd) setSelectedGateway('stripe');
+          }}
+          className={`rounded-xl border transition-all cursor-pointer ${
+            isCompactMobile ? 'p-1.5 px-2' : 'p-2.5 sm:p-3'
+          } ${
+            !isUsd
+              ? 'opacity-60 cursor-pointer bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800'
+              : selectedGateway === 'stripe'
+              ? isDarkMode
+                ? 'border-2 border-white bg-[#121215] shadow-md'
+                : 'border-2 border-black bg-white shadow-sm'
+              : isDarkMode
+              ? 'border border-zinc-800 bg-[#121215] hover:border-zinc-700'
+              : 'border border-zinc-200 bg-white hover:border-zinc-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`rounded-full border flex items-center justify-center transition-all shrink-0 ${
+                  isCompactMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'
+                } ${
+                  selectedGateway === 'stripe'
+                    ? 'border-black dark:border-white bg-black dark:bg-white'
+                    : 'border-zinc-400 dark:border-zinc-600'
+                }`}
+              >
+                {selectedGateway === 'stripe' && (
+                  <div className={`${isCompactMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'} rounded-full bg-white dark:bg-black`} />
+                )}
+              </div>
+
+              <img
+                src={stripeLogoImg}
+                alt="Stripe"
+                className={`${isCompactMobile ? 'h-3' : 'h-3.5'} w-auto object-contain shrink-0`}
+              />
+
+              <div className="min-w-0 truncate">
+                <div className={`font-extrabold leading-tight text-zinc-900 dark:text-white truncate ${isCompactMobile ? 'text-[10px]' : 'text-xs'}`}>
+                  International Cards
+                </div>
+                {!isCompactMobile && (
+                  <div className="text-[10px] text-zinc-500 font-normal truncate">
+                    Pay with international credit or debit cards
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <div className="bg-white border border-zinc-200 rounded px-1 py-0.2 shadow-2xs">
+                <VisaLogo className="h-1.5 sm:h-2 w-auto" />
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1 py-0.2 shadow-2xs">
+                <MastercardLogo className="h-2 sm:h-2.5 w-auto" />
+              </div>
+              <div className="bg-[#0070d1] text-white font-black text-[7px] sm:text-[8px] rounded px-1 py-0.2">
+                AMEX
+              </div>
+              <div className="bg-white border border-zinc-200 rounded px-1 py-0.2 shadow-2xs">
+                <ApplePayLogo className="h-2 sm:h-2.5 w-auto" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* OPTION C: SUVIX WALLET */}
+        <div
+          onClick={() => setSelectedGateway('wallet')}
+          className={`rounded-xl border transition-all cursor-pointer ${
+            isCompactMobile ? 'p-1.5 px-2' : 'p-2.5 sm:p-3'
+          } ${
+            selectedGateway === 'wallet'
+              ? isDarkMode
+                ? 'border-2 border-white bg-[#121215] shadow-md'
+                : 'border-2 border-black bg-white shadow-sm'
+              : isDarkMode
+              ? 'border border-zinc-800 bg-[#121215] hover:border-zinc-700'
+              : 'border border-zinc-200 bg-white hover:border-zinc-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`rounded-full border flex items-center justify-center transition-all shrink-0 ${
+                  isCompactMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'
+                } ${
+                  selectedGateway === 'wallet'
+                    ? 'border-black dark:border-white bg-black dark:bg-white'
+                    : 'border-zinc-400 dark:border-zinc-600'
+                }`}
+              >
+                {selectedGateway === 'wallet' && (
+                  <div className={`${isCompactMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'} rounded-full bg-white dark:bg-black`} />
+                )}
+              </div>
+
+              <div className={`${isCompactMobile ? 'w-5 h-5' : 'w-7 h-7 sm:w-8 sm:h-8'} rounded-lg bg-black text-white flex items-center justify-center shadow-xs shrink-0 p-0.5 sm:p-1`}>
+                <img
+                  src={logoImg}
+                  alt="SuviX Wallet"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+
+              <div className="min-w-0 truncate">
+                <div className={`font-extrabold leading-tight text-zinc-900 dark:text-white truncate ${isCompactMobile ? 'text-[10px]' : 'text-xs'}`}>
+                  SuviX Wallet
+                </div>
+                {!isCompactMobile && (
+                  <div className="text-[10px] text-zinc-500 font-normal truncate">
+                    Use your creator earnings & escrow balance
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              <span className="text-[9.5px] sm:text-[11px] font-semibold text-zinc-500">Balance: </span>
+              <span className={`font-extrabold text-zinc-900 dark:text-white ${isCompactMobile ? 'text-[9.5px]' : 'text-[11px]'}`}>{currencySymbol}0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPromoCode = (isCompactMobile = false) => (
+    <div>
+      <div
+        className={`rounded-xl border flex items-center gap-1.5 ${
+          isCompactMobile ? 'p-1' : 'p-1.5'
+        } ${
+          isDarkMode ? 'bg-[#0e0e11] border-zinc-800' : 'bg-white border-zinc-200 shadow-xs'
+        }`}
+      >
+        <div className={`flex items-center gap-1 pl-1.5 font-bold text-zinc-700 dark:text-zinc-300 shrink-0 ${
+          isCompactMobile ? 'text-[9.5px]' : 'text-xs'
+        }`}>
+          <Tag className={isCompactMobile ? 'w-3 h-3 text-zinc-500' : 'w-3.5 h-3.5 text-zinc-500'} />
+          <span>Promo</span>
+        </div>
+
+        <input
+          type="text"
+          value={appliedCoupon ? appliedCoupon.code : couponCode}
+          onChange={(e) => setCouponCode(e.target.value)}
+          disabled={Boolean(appliedCoupon)}
+          placeholder="Enter promo code"
+          className={`flex-1 px-1.5 py-0.5 font-medium focus:outline-none bg-transparent ${
+            isCompactMobile ? 'text-[10px]' : 'text-xs'
+          } ${
+            isDarkMode ? 'text-white placeholder-zinc-500' : 'text-zinc-900 placeholder-zinc-400'
+          }`}
+        />
+
+        {appliedCoupon ? (
+          <button
+            type="button"
+            onClick={handleRemoveCoupon}
+            className={`rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 font-bold text-zinc-800 dark:text-zinc-200 transition-all cursor-pointer ${
+              isCompactMobile ? 'px-2 py-0.5 text-[9.5px]' : 'px-3 py-1 text-xs'
+            }`}
+          >
+            Remove
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleApplyCoupon()}
+            disabled={couponValidating || !couponCode.trim()}
+            className={`rounded-lg bg-black dark:bg-white text-white dark:text-black hover:opacity-90 font-bold transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1 shadow-sm ${
+              isCompactMobile ? 'px-2.5 py-0.5 text-[9.5px]' : 'px-4 py-1.5 text-xs'
+            }`}
+          >
+            {couponValidating && <ImSpinner2 className="w-2.5 h-2.5 animate-spin" />}
+            <span>Apply</span>
+          </button>
+        )}
+      </div>
+
+      {couponError && (
+        <p className="text-[9.5px] font-medium text-rose-500 pl-2 pt-0.5">
+          {couponError}
+        </p>
+      )}
+    </div>
+  );
+
+  const renderBilling = (isCompactMobile = false) => (
+    <div className="space-y-1">
+      <div
+        onClick={() => setShowGstInput((prev) => !prev)}
+        className={`rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+          isCompactMobile ? 'p-1.5 px-2' : 'p-2.5 sm:p-3'
+        } ${
+          isDarkMode ? 'bg-[#121215] border-zinc-800 hover:border-zinc-700' : 'bg-white border-zinc-200 hover:border-zinc-300 shadow-xs'
+        }`}
+      >
+        <div className="flex items-center gap-1.5">
+          <FileText className={`${isCompactMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-zinc-900 dark:text-white`} />
+          <span className={`font-extrabold text-zinc-900 dark:text-white ${isCompactMobile ? 'text-[10px]' : 'text-xs sm:text-sm'}`}>
+            Billing <span className="font-normal text-zinc-500">(Optional)</span>
+          </span>
+        </div>
+
+        <div className={`flex items-center gap-1 font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 ${
+          isCompactMobile ? 'text-[9px]' : 'text-[11px]'
+        }`}>
+          <span>{isCompactMobile ? 'Add GSTIN' : 'Add GSTIN for Business Invoice'}</span>
+          {showGstInput ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </div>
+      </div>
+
+      {showGstInput && (
+        <div className={`rounded-xl border space-y-1.5 animate-fadeIn ${
+          isCompactMobile ? 'p-2' : 'p-3'
+        } ${
+          isDarkMode ? 'bg-[#121215] border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+        }`}>
+          <div>
+            <label className="block text-[8.5px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">
+              GSTIN Number (Indian Businesses)
+            </label>
+            <input
+              type="text"
+              value={gstinNumber}
+              onChange={(e) => setGstinNumber(e.target.value.toUpperCase())}
+              placeholder="e.g. 29ABCDE1234F1Z5"
+              maxLength={15}
+              className={`w-full px-2 py-1 rounded-lg text-[10.5px] font-mono border focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all ${
+                isDarkMode ? 'bg-black border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
+              }`}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[8.5px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">
+              Registered Company / Studio Name
+            </label>
+            <input
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="e.g. Acme Studio Media Pvt Ltd"
+              className={`w-full px-2 py-1 rounded-lg text-[10.5px] font-medium border focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all ${
+                isDarkMode ? 'bg-black border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
+              }`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Payment Error / Recovery Status */}
+      {(errorMessage || state === 'failed') && (
+        <div className="p-2 rounded-xl border border-rose-500/30 bg-rose-950/20 text-rose-300 text-xs flex items-start gap-1.5 animate-fadeIn">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-400" />
+          <div className="flex-1 space-y-0.5">
+            <div className="font-bold text-rose-200 text-[10.5px]">Payment Notice</div>
+            <p className="text-[9.5px] leading-tight text-rose-300/90">
+              {errorMessage || 'Payment service was unable to complete the transaction. Please try again.'}
+            </p>
+            <button
+              type="button"
+              onClick={handleProcessCheckout}
+              disabled={isSubmitting}
+              className="text-[9.5px] font-bold text-white underline hover:no-underline cursor-pointer disabled:opacity-50"
+            >
+              Retry Payment
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(state === 'polling_status' || state === 'pending_recovery') && (
+        <div className={`p-2 rounded-xl border text-xs flex items-start gap-1.5 animate-fadeIn ${
+          isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-800'
+        }`}>
+          <RefreshCw className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin text-emerald-500" />
+          <div className="space-y-0.5">
+            <div className="font-bold text-[10.5px]">
+              {state === 'polling_status' ? 'Reconciling with Bank...' : 'Payment Under Verification'}
+            </div>
+            <p className="text-[9px] opacity-80">{recoveryMessage}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderOrderSummary = (isCompactMobile = false) => (
+    <div
+      className={`rounded-xl sm:rounded-2xl border ${
+        isCompactMobile ? 'p-2 space-y-1' : 'p-3.5 sm:p-4 space-y-2.5'
+      } ${
+        isDarkMode ? 'bg-[#0e0e11] border-zinc-800' : 'bg-white border-zinc-200 shadow-xs'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className={`${isCompactMobile ? 'w-4 h-4' : 'w-5 h-5'} rounded-md bg-black dark:bg-white text-white dark:text-black flex items-center justify-center`}>
+            <Shield className={`${isCompactMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} fill-current`} />
+          </div>
+          <span className={`font-extrabold text-zinc-900 dark:text-white ${isCompactMobile ? 'text-[10.5px]' : 'text-xs sm:text-sm'}`}>
+            Order Summary
+          </span>
+        </div>
+
+        <span className={`font-bold text-zinc-500 ${isCompactMobile ? 'text-[9px]' : 'text-[11px]'}`}>
+          {selectedCycle === 'annual' ? '12 Months' : '1 Month'}
+        </span>
+      </div>
+
+      <div className={`space-y-0.5 font-medium ${isCompactMobile ? 'text-[9px]' : 'text-xs space-y-1.5'}`}>
+        {/* Plan Line */}
+        <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+          <span>
+            Plan Amount ({selectedCycle === 'annual' ? `${currencySymbol}${monthlyPrice} × 12` : `${currencySymbol}${monthlyPrice}`})
+          </span>
+          <div className="text-right flex items-center gap-1.5 font-mono">
+            {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+              <span className="line-through text-zinc-400 dark:text-zinc-500 text-[9px]">
+                {currencySymbol}{normalAnnualSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            )}
+            <span className="font-extrabold text-zinc-900 dark:text-white">
+              {currencySymbol}{actualSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+
+        {/* Annual Discount Row */}
+        {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+            <span>Annual Discount ({savingsPercent}%)</span>
+            <span className="font-mono">- {currencySymbol}{exactAnnualSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          </div>
+        )}
+
+        {/* Coupon Discount Row */}
+        {couponDiscountAmount > 0 && (
+          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+            <span>Promo Code ({appliedCoupon?.code})</span>
+            <span className="font-mono">- {currencySymbol}{couponDiscountAmount.toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* Proration Credit Row */}
+        {prorationCredit > 0 && (
+          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+            <span>Unused Credit</span>
+            <span className="font-mono">- {currencySymbol}{prorationCredit.toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* GST Row (INR only) */}
+        {!isUsd && (
+          <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+            <span className="flex items-center gap-1">
+              <span>GST (18% Included)</span>
+              <HelpCircle className="w-2.5 h-2.5 text-zinc-400" />
+            </span>
+            <span className="font-mono font-extrabold text-zinc-900 dark:text-white">
+              ₹{gstAmount.toFixed(2)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="w-full h-px bg-zinc-200 dark:bg-zinc-800" />
+
+      {/* Total Row */}
+      <div className="flex justify-between items-baseline pt-0.5">
+        <div>
+          <div className={`font-extrabold text-zinc-900 dark:text-white ${isCompactMobile ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
+            Total Due Today
+          </div>
+          <div className={`text-zinc-500 font-normal ${isCompactMobile ? 'text-[8.5px]' : 'text-[10px]'}`}>
+            {selectedCycle === 'annual' ? 'Billed annually' : 'Billed monthly'}
+          </div>
+        </div>
+
+        <div className={`font-extrabold tracking-tight text-zinc-900 dark:text-white font-mono ${
+          isCompactMobile ? 'text-sm sm:text-base' : 'text-xl sm:text-2xl'
+        }`}>
+          {currencySymbol}{totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTermsAndCta = (isCompactMobile = false) => (
+    <div className={isCompactMobile ? 'space-y-1' : 'space-y-2.5'}>
+      {/* Terms Agreement Checkbox */}
+      <label className={`flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400 cursor-pointer select-none ${
+        isCompactMobile ? 'text-[9px]' : 'text-[11px]'
+      }`}>
+        <input
+          type="checkbox"
+          checked={consentAccepted}
+          onChange={(e) => setConsentAccepted(e.target.checked)}
+          className="w-3.5 h-3.5 rounded border-zinc-300 dark:border-zinc-700 text-black focus:ring-black accent-black dark:accent-white cursor-pointer shrink-0"
+        />
+        <span>
+          I agree to the{' '}
+          <a href="/terms" target="_blank" className="underline font-bold text-zinc-900 dark:text-white">
+            Terms
+          </a>{' '}
+          and{' '}
+          <a href="/privacy" target="_blank" className="underline font-bold text-zinc-900 dark:text-white">
+            Privacy Policy
+          </a>
+          .
+        </span>
+      </label>
+
+      {/* Main Pay CTA Button */}
+      <button
+        type="button"
+        onClick={handleProcessCheckout}
+        disabled={
+          isSubmitting ||
+          !consentAccepted ||
+          (!razorpayLoaded && selectedGateway === 'razorpay')
+        }
+        className={`w-full rounded-xl font-black bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
+          isCompactMobile ? 'py-2.5 text-xs' : 'py-3.5 text-sm'
+        }`}
+      >
+        {state === 'creating_order' ? (
+          <>
+            <ImSpinner2 className="w-3 h-3 animate-spin" />
+            <span>Initiating Payment...</span>
+          </>
+        ) : state === 'awaiting_payment' ? (
+          <>
+            <ImSpinner2 className="w-3 h-3 animate-spin" />
+            <span>Awaiting Gateway...</span>
+          </>
+        ) : state === 'verifying' ? (
+          <>
+            <ImSpinner2 className="w-3 h-3 animate-spin" />
+            <span>Verifying Signature...</span>
+          </>
+        ) : state === 'polling_status' ? (
+          <>
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            <span>Reconciling Order...</span>
+          </>
+        ) : (
+          <>
+            <Lock className="w-3 h-3 fill-current" />
+            <span>
+              Pay {currencySymbol}{totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })} via{' '}
+              {selectedGateway === 'razorpay'
+                ? 'Razorpay'
+                : selectedGateway === 'stripe'
+                ? 'Stripe'
+                : 'SuviX Wallet'}
+            </span>
+            <ArrowRight className="w-3 h-3" />
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  const renderTrustBadges = (isCompactMobile = false) => (
+    <div className={`border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-zinc-500 font-medium ${
+      isCompactMobile ? 'pt-1 text-[8px]' : 'pt-2.5 text-[10.5px] sm:text-[11px]'
+    }`}>
+      <div className="flex items-center gap-1">
+        <ShieldCheck className={`${isCompactMobile ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'} text-zinc-700 dark:text-zinc-300`} />
+        <span>14-day refund</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <Lock className={`${isCompactMobile ? 'w-2 h-2' : 'w-3 h-3'} text-zinc-700 dark:text-zinc-300`} />
+        <span>256-bit encryption</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <FileText className={`${isCompactMobile ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'} text-zinc-700 dark:text-zinc-300`} />
+        <span>RBI compliant</span>
+      </div>
+    </div>
+  );
+
   return createPortal(
     <div
       onClick={(e) => {
@@ -423,556 +1168,104 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }}
       onWheel={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fadeIn font-sans"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-3 md:p-4 bg-black/80 backdrop-blur-md animate-fadeIn font-sans"
     >
       <div
-        className={`relative w-full max-w-5xl max-h-[96vh] rounded-2xl border shadow-2xl overflow-hidden flex flex-col transition-all duration-200 my-auto ${
+        className={`relative w-full max-w-lg lg:max-w-5xl h-full sm:h-auto max-h-[100dvh] sm:max-h-[96vh] rounded-none sm:rounded-3xl border sm:border shadow-2xl overflow-hidden flex flex-col justify-between transition-all duration-200 my-auto ${
           isDarkMode
-            ? 'bg-[#09090b] border-zinc-800 text-zinc-100'
+            ? 'bg-[#000000] border-zinc-800 text-white'
             : 'bg-white border-zinc-200 text-zinc-900'
         }`}
       >
-        {/* ── TOP HEADER BAR ─────────────────────────────────────────────────── */}
+        {/* ── TOP HEADER BAR (Logo + Lock + Title + Subtitle + Close) ────────── */}
         <div
-          className={`flex items-center justify-between px-5 sm:px-6 py-2.5 sm:py-3 border-b shrink-0 ${
-            isDarkMode ? 'border-zinc-800 bg-zinc-950/70' : 'border-zinc-100 bg-zinc-50/90'
+          className={`relative flex items-center justify-between px-3.5 sm:px-7 py-2 sm:py-3 border-b shrink-0 ${
+            isDarkMode ? 'border-zinc-800/80 bg-black' : 'border-zinc-100 bg-white'
           }`}
         >
-          {/* Left: Brand Logo (2x-3x Enlarged) */}
-          <div className="flex items-center min-w-[130px]">
+          {/* Left: Brand Logo */}
+          <div className="flex items-center">
             <img
-              src={blackbglogoImg}
-              alt="SuviX Platform"
-              className="h-12 sm:h-14 md:h-16 w-auto max-h-16 object-contain rounded-lg drop-shadow-sm select-none"
+              src={isDarkMode ? whitebglogoImg : blackbglogoImg}
+              alt="SuviX"
+              className="h-12 sm:h-15 w-auto object-contain select-none"
             />
           </div>
 
-          {/* Center: Unique Display Font Checkout Text + Security Lock */}
-          <div className="flex items-center justify-center gap-2 sm:gap-2.5 text-center">
-            <h2
-              className={`text-lg sm:text-xl font-black tracking-wide ${
-                isDarkMode ? 'text-white' : 'text-zinc-950'
-              }`}
-              style={{ fontFamily: '"Madimi One", "Outfit", var(--font-welcome), sans-serif' }}
-            >
-              SuviX Checkout
-            </h2>
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${
-                isDarkMode
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-              }`}
-            >
-              <Lock className="w-3 h-3 text-emerald-500" />
-              256-Bit Encrypted
-            </span>
+          {/* Center: Secure Checkout + Lock */}
+          <div className="text-center absolute left-1/2 -translate-x-1/2">
+            <div className="flex items-center justify-center gap-1.5 font-bold text-xs sm:text-base text-zinc-900 dark:text-white">
+              <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-900 dark:text-white fill-current" />
+              <span>Secure Checkout</span>
+            </div>
+            <p className="text-[9px] sm:text-[11px] text-zinc-500 font-normal hidden sm:block">
+              Your payment information is secure and encrypted
+            </p>
           </div>
 
           {/* Right: Close Button */}
-          <div className="flex items-center justify-end min-w-[130px]">
+          <div className="flex items-center justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className={`p-1.5 sm:p-2 rounded-xl border transition-colors disabled:opacity-40 cursor-pointer ${
+              className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl border flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 ${
                 isDarkMode
-                  ? 'border-zinc-800/80 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-400 hover:text-white'
-                  : 'border-zinc-200 bg-zinc-100/60 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900'
+                  ? 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white'
+                  : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'
               }`}
               aria-label="Close Checkout"
             >
-              <X className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* ── 2-COLUMN EQUAL 50% / 50% SPLIT VIEW ────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-y-auto">
-          
-          {/* ════ LEFT COLUMN: Payment Method (50% Width) ══════════════════════ */}
+        {/* ── DESKTOP VIEW (2-Column Zero-Scroll Layout for Laptop Screens) ────────── */}
+        <div className="hidden lg:grid lg:grid-cols-12 flex-1 overflow-y-auto">
+          {/* LEFT COLUMN: Account, Payment Methods, Billing, Trust Badges */}
           <div
-            className={`p-5 sm:p-6 flex flex-col justify-between border-b lg:border-b-0 lg:border-r gap-4 ${
-              isDarkMode ? 'border-zinc-800 bg-[#09090b]' : 'border-zinc-200 bg-white'
+            className={`lg:col-span-7 p-4 sm:p-5 flex flex-col justify-between border-r gap-3.5 ${
+              isDarkMode ? 'border-zinc-800 bg-[#0a0a0c]' : 'border-zinc-200 bg-white'
             }`}
           >
             <div className="space-y-3.5">
-              {/* Account Context Bar */}
-              <div className="space-y-2">
-                <div
-                  className="px-3 py-2 rounded-xl border border-zinc-800 bg-black flex items-center justify-between text-xs"
-                >
-                  <div className="truncate">
-                    <span className="text-[10px] font-medium mr-1.5 text-zinc-500">
-                      Account:
-                    </span>
-                    <span className="font-medium text-xs truncate text-zinc-200">
-                      {user?.email || 'Authenticated User'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-700 bg-zinc-800 text-zinc-300 uppercase tracking-wider">
-                    {role}
-                  </span>
-                </div>
-
-                <SocialProofBanner role={role} isDarkMode={isDarkMode} />
-              </div>
-
-              {/* Payment Methods */}
-              <div>
-                <label
-                  className={`block text-[11px] font-semibold uppercase tracking-wider mb-2 ${
-                    isDarkMode ? 'text-zinc-400' : 'text-zinc-500'
-                  }`}
-                >
-                  Payment Method
-                </label>
-
-                <div className="space-y-2">
-                  {/* Razorpay Option */}
-                  <div
-                    onClick={() => {
-                      if (!isUsd) setSelectedGateway('razorpay');
-                    }}
-                    className={`p-3 rounded-xl border transition-all ${
-                      isUsd
-                        ? 'opacity-50 cursor-not-allowed bg-zinc-950/50 border-zinc-800/60'
-                        : selectedGateway === 'razorpay'
-                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm cursor-pointer bg-black'
-                        : 'border-zinc-800 hover:border-zinc-700 cursor-pointer bg-black'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-xs shrink-0">
-                          <img src={razorpayLogoImg} alt="Razorpay" className="h-3.5 w-auto object-contain" />
-                        </div>
-                        <span className="text-xs font-semibold text-white">
-                          UPI, Cards, NetBanking (India)
-                        </span>
-                      </div>
-                      {isUsd ? (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
-                          <Lock className="w-2.5 h-2.5 text-zinc-500" />
-                          INR Only
-                        </span>
-                      ) : (
-                        <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                            selectedGateway === 'razorpay'
-                              ? 'border-emerald-500 bg-emerald-500 text-black'
-                              : 'border-zinc-700 bg-zinc-900'
-                          }`}
-                        >
-                          {selectedGateway === 'razorpay' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800 flex-wrap">
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <GooglePayLogo className="h-3 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <PhonePeLogo className="h-3 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <PaytmLogo className="h-2.5 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <UpiLogo className="h-2.5 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <VisaLogo className="h-2.5 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <MastercardLogo className="h-3 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <RupayLogo className="h-2.5 w-auto" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Stripe Option */}
-                  <div
-                    onClick={() => {
-                      if (isUsd) setSelectedGateway('stripe');
-                    }}
-                    className={`p-3 rounded-xl border transition-all ${
-                      !isUsd
-                        ? 'opacity-50 cursor-not-allowed bg-zinc-950/50 border-zinc-800/60'
-                        : selectedGateway === 'stripe'
-                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm cursor-pointer bg-black'
-                        : 'border-zinc-800 hover:border-zinc-700 cursor-pointer bg-black'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-xs shrink-0">
-                          <img src={stripeLogoImg} alt="Stripe" className="h-3.5 w-auto object-contain" />
-                        </div>
-                        <span className="text-xs font-semibold text-white">
-                          International Cards & Apple Pay
-                        </span>
-                      </div>
-                      {!isUsd ? (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
-                          <Lock className="w-2.5 h-2.5 text-zinc-500" />
-                          USD Plans Only
-                        </span>
-                      ) : (
-                        <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                            selectedGateway === 'stripe'
-                              ? 'border-emerald-500 bg-emerald-500 text-black'
-                              : 'border-zinc-700 bg-zinc-900'
-                          }`}
-                        >
-                          {selectedGateway === 'stripe' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800 flex-wrap">
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <ApplePayLogo className="h-3.5 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <GooglePayLogo className="h-3 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <VisaLogo className="h-2.5 w-auto" />
-                      </span>
-                      <span className="bg-white rounded-md px-1.5 py-0.5 inline-flex items-center justify-center shadow-xs">
-                        <MastercardLogo className="h-3 w-auto" />
-                      </span>
-                      <span className="text-[10px] ml-auto font-mono text-zinc-400">
-                        135+ Currencies
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Wallet Option */}
-                  <div
-                    onClick={() => setSelectedGateway('wallet')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all bg-black ${
-                      selectedGateway === 'wallet'
-                        ? 'border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm'
-                        : 'border-zinc-800 hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-xs shrink-0">
-                          <img src={walletLogoImg} alt="Wallet" className="h-4 w-auto object-contain" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-semibold text-white block">
-                            SuviX Creator Wallet
-                          </span>
-                          <span className="text-[10px] text-zinc-400">
-                            Deduct from creator earnings & escrow balance
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                          selectedGateway === 'wallet'
-                            ? 'border-emerald-500 bg-emerald-500 text-black'
-                            : 'border-zinc-700 bg-zinc-900'
-                        }`}
-                      >
-                        {selectedGateway === 'wallet' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* B2B Tax Invoice & GSTIN Section */}
-              <InvoicePreview
-                showGstInput={showGstInput}
-                setShowGstInput={setShowGstInput}
-                gstinNumber={gstinNumber}
-                setGstinNumber={setGstinNumber}
-                companyName={companyName}
-                setCompanyName={setCompanyName}
-                isDarkMode={isDarkMode}
-              />
-
-              {/* Enterprise Error Feedback */}
-              {(errorMessage || state === 'failed') && (
-                <div
-                  className="p-3 rounded-xl border border-rose-500/30 bg-rose-950/20 text-rose-300 text-xs flex items-start gap-2.5 animate-fadeIn"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-                  <div className="flex-1 space-y-1">
-                    <div className="font-semibold text-rose-200">
-                      Payment Notice
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-rose-300/90">
-                      {errorMessage || 'Our secure payment service is temporarily experiencing high load or undergoing maintenance. Please try again in a few moments.'}
-                    </p>
-                    <div className="pt-1 flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={handleProcessCheckout}
-                        disabled={isSubmitting}
-                        className="text-[11px] font-semibold text-white underline hover:no-underline cursor-pointer disabled:opacity-50"
-                      >
-                        Try again
-                      </button>
-                      {activeOrderId && (
-                        <button
-                          type="button"
-                          onClick={() => startRecoveryPolling(activeOrderId)}
-                          className="text-[11px] text-zinc-400 underline hover:text-white cursor-pointer"
-                        >
-                          Check transaction status
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Recovery Status */}
-              {(state === 'polling_status' || state === 'pending_recovery') && (
-                <div
-                  className={`p-2.5 rounded-xl border text-xs flex items-start gap-2 animate-fadeIn ${
-                    isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-800'
-                  }`}
-                >
-                  <RefreshCw className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin text-emerald-500" />
-                  <div className="space-y-0.5">
-                    <div className="font-medium text-xs">
-                      {state === 'polling_status' ? 'Reconciling with Bank...' : 'Payment Under Review'}
-                    </div>
-                    <p className="text-[10.5px] opacity-80">{recoveryMessage}</p>
-                  </div>
-                </div>
-              )}
+              {renderAccount(false)}
+              {renderPaymentMethods(false)}
+              {renderBilling(false)}
             </div>
-
-            {/* Bottom Security Guarantee */}
-            <TrustBadges isDarkMode={isDarkMode} />
+            {renderTrustBadges(false)}
           </div>
 
-          {/* ════ RIGHT COLUMN: Order Summary & Checkout (50% Width) ════════════ */}
+          {/* RIGHT COLUMN: Plan Card, Promo Code, Order Summary, Terms, Pay CTA */}
           <div
-            className="p-5 sm:p-6 flex flex-col justify-between gap-4 bg-white border-t lg:border-t-0"
+            className={`lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between gap-3.5 ${
+              isDarkMode ? 'bg-[#000000]' : 'bg-[#fafafa]'
+            }`}
           >
             <div className="space-y-3">
-              {/* Plan Header & Toggle */}
-              <div
-                className="p-3 rounded-xl border border-zinc-800 space-y-2.5 bg-black"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-7 h-7 rounded-lg border border-zinc-800 bg-zinc-900 flex items-center justify-center text-white"
-                    >
-                      <PlanIcon className="w-3.5 h-3.5 text-emerald-500" />
-                    </div>
-                    <div>
-                      <h3 className="text-xs sm:text-sm font-semibold tracking-tight text-white">
-                        {plan.name}
-                      </h3>
-                      <p className="text-[10.5px] text-zinc-400">
-                        Tier {plan.tierLevel} Plan
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 font-mono">
-                      Save {currencySymbol}{exactAnnualSavings.toLocaleString()}/yr
-                    </span>
-                  )}
-                </div>
-
-                {/* Minimal Segmented Cycle Control */}
-                <div
-                  className="grid grid-cols-2 gap-1 p-0.5 rounded-lg border border-zinc-800 text-[11px] bg-zinc-950"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCycle('monthly')}
-                    className={`py-1 rounded-md font-medium transition-all cursor-pointer text-center ${
-                      selectedCycle === 'monthly'
-                        ? 'bg-zinc-800 text-white shadow-xs font-semibold'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    Monthly ({currencySymbol}{plan.priceMonthly})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCycle('annual')}
-                    className={`py-1 rounded-md font-medium transition-all flex items-center justify-center gap-1 cursor-pointer text-center ${
-                      selectedCycle === 'annual'
-                        ? 'bg-zinc-800 text-white shadow-xs font-semibold'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <span>Annual ({currencySymbol}{plan.priceAnnual}/mo)</span>
-                    <span className="text-[9px] font-semibold text-emerald-500 font-mono">20% OFF</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Instant Feature Unlock Preview */}
-              <FeatureUnlockPreview
-                features={plan.features}
-                planName={plan.name}
-                role={role}
-                isDarkMode={isDarkMode}
-              />
-
-              {/* Smart Coupon Input */}
-              <SmartCouponInput
-                couponCode={couponCode}
-                setCouponCode={setCouponCode}
-                appliedCoupon={appliedCoupon}
-                onApply={handleApplyCoupon}
-                onRemove={handleRemoveCoupon}
-                validating={couponValidating}
-                error={couponError}
-                isDarkMode={isDarkMode}
-              />
-
-              {/* Itemized Financial Breakdown */}
-              <div
-                className="p-3 rounded-xl border border-zinc-800 space-y-1.5 text-xs bg-black text-zinc-300"
-              >
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">
-                    Subtotal ({selectedCycle === 'annual' ? '12 Months' : '1 Month'}):
-                  </span>
-                  <div className="text-right">
-                    {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
-                      <span className="line-through text-[10px] mr-1.5 font-mono text-zinc-500">
-                        {currencySymbol}{normalAnnualSubtotal.toFixed(2)}
-                      </span>
-                    )}
-                    <span className="font-mono font-medium text-zinc-100">
-                      {currencySymbol}{actualSubtotal.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
-                  <div className="flex justify-between text-emerald-500 font-medium">
-                    <span>Annual 20% Discount:</span>
-                    <span className="font-mono">- {currencySymbol}{exactAnnualSavings.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {couponDiscountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-500 font-medium">
-                    <span>Promo Code ({appliedCoupon?.code}):</span>
-                    <span className="font-mono">- {currencySymbol}{couponDiscountAmount.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {prorationCredit > 0 && (
-                  <div className="flex justify-between text-emerald-500 font-medium">
-                    <span>Unused Plan Credit:</span>
-                    <span className="font-mono">- {currencySymbol}{prorationCredit.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {!isUsd && (
-                  <div className="flex justify-between text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <span>GST (18% SAC 998439):</span>
-                      <HelpCircle className="w-3 h-3 opacity-40" />
-                    </span>
-                    <span className="font-mono font-medium text-zinc-100">
-                      ₹{gstAmount.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-
-                <div className="w-full h-px my-1.5 bg-zinc-800" />
-
-                <div
-                  className="flex justify-between items-baseline text-sm font-semibold text-white"
-                >
-                  <span>Total Due Today:</span>
-                  <span className="text-xl font-bold font-mono text-emerald-500">{currencySymbol}{totalPayable.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* Compliance Consent */}
-              <ComplianceConsent
-                billingCycle={selectedCycle}
-                planName={plan.name}
-                amount={totalPayable}
-                currencySymbol={currencySymbol}
-                isUsd={isUsd}
-                isChecked={consentAccepted}
-                onChange={setConsentAccepted}
-                isDarkMode={isDarkMode}
-              />
-            </div>
-
-            {/* Pay CTA Button */}
-            <div className="space-y-1.5 pt-1">
-              <button
-                type="button"
-                onClick={handleProcessCheckout}
-                disabled={
-                  isSubmitting ||
-                  !consentAccepted ||
-                  (!razorpayLoaded && selectedGateway === 'razorpay')
-                }
-                className="w-full py-3 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-all shadow-sm active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {state === 'creating_order' ? (
-                  <>
-                    <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Initiating Payment...</span>
-                  </>
-                ) : state === 'awaiting_payment' ? (
-                  <>
-                    <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Awaiting Payment...</span>
-                  </>
-                ) : state === 'verifying' ? (
-                  <>
-                    <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Verifying Signature...</span>
-                  </>
-                ) : state === 'polling_status' ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Reconciling Payment...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>
-                      Pay {currencySymbol}{totalPayable.toFixed(2)} via{' '}
-                      {selectedGateway === 'razorpay'
-                        ? 'Razorpay'
-                        : selectedGateway === 'stripe'
-                        ? 'Stripe'
-                        : 'Wallet'}
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
-
-              <p className={`text-[10px] text-center ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                Renews automatically • Self-serve pause or cancel anytime
-              </p>
+              {renderPlanCard(false)}
+              {renderPromoCode(false)}
+              {renderOrderSummary(false)}
+              {renderTermsAndCta(false)}
             </div>
           </div>
+        </div>
+
+        {/* ── MOBILE VIEW (Single Screen Zero-Scroll High Density Mockup Order) ────────── */}
+        <div className="block lg:hidden flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+          {renderAccount(true)}
+          {renderPlanCard(true)}
+          {renderPaymentMethods(true)}
+          {renderPromoCode(true)}
+          {renderBilling(true)}
+          {renderOrderSummary(true)}
+          {renderTermsAndCta(true)}
+          {renderTrustBadges(true)}
         </div>
       </div>
     </div>,
     document.body
   );
 };
+

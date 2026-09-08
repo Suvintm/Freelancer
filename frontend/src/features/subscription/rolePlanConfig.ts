@@ -30,6 +30,8 @@ export interface PlanCardPresenter {
   tierLevel: number;
   priceMonthly: number | null;
   priceAnnual: number | null;
+  priceAnnualTotal?: number;
+  savingsPercent?: number;
   currency?: string;
   isPopular?: boolean;
   badge?: string;
@@ -52,6 +54,13 @@ export interface FaqItem {
   answer: string;
 }
 
+export function calculateSavingsPercent(monthlyPrice: number, annualMonthlyEquivalent: number): number {
+  if (!monthlyPrice || monthlyPrice <= 0 || !annualMonthlyEquivalent || annualMonthlyEquivalent >= monthlyPrice) {
+    return 0;
+  }
+  return Math.round(((monthlyPrice - annualMonthlyEquivalent) / monthlyPrice) * 100);
+}
+
 // ── 1. FALLBACK / CANONICAL PLANS PER ROLE (For Offline / Network Resiliency) ──
 export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
   creator: {
@@ -69,6 +78,8 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         tierLevel: 1,
         priceMonthly: 0,
         priceAnnual: 0,
+        priceAnnualTotal: 0,
+        savingsPercent: 0,
         buttonText: 'Get Started Free',
         icon: Send,
         isOfflineFallback: true,
@@ -94,6 +105,8 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         tierLevel: 2,
         priceMonthly: null,
         priceAnnual: null,
+        priceAnnualTotal: 0,
+        savingsPercent: 20,
         isPopular: true,
         badge: 'MOST POPULAR',
         buttonText: 'Unavailable',
@@ -122,6 +135,8 @@ export const ROLE_CONFIGS: Record<WorkspaceRole, RoleConfig> = {
         tierLevel: 3,
         priceMonthly: null,
         priceAnnual: null,
+        priceAnnualTotal: 0,
+        savingsPercent: 20,
         buttonText: 'Unavailable',
         icon: Crown,
         isOfflineFallback: true,
@@ -836,17 +851,24 @@ export function dynamicPlanToPresenter(
   role: WorkspaceRole
 ): PlanCardPresenter {
   const tierLevel = Number(backendPlan.tierLevel || 1);
-  const priceMonthly = Number(backendPlan.priceMonthly ?? 0);
+  const priceMonthly = Math.round(Number(backendPlan.priceMonthly ?? 0));
   
-  // Calculate dynamic annual monthly-equivalent
+  // Calculate dynamic annual monthly-equivalent strictly as clean integer
   let priceAnnual = priceMonthly;
+  let priceAnnualTotal = priceMonthly * 12;
+
   if (backendPlan.pricing?.annual?.monthlyEquivalent) {
-    priceAnnual = Number(backendPlan.pricing.annual.monthlyEquivalent);
+    priceAnnual = Math.round(Number(backendPlan.pricing.annual.monthlyEquivalent));
+    priceAnnualTotal = Number(backendPlan.pricing.annual.amount || priceAnnual * 12);
   } else if (backendPlan.priceAnnual && Number(backendPlan.priceAnnual) > 0) {
-    priceAnnual = Math.round(Number(backendPlan.priceAnnual) / 12);
+    priceAnnualTotal = Math.round(Number(backendPlan.priceAnnual));
+    priceAnnual = Math.round(priceAnnualTotal / 12);
   } else if (priceMonthly > 0) {
     priceAnnual = Math.round(priceMonthly * 0.8);
+    priceAnnualTotal = priceAnnual * 12;
   }
+
+  const savingsPercent = calculateSavingsPercent(priceMonthly, priceAnnual);
 
   const isPopular = Boolean(backendPlan.isPopular || backendPlan.is_popular || tierLevel === 2);
   const badge = backendPlan.badge || (isPopular ? 'MOST POPULAR' : tierLevel === 3 ? 'VIP' : undefined);
@@ -870,6 +892,8 @@ export function dynamicPlanToPresenter(
     tierLevel,
     priceMonthly,
     priceAnnual,
+    priceAnnualTotal,
+    savingsPercent,
     currency: (backendPlan.currency || 'INR').toUpperCase(),
     isPopular,
     badge,
