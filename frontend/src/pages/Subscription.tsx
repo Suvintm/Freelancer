@@ -8,6 +8,8 @@ import type { Plan, ProrationQuote, UsageSummary, InvoiceItem } from '../api/ser
 import { useTheme } from '../hooks/useTheme';
 import lightLogo from '../assets/lightlogo.png';
 import darkLogo from '../assets/darklogo.png';
+import subscription1 from '../assets/subscription1.png';
+import subscription2 from '../assets/subscription2.png';
 
 import {
   ROLE_CONFIGS,
@@ -41,6 +43,15 @@ import {
   Lock,
   Layers,
   RotateCw,
+  Users,
+  Building2,
+  Crown,
+  Rocket,
+  Send,
+  Star,
+  ArrowRight,
+  Heart,
+  Shield,
 } from 'lucide-react';
 import { ImSpinner2 } from 'react-icons/im';
 
@@ -461,8 +472,17 @@ export default function Subscription() {
   };
 
   return (
-    <div className={`w-full min-h-screen font-sans transition-colors duration-200 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-zinc-900'}`}>
+    <div className={`relative w-full min-h-screen font-sans transition-colors duration-200 overflow-x-hidden ${isDarkMode ? 'bg-[#000000] text-white' : 'bg-[#ffffff] text-zinc-900'}`}>
       
+      {/* BACKGROUND PRISM IMAGE (Behind Top Header, Swapped: Light=subscription2, Dark=subscription1) */}
+      <div className="absolute top-0 right-0 pointer-events-none overflow-hidden z-0 flex items-start justify-end w-full max-w-7xl left-1/2 -translate-x-1/2 px-4 sm:px-6 lg:px-8">
+        <img
+          src={isDarkMode ? subscription1 : subscription2}
+          alt="Subscription Tier Prism"
+          className="h-[260px] sm:h-[320px] lg:h-[360px] w-auto object-contain object-right opacity-80 sm:opacity-95 transition-opacity"
+        />
+      </div>
+
       {/* BACKGROUND GLOWS */}
       {isDarkMode ? (
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -494,126 +514,185 @@ export default function Subscription() {
         </div>
       )}
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-12 flex flex-col gap-5 sm:gap-6">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-12 flex flex-col gap-6 sm:gap-7">
 
-        {/* ── 1 & 2. HERO HEADER + UNIQUE ACTIVE PLAN (Side-by-side in Laptop View) ── */}
-        <section className={activePlan ? "grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-center" : "text-center flex flex-col items-center gap-2"}>
-          
-          {/* ── LEFT COLUMN: Redesigned Hero Header ──────────────────────── */}
-          <div className={activePlan ? "lg:col-span-5 flex flex-col items-start text-left gap-2" : "flex flex-col items-center text-center gap-2"}>
-            {/* Badge Pill */}
-            <div
-              className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider border transition-all ${
-                isDarkMode
-                  ? 'border-white/15 bg-white/[0.04] text-zinc-300'
-                  : 'border-zinc-300 bg-zinc-100 text-zinc-700'
-              }`}
-            >
-              <Sparkles className="w-3 h-3 text-emerald-400" />
-              <span>{currentRoleConfig.badgeLabel}</span>
+        {/* ── 1. 3D PRISM SHOWCASE HERO BANNER (Controls Placed Next to Text & Centered) ── */}
+        <section className="relative w-full rounded-3xl p-6 sm:p-8 lg:p-9 bg-transparent border-none transition-all overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8">
+          {/* Top Right Slogan Watermark */}
+          <div className="hidden lg:block absolute top-6 right-8 text-right font-mono text-[9px] font-bold uppercase tracking-[0.25em] leading-relaxed text-zinc-400 dark:text-zinc-500 pointer-events-none select-none opacity-80">
+            <div>CREATE</div>
+            <div>CONNECT</div>
+            <div>MONETIZE</div>
+            <div>GROW</div>
+          </div>
+
+          {/* Left Hero Content */}
+          <div className="relative z-10 max-w-xl space-y-2.5 sm:space-y-3 shrink-0">
+            <div className="text-[10px] sm:text-[11px] font-bold tracking-widest uppercase text-zinc-500">
+              CREATOR MONETIZATION & GROWTH
             </div>
 
-            {/* Main Headline */}
-            <h1
-              className={`text-xl sm:text-2xl md:text-3xl lg:text-3xl font-bold tracking-tight leading-tight ${
-                isDarkMode ? 'text-white' : 'text-zinc-900'
-              }`}
-            >
-              {currentRoleConfig.heroHeadline}
+            <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+              One Platform.<br />
+              Infinite Opportunities.
             </h1>
 
-            {/* Subtitle */}
-            <p
-              className={`text-xs sm:text-sm leading-relaxed font-normal ${activePlan ? 'max-w-md' : 'max-w-lg'} ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-            >
-              {currentRoleConfig.heroSubtitle}
+            <p className={`text-xs sm:text-sm leading-relaxed font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              Get verified, unlock powerful tools, and connect with brands.<br className="hidden sm:inline" />
+              Choose the plan that fits your creator journey.
             </p>
 
-            {/* Switcher & Role Controls */}
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              {/* Monthly / Yearly Switcher */}
-              <div
-                className={`inline-flex items-center p-0.5 rounded-full border ${
-                  isDarkMode ? 'bg-[#111114] border-white/10' : 'bg-zinc-200/70 border-zinc-300'
-                }`}
-              >
-                <button
-                  onClick={() => setBillingCycle('monthly')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    billingCycle === 'monthly'
-                      ? isDarkMode
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'bg-white text-zinc-900 shadow-sm'
-                      : isDarkMode
-                      ? 'text-zinc-400 hover:text-zinc-200'
-                      : 'text-zinc-600 hover:text-zinc-900'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setBillingCycle('annual')}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    billingCycle === 'annual'
-                      ? isDarkMode
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'bg-white text-zinc-900 shadow-sm'
-                      : isDarkMode
-                      ? 'text-zinc-400 hover:text-zinc-200'
-                      : 'text-zinc-600 hover:text-zinc-900'
-                  }`}
-                >
-                  <span>Yearly</span>
-                  <span
-                    className={`text-[8.5px] px-1.5 py-0.2 rounded-full font-medium uppercase tracking-tight ${
-                      billingCycle === 'annual'
-                        ? isDarkMode
-                          ? 'bg-white text-black'
-                          : 'bg-zinc-900 text-white'
-                        : isDarkMode
-                        ? 'bg-white/15 text-white'
-                        : 'bg-zinc-300 text-zinc-800'
-                    }`}
-                  >
-                    Save 20%
-                  </span>
-                </button>
+            {/* Stat Badges Row */}
+            <div className="pt-2 flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-white/10 text-zinc-200' : 'bg-zinc-100 text-zinc-800'}`}>
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`font-bold leading-none ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>10K+</div>
+                  <div className="text-[10px] text-zinc-500">Creators trust SuviX</div>
+                </div>
               </div>
 
-              {/* Role Display: Locked if logged in, tabs if guest */}
-              {user ? (
-                <div
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-normal border transition-all ${
-                    isDarkMode
-                      ? 'bg-white/5 border-white/15 text-zinc-300'
-                      : 'bg-zinc-100 border-zinc-300 text-zinc-700'
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-white/10 text-zinc-200' : 'bg-zinc-100 text-zinc-800'}`}>
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`font-bold leading-none ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>500+</div>
+                  <div className="text-[10px] text-zinc-500">Brand partnerships</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-white/10 text-zinc-200' : 'bg-zinc-100 text-zinc-800'}`}>
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`font-bold leading-none ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>4K</div>
+                  <div className="text-[10px] text-zinc-500">Media vaults</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Controls & Role Switcher (Positioned with EXACT Center Alignment in Top Header) */}
+          <div className="flex flex-col items-center justify-center gap-3.5 z-20 w-full lg:w-auto lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:top-1/2 lg:-translate-y-1/2">
+            {/* Centered: Billing Cycle Switcher */}
+            <div
+              className={`inline-flex items-center p-1 rounded-full border transition-all shadow-sm ${
+                isDarkMode ? 'bg-[#101014] border-white/10 shadow-inner' : 'bg-zinc-100 border-zinc-200'
+              }`}
+            >
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${
+                  billingCycle === 'monthly'
+                    ? isDarkMode
+                      ? 'bg-white text-black shadow-md'
+                      : 'bg-black text-white shadow-md'
+                    : isDarkMode
+                    ? 'text-zinc-400 hover:text-white'
+                    : 'text-zinc-600 hover:text-black'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingCycle('annual')}
+                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-semibold transition-all ${
+                  billingCycle === 'annual'
+                    ? isDarkMode
+                      ? 'bg-black text-white shadow-md'
+                      : 'bg-white text-black shadow-md'
+                    : isDarkMode
+                    ? 'text-zinc-400 hover:text-white'
+                    : 'text-zinc-600 hover:text-black'
+                }`}
+              >
+                <span>Yearly</span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tight ${
+                    billingCycle === 'annual'
+                      ? isDarkMode
+                        ? 'bg-black text-white'
+                        : 'bg-white text-black'
+                      : isDarkMode
+                      ? 'bg-white/10 text-white'
+                      : 'bg-zinc-200 text-zinc-800'
                   }`}
                 >
-                  <Lock className="w-3 h-3 text-emerald-400" />
+                  {plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback) ? 'Save --' : 'Save 20%'}
+                </span>
+              </button>
+            </div>
+
+            {/* Status / Offline & Role Badges */}
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              {/* Offline / Warmup Refresh Trigger */}
+              {(plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback && p.tierLevel > 1)) && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    </span>
+                    <span className="text-[11px] font-medium">Billing service initializing...</span>
+                  </div>
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={refreshCooldown > 0 || isRefreshingPlans}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                      refreshCooldown > 0 || isRefreshingPlans
+                        ? 'border-zinc-200 dark:border-white/10 text-zinc-400 cursor-not-allowed bg-zinc-50 dark:bg-white/5'
+                        : 'border-zinc-300 dark:border-white/20 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-white/10 active:scale-95 shadow-sm'
+                    }`}
+                  >
+                    <RotateCw className={`w-3 h-3 ${isRefreshingPlans ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isRefreshingPlans
+                        ? 'Syncing...'
+                        : refreshCooldown > 0
+                        ? `Retry in ${refreshCooldown}s`
+                        : 'Refresh Live Plans'}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* Role Badge */}
+              {user ? (
+                <div
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                    isDarkMode
+                      ? 'bg-white/5 border-white/10 text-zinc-300'
+                      : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+                  }`}
+                >
+                  <Lock className="w-3 h-3 text-emerald-500" />
                   <span>
-                    Role: <strong className="text-emerald-400 uppercase tracking-wide font-medium">{selectedRole}</strong>
+                    Role: <strong className="uppercase font-bold tracking-wider text-zinc-900 dark:text-white">{selectedRole}</strong>
                   </span>
                 </div>
               ) : (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {[
-                    { role: 'creator', label: '🎬 Creators' },
-                    { role: 'editor', label: '✂️ Editors' },
-                    { role: 'brand', label: '🏢 Brands' },
-                    { role: 'user', label: '👤 Community' },
+                    { role: 'creator', label: 'Creators' },
+                    { role: 'editor', label: 'Editors' },
+                    { role: 'brand', label: 'Brands' },
+                    { role: 'user', label: 'Community' },
                   ].map((tab) => (
                     <button
                       key={tab.role}
                       onClick={() => handleRoleChange(tab.role as WorkspaceRole)}
-                      disabled={actionLoading === 'role-switch'}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
                         selectedRole === tab.role
                           ? isDarkMode
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 text-white border-zinc-900 shadow-md'
+                            ? 'bg-white text-black border-white shadow-sm'
+                            : 'bg-black text-white border-black shadow-sm'
                           : isDarkMode
-                          ? 'border-white/10 bg-white/[0.02] text-zinc-400 hover:text-white hover:border-white/20'
-                          : 'border-zinc-200 bg-white text-zinc-600 hover:text-zinc-900 hover:border-zinc-300'
+                          ? 'border-white/10 bg-white/[0.02] text-zinc-400 hover:text-white'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:text-black'
                       }`}
                     >
                       {tab.label}
@@ -623,381 +702,72 @@ export default function Subscription() {
               )}
             </div>
           </div>
-
-          {/* ── RIGHT COLUMN: Professional Dynamic Active Plan Hub ─────────── */}
-          {(loading || isRefreshingPlans) && !activePlan ? (
-            <div className="lg:col-span-7">
-              <div
-                className={`relative rounded-3xl p-4 sm:p-5 border overflow-hidden shadow-2xl ${
-                  isDarkMode
-                    ? 'bg-[#121216]/98 border-white/[0.12] text-white'
-                    : 'bg-white border-zinc-200 text-zinc-900 shadow-xl'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-white/[0.08]">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                    </span>
-                    <div className="w-28 h-3.5 rounded bg-white/10 animate-pulse" />
-                    <div className="w-16 h-3 rounded-full bg-white/5 animate-pulse" />
-                  </div>
-                  <div className="w-16 h-4 rounded-full bg-white/10 animate-pulse" />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center mb-3">
-                  <div className="sm:col-span-5 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-white/10 animate-pulse shrink-0" />
-                    <div className="space-y-1.5 flex-1">
-                      <div className="w-28 h-4 rounded bg-white/15 animate-pulse" />
-                      <div className="w-20 h-3 rounded bg-white/10 animate-pulse" />
-                    </div>
-                  </div>
-                  <div className="sm:col-span-7 grid grid-cols-2 gap-2">
-                    <div className="p-2.5 rounded-xl bg-white/5 animate-pulse space-y-1.5">
-                      <div className="w-12 h-2.5 rounded bg-white/10" />
-                      <div className="w-16 h-3.5 rounded bg-white/15" />
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 animate-pulse space-y-1.5">
-                      <div className="w-12 h-2.5 rounded bg-white/10" />
-                      <div className="w-16 h-3.5 rounded bg-white/15" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2.5 border-t border-white/[0.08] flex items-center justify-between">
-                  <div className="w-28 h-6 rounded-full bg-white/10 animate-pulse" />
-                  <div className="w-20 h-4 rounded bg-white/5 animate-pulse" />
-                </div>
-              </div>
-            </div>
-          ) : activePlan ? (() => {
-            const activePresenter = activePlanPresenter || displayPlans[0];
-            const { daysRemaining, formattedRenewal } = activePlanTimeInfo;
-
-            const roleAccentColor =
-              selectedRole === 'creator'
-                ? 'from-emerald-500/15 via-teal-500/5 to-transparent'
-                : selectedRole === 'editor'
-                ? 'from-indigo-500/15 via-purple-500/5 to-transparent'
-                : selectedRole === 'brand'
-                ? 'from-amber-500/15 via-orange-500/5 to-transparent'
-                : 'from-sky-500/15 via-blue-500/5 to-transparent';
-
-            const ActiveIcon = activePresenter?.icon || Zap;
-
-            return (
-              <div className="lg:col-span-7">
-                <div
-                  className={`relative rounded-3xl p-4 sm:p-5 border transition-all overflow-hidden shadow-2xl ${
-                    isDarkMode
-                      ? 'bg-gradient-to-br from-[#121216]/98 via-[#0e0e11]/98 to-[#09090b]/98 border-white/[0.12] text-white'
-                      : 'bg-gradient-to-br from-white via-zinc-50/95 to-zinc-100/70 border-zinc-200 text-zinc-900 shadow-xl'
-                  }`}
-                >
-                  {/* Dynamic Role Aura Glow */}
-                  <div className={`absolute -top-12 -right-12 w-44 h-44 rounded-full blur-3xl pointer-events-none bg-gradient-to-br ${roleAccentColor}`} />
-
-                  {/* ── SECTION A: TOP STATUS & HEALTH BAR ── */}
-                  <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-white/[0.08] dark:border-white/[0.08]">
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-2 w-2">
-                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                          activePlan.status === 'paused' ? 'bg-amber-400' : 'bg-emerald-400'
-                        }`} />
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                          activePlan.status === 'paused' ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`} />
-                      </span>
-                      <span className={`text-[10.5px] font-semibold uppercase tracking-wider ${
-                        isDarkMode ? 'text-zinc-300' : 'text-zinc-700'
-                      }`}>
-                        {activePlan.status === 'paused' ? 'Billing Paused' : 'Active Subscription'}
-                      </span>
-                      <span className={`text-[9px] px-2 py-0.2 rounded-full font-medium border ${
-                        activePlan.status === 'paused'
-                          ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-                          : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                      }`}>
-                        {billingCycle === 'annual' ? 'Annual Plan' : 'Monthly Plan'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {daysRemaining !== null && (
-                        <span className={`text-[10px] font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                          Renews in <strong className={`font-semibold ${isDarkMode ? 'text-zinc-200' : 'text-zinc-900'}`}>{daysRemaining}d</strong>
-                        </span>
-                      )}
-                      <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-medium border ${
-                        isDarkMode ? 'bg-white/5 border-white/10 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700 font-medium'
-                      }`}>
-                        Tier {activePresenter?.tierLevel || 1}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ── SECTION B: PLAN IDENTITY & LIVE GAUGES ── */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center mb-3">
-                    {/* Plan Name & Billing Details */}
-                    <div className="sm:col-span-5 flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 text-white shadow-inner'
-                            : 'bg-zinc-900 border-zinc-800 text-white shadow-md'
-                        }`}
-                      >
-                        <ActiveIcon className="w-5 h-5 text-emerald-400" />
-                      </div>
-                      <div>
-                        <h3 className={`text-base font-semibold leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
-                          {activePresenter?.name || activePlan.planName || 'Free Starter'}
-                        </h3>
-                        <p className={`text-[11px] mt-0.5 font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                          {activePlan.periodEnd ? (
-                            <>Next billing: <span className={isDarkMode ? 'text-zinc-200 font-medium' : 'text-zinc-800 font-semibold'}>{formattedRenewal}</span></>
-                          ) : (
-                            'Lifetime Free Access'
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Dynamic Resource Quota Gauges (Real Usage or Tier Allocations) */}
-                    <div className="sm:col-span-7 flex flex-col gap-1.5 justify-center">
-                      {usageSummary?.featureUsages && Object.keys(usageSummary.featureUsages).length > 0 ? (
-                        Object.entries(usageSummary.featureUsages).slice(0, 2).map(([feat, data]) => (
-                          <div key={feat} className="w-full">
-                            <div className={`flex justify-between text-[10px] mb-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                              <span className="capitalize font-normal">{feat.replace('_', ' ')}:</span>
-                              <span className={`font-semibold ${isDarkMode ? 'text-zinc-200' : 'text-zinc-900'}`}>
-                                {data.currentUsage} / {data.isUnlimited ? '∞' : data.maxLimit}
-                              </span>
-                            </div>
-                            <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-white/10' : 'bg-zinc-200'}`}>
-                              <div
-                                className={`h-full transition-all duration-500 ${
-                                  data.usagePercentage > 85 ? 'bg-rose-500' : 'bg-emerald-400'
-                                }`}
-                                style={{ width: `${Math.min(data.usagePercentage || 0, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))
-                      ) : activePresenter?.quotas && activePresenter.quotas.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {activePresenter.quotas.slice(0, 2).map((q, idx) => (
-                            <div
-                              key={idx}
-                              className={`p-1.5 rounded-xl border text-[10px] ${
-                                isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-zinc-50 border-zinc-200'
-                              }`}
-                            >
-                              <div className={`text-[9px] font-normal truncate ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>{q.label}</div>
-                              <div className={`font-semibold mt-0.2 truncate ${isDarkMode ? 'text-zinc-200' : 'text-zinc-900'}`}>
-                                {q.value}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {/* ── SECTION C: UNLOCKED PRIVILEGES CHIPS ── */}
-                  {activePresenter?.features && activePresenter.features.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                      {activePresenter.features.slice(0, 2).map((feat, idx) => (
-                        <div
-                          key={idx}
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-normal border ${
-                            isDarkMode
-                              ? 'bg-white/[0.03] border-white/10 text-zinc-300'
-                              : 'bg-zinc-100 border-zinc-200 text-zinc-700'
-                          }`}
-                        >
-                          <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                          <span className="truncate max-w-[200px]">{feat}</span>
-                        </div>
-                      ))}
-                      {activePresenter.tierLevel > 1 && (
-                        <span className={`text-[10px] ml-1 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500 font-medium'}`}>
-                          +{activePresenter.features.length - 2} more privileges active
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ── SECTION D: PROFESSIONAL ACTION RIBBON ── */}
-                  <div className={`pt-2.5 border-t flex flex-wrap items-center justify-between gap-2 text-xs ${
-                    isDarkMode ? 'border-white/[0.08]' : 'border-zinc-200'
-                  }`}>
-                    <div className="flex items-center gap-1.5">
-                      {activePlan.status === 'paused' ? (
-                        <button
-                          onClick={handleResumeSubscription}
-                          disabled={actionLoading === 'resume'}
-                          className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-medium bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-sm ${
-                            actionLoading === 'resume' ? 'opacity-70' : ''
-                          }`}
-                        >
-                          {actionLoading === 'resume' ? <ImSpinner2 className="w-3 h-3 animate-spin" /> : <PlayCircle className="w-3 h-3" />}
-                          <span>Resume Plan</span>
-                        </button>
-                      ) : activePlan.tierLevel > 1 && (
-                        <button
-                          onClick={() => setShowPauseModal(true)}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                            isDarkMode ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-zinc-300 text-zinc-800 bg-white hover:bg-zinc-50 shadow-sm'
-                          }`}
-                        >
-                          <PauseCircle className="w-3 h-3" />
-                          <span>Pause Billing</span>
-                        </button>
-                      )}
-
-                      {invoices.length > 0 && (
-                        <button
-                          onClick={() => setShowInvoicesModal(true)}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                            isDarkMode ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-zinc-300 text-zinc-800 bg-white hover:bg-zinc-50 shadow-sm'
-                          }`}
-                        >
-                          <Receipt className="w-3 h-3" />
-                          <span>Tax Invoices ({invoices.length})</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {activePlan.tierLevel > 1 && (
-                      <button
-                        onClick={() => setShowCancelModal(true)}
-                        className={`text-[11px] font-medium px-2 py-0.5 transition-colors ${
-                          isDarkMode ? 'text-zinc-400 hover:text-rose-400' : 'text-zinc-600 hover:text-rose-600'
-                        }`}
-                      >
-                        Cancel Plan
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })() : null}
-
         </section>
 
-        {/* ── 3. DYNAMIC PRICING CARDS GRID (Compact, Sleek, Above the Fold) ── */}
-
-        {/* ⚡ WARM-UP / OFFLINE STATUS BANNER WITH 15S TARGETED REFRESH */}
-        {(plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback && p.tierLevel > 1)) && (
-          <div className={`mb-4 p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
-            isDarkMode ? 'bg-zinc-900/80 border-white/10 text-zinc-200' : 'bg-zinc-50 border-zinc-200 text-zinc-800'
-          }`}>
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-              </span>
-              <div>
-                <p className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  Billing Service Initializing
-                </p>
-                <p className="text-[11px] text-zinc-400">
-                  Live pricing and active tier quotas are synchronizing. You can browse platform feature matrices below.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleManualRefresh}
-              disabled={refreshCooldown > 0 || isRefreshingPlans}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm shrink-0 ${
-                refreshCooldown > 0 || isRefreshingPlans
-                  ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed'
-                  : 'bg-white text-black hover:bg-zinc-200 active:scale-95'
-              }`}
-            >
-              <RotateCw className={`w-3.5 h-3.5 ${isRefreshingPlans ? 'animate-spin' : ''}`} />
-              <span>
-                {isRefreshingPlans
-                  ? 'Synchronizing...'
-                  : refreshCooldown > 0
-                  ? `Retry in ${refreshCooldown}s`
-                  : 'Refresh Live Plans'}
-              </span>
-            </button>
-          </div>
-        )}
-
+        {/* ── 3. DYNAMIC PRICING CARDS GRID (High-Boldness 3-Tier Layout) ── */}
         {(loading || isRefreshingPlans) && plans.length === 0 ? (
-          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3.5 sm:gap-4 items-stretch`}>
+          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 sm:gap-5 items-stretch`}>
             {[1, 2, 3].map((idx) => (
               <div
                 key={idx}
-                className={`relative rounded-2xl p-4 flex flex-col justify-between border min-h-[420px] overflow-hidden ${
-                  isDarkMode ? 'bg-[#101013]/70 border-white/10' : 'bg-white border-zinc-200'
+                className={`relative rounded-2xl p-5 sm:p-6 flex flex-col justify-between border min-h-[480px] overflow-hidden ${
+                  isDarkMode ? 'bg-[#0e0e11] border-white/10' : 'bg-white border-zinc-200 shadow-sm'
                 }`}
               >
-                {/* Shimmer gradient overlay */}
-                <div className="absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/[0.05] to-transparent pointer-events-none" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-white/10 animate-pulse" />
+                    <div className="w-20 h-4 rounded-full bg-zinc-100 dark:bg-white/5 animate-pulse" />
+                  </div>
 
-                <div className="space-y-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
-                  <div className="w-3/4 h-5 rounded-md bg-white/15 animate-pulse" />
-                  <div className="w-1/2 h-3 rounded bg-white/10 animate-pulse" />
+                  <div>
+                    <div className="w-32 h-5 rounded-md bg-zinc-200 dark:bg-white/15 animate-pulse mb-1.5" />
+                    <div className="w-44 h-3 rounded bg-zinc-100 dark:bg-white/10 animate-pulse" />
+                  </div>
 
                   {/* Price skeleton with -- */}
-                  <div className="flex items-baseline gap-1.5 my-3">
-                    <div className="h-8 w-16 bg-white/15 rounded-lg animate-pulse flex items-center justify-center font-mono text-zinc-400 font-bold text-lg">
+                  <div className="flex items-baseline gap-1.5 my-2">
+                    <div className="h-9 w-20 bg-zinc-200 dark:bg-white/15 rounded-lg animate-pulse flex items-center justify-center font-mono text-zinc-400 font-extrabold text-xl">
                       --
                     </div>
-                    <span className="text-[10px] text-zinc-500">/ month</span>
+                    <span className="text-xs text-zinc-400">/ month</span>
                   </div>
 
-                  {/* Quota Highlights Skeleton */}
-                  <div className="grid grid-cols-2 gap-1.5 py-1">
-                    <div className="h-5 rounded bg-white/5 animate-pulse" />
-                    <div className="h-5 rounded bg-white/5 animate-pulse" />
+                  {/* Quota Highlights Table Skeleton */}
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/5 space-y-2">
+                    <div className="flex justify-between"><div className="w-24 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /><div className="w-12 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /></div>
+                    <div className="flex justify-between"><div className="w-24 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /><div className="w-12 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /></div>
+                    <div className="flex justify-between"><div className="w-24 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /><div className="w-12 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /></div>
+                    <div className="flex justify-between"><div className="w-24 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /><div className="w-12 h-2.5 bg-zinc-200 dark:bg-white/10 rounded animate-pulse" /></div>
                   </div>
 
-                  {/* Feature skeleton lines */}
-                  <div className="space-y-2.5 pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20" />
-                      <div className="w-full h-3 rounded bg-white/10 animate-pulse" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20" />
-                      <div className="w-5/6 h-3 rounded bg-white/10 animate-pulse" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20" />
-                      <div className="w-4/6 h-3 rounded bg-white/10 animate-pulse" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3.5 h-3.5 rounded-full bg-white/10" />
-                      <div className="w-3/4 h-3 rounded bg-white/5 animate-pulse" />
-                    </div>
+                  {/* Feature lines */}
+                  <div className="space-y-2.5 pt-2">
+                    {[1, 2, 3, 4, 5].map((fIdx) => (
+                      <div key={fIdx} className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-zinc-200 dark:bg-white/10 shrink-0" />
+                        <div className="w-full h-3 rounded bg-zinc-100 dark:bg-white/10 animate-pulse" />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* CTA button skeleton */}
-                <div className="w-full h-9 rounded-full bg-white/10 animate-pulse mt-6 flex items-center justify-center text-xs text-zinc-500 font-medium border border-white/5">
-                  Synchronizing...
+                <div className="w-full h-10 rounded-xl bg-zinc-200 dark:bg-white/10 animate-pulse mt-6 flex items-center justify-center text-xs text-zinc-400 font-semibold">
+                  Connecting...
                 </div>
               </div>
             ))}
           </section>
         ) : (
-          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3.5 sm:gap-4 items-stretch`}>
-            {displayPlans.map((displayPlan) => {
-              const Icon = displayPlan.icon;
-              const isOffline = Boolean(displayPlan.isOfflineFallback && displayPlan.tierLevel > 1);
-              const price = billingCycle === 'annual' ? displayPlan.priceAnnual : displayPlan.priceMonthly;
+          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 sm:gap-5 items-stretch`}>
+            {displayPlans.map((displayPlan, planIndex) => {
+              const isOffline = Boolean(displayPlan.isOfflineFallback || plans.length === 0 || (displayPlan.tierLevel > 1 && displayPlan.priceMonthly === null));
+              const price = isOffline ? null : (billingCycle === 'annual' ? displayPlan.priceAnnual : displayPlan.priceMonthly);
               const formattedPrice = price !== null && price !== undefined ? `${currencySymbol}${price}` : '--';
               
+              const planTitle = isOffline ? `Plan ${planIndex + 1}` : displayPlan.name;
+              const planSubtitle = isOffline ? '--' : displayPlan.subtitle;
+
               const isCurrentPlan = activePlan && (
                 (activePlan.planId && activePlan.planId === displayPlan.id) ||
                 (activePlan.tierLevel === displayPlan.tierLevel && (activePlan.role === selectedRole || !activePlan.role)) ||
@@ -1018,126 +788,166 @@ export default function Subscription() {
                 buttonLabel = 'Downgrade';
               }
 
+              // Card Specific Icon Selector
+              const CardIcon = displayPlan.tierLevel === 1 ? Send : displayPlan.tierLevel === 2 ? Rocket : Crown;
+              const isPopular = !isOffline && (displayPlan.isPopular || displayPlan.tierLevel === 2);
+              const tierBadgeText = isOffline ? '--' : (displayPlan.tierLevel === 1 ? 'For Beginners' : displayPlan.tierLevel === 2 ? 'Most Popular' : 'For Agencies');
+
+              // Strikethrough comparison calculation (e.g., $19 with strikethrough $24)
+              const originalMonthlyPrice = (!isOffline && displayPlan.priceMonthly) ? Math.round(displayPlan.priceMonthly * 1.25) : null;
+
               return (
                 <div
                   key={displayPlan.key}
-                  className={`relative rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-200 shadow-xl border ${
-                    isCurrentPlan
+                  className={`relative rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 ${
+                    isPopular
                       ? isDarkMode
-                        ? 'bg-[#101013] border-emerald-500/50 shadow-emerald-950/20 text-white ring-1 ring-emerald-500/30'
-                        : 'bg-white border-emerald-500 shadow-emerald-500/10 text-zinc-900 ring-2 ring-emerald-500/30'
+                        ? 'bg-[#0e0e11] border-2 border-white/40 shadow-2xl scale-[1.02] z-10'
+                        : 'bg-white border-2 border-zinc-900 shadow-xl scale-[1.02] z-10'
                       : isDarkMode
-                      ? displayPlan.isPopular
-                        ? 'bg-[#101013] border-white/30 hover:border-white/50 text-white scale-[1.01]'
-                        : 'bg-[#101013] border-white/10 hover:border-white/20 text-white'
-                      : displayPlan.isPopular
-                      ? 'bg-white border-zinc-400 shadow-lg hover:border-zinc-900 text-zinc-900 scale-[1.01]'
-                      : 'bg-white border-zinc-200 hover:border-zinc-300 shadow-md text-zinc-900'
+                      ? 'bg-[#0e0e11] border border-white/10 hover:border-white/20 shadow-md'
+                      : 'bg-white border border-zinc-200 hover:border-zinc-300 shadow-sm'
                   }`}
                 >
-                {/* Active Plan or Popular Pill Badge */}
-                {isCurrentPlan ? (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                    <span className="text-[8.5px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-md font-mono bg-emerald-500 text-black border border-emerald-400">
-                      CURRENT PLAN
-                    </span>
-                  </div>
-                ) : displayPlan.isPopular ? (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                    <span
-                      className={`text-[8.5px] font-medium uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-md font-mono ${
-                        isDarkMode
-                          ? 'bg-white text-black border border-white/20'
-                          : 'bg-zinc-900 text-white border border-zinc-800'
-                      }`}
-                    >
-                      {displayPlan.badge || 'MOST POPULAR'}
-                    </span>
-                  </div>
-                ) : null}
-
-                <div>
-                  {/* Icon Box */}
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center mb-2 border ${
-                      isCurrentPlan
-                        ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
-                        : isDarkMode
-                        ? displayPlan.isPopular
-                          ? 'bg-white/10 text-white border-white/20'
-                          : 'bg-white/5 text-zinc-300 border-white/10'
-                        : displayPlan.isPopular
-                        ? 'bg-zinc-900 text-white border-zinc-800'
-                        : 'bg-zinc-100 text-zinc-800 border-zinc-200'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                  </div>
-
-                  {/* Plan Name & Subtitle */}
-                  <h3 className={`text-sm sm:text-base font-semibold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
-                    {displayPlan.name}
-                  </h3>
-                  <p className={`text-[10.5px] mt-0.5 font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                    {displayPlan.subtitle}
-                  </p>
-
-                  {/* Price */}
-                  <div className="flex items-baseline gap-1 mt-1.5 mb-2">
-                    <span className={`text-xl sm:text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>{formattedPrice}</span>
-                    {price !== null && price !== undefined && (
-                      <span className={`text-[10px] font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>/ month</span>
-                    )}
-                  </div>
-
-                  {/* Quota Highlights Pills */}
-                  {displayPlan.quotas && displayPlan.quotas.length > 0 && (
-                    <div className={`p-2 rounded-xl mb-2.5 space-y-0.5 text-[10px] font-normal border ${
-                      isDarkMode ? 'bg-white/5 text-zinc-300 border-white/5' : 'bg-zinc-50 text-zinc-700 border-zinc-200'
-                    }`}>
-                      {displayPlan.quotas.map((q, idx) => (
-                        <div key={idx} className="flex justify-between">
-                          <span className="opacity-75">{q.label}:</span>
-                          <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>{q.value}</span>
-                        </div>
-                      ))}
+                  {/* Top Popular Badge */}
+                  {isPopular && (
+                    <div className="absolute -top-2.5 right-6">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 ${
+                        isDarkMode ? 'bg-white text-black' : 'bg-black text-white'
+                      }`}>
+                        <Star className="w-3 h-3 fill-current" />
+                        <span>Most Popular</span>
+                      </span>
                     </div>
                   )}
 
-                  <div className={`w-full h-px my-2 ${isDarkMode ? 'bg-white/10' : 'bg-zinc-200'}`} />
+                  <div>
+                    {/* Header Row: Icon + Title + Audience Tag */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border shrink-0 ${
+                          isPopular
+                            ? isDarkMode
+                              ? 'bg-white/10 border-white/20 text-white'
+                              : 'bg-zinc-900 border-zinc-900 text-white'
+                            : isDarkMode
+                            ? 'bg-white/5 border-white/10 text-zinc-300'
+                            : 'bg-zinc-100 border-zinc-200 text-zinc-800'
+                        }`}>
+                          <CardIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className={`text-base font-bold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+                            {planTitle}
+                          </h3>
+                          <p className={`text-[11px] mt-0.5 font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                            {planSubtitle}
+                          </p>
+                        </div>
+                      </div>
 
-                  {/* Features List */}
-                  <ul className="space-y-1.5 text-[10.5px] mb-3 font-normal">
-                    {displayPlan.features.map((feat, idx) => (
-                      <li key={idx} className="flex items-start gap-1.5">
-                        <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
-                        <span className={isDarkMode ? 'text-zinc-200' : 'text-zinc-700'}>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
+                      {!isPopular && (
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
+                          isDarkMode ? 'bg-white/5 border-white/10 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
+                        }`}>
+                          {tierBadgeText}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Price Block */}
+                    <div className="my-3">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
+                          {formattedPrice}
+                        </span>
+                        <span className={`text-xs font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                          / month
+                        </span>
+                        {originalMonthlyPrice && displayPlan.tierLevel > 1 && (
+                          <span className="text-sm font-semibold line-through text-zinc-400 dark:text-zinc-500 ml-1">
+                            {currencySymbol}{originalMonthlyPrice}
+                          </span>
+                        )}
+                      </div>
+
+                      {displayPlan.tierLevel > 1 && (
+                        <p className={`text-[11px] font-bold mt-0.5 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>
+                          {isOffline ? 'Save --' : 'Save 20% with yearly'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Structured Quotas Spec Box */}
+                    {displayPlan.quotas && displayPlan.quotas.length > 0 && (
+                      <div className={`p-3 rounded-xl mb-3.5 space-y-1.5 text-xs font-normal border ${
+                        isDarkMode ? 'bg-white/[0.03] border-white/5 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+                      }`}>
+                        {displayPlan.quotas.map((q, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-[11.5px]">
+                            <span className={`font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>{q.label}</span>
+                            <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>{isOffline ? '--' : q.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Features List */}
+                    <ul className="space-y-2 text-xs mb-4 font-normal">
+                      {isOffline ? (
+                        ['--', '--', '--', '--'].map((_, fIdx) => (
+                          <li key={fIdx} className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-zinc-400/20 dark:bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500">-</span>
+                            </span>
+                            <span className={`text-[12px] font-mono leading-tight ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                              --
+                            </span>
+                          </li>
+                        ))
+                      ) : (
+                        displayPlan.features.map((feat, idx) => {
+                          const isBlueBadge = feat.toLowerCase().includes('blue badge') || feat.toLowerCase().includes('verified');
+                          return (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="w-4 h-4 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                <Check className="w-2.5 h-2.5 text-white dark:text-black stroke-[3]" />
+                              </span>
+                              <span className={`text-[12px] leading-tight ${isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}`}>
+                                {feat} {isBlueBadge && <span className="inline-block ml-1 text-blue-500 font-bold">✓</span>}
+                              </span>
+                            </li>
+                          );
+                        })
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Action CTA Button */}
+                  <button
+                    onClick={() => handlePlanCardClick(displayPlan)}
+                    disabled={isOffline || isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
+                    className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5 ${
+                      isOffline
+                        ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed'
+                        : isCurrentPlan
+                        ? isDarkMode ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default' : 'bg-emerald-50 text-emerald-700 border border-emerald-300 cursor-default'
+                        : isPopular
+                        ? isDarkMode
+                          ? 'bg-white hover:bg-zinc-200 text-black shadow-lg active:scale-95'
+                          : 'bg-black hover:bg-zinc-800 text-white shadow-lg active:scale-95'
+                        : isDarkMode
+                        ? 'bg-white/10 hover:bg-white/15 text-white border border-white/10 active:scale-95'
+                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200 active:scale-95'
+                    }`}
+                  >
+                    {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{buttonLabel}</span>
+                    {!isCurrentPlan && !isOffline && <ArrowRight className="w-3.5 h-3.5 ml-0.5" />}
+                  </button>
                 </div>
-
-                {/* Action CTA Button */}
-                <button
-                  onClick={() => handlePlanCardClick(displayPlan)}
-                  disabled={isOffline || isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
-                  className={`w-full py-2 rounded-full text-xs font-medium transition-all shadow-md flex items-center justify-center gap-1.5 ${
-                    isOffline
-                      ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed'
-                      : isCurrentPlan
-                      ? isDarkMode ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default' : 'bg-emerald-50 text-emerald-700 border border-emerald-300 cursor-default font-semibold'
-                      : displayPlan.isPopular
-                      ? isDarkMode ? 'bg-white text-black hover:bg-zinc-200 active:scale-95' : 'bg-zinc-900 text-white hover:bg-zinc-800 active:scale-95 shadow-md'
-                      : isDarkMode ? 'bg-white/10 text-white hover:bg-white/20 border border-white/15 active:scale-95' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border border-zinc-300 active:scale-95'
-                  }`}
-                >
-                  {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
-                  {isCurrentPlan && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                  <span>{buttonLabel}</span>
-                </button>
-              </div>
-            );
-          })}
+              );
+            })}
           </section>
         )}
 

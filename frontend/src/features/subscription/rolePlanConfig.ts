@@ -449,7 +449,10 @@ export function getDynamicComparisonMatrix(
   // Generate dynamic headers with live DB plan names and prices
   const dynamicHeaders = [
     'Feature / Capability',
-    ...plans.map((p) => {
+    ...plans.map((p, idx) => {
+      if (p.isOfflineFallback) {
+        return `Plan ${idx + 1} (--)`;
+      }
       const sym = (p.currency || '').toUpperCase() === 'USD' ? '$' : '₹';
       const priceStr = p.priceMonthly !== null && p.priceMonthly !== undefined ? `${sym}${p.priceMonthly}/mo` : '--';
       return `${p.name} (${priceStr})`;
@@ -467,14 +470,15 @@ export function getDynamicComparisonMatrix(
 
   allQuotaLabels.forEach((label) => {
     const values = plans.map((p) => {
+      if (p.isOfflineFallback) return '--';
       const match = p.quotas?.find((q) => q.label === label);
       return match ? match.value : '-';
     });
 
     dynamicRows.push({
       featureName: label,
-      tier1: values[0] ?? '-',
-      tier2: values[1] ?? '-',
+      tier1: values[0] ?? '--',
+      tier2: values[1] ?? '--',
       tier3: values[2] ?? (values.length > 2 ? values[2] : ''),
       values,
     });
@@ -498,6 +502,7 @@ export function getDynamicComparisonMatrix(
     seenFeatureNames.add(featClean);
 
     const values = plans.map((p) => {
+      if (p.isOfflineFallback) return '--';
       const hasFeature = p.features?.some((pf) => {
         const pfClean = pf.replace(/[⭐💰✅]/gu, '').trim().toLowerCase();
         return pfClean.includes(featClean) || featClean.includes(pfClean);
