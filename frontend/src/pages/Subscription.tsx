@@ -40,6 +40,7 @@ import {
   CreditCard,
   Lock,
   Layers,
+  RotateCw,
 } from 'lucide-react';
 import { ImSpinner2 } from 'react-icons/im';
 
@@ -111,6 +112,10 @@ export default function Subscription() {
   const [cancelReason, setCancelReason] = useState('');
   const [showInvoicesModal, setShowInvoicesModal] = useState(false);
 
+  // Manual refresh with 15-second cooldown timer
+  const [refreshCooldown, setRefreshCooldown] = useState(0);
+  const [isRefreshingPlans, setIsRefreshingPlans] = useState(false);
+
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'info' });
 
   const triggerToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
@@ -119,6 +124,15 @@ export default function Subscription() {
       setToast((prev) => ({ ...prev, show: false }));
     }, 5000);
   }, []);
+
+  // Cooldown interval countdown
+  useEffect(() => {
+    if (refreshCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setRefreshCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [refreshCooldown]);
 
   // Determine user preferred currency (USD for US/international, INR for India)
   const userCurrency = useMemo(() => {
@@ -156,6 +170,40 @@ export default function Subscription() {
       setLoading(false);
     }
   }, [selectedRole, user?.id, userCurrency]);
+
+  // Targeted Subscription-Only Refresh Handler with 15s lock
+  const handleManualRefresh = async () => {
+    if (refreshCooldown > 0 || isRefreshingPlans) return;
+    setIsRefreshingPlans(true);
+    setRefreshCooldown(15);
+    try {
+      const dashboard = await subscriptionService.getDashboard(selectedRole, user?.id, userCurrency).catch(() => null);
+      if (dashboard && dashboard.plans?.length > 0) {
+        setPlans(dashboard.plans);
+        setRolePlansCache((prev) => ({ ...prev, [selectedRole]: dashboard.plans }));
+        if (dashboard.activeSubscription) setActivePlan(dashboard.activeSubscription);
+        if (dashboard.usageSummary) setUsageSummary(dashboard.usageSummary);
+        triggerToast('Live plans synchronized successfully!', 'success');
+      } else {
+        const fetchedPlans = await subscriptionService.getPlans(selectedRole, userCurrency).catch(() => []);
+        if (fetchedPlans && fetchedPlans.length > 0) {
+          setPlans(fetchedPlans);
+          setRolePlansCache((prev) => ({ ...prev, [selectedRole]: fetchedPlans }));
+          triggerToast('Live plans synchronized successfully!', 'success');
+        } else {
+          triggerToast('Billing cluster is initializing. Please retry in 15 seconds.', 'info');
+        }
+      }
+
+      if (user?.id) {
+        subscriptionService.getUserInvoices(user.id).then(setInvoices).catch(() => {});
+      }
+    } catch {
+      triggerToast('Billing cluster is initializing. Please retry in 15 seconds.', 'info');
+    } finally {
+      setIsRefreshingPlans(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -412,17 +460,6 @@ export default function Subscription() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className={`w-full min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-black text-white' : 'bg-white text-zinc-900'}`}>
-        <div className="flex flex-col items-center gap-3">
-          <ImSpinner2 className="w-8 h-8 animate-spin opacity-80" />
-          <p className="text-xs font-semibold uppercase tracking-wider opacity-60">Loading SuviX Subscriptions...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`w-full min-h-screen font-sans transition-colors duration-200 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-zinc-900'}`}>
       
@@ -588,7 +625,54 @@ export default function Subscription() {
           </div>
 
           {/* ── RIGHT COLUMN: Professional Dynamic Active Plan Hub ─────────── */}
-          {activePlan && (() => {
+          {(loading || isRefreshingPlans) && !activePlan ? (
+            <div className="lg:col-span-7">
+              <div
+                className={`relative rounded-3xl p-4 sm:p-5 border overflow-hidden shadow-2xl ${
+                  isDarkMode
+                    ? 'bg-[#121216]/98 border-white/[0.12] text-white'
+                    : 'bg-white border-zinc-200 text-zinc-900 shadow-xl'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <div className="w-28 h-3.5 rounded bg-white/10 animate-pulse" />
+                    <div className="w-16 h-3 rounded-full bg-white/5 animate-pulse" />
+                  </div>
+                  <div className="w-16 h-4 rounded-full bg-white/10 animate-pulse" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center mb-3">
+                  <div className="sm:col-span-5 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white/10 animate-pulse shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <div className="w-28 h-4 rounded bg-white/15 animate-pulse" />
+                      <div className="w-20 h-3 rounded bg-white/10 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-7 grid grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-xl bg-white/5 animate-pulse space-y-1.5">
+                      <div className="w-12 h-2.5 rounded bg-white/10" />
+                      <div className="w-16 h-3.5 rounded bg-white/15" />
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 animate-pulse space-y-1.5">
+                      <div className="w-12 h-2.5 rounded bg-white/10" />
+                      <div className="w-16 h-3.5 rounded bg-white/15" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2.5 border-t border-white/[0.08] flex items-center justify-between">
+                  <div className="w-28 h-6 rounded-full bg-white/10 animate-pulse" />
+                  <div className="w-20 h-4 rounded bg-white/5 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          ) : activePlan ? (() => {
             const activePresenter = activePlanPresenter || displayPlans[0];
             const { daysRemaining, formattedRenewal } = activePlanTimeInfo;
 
@@ -626,7 +710,9 @@ export default function Subscription() {
                           activePlan.status === 'paused' ? 'bg-amber-500' : 'bg-emerald-500'
                         }`} />
                       </span>
-                      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-zinc-300 dark:text-zinc-300">
+                      <span className={`text-[10.5px] font-semibold uppercase tracking-wider ${
+                        isDarkMode ? 'text-zinc-300' : 'text-zinc-700'
+                      }`}>
                         {activePlan.status === 'paused' ? 'Billing Paused' : 'Active Subscription'}
                       </span>
                       <span className={`text-[9px] px-2 py-0.2 rounded-full font-medium border ${
@@ -640,12 +726,12 @@ export default function Subscription() {
 
                     <div className="flex items-center gap-1.5">
                       {daysRemaining !== null && (
-                        <span className="text-[10px] text-zinc-400 font-normal">
-                          Renews in <strong className="text-zinc-200 font-medium">{daysRemaining}d</strong>
+                        <span className={`text-[10px] font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                          Renews in <strong className={`font-semibold ${isDarkMode ? 'text-zinc-200' : 'text-zinc-900'}`}>{daysRemaining}d</strong>
                         </span>
                       )}
                       <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-medium border ${
-                        isDarkMode ? 'bg-white/5 border-white/10 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+                        isDarkMode ? 'bg-white/5 border-white/10 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700 font-medium'
                       }`}>
                         Tier {activePresenter?.tierLevel || 1}
                       </span>
@@ -671,7 +757,7 @@ export default function Subscription() {
                         </h3>
                         <p className={`text-[11px] mt-0.5 font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
                           {activePlan.periodEnd ? (
-                            <>Next billing: <span className={isDarkMode ? 'text-zinc-200 font-medium' : 'text-zinc-700 font-medium'}>{formattedRenewal}</span></>
+                            <>Next billing: <span className={isDarkMode ? 'text-zinc-200 font-medium' : 'text-zinc-800 font-semibold'}>{formattedRenewal}</span></>
                           ) : (
                             'Lifetime Free Access'
                           )}
@@ -684,9 +770,9 @@ export default function Subscription() {
                       {usageSummary?.featureUsages && Object.keys(usageSummary.featureUsages).length > 0 ? (
                         Object.entries(usageSummary.featureUsages).slice(0, 2).map(([feat, data]) => (
                           <div key={feat} className="w-full">
-                            <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                            <div className={`flex justify-between text-[10px] mb-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                               <span className="capitalize font-normal">{feat.replace('_', ' ')}:</span>
-                              <span className={`font-medium ${isDarkMode ? 'text-zinc-200' : 'text-zinc-700'}`}>
+                              <span className={`font-semibold ${isDarkMode ? 'text-zinc-200' : 'text-zinc-900'}`}>
                                 {data.currentUsage} / {data.isUnlimited ? '∞' : data.maxLimit}
                               </span>
                             </div>
@@ -706,11 +792,11 @@ export default function Subscription() {
                             <div
                               key={idx}
                               className={`p-1.5 rounded-xl border text-[10px] ${
-                                isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-zinc-100/80 border-zinc-200'
+                                isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-zinc-50 border-zinc-200'
                               }`}
                             >
-                              <div className="text-zinc-400 text-[9px] font-normal truncate">{q.label}</div>
-                              <div className={`font-medium mt-0.2 truncate ${isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}`}>
+                              <div className={`text-[9px] font-normal truncate ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>{q.label}</div>
+                              <div className={`font-semibold mt-0.2 truncate ${isDarkMode ? 'text-zinc-200' : 'text-zinc-900'}`}>
                                 {q.value}
                               </div>
                             </div>
@@ -732,12 +818,12 @@ export default function Subscription() {
                               : 'bg-zinc-100 border-zinc-200 text-zinc-700'
                           }`}
                         >
-                          <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <Check className="w-3 h-3 text-emerald-500 shrink-0" />
                           <span className="truncate max-w-[200px]">{feat}</span>
                         </div>
                       ))}
                       {activePresenter.tierLevel > 1 && (
-                        <span className="text-[10px] text-zinc-500 ml-1">
+                        <span className={`text-[10px] ml-1 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500 font-medium'}`}>
                           +{activePresenter.features.length - 2} more privileges active
                         </span>
                       )}
@@ -764,7 +850,7 @@ export default function Subscription() {
                         <button
                           onClick={() => setShowPauseModal(true)}
                           className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                            isDarkMode ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
+                            isDarkMode ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-zinc-300 text-zinc-800 bg-white hover:bg-zinc-50 shadow-sm'
                           }`}
                         >
                           <PauseCircle className="w-3 h-3" />
@@ -776,7 +862,7 @@ export default function Subscription() {
                         <button
                           onClick={() => setShowInvoicesModal(true)}
                           className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                            isDarkMode ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
+                            isDarkMode ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-zinc-300 text-zinc-800 bg-white hover:bg-zinc-50 shadow-sm'
                           }`}
                         >
                           <Receipt className="w-3 h-3" />
@@ -789,7 +875,7 @@ export default function Subscription() {
                       <button
                         onClick={() => setShowCancelModal(true)}
                         className={`text-[11px] font-medium px-2 py-0.5 transition-colors ${
-                          isDarkMode ? 'text-zinc-400 hover:text-rose-400' : 'text-zinc-500 hover:text-rose-600'
+                          isDarkMode ? 'text-zinc-400 hover:text-rose-400' : 'text-zinc-600 hover:text-rose-600'
                         }`}
                       >
                         Cancel Plan
@@ -799,32 +885,108 @@ export default function Subscription() {
                 </div>
               </div>
             );
-          })()}
+          })() : null}
 
         </section>
 
         {/* ── 3. DYNAMIC PRICING CARDS GRID (Compact, Sleek, Above the Fold) ── */}
-        {loading && plans.length === 0 ? (
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 items-stretch">
+
+        {/* ⚡ WARM-UP / OFFLINE STATUS BANNER WITH 15S TARGETED REFRESH */}
+        {(plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback && p.tierLevel > 1)) && (
+          <div className={`mb-4 p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
+            isDarkMode ? 'bg-zinc-900/80 border-white/10 text-zinc-200' : 'bg-zinc-50 border-zinc-200 text-zinc-800'
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              </span>
+              <div>
+                <p className="text-xs font-semibold text-white flex items-center gap-1.5">
+                  Billing Service Initializing
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  Live pricing and active tier quotas are synchronizing. You can browse platform feature matrices below.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshCooldown > 0 || isRefreshingPlans}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm shrink-0 ${
+                refreshCooldown > 0 || isRefreshingPlans
+                  ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed'
+                  : 'bg-white text-black hover:bg-zinc-200 active:scale-95'
+              }`}
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isRefreshingPlans ? 'animate-spin' : ''}`} />
+              <span>
+                {isRefreshingPlans
+                  ? 'Synchronizing...'
+                  : refreshCooldown > 0
+                  ? `Retry in ${refreshCooldown}s`
+                  : 'Refresh Live Plans'}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {(loading || isRefreshingPlans) && plans.length === 0 ? (
+          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3.5 sm:gap-4 items-stretch`}>
             {[1, 2, 3].map((idx) => (
               <div
                 key={idx}
-                className={`animate-pulse rounded-2xl p-4 flex flex-col justify-between border min-h-[380px] ${
-                  isDarkMode ? 'bg-[#101013]/60 border-white/5' : 'bg-zinc-100 border-zinc-200'
+                className={`relative rounded-2xl p-4 flex flex-col justify-between border min-h-[420px] overflow-hidden ${
+                  isDarkMode ? 'bg-[#101013]/70 border-white/10' : 'bg-white border-zinc-200'
                 }`}
               >
+                {/* Shimmer gradient overlay */}
+                <div className="absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/[0.05] to-transparent pointer-events-none" />
+
                 <div className="space-y-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10" />
-                  <div className="w-3/4 h-5 rounded bg-white/10" />
-                  <div className="w-1/2 h-3 rounded bg-white/5" />
-                  <div className="w-2/5 h-8 rounded bg-white/10 my-4" />
-                  <div className="space-y-2 pt-2">
-                    <div className="w-full h-3 rounded bg-white/5" />
-                    <div className="w-5/6 h-3 rounded bg-white/5" />
-                    <div className="w-4/6 h-3 rounded bg-white/5" />
+                  <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+                  <div className="w-3/4 h-5 rounded-md bg-white/15 animate-pulse" />
+                  <div className="w-1/2 h-3 rounded bg-white/10 animate-pulse" />
+
+                  {/* Price skeleton with -- */}
+                  <div className="flex items-baseline gap-1.5 my-3">
+                    <div className="h-8 w-16 bg-white/15 rounded-lg animate-pulse flex items-center justify-center font-mono text-zinc-400 font-bold text-lg">
+                      --
+                    </div>
+                    <span className="text-[10px] text-zinc-500">/ month</span>
+                  </div>
+
+                  {/* Quota Highlights Skeleton */}
+                  <div className="grid grid-cols-2 gap-1.5 py-1">
+                    <div className="h-5 rounded bg-white/5 animate-pulse" />
+                    <div className="h-5 rounded bg-white/5 animate-pulse" />
+                  </div>
+
+                  {/* Feature skeleton lines */}
+                  <div className="space-y-2.5 pt-3 border-t border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20" />
+                      <div className="w-full h-3 rounded bg-white/10 animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20" />
+                      <div className="w-5/6 h-3 rounded bg-white/10 animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20" />
+                      <div className="w-4/6 h-3 rounded bg-white/10 animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 rounded-full bg-white/10" />
+                      <div className="w-3/4 h-3 rounded bg-white/5 animate-pulse" />
+                    </div>
                   </div>
                 </div>
-                <div className="w-full h-9 rounded-full bg-white/10 mt-6" />
+
+                {/* CTA button skeleton */}
+                <div className="w-full h-9 rounded-full bg-white/10 animate-pulse mt-6 flex items-center justify-center text-xs text-zinc-500 font-medium border border-white/5">
+                  Synchronizing...
+                </div>
               </div>
             ))}
           </section>
@@ -863,14 +1025,14 @@ export default function Subscription() {
                     isCurrentPlan
                       ? isDarkMode
                         ? 'bg-[#101013] border-emerald-500/50 shadow-emerald-950/20 text-white ring-1 ring-emerald-500/30'
-                        : 'bg-white border-emerald-500 shadow-emerald-100 text-zinc-900 ring-1 ring-emerald-400/30'
+                        : 'bg-white border-emerald-500 shadow-emerald-500/10 text-zinc-900 ring-2 ring-emerald-500/30'
                       : isDarkMode
                       ? displayPlan.isPopular
                         ? 'bg-[#101013] border-white/30 hover:border-white/50 text-white scale-[1.01]'
                         : 'bg-[#101013] border-white/10 hover:border-white/20 text-white'
                       : displayPlan.isPopular
-                      ? 'bg-[#0e0e11] border-zinc-700 text-white scale-[1.01]'
-                      : 'bg-[#0e0e11] border-zinc-800 text-white'
+                      ? 'bg-white border-zinc-400 shadow-lg hover:border-zinc-900 text-zinc-900 scale-[1.01]'
+                      : 'bg-white border-zinc-200 hover:border-zinc-300 shadow-md text-zinc-900'
                   }`}
                 >
                 {/* Active Plan or Popular Pill Badge */}
@@ -886,7 +1048,7 @@ export default function Subscription() {
                       className={`text-[8.5px] font-medium uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-md font-mono ${
                         isDarkMode
                           ? 'bg-white text-black border border-white/20'
-                          : 'bg-white text-black border border-black/20'
+                          : 'bg-zinc-900 text-white border border-zinc-800'
                       }`}
                     >
                       {displayPlan.badge || 'MOST POPULAR'}
@@ -899,53 +1061,57 @@ export default function Subscription() {
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center mb-2 border ${
                       isCurrentPlan
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
                         : isDarkMode
                         ? displayPlan.isPopular
                           ? 'bg-white/10 text-white border-white/20'
                           : 'bg-white/5 text-zinc-300 border-white/10'
-                        : 'bg-white/10 text-white border-white/15'
+                        : displayPlan.isPopular
+                        ? 'bg-zinc-900 text-white border-zinc-800'
+                        : 'bg-zinc-100 text-zinc-800 border-zinc-200'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                   </div>
 
                   {/* Plan Name & Subtitle */}
-                  <h3 className="text-sm sm:text-base font-semibold tracking-tight leading-tight text-white">
+                  <h3 className={`text-sm sm:text-base font-semibold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
                     {displayPlan.name}
                   </h3>
-                  <p className="text-[10.5px] mt-0.5 font-normal text-zinc-400">
+                  <p className={`text-[10.5px] mt-0.5 font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
                     {displayPlan.subtitle}
                   </p>
 
                   {/* Price */}
                   <div className="flex items-baseline gap-1 mt-1.5 mb-2">
-                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">{formattedPrice}</span>
+                    <span className={`text-xl sm:text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>{formattedPrice}</span>
                     {price !== null && price !== undefined && (
-                      <span className="text-[10px] font-normal text-zinc-400">/ month</span>
+                      <span className={`text-[10px] font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>/ month</span>
                     )}
                   </div>
 
                   {/* Quota Highlights Pills */}
                   {displayPlan.quotas && displayPlan.quotas.length > 0 && (
-                    <div className="p-2 rounded-xl mb-2.5 space-y-0.5 text-[10px] font-normal bg-white/5 text-zinc-300 border border-white/5">
+                    <div className={`p-2 rounded-xl mb-2.5 space-y-0.5 text-[10px] font-normal border ${
+                      isDarkMode ? 'bg-white/5 text-zinc-300 border-white/5' : 'bg-zinc-50 text-zinc-700 border-zinc-200'
+                    }`}>
                       {displayPlan.quotas.map((q, idx) => (
                         <div key={idx} className="flex justify-between">
-                          <span className="opacity-70">{q.label}:</span>
-                          <span className="font-medium text-white">{q.value}</span>
+                          <span className="opacity-75">{q.label}:</span>
+                          <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>{q.value}</span>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <div className="w-full h-px my-2 bg-white/10" />
+                  <div className={`w-full h-px my-2 ${isDarkMode ? 'bg-white/10' : 'bg-zinc-200'}`} />
 
                   {/* Features List */}
                   <ul className="space-y-1.5 text-[10.5px] mb-3 font-normal">
                     {displayPlan.features.map((feat, idx) => (
                       <li key={idx} className="flex items-start gap-1.5">
-                        <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-400" />
-                        <span className="text-zinc-200">{feat}</span>
+                        <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
+                        <span className={isDarkMode ? 'text-zinc-200' : 'text-zinc-700'}>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -957,16 +1123,16 @@ export default function Subscription() {
                   disabled={isOffline || isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
                   className={`w-full py-2 rounded-full text-xs font-medium transition-all shadow-md flex items-center justify-center gap-1.5 ${
                     isOffline
-                      ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed'
+                      ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed'
                       : isCurrentPlan
-                      ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default'
+                      ? isDarkMode ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default' : 'bg-emerald-50 text-emerald-700 border border-emerald-300 cursor-default font-semibold'
                       : displayPlan.isPopular
-                      ? 'bg-white text-black hover:bg-zinc-200 active:scale-95'
-                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/15 active:scale-95'
+                      ? isDarkMode ? 'bg-white text-black hover:bg-zinc-200 active:scale-95' : 'bg-zinc-900 text-white hover:bg-zinc-800 active:scale-95 shadow-md'
+                      : isDarkMode ? 'bg-white/10 text-white hover:bg-white/20 border border-white/15 active:scale-95' : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border border-zinc-300 active:scale-95'
                   }`}
                 >
                   {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
-                  {isCurrentPlan && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  {isCurrentPlan && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                   <span>{buttonLabel}</span>
                 </button>
               </div>
