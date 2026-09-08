@@ -76,13 +76,23 @@ api.interceptors.response.use(
   },
   async (error: AxiosError) => {
     // 🛰️ Detect API Gateway Offline / Network Error / Bad Gateway
+    // Exclude domain microservice routes (subscriptions, invoices, payments) from taking down the whole app
+    const reqUrl = (error.config?.url || '').toLowerCase();
+    const isIsolatedMicroservice =
+      reqUrl.includes('/subscriptions') ||
+      reqUrl.includes('/invoices') ||
+      reqUrl.includes('/payments') ||
+      Boolean((error.config as unknown as { skipGatewayOfflineCheck?: boolean })?.skipGatewayOfflineCheck);
+
     const isGatewayError =
-      error.code === 'ERR_NETWORK' ||
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ETIMEDOUT' ||
-      error.message?.includes('Network Error') ||
-      error.message?.includes('Failed to fetch') ||
-      (error.response && error.response.status >= 502 && error.response.status <= 504);
+      !isIsolatedMicroservice && (
+        error.code === 'ERR_NETWORK' ||
+        error.code === 'ECONNREFUSED' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message?.includes('Network Error') ||
+        error.message?.includes('Failed to fetch') ||
+        (error.response && error.response.status >= 502 && error.response.status <= 504)
+      );
 
     if (isGatewayError && typeof window !== 'undefined') {
       window.dispatchEvent(
