@@ -90,7 +90,10 @@ jobs:
 
       - name: Install Playwright Browsers
         working-directory: frontend
-        run: npx playwright install --with-deps
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google*.list || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+          npx playwright install --with-deps
 
       - name: E2E Tests (Playwright)
         working-directory: frontend
