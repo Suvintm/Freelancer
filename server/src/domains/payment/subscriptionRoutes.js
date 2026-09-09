@@ -19,6 +19,9 @@ import {
   cancelSubscription,
   pauseSubscription,
   resumeSubscription,
+  quoteUpgrade,
+  upgradeSubscription,
+  downgradeSubscription,
   upsertPlan,
   getAllSubscriptions,
 } from "./controllers/subscriptionController.js";
@@ -59,6 +62,9 @@ router.post("/verify", heavyLimiter, verifyPayment);
 router.post("/verify-payment", heavyLimiter, verifyPayment);
 
 // Lifecycle Operations
+router.get("/quote-upgrade", publicApiLimiter, quoteUpgrade);
+router.post("/upgrade", heavyLimiter, upgradeSubscription);
+router.post("/downgrade", interactionLimiter, downgradeSubscription);
 router.post("/start-trial", heavyLimiter, startTrial);
 router.post("/pause", interactionLimiter, pauseSubscription);
 router.post("/resume", interactionLimiter, resumeSubscription);

@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ReactLenis }       from 'lenis/react';
-import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, Globe, Briefcase, BarChart3, ChevronRight, Users, Youtube, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, BarChart3, ChevronRight, Users, Youtube, ArrowRight, Scan } from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useTheme }         from '../../hooks/useTheme';
 import auth1                from '../../assets/auth/auth_1.png';
 import defaultProfile       from '../../assets/defaultprofile.png';
+import officialLogo         from '../../assets/officiallogo.png';
 import { AccountSwitcher } from '../profile/AccountSwitcher';
 import LottieComponent from 'lottie-react';
 import verifyLottieAnimation from '../../assets/lottie/verify_lottie.json';
 import verifyLottieBlue from '../../assets/lottie/verify_lottie_blue.json';
 import verifyLottiePurple from '../../assets/lottie/verify_lottie_purple.json';
+import { bioApiService } from '../../linkinbio-v2/services/bioApiService';
 
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
@@ -25,17 +28,6 @@ const HIGHLIGHTS = [
   { id: 4, label: 'Wildlife', img: auth1, isNew: false },
 ];
 
-// ── Sub-components ──────────────────────────────────────────────────────────
-
-function StatBubble({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center">
-      <span className="text-[15px] font-bold font-display text-text-main tracking-tight">{value}</span>
-      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">{label}</span>
-    </div>
-  );
-}
-
 // ── Main Sidebar ─────────────────────────────────────────────────────────────
 
 export const Sidebar = () => {
@@ -44,6 +36,33 @@ export const Sidebar = () => {
   const { isDarkMode } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [showTestSync, setShowTestSync] = useState(false);
+  const [qrSvgData, setQrSvgData] = useState<string | null>(null);
+  const [isLoadingQr, setIsLoadingQr] = useState(true);
+
+  useEffect(() => {
+    setIsLoadingQr(true);
+    bioApiService.getQrStatus()
+      .then((status) => {
+        if (status?.qrSvg) {
+          setQrSvgData(status.qrSvg);
+          setTimeout(() => setIsLoadingQr(false), 1200);
+        } else {
+          bioApiService.generateQr({ slug: 'main' })
+            .then((res) => {
+              if (res?.qrSvg) {
+                setQrSvgData(res.qrSvg);
+              }
+              setTimeout(() => setIsLoadingQr(false), 1200);
+            })
+            .catch(() => {
+              setIsLoadingQr(false);
+            });
+        }
+      })
+      .catch(() => {
+        setTimeout(() => setIsLoadingQr(false), 1400);
+      });
+  }, [user?.id, user?.username]);
 
   const roleStr = (user?.role || '').toLowerCase();
   const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
@@ -156,35 +175,202 @@ export const Sidebar = () => {
             {CHANNEL.bio}
           </p>
 
-          {/* Social stats / Client info */}
-          {isClientCategory ? (
-            <div className={`flex flex-col gap-2.5 py-3 border-y text-left ${isDarkMode ? 'border-border-secondary' : 'border-zinc-200'}`}>
-              {user?.website && (
-                <a 
-                  href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs font-semibold text-[#7c42f8] hover:underline"
-                >
-                  <Globe size={13} className="shrink-0" />
-                  <span className="truncate flex-1">{user.website}</span>
-                  <ExternalLink size={10} className="opacity-60 shrink-0" />
-                </a>
-              )}
-              <div className="flex items-center gap-2 text-xs text-text-muted">
-                <Briefcase size={13} className="shrink-0" />
-                <span className="font-semibold truncate flex-1">{CHANNEL.category} ({CHANNEL.role})</span>
+          {/* ── Dynamic Bio QR Code Card (WhatsApp/Instagram Style) ── */}
+          <div className="flex flex-col items-center pt-1 pb-1">
+            <div className={`relative w-full max-w-[190px] aspect-square rounded-2xl p-3.5 flex items-center justify-center border shadow-xs transition-all ${
+              isDarkMode ? 'bg-zinc-900/90 border-zinc-800' : 'bg-white border-zinc-200'
+            }`}>
+              
+              {/* 4 Green Corner Scanner Frame Brackets with Simultaneous Pulse and Green Glow */}
+              <motion.div 
+                animate={{
+                  opacity: [0.75, 1, 0.75],
+                  scale: [1, 1.06, 1],
+                  filter: [
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
+                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
+                  ]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: 'easeInOut'
+                }}
+                className="absolute top-1.5 left-1.5 w-4 h-4 border-t-[2.5px] border-l-[2.5px] border-emerald-500 rounded-tl-md pointer-events-none z-10" 
+              />
+
+              <motion.div 
+                animate={{
+                  opacity: [0.75, 1, 0.75],
+                  scale: [1, 1.06, 1],
+                  filter: [
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
+                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
+                  ]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: 'easeInOut'
+                }}
+                className="absolute top-1.5 right-1.5 w-4 h-4 border-t-[2.5px] border-r-[2.5px] border-emerald-500 rounded-tr-md pointer-events-none z-10" 
+              />
+
+              <motion.div 
+                animate={{
+                  opacity: [0.75, 1, 0.75],
+                  scale: [1, 1.06, 1],
+                  filter: [
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
+                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
+                  ]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: 'easeInOut'
+                }}
+                className="absolute bottom-1.5 left-1.5 w-4 h-4 border-b-[2.5px] border-l-[2.5px] border-emerald-500 rounded-bl-md pointer-events-none z-10" 
+              />
+
+              <motion.div 
+                animate={{
+                  opacity: [0.75, 1, 0.75],
+                  scale: [1, 1.06, 1],
+                  filter: [
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
+                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
+                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
+                  ]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: 'easeInOut'
+                }}
+                className="absolute bottom-1.5 right-1.5 w-4 h-4 border-b-[2.5px] border-r-[2.5px] border-emerald-500 rounded-br-md pointer-events-none z-10" 
+              />
+
+              {/* QR Code Matrix Area */}
+              <div className="relative w-full h-full flex items-center justify-center">
+                {qrSvgData ? (
+                  <div 
+                    id="sidebar-bio-qr-svg-container"
+                    className="w-full h-full flex items-center justify-center relative [&>svg]:w-full [&>svg]:h-full"
+                    dangerouslySetInnerHTML={{ __html: qrSvgData }}
+                  />
+                ) : (
+                  <svg 
+                    viewBox="0 0 200 200" 
+                    className="w-full h-full text-black fill-current"
+                  >
+                    {/* Top-Left Corner */}
+                    <rect x="16" y="16" width="48" height="48" rx="8" fill="black" />
+                    <rect x="24" y="24" width="32" height="32" rx="4" fill="white" />
+                    <rect x="32" y="32" width="16" height="16" rx="2" fill="black" />
+
+                    {/* Top-Right Corner */}
+                    <rect x="136" y="16" width="48" height="48" rx="8" fill="black" />
+                    <rect x="144" y="24" width="32" height="32" rx="4" fill="white" />
+                    <rect x="152" y="32" width="16" height="16" rx="2" fill="black" />
+
+                    {/* Bottom-Left Corner */}
+                    <rect x="16" y="136" width="48" height="48" rx="8" fill="black" />
+                    <rect x="24" y="144" width="32" height="32" rx="4" fill="white" />
+                    <rect x="32" y="152" width="16" height="16" rx="2" fill="black" />
+
+                    {/* Dots */}
+                    <circle cx="85" cy="24" r="4.5" />
+                    <circle cx="105" cy="24" r="4.5" />
+                    <circle cx="115" cy="38" r="4.5" />
+                    <circle cx="90" cy="52" r="4.5" />
+                    <circle cx="75" cy="75" r="4.5" />
+                    <circle cx="95" cy="75" r="4.5" />
+                    <circle cx="125" cy="75" r="4.5" />
+                    <circle cx="145" cy="75" r="4.5" />
+                    <circle cx="165" cy="75" r="4.5" />
+                    <circle cx="35" cy="95" r="4.5" />
+                    <circle cx="55" cy="95" r="4.5" />
+                    <circle cx="145" cy="95" r="4.5" />
+                    <circle cx="165" cy="95" r="4.5" />
+                    <circle cx="35" cy="115" r="4.5" />
+                    <circle cx="55" cy="115" r="4.5" />
+                    <circle cx="145" cy="115" r="4.5" />
+                    <circle cx="165" cy="115" r="4.5" />
+                    <circle cx="75" cy="130" r="4.5" />
+                    <circle cx="105" cy="130" r="4.5" />
+                    <circle cx="125" cy="130" r="4.5" />
+                    <circle cx="75" cy="148" r="4.5" />
+                    <circle cx="95" cy="148" r="4.5" />
+                    <circle cx="125" cy="148" r="4.5" />
+                    <circle cx="165" cy="148" r="4.5" />
+                    <circle cx="85" cy="165" r="4.5" />
+                    <circle cx="105" cy="165" r="4.5" />
+                    <circle cx="148" cy="165" r="4.5" />
+                    <circle cx="182" cy="165" r="4.5" />
+                    <circle cx="75" cy="182" r="4.5" />
+                    <circle cx="115" cy="182" r="4.5" />
+                    <circle cx="135" cy="182" r="4.5" />
+                    <circle cx="165" cy="182" r="4.5" />
+                  </svg>
+                )}
+
+                {/* Center Official Brand Logo Shield (WhatsApp / Instagram style) */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                  <div className="w-8 h-8 rounded-full bg-white ring-3 ring-white shadow-md flex items-center justify-center overflow-hidden p-0.5">
+                    <img 
+                      src={officialLogo} 
+                      alt="SuviX Official" 
+                      className="w-full h-full object-contain rounded-full" 
+                    />
+                  </div>
+                </div>
+
+                {/* Up and Down Scanning Laser Line Animation when QR is Loading */}
+                {isLoadingQr && (
+                  <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden rounded-lg">
+                    {/* Glowing Emerald Scanning Laser Bar */}
+                    <motion.div
+                      animate={{
+                        top: ['0%', '94%', '0%'],
+                      }}
+                      transition={{
+                        duration: 1.6,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
+                      className="absolute left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_12px_3px_rgba(16,185,129,0.9)] z-30"
+                    >
+                      {/* Laser Beam Soft Gradient Trail */}
+                      <div className="w-full h-7 -mt-3.5 bg-gradient-to-b from-emerald-500/20 via-emerald-500/5 to-transparent pointer-events-none" />
+                    </motion.div>
+                  </div>
+                )}
               </div>
             </div>
-          ) : (
-            <div className={`flex items-center justify-around py-2 border-y ${isDarkMode ? 'border-border-secondary' : 'border-zinc-200'}`}>
-              <StatBubble value={String(CHANNEL.videos)} label="Posts" />
-              <div className={`w-px h-6 ${isDarkMode ? 'bg-border-main' : 'bg-zinc-200'}`} />
-              <StatBubble value={String(CHANNEL.followers)} label="Followers" />
-              <div className={`w-px h-6 ${isDarkMode ? 'bg-border-main' : 'bg-zinc-200'}`} />
-              <StatBubble value={String(CHANNEL.following)} label="Following" />
+
+            {/* Dynamic Status Text with Scanning animation during Loading */}
+            <div className="flex items-center justify-center gap-1.5 text-[10px] font-medium mt-2">
+              {isLoadingQr ? (
+                <motion.div 
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+                  className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold"
+                >
+                  <Scan className="w-3 h-3 text-emerald-500 animate-spin" />
+                  <span>Scanning...</span>
+                </motion.div>
+              ) : (
+                <div className="flex items-center gap-1 text-slate-400 dark:text-zinc-500">
+                  <Scan className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span>Scan to view your bio page</span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* View full profile */}
           <button

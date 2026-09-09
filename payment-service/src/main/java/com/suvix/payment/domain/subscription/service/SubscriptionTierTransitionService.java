@@ -10,12 +10,16 @@ import com.suvix.payment.domain.subscription.dto.request.PauseSubscriptionReques
 import com.suvix.payment.domain.subscription.dto.request.UpgradeSubscriptionRequest;
 import com.suvix.payment.domain.subscription.dto.response.ProrationCalculationResult;
 import com.suvix.payment.domain.subscription.dto.response.SubscriptionResponse;
+import com.suvix.payment.domain.subscription.entity.CustomerCreditBalance;
 import com.suvix.payment.domain.subscription.entity.Subscription;
 import com.suvix.payment.domain.subscription.entity.SubscriptionLedger;
 import com.suvix.payment.domain.subscription.entity.SubscriptionPlan;
+import com.suvix.payment.domain.subscription.entity.SubscriptionTransition;
+import com.suvix.payment.domain.subscription.repository.CustomerCreditBalanceRepository;
 import com.suvix.payment.domain.subscription.repository.SubscriptionLedgerRepository;
 import com.suvix.payment.domain.subscription.repository.SubscriptionPlanRepository;
 import com.suvix.payment.domain.subscription.repository.SubscriptionRepository;
+import com.suvix.payment.domain.subscription.repository.SubscriptionTransitionRepository;
 import com.suvix.payment.infrastructure.messaging.OutboxEvent;
 import com.suvix.payment.infrastructure.messaging.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +42,8 @@ public class SubscriptionTierTransitionService {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionPlanRepository planRepository;
     private final SubscriptionLedgerRepository ledgerRepository;
+    private final SubscriptionTransitionRepository transitionRepository;
+    private final CustomerCreditBalanceRepository creditBalanceRepository;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceNumberGenerator invoiceNumberGenerator;
     private final ProrationCalculator prorationCalculator;
@@ -48,18 +54,23 @@ public class SubscriptionTierTransitionService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Get upgrade preview quote with exact proration calculations
+     * Get upgrade preview quote with exact Co-Term or Interval-Reset proration calculations
      */
     public ProrationCalculationResult quoteUpgrade(String userId, String targetPlanId) {
+        return quoteUpgrade(userId, targetPlanId, "monthly");
+    }
+
+    public ProrationCalculationResult quoteUpgrade(String userId, String targetPlanId, String billingCycle) {
         SubscriptionPlan targetPlan = planRepository.findById(targetPlanId)
                 .orElseThrow(() -> new IllegalArgumentException("Target plan not found: " + targetPlanId));
 
         Subscription currentSub = getOrCreateActiveSubscription(userId);
-        return prorationCalculator.calculateUpgradeProration(currentSub, targetPlan);
+        boolean isAnnual = "annual".equalsIgnoreCase(billingCycle);
+        return prorationCalculator.calculateUpgradeProration(currentSub, targetPlan, isAnnual);
     }
 
     /**
-     * Immediate upgrade flow with proration credit and concurrency locking
+     * Immediate upgrade flow with Co-Term anchor retention, proration credit and append-only audit trail
      */
     @Transactional
     public SubscriptionResponse upgradeSubscription(String userId, UpgradeSubscriptionRequest request) {
@@ -74,10 +85,13 @@ public class SubscriptionTierTransitionService {
                 throw new IllegalArgumentException("Target plan tier must be higher than current plan for upgrade. For lower tier, use downgrade.");
             }
 
-            // 1. Calculate Proration Quote
+            // 1. Calculate Proration Quote (Co-Term or Interval-Reset)
             ProrationCalculationResult quote = prorationCalculator.calculateUpgradeProration(sub, targetPlan);
 
-            // 2. Update Subscription
+            Instant previousPeriodEnd = sub.getCurrentPeriodEnd();
+            Instant newPeriodEnd = quote.getNewPeriodEnd();
+
+            // 2. Update Subscription Record
             sub.setPlan(targetPlan);
             sub.setStatus(Subscription.SubscriptionStatus.active);
             sub.setStatusChangeReason("Upgraded from " + (currentPlan != null ? currentPlan.getName() : "Free") + " to " + targetPlan.getName());
@@ -86,25 +100,29 @@ public class SubscriptionTierTransitionService {
             sub.setGracePeriodEndsAt(null);
             sub.setCancelAtPeriodEnd(false);
             sub.setPlanVersionAtCreation(targetPlan.getVersion());
+            sub.setTotalAmount(quote.getTotalAmount());
+            sub.setBaseAmount(quote.getNetSubtotal());
+            sub.setTaxAmount(quote.getTaxAmount());
 
-            Instant now = Instant.now();
-            sub.setCurrentPeriodStart(now);
-            sub.setCurrentPeriodEnd(now.plus(Duration.ofDays(30)));
+            if (!quote.isCoTerm()) {
+                sub.setCurrentPeriodStart(Instant.now());
+            }
+            sub.setCurrentPeriodEnd(newPeriodEnd);
 
             subscriptionRepository.save(sub);
 
             // 3. Generate Prorated GST Invoice
             String invoiceNumber = invoiceNumberGenerator.generateNextInvoiceNumber();
             String lineItemsJson = String.format(
-                    "[{\"description\":\"%s Plan Upgrade\",\"amount\":%s},{\"description\":\"Proration Credit Applied\",\"amount\":-%s}]",
-                    targetPlan.getName(), quote.getTargetPlanPrice(), quote.getUnusedCredit()
+                    "[{\"description\":\"%s Plan Upgrade (%s)\",\"amount\":%s},{\"description\":\"Proration Credit Applied\",\"amount\":-%s}]",
+                    targetPlan.getName(), quote.isCoTerm() ? "Co-Term" : "Full Cycle", quote.getTargetPlanPrice(), quote.getUnusedCredit()
             );
 
             Invoice invoice = Invoice.builder()
                     .invoiceNumber(invoiceNumber)
                     .userId(userId)
                     .customerName("Customer " + userId)
-                    .customerEmail(userId + "@suvix.com")
+                    .customerEmail(userId + "@suvix.in")
                     .subtotal(quote.getNetSubtotal())
                     .taxRate(quote.getTaxRate())
                     .taxAmount(quote.getTaxAmount())
@@ -113,7 +131,7 @@ public class SubscriptionTierTransitionService {
                     .subscriptionId(sub.getId())
                     .status(Invoice.InvoiceStatus.paid)
                     .invoiceDate(LocalDate.now())
-                    .paidAt(now)
+                    .paidAt(Instant.now())
                     .isProrated(true)
                     .prorationCredit(quote.getUnusedCredit())
                     .lineItems(lineItemsJson)
@@ -124,7 +142,7 @@ public class SubscriptionTierTransitionService {
             invoiceRepository.save(invoice);
             invoiceService.prewarmInvoicePdfAsync(invoice.getId());
 
-            // 4. Double-Entry Ledger Entry
+            // 4. Record Double-Entry Ledger Entry
             SubscriptionLedger ledgerEntry = SubscriptionLedger.builder()
                     .subscriptionId(sub.getId())
                     .entryType("upgrade_prorated_charge")
@@ -137,28 +155,60 @@ public class SubscriptionTierTransitionService {
 
             ledgerRepository.save(ledgerEntry);
 
-            // 5. Transactional Outbox Event for Kafka
+            // 5. Append-Only Transition Audit Trail
+            SubscriptionTransition transition = SubscriptionTransition.builder()
+                    .subscriptionId(sub.getId())
+                    .userId(userId)
+                    .transitionType(quote.getTransitionType())
+                    .fromPlanId(currentPlan != null ? currentPlan.getId() : "none")
+                    .toPlanId(targetPlan.getId())
+                    .prorationCreditCalculated(quote.getUnusedCredit())
+                    .prorationCreditApplied(quote.getUnusedCredit())
+                    .leftoverCreditGenerated(quote.getLeftoverCredit() != null ? quote.getLeftoverCredit() : BigDecimal.ZERO)
+                    .grossTargetPrice(quote.getTargetPlanPrice())
+                    .netAmountCharged(quote.getTotalAmount())
+                    .amountInPaise(quote.getAmountInPaise())
+                    .currency("INR")
+                    .invoiceId(invoice.getId())
+                    .previousPeriodEnd(previousPeriodEnd)
+                    .newPeriodEnd(newPeriodEnd)
+                    .build();
+
+            transitionRepository.save(transition);
+
+            // 6. Handle Rollover Leftover Credit if credit exceeded target price
+            if (quote.getLeftoverCredit() != null && quote.getLeftoverCredit().compareTo(BigDecimal.ZERO) > 0) {
+                CustomerCreditBalance creditBalance = creditBalanceRepository.findByUserId(userId)
+                        .orElseGet(() -> CustomerCreditBalance.builder().userId(userId).balanceAmount(BigDecimal.ZERO).currency("INR").build());
+                creditBalance.setBalanceAmount(creditBalance.getBalanceAmount().add(quote.getLeftoverCredit()));
+                creditBalanceRepository.save(creditBalance);
+                log.info("Saved leftover proration credit of ₹{} to user {} credit balance", quote.getLeftoverCredit(), userId);
+            }
+
+            // 7. Transactional Outbox Event for Kafka
             saveOutboxEvent("SUBSCRIPTION", sub.getId().toString(), "SUBSCRIPTION_UPGRADED", "subscription.events", Map.of(
                     "subscriptionId", sub.getId(),
                     "userId", userId,
                     "previousPlanId", (currentPlan != null) ? currentPlan.getId() : "free",
                     "newPlanId", targetPlan.getId(),
+                    "transitionType", quote.getTransitionType(),
                     "invoiceNumber", invoiceNumber,
                     "netAmountPaid", quote.getTotalAmount(),
-                    "prorationCredit", quote.getUnusedCredit()
+                    "prorationCredit", quote.getUnusedCredit(),
+                    "isCoTerm", quote.isCoTerm()
             ));
 
-            // 6. Invalidate Redis Entitlements Cache
+            // 8. Invalidate Redis Entitlements Cache
             entitlementService.invalidateEntitlements(userId);
 
-            log.info("Successfully upgraded user {} to plan {}", userId, targetPlan.getId());
+            log.info("Successfully upgraded user {} to plan {} via {}", userId, targetPlan.getId(), quote.getTransitionType());
 
             return SubscriptionResponse.fromEntity(sub);
         });
     }
 
     /**
-     * Scheduled downgrade flow (takes effect at currentPeriodEnd)
+     * Scheduled downgrade flow (takes effect at currentPeriodEnd with ₹0 charge today)
      */
     @Transactional
     public Map<String, Object> scheduleDowngrade(String userId, DowngradeSubscriptionRequest request) {
@@ -174,6 +224,24 @@ public class SubscriptionTierTransitionService {
             sub.setCancellationFeedback(request.getFeedback());
 
             subscriptionRepository.save(sub);
+
+            // Log Transition Audit
+            SubscriptionTransition transition = SubscriptionTransition.builder()
+                    .subscriptionId(sub.getId())
+                    .userId(userId)
+                    .transitionType("DOWNGRADE_SCHEDULED")
+                    .fromPlanId(sub.getPlan() != null ? sub.getPlan().getId() : "none")
+                    .toPlanId(targetPlan.getId())
+                    .grossTargetPrice(targetPlan.getPriceMonthly())
+                    .netAmountCharged(BigDecimal.ZERO)
+                    .amountInPaise(0L)
+                    .currency("INR")
+                    .previousPeriodEnd(sub.getCurrentPeriodEnd())
+                    .newPeriodEnd(sub.getCurrentPeriodEnd() != null ? sub.getCurrentPeriodEnd() : Instant.now())
+                    .metadata("{\"reason\":\"" + (request.getReason() != null ? request.getReason() : "") + "\"}")
+                    .build();
+
+            transitionRepository.save(transition);
 
             saveOutboxEvent("SUBSCRIPTION", sub.getId().toString(), "SUBSCRIPTION_DOWNGRADE_SCHEDULED", "subscription.events", Map.of(
                     "subscriptionId", sub.getId(),
@@ -193,7 +261,7 @@ public class SubscriptionTierTransitionService {
     }
 
     /**
-     * Pause subscription (e.g. 30, 60, or 90 days)
+     * Pause subscription (e.g. 15, 30, 60, or 90 days)
      */
     @Transactional
     public Map<String, Object> pauseSubscription(String userId, PauseSubscriptionRequest request) {
@@ -208,6 +276,23 @@ public class SubscriptionTierTransitionService {
             sub.setPauseResumesAt(resumesAt);
 
             subscriptionRepository.save(sub);
+
+            SubscriptionTransition transition = SubscriptionTransition.builder()
+                    .subscriptionId(sub.getId())
+                    .userId(userId)
+                    .transitionType("PAUSE")
+                    .fromPlanId(sub.getPlan() != null ? sub.getPlan().getId() : "none")
+                    .toPlanId(sub.getPlan() != null ? sub.getPlan().getId() : "none")
+                    .grossTargetPrice(BigDecimal.ZERO)
+                    .netAmountCharged(BigDecimal.ZERO)
+                    .amountInPaise(0L)
+                    .currency("INR")
+                    .previousPeriodEnd(sub.getCurrentPeriodEnd())
+                    .newPeriodEnd(resumesAt)
+                    .metadata("{\"pauseDays\":" + request.getPauseDays() + "}")
+                    .build();
+
+            transitionRepository.save(transition);
 
             saveOutboxEvent("SUBSCRIPTION", sub.getId().toString(), "SUBSCRIPTION_PAUSED", "subscription.events", Map.of(
                     "subscriptionId", sub.getId(),
@@ -240,6 +325,22 @@ public class SubscriptionTierTransitionService {
 
             subscriptionRepository.save(sub);
 
+            SubscriptionTransition transition = SubscriptionTransition.builder()
+                    .subscriptionId(sub.getId())
+                    .userId(userId)
+                    .transitionType("RESUME")
+                    .fromPlanId(sub.getPlan() != null ? sub.getPlan().getId() : "none")
+                    .toPlanId(sub.getPlan() != null ? sub.getPlan().getId() : "none")
+                    .grossTargetPrice(BigDecimal.ZERO)
+                    .netAmountCharged(BigDecimal.ZERO)
+                    .amountInPaise(0L)
+                    .currency("INR")
+                    .previousPeriodEnd(sub.getCurrentPeriodEnd())
+                    .newPeriodEnd(sub.getCurrentPeriodEnd() != null ? sub.getCurrentPeriodEnd() : Instant.now())
+                    .build();
+
+            transitionRepository.save(transition);
+
             saveOutboxEvent("SUBSCRIPTION", sub.getId().toString(), "SUBSCRIPTION_RESUMED", "subscription.events", Map.of(
                     "subscriptionId", sub.getId(),
                     "userId", userId
@@ -257,17 +358,17 @@ public class SubscriptionTierTransitionService {
             return subOpt.get();
         }
 
-        // Auto-provision Free Tier subscription
-        SubscriptionPlan freePlan = planRepository.findById("plan_free")
+        SubscriptionPlan freePlan = planRepository.findById("plan_creator_free")
+                .or(() -> planRepository.findById("plan_free"))
                 .orElseGet(() -> planRepository.findAll().stream().findFirst().orElseThrow());
 
         Subscription newSub = Subscription.builder()
                 .userId(userId)
                 .plan(freePlan)
                 .status(Subscription.SubscriptionStatus.active)
-                .provider(Subscription.PaymentProvider.internal)
+                .provider(Subscription.PaymentProvider.free_starter)
                 .currentPeriodStart(Instant.now())
-                .currentPeriodEnd(Instant.now().plus(Duration.ofDays(30)))
+                .currentPeriodEnd(Instant.now().plus(Duration.ofDays(3650))) // 10 years
                 .build();
 
         return subscriptionRepository.save(newSub);

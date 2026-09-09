@@ -56,6 +56,9 @@ public class PaymentService {
     private final WalletService walletService;
     private final ObjectMapper objectMapper;
     private final RazorpayClient razorpayClient;
+    private final com.suvix.payment.domain.subscription.repository.SubscriptionTransitionRepository transitionRepository;
+    private final com.suvix.payment.domain.subscription.repository.CustomerCreditBalanceRepository creditBalanceRepository;
+    private final com.suvix.payment.domain.subscription.service.ProrationCalculator prorationCalculator;
 
     @Value("${razorpay.key-id:rzp_test_SuviXPlatformKey}")
     private String razorpayKeyId;
@@ -178,15 +181,56 @@ public class PaymentService {
 
         System.out.println("     • Calculated Subtotal: " + currencySymbol + baseSubtotal);
 
-        // Enterprise Zero-Trust Guard: Prevent duplicate purchases of the same active plan
+        BigDecimal prorationCredit = BigDecimal.ZERO;
+        String transitionType = "NEW_SUBSCRIPTION";
+        String previousPlanName = null;
+        BigDecimal previousPlanPrice = BigDecimal.ZERO;
+        String previousPlanId = null;
+        long remainingDays = 0;
+        boolean isCoTerm = false;
+        BigDecimal leftoverCredit = BigDecimal.ZERO;
+        Instant calculatedNewPeriodEnd = null;
+        Instant previousPeriodEnd = null;
+        com.suvix.payment.domain.subscription.dto.response.ProrationCalculationResult upgradeQuote = null;
+
+        // Enterprise Zero-Trust Guard & Upgrade/Proration Detection
         if (userId != null && !userId.isBlank()) {
             Optional<Subscription> existingActive = subscriptionRepository.findActiveByUserId(userId);
             if (existingActive.isPresent()) {
                 Subscription activeSub = existingActive.get();
-                if (activeSub.hasActiveAccess() && activeSub.getPlan() != null && activeSub.getPlan().getId().equalsIgnoreCase(plan.getId())) {
-                    System.out.println("  ⚠️ [Duplicate Purchase Blocked] User " + userId + " already has active plan: " + plan.getName());
-                    throw new IllegalStateException("You already have an active subscription for " + plan.getName() 
-                            + " valid until " + activeSub.getCurrentPeriodEnd() + ". You cannot purchase the same plan again.");
+                if (activeSub.hasActiveAccess() && activeSub.getPlan() != null) {
+                    SubscriptionPlan currentPlan = activeSub.getPlan();
+                    boolean isSamePlan = currentPlan.getId().equalsIgnoreCase(plan.getId());
+                    boolean currentIsAnnual = activeSub.getPlanSnapshot() != null && activeSub.getPlanSnapshot().contains("\"annual\"");
+
+                    if (isSamePlan && currentIsAnnual == isAnnual) {
+                        System.out.println("  ⚠️ [Duplicate Purchase Blocked] User " + userId + " already has active plan: " + plan.getName());
+                        throw new IllegalStateException("You already have an active subscription for " + plan.getName()
+                                + " valid until " + activeSub.getCurrentPeriodEnd() + ". You cannot purchase the same plan again.");
+                    }
+
+                    if (currentPlan.getTierLevel() > 0) {
+                        if (plan.getTierLevel() > currentPlan.getTierLevel() || (isSamePlan && isAnnual && !currentIsAnnual)) {
+                            // UPGRADE: Calculate second-precision proration with Co-Term delta math or interval switch
+                            previousPlanId = currentPlan.getId();
+                            previousPlanName = currentPlan.getName();
+                            upgradeQuote = prorationCalculator.calculateUpgradeProration(activeSub, plan, isAnnual);
+                            prorationCredit = upgradeQuote.getUnusedCredit();
+                            previousPlanPrice = upgradeQuote.getCurrentPlanPrice();
+                            remainingDays = upgradeQuote.getRemainingDays();
+                            isCoTerm = upgradeQuote.isCoTerm();
+                            leftoverCredit = upgradeQuote.getLeftoverCredit();
+                            transitionType = upgradeQuote.getTransitionType();
+                            calculatedNewPeriodEnd = upgradeQuote.getNewPeriodEnd();
+                            previousPeriodEnd = activeSub.getCurrentPeriodEnd();
+                            System.out.println("  📈 [Upgrade Proration Detected] Upgrading from " + previousPlanName
+                                    + " to " + plan.getName() + " | Type: " + transitionType + " | Unused Credit: " + currencySymbol + prorationCredit + " (" + remainingDays + " days)");
+                        } else if (plan.getTierLevel() < currentPlan.getTierLevel() || (isSamePlan && !isAnnual && currentIsAnnual)) {
+                            System.out.println("  ⚠️ [Lower Tier Purchase Blocked] User " + userId + " is currently on higher tier: " + currentPlan.getName());
+                            throw new IllegalStateException("You already have an active " + currentPlan.getName()
+                                    + " subscription valid until " + activeSub.getCurrentPeriodEnd() + ". In our prepaid model, you can choose this plan after your current plan validity completes.");
+                        }
+                    }
                 }
             }
         }
@@ -255,19 +299,30 @@ public class PaymentService {
             }
         }
 
-        BigDecimal discountedSubtotal = baseSubtotal.subtract(couponDiscountAmount).max(BigDecimal.ZERO);
+        BigDecimal grossAfterCoupon = baseSubtotal.subtract(couponDiscountAmount).max(BigDecimal.ZERO);
 
-        // Tax Calculation: 18% GST for INR, 0% for USD (Export of Services)
+        // Tax-Inclusive Pricing: Advertised price minus proration minus coupon is the EXACT final payable amount (MRP Standard)
+        // Zero-Trust: If an upgrade quote exists, use the calculator's totalAmount as authoritative source
+        BigDecimal totalAmount;
+        if (upgradeQuote != null) {
+            totalAmount = upgradeQuote.getTotalAmount()
+                    .subtract(couponDiscountAmount)
+                    .max(BigDecimal.ZERO)
+                    .setScale(2, RoundingMode.HALF_UP);
+        } else {
+            totalAmount = grossAfterCoupon.subtract(prorationCredit).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        }
         BigDecimal gstAmount = BigDecimal.ZERO;
         BigDecimal cgst = BigDecimal.ZERO;
         BigDecimal sgst = BigDecimal.ZERO;
-        BigDecimal totalAmount = discountedSubtotal;
+        BigDecimal taxableBase = totalAmount;
 
-        if (!isUsd) {
-            gstAmount = discountedSubtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
+        if (!isUsd && totalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal divisor = new BigDecimal("1.18");
+            taxableBase = totalAmount.divide(divisor, 2, RoundingMode.HALF_UP);
+            gstAmount = totalAmount.subtract(taxableBase);
             cgst = gstAmount.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
             sgst = gstAmount.subtract(cgst);
-            totalAmount = discountedSubtotal.add(gstAmount).setScale(2, RoundingMode.HALF_UP);
         }
 
         long amountInPaise = totalAmount.multiply(BigDecimal.valueOf(100)).longValue();
@@ -276,13 +331,19 @@ public class PaymentService {
                 + "_" + (System.currentTimeMillis() % 100000000);
 
         System.out.println("  ┌────────────────────────────────────────────────────────┐");
-        System.out.println("  │ 🧾 [Invoice Tax Breakdown - " + (isUsd ? "USD Export" : "SAC 998439") + "]                │");
-        System.out.println("  │ Base Subtotal:        " + currencySymbol + String.format("%-10s", baseSubtotal) + "                      │");
-        System.out.println("  │ Coupon Discount:    - " + currencySymbol + String.format("%-10s", couponDiscountAmount) + "                      │");
-        System.out.println("  │ Taxable Amount:       " + currencySymbol + String.format("%-10s", discountedSubtotal) + "                      │");
+        System.out.println("  │ 🧾 [Invoice Tax Breakdown - " + (isUsd ? "USD Export" : "SAC 998439 (Tax-Inclusive)") + "]        │");
+        System.out.println("  │ Transition Type:      " + String.format("%-20s", transitionType) + "        │");
+        System.out.println("  │ Gross Plan Price:     " + currencySymbol + String.format("%-10s", baseSubtotal) + "                      │");
+        if (couponDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
+            System.out.println("  │ Coupon Discount:    - " + currencySymbol + String.format("%-10s", couponDiscountAmount) + "                      │");
+        }
+        if (prorationCredit.compareTo(BigDecimal.ZERO) > 0) {
+            System.out.println("  │ Proration Credit:   - " + currencySymbol + String.format("%-10s", prorationCredit) + " (" + previousPlanName + ")   │");
+        }
+        System.out.println("  │ Taxable Base (Net):   " + currencySymbol + String.format("%-10s", taxableBase) + "                      │");
         if (!isUsd) {
-            System.out.println("  │ CGST (9%):          + ₹" + String.format("%-10s", cgst) + "                      │");
-            System.out.println("  │ SGST (9%):          + ₹" + String.format("%-10s", sgst) + "                      │");
+            System.out.println("  │ CGST (9% Included): + ₹" + String.format("%-10s", cgst) + "                      │");
+            System.out.println("  │ SGST (9% Included): + ₹" + String.format("%-10s", sgst) + "                      │");
             System.out.println("  │ Total GST (18%):    + ₹" + String.format("%-10s", gstAmount) + "                      │");
         }
         System.out.println("  │ Total Payable:        " + currencySymbol + String.format("%-10s", totalAmount) + " (" + amountInPaise + " cents/paise) │");
@@ -305,9 +366,34 @@ public class PaymentService {
         snapshotMap.put("planTier", plan.getTierLevel());
         snapshotMap.put("currency", targetCurrency);
         snapshotMap.put("billingCycle", isAnnual ? "annual" : "monthly");
-        snapshotMap.put("baseSubtotal", baseSubtotal);
+        snapshotMap.put("transitionType", transitionType);
+        snapshotMap.put("isCoTerm", isCoTerm);
+        snapshotMap.put("isProrated", prorationCredit.compareTo(BigDecimal.ZERO) > 0);
+        snapshotMap.put("prorationCredit", prorationCredit);
+        snapshotMap.put("leftoverCredit", leftoverCredit != null ? leftoverCredit : BigDecimal.ZERO);
+        snapshotMap.put("previousPlanId", previousPlanId);
+        snapshotMap.put("previousPlanName", previousPlanName);
+        snapshotMap.put("previousPlanPrice", previousPlanPrice);
+        snapshotMap.put("remainingDays", remainingDays);
+        if (upgradeQuote != null) {
+            snapshotMap.put("totalDays", upgradeQuote.getTotalDays());
+            snapshotMap.put("usedDays", upgradeQuote.getUsedDays());
+            if (upgradeQuote.getProratedTargetCharge() != null) {
+                snapshotMap.put("proratedTargetCharge", upgradeQuote.getProratedTargetCharge());
+            }
+        }
+        if (calculatedNewPeriodEnd != null) {
+            snapshotMap.put("newPeriodEnd", calculatedNewPeriodEnd.toString());
+        }
+        if (previousPeriodEnd != null) {
+            snapshotMap.put("previousPeriodEnd", previousPeriodEnd.toString());
+        }
+        snapshotMap.put("targetPlanPrice", baseSubtotal);
+        snapshotMap.put("baseSubtotal", taxableBase);
+        snapshotMap.put("grossPlanPrice", baseSubtotal);
         snapshotMap.put("couponDiscountAmount", couponDiscountAmount);
         snapshotMap.put("appliedCoupon", appliedCouponCode != null ? appliedCouponCode : "none");
+        snapshotMap.put("taxInclusive", true);
         snapshotMap.put("gstRate", isUsd ? 0 : 18);
         snapshotMap.put("gstAmount", gstAmount);
         snapshotMap.put("cgst", cgst);
@@ -330,7 +416,9 @@ public class PaymentService {
 
         // Persist Pending Subscription
         Instant startDate = Instant.now();
-        Instant endDate = isAnnual ? startDate.plus(365, ChronoUnit.DAYS) : startDate.plus(30, ChronoUnit.DAYS);
+        Instant endDate = (calculatedNewPeriodEnd != null)
+                ? calculatedNewPeriodEnd
+                : (isAnnual ? startDate.plus(365, ChronoUnit.DAYS) : startDate.plus(1, ChronoUnit.DAYS));
 
         Subscription pendingSubscription = Subscription.builder()
                 .userId(userId)
@@ -341,9 +429,10 @@ public class PaymentService {
                 .providerSubscriptionId(providerResponse.getRazorpayOrderId() != null ? providerResponse.getRazorpayOrderId() : providerResponse.getOrderId())
                 .currentPeriodStart(startDate)
                 .currentPeriodEnd(endDate)
-                .baseAmount(baseSubtotal)
+                .baseAmount(taxableBase)
                 .taxAmount(gstAmount)
                 .totalAmount(totalAmount)
+                .prorationCredit(prorationCredit)
                 .planSnapshot(planSnapshotJson)
                 .build();
 
@@ -530,8 +619,30 @@ public class PaymentService {
     ) {
         System.out.println("  🔍 [Subscription Record Located] ID=" + subscription.getId() + " | Current Status=" + subscription.getStatus());
         Instant now = Instant.now();
-        boolean isAnnual = subscription.getPlanSnapshot() != null && subscription.getPlanSnapshot().contains("\"annual\"");
-        Instant periodEnd = isAnnual ? now.plus(365, ChronoUnit.DAYS) : now.plus(30, ChronoUnit.DAYS);
+        Map<String, Object> snapshot = new java.util.HashMap<>();
+        if (subscription.getPlanSnapshot() != null) {
+            try {
+                snapshot = objectMapper.readValue(subscription.getPlanSnapshot(), Map.class);
+            } catch (Exception ignored) {}
+        }
+
+        boolean isAnnual = snapshot.get("billingCycle") != null && "annual".equalsIgnoreCase((String) snapshot.get("billingCycle"));
+        boolean isCoTerm = Boolean.TRUE.equals(snapshot.get("isCoTerm"));
+        String newPeriodEndStr = (String) snapshot.get("newPeriodEnd");
+        String previousPeriodEndStr = (String) snapshot.get("previousPeriodEnd");
+
+        Instant periodEnd;
+        if (newPeriodEndStr != null) {
+            try {
+                periodEnd = Instant.parse(newPeriodEndStr);
+            } catch (Exception e) {
+                periodEnd = isAnnual ? now.plus(365, ChronoUnit.DAYS) : now.plus(1, ChronoUnit.DAYS);
+            }
+        } else if (subscription.getCurrentPeriodEnd() != null && subscription.getCurrentPeriodEnd().isAfter(now)) {
+            periodEnd = subscription.getCurrentPeriodEnd();
+        } else {
+            periodEnd = isAnnual ? now.plus(365, ChronoUnit.DAYS) : now.plus(1, ChronoUnit.DAYS);
+        }
 
         subscription.setStatus(Subscription.SubscriptionStatus.active);
         subscription.setCurrentPeriodStart(now);
@@ -543,14 +654,9 @@ public class PaymentService {
         System.out.println("  🎉 [Subscription Activated] State transitioned to ACTIVE. Valid until: " + periodEnd);
 
         // If coupon applied, increment redemption
-        if (subscription.getPlanSnapshot() != null) {
-            try {
-                Map<String, Object> snapshot = objectMapper.readValue(subscription.getPlanSnapshot(), Map.class);
-                String appliedCoupon = (String) snapshot.get("appliedCoupon");
-                if (appliedCoupon != null && !"none".equalsIgnoreCase(appliedCoupon)) {
-                    couponService.incrementRedemption(appliedCoupon);
-                }
-            } catch (Exception ignored) {}
+        String appliedCoupon = (String) snapshot.get("appliedCoupon");
+        if (appliedCoupon != null && !"none".equalsIgnoreCase(appliedCoupon)) {
+            couponService.incrementRedemption(appliedCoupon);
         }
 
         // Check if transaction already exists for this orderId to avoid duplicate insert
@@ -591,26 +697,55 @@ public class PaymentService {
             String customerGstin = null;
             String planName = subscription.getPlan() != null ? subscription.getPlan().getName() : "Creator Pro";
             String billingCycle = "Monthly";
+            String transitionType = "NEW_SUBSCRIPTION";
+            BigDecimal prorationCredit = BigDecimal.ZERO;
+            BigDecimal couponDiscountAmount = BigDecimal.ZERO;
+            String previousPlanName = null;
+            Object remainingDays = null;
+            BigDecimal targetPlanPrice = subscription.getTotalAmount();
+            BigDecimal previousPlanPrice = null;
+            BigDecimal proratedTargetCharge = null;
 
-            if (subscription.getPlanSnapshot() != null) {
-                try {
-                    Map<String, Object> snapshot = objectMapper.readValue(subscription.getPlanSnapshot(), Map.class);
-                    if ((customerName == null || customerName.isBlank()) && snapshot.get("customerName") != null) {
-                        customerName = (String) snapshot.get("customerName");
-                    }
-                    if ((customerEmail == null || customerEmail.isBlank()) && snapshot.get("customerEmail") != null) {
-                        customerEmail = (String) snapshot.get("customerEmail");
-                    }
-                    if ((customerGstin == null || customerGstin.isBlank()) && snapshot.get("customerGstin") != null) {
-                        customerGstin = (String) snapshot.get("customerGstin");
-                    }
-                    if (snapshot.get("planName") != null) {
-                        planName = (String) snapshot.get("planName");
-                    }
-                    if (snapshot.get("billingCycle") != null) {
-                        billingCycle = ((String) snapshot.get("billingCycle")).toUpperCase();
-                    }
-                } catch (Exception ignored) {}
+            if (!snapshot.isEmpty()) {
+                if (snapshot.get("customerName") != null && !((String) snapshot.get("customerName")).isBlank()) {
+                    customerName = (String) snapshot.get("customerName");
+                }
+                if (snapshot.get("customerEmail") != null && !((String) snapshot.get("customerEmail")).isBlank()) {
+                    customerEmail = (String) snapshot.get("customerEmail");
+                }
+                if (snapshot.get("customerGstin") != null && !((String) snapshot.get("customerGstin")).isBlank()) {
+                    customerGstin = (String) snapshot.get("customerGstin");
+                }
+                if (snapshot.get("planName") != null) {
+                    planName = (String) snapshot.get("planName");
+                }
+                if (snapshot.get("billingCycle") != null) {
+                    billingCycle = ((String) snapshot.get("billingCycle")).toUpperCase();
+                }
+                if (snapshot.get("transitionType") != null) {
+                    transitionType = (String) snapshot.get("transitionType");
+                }
+                if (snapshot.get("prorationCredit") != null) {
+                    prorationCredit = new BigDecimal(snapshot.get("prorationCredit").toString());
+                }
+                if (snapshot.get("couponDiscountAmount") != null) {
+                    couponDiscountAmount = new BigDecimal(snapshot.get("couponDiscountAmount").toString());
+                }
+                if (snapshot.get("previousPlanName") != null) {
+                    previousPlanName = (String) snapshot.get("previousPlanName");
+                }
+                if (snapshot.get("previousPlanPrice") != null) {
+                    previousPlanPrice = new BigDecimal(snapshot.get("previousPlanPrice").toString());
+                }
+                if (snapshot.get("remainingDays") != null) {
+                    remainingDays = snapshot.get("remainingDays");
+                }
+                if (snapshot.get("targetPlanPrice") != null) {
+                    targetPlanPrice = new BigDecimal(snapshot.get("targetPlanPrice").toString());
+                }
+                if (snapshot.get("proratedTargetCharge") != null) {
+                    proratedTargetCharge = new BigDecimal(snapshot.get("proratedTargetCharge").toString());
+                }
             }
 
             if (customerName == null || customerName.isBlank() || "anonymous".equalsIgnoreCase(customerName)) {
@@ -620,7 +755,95 @@ public class PaymentService {
                 customerEmail = subscription.getUserId() + "@suvix.in";
             }
 
-            String lineItemDescription = "SuviX " + planName + " Subscription (" + billingCycle + " Tier)";
+            boolean isSubscriptionUsd = "USD".equalsIgnoreCase(subscription.getCurrency());
+            boolean isUpgradeInvoice = prorationCredit.compareTo(BigDecimal.ZERO) > 0 || "UPGRADE_COTERM".equalsIgnoreCase(transitionType);
+
+            // Build structured multi-line item list
+            List<Map<String, Object>> itemsList = new ArrayList<>();
+            BigDecimal effectiveTargetCharge = (isUpgradeInvoice && proratedTargetCharge != null) ? proratedTargetCharge : targetPlanPrice;
+            BigDecimal targetTaxable = isSubscriptionUsd
+                    ? effectiveTargetCharge
+                    : effectiveTargetCharge.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            BigDecimal targetTax = effectiveTargetCharge.subtract(targetTaxable);
+
+            // Item 1: Main / Upgraded Plan
+            String planDescription = isUpgradeInvoice
+                    ? "SuviX " + planName + " Access (Prorated for " + (remainingDays != null ? remainingDays : 29) + " days remaining)"
+                    : "SuviX " + planName + " Subscription (" + billingCycle + " Access)";
+
+            Map<String, Object> mainItem = new LinkedHashMap<>();
+            mainItem.put("description", planDescription);
+            mainItem.put("sacCode", "998439");
+            mainItem.put("quantity", 1);
+            mainItem.put("unitRate", effectiveTargetCharge);
+            mainItem.put("taxableAmount", targetTaxable);
+            mainItem.put("taxAmount", targetTax);
+            mainItem.put("grossAmount", effectiveTargetCharge);
+            mainItem.put("type", "PLAN");
+            itemsList.add(mainItem);
+
+            // Item 2: Proration Unused Balance Credit
+            if (prorationCredit.compareTo(BigDecimal.ZERO) > 0) {
+                String prevName = previousPlanName != null ? previousPlanName : "Previous Plan";
+                String prorationDesc = "Less: Unused Credit for " + prevName
+                        + " (Original: ₹" + (previousPlanPrice != null ? previousPlanPrice : "499.00")
+                        + (remainingDays != null ? ", " + remainingDays + " days unused" : "") + ")";
+                BigDecimal creditTaxable = isSubscriptionUsd
+                        ? prorationCredit
+                        : prorationCredit.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+                BigDecimal creditTax = prorationCredit.subtract(creditTaxable);
+
+                Map<String, Object> prorationItem = new LinkedHashMap<>();
+                prorationItem.put("description", prorationDesc);
+                prorationItem.put("sacCode", "-");
+                prorationItem.put("quantity", 1);
+                prorationItem.put("unitRate", prorationCredit.negate());
+                prorationItem.put("taxableAmount", creditTaxable.negate());
+                prorationItem.put("taxAmount", creditTax.negate());
+                prorationItem.put("grossAmount", prorationCredit.negate());
+                prorationItem.put("type", "PRORATION");
+                itemsList.add(prorationItem);
+            }
+
+            // Item 3: Promotional Coupon Discount
+            if (couponDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                String cCode = appliedCoupon != null ? appliedCoupon : "PROMO";
+                BigDecimal couponTaxable = isSubscriptionUsd
+                        ? couponDiscountAmount
+                        : couponDiscountAmount.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+                BigDecimal couponTax = couponDiscountAmount.subtract(couponTaxable);
+
+                Map<String, Object> couponItem = new LinkedHashMap<>();
+                couponItem.put("description", "Promotional Coupon Discount (" + cCode + ")");
+                couponItem.put("sacCode", "-");
+                couponItem.put("quantity", 1);
+                couponItem.put("unitRate", couponDiscountAmount.negate());
+                couponItem.put("taxableAmount", couponTaxable.negate());
+                couponItem.put("taxAmount", couponTax.negate());
+                couponItem.put("grossAmount", couponDiscountAmount.negate());
+                couponItem.put("type", "COUPON");
+                itemsList.add(couponItem);
+            }
+
+            // Item 4: Upgrade Metadata Details
+            if (isUpgradeInvoice) {
+                Map<String, Object> upgradeMeta = new LinkedHashMap<>();
+                upgradeMeta.put("type", "UPGRADE_METADATA");
+                upgradeMeta.put("fromPlanName", previousPlanName != null ? previousPlanName : "Creator Pro");
+                upgradeMeta.put("fromPlanPrice", previousPlanPrice != null ? previousPlanPrice : new BigDecimal("499.00"));
+                upgradeMeta.put("toPlanName", planName);
+                upgradeMeta.put("toPlanPrice", targetPlanPrice);
+                upgradeMeta.put("proratedTargetCharge", effectiveTargetCharge);
+                upgradeMeta.put("unusedCredit", prorationCredit);
+                upgradeMeta.put("remainingDays", remainingDays != null ? remainingDays : 1);
+                upgradeMeta.put("totalDays", snapshot.get("totalDays") != null ? snapshot.get("totalDays") : 1);
+                upgradeMeta.put("usedDays", snapshot.get("usedDays") != null ? snapshot.get("usedDays") : 0);
+                upgradeMeta.put("validUntil", periodEnd.toString());
+                upgradeMeta.put("netCharged", subscription.getTotalAmount());
+                itemsList.add(upgradeMeta);
+            }
+
+            String lineItemsJson = objectMapper.writeValueAsString(itemsList);
 
             Invoice invoice = Invoice.builder()
                     .invoiceNumber(invoiceNumber)
@@ -629,27 +852,99 @@ public class PaymentService {
                     .customerEmail(customerEmail)
                     .customerGstin(customerGstin)
                     .subtotal(subscription.getBaseAmount())
-                    .taxRate(new BigDecimal("18.00"))
+                    .taxRate(isSubscriptionUsd ? BigDecimal.ZERO : new BigDecimal("18.00"))
                     .taxAmount(subscription.getTaxAmount())
                     .totalAmount(subscription.getTotalAmount())
-                    .currency("INR")
+                    .currency(subscription.getCurrency() != null ? subscription.getCurrency() : "INR")
                     .transactionId(transaction.getId())
                     .subscriptionId(subscription.getId())
                     .status(Invoice.InvoiceStatus.paid)
                     .invoiceDate(LocalDate.now())
                     .paidAt(now)
-                    .provider("razorpay")
+                    .isProrated(prorationCredit.compareTo(BigDecimal.ZERO) > 0)
+                    .prorationCredit(prorationCredit)
+                    .provider(subscription.getProvider() != null ? subscription.getProvider().name() : "razorpay")
                     .providerInvoiceId(providerPaymentId)
-                    .lineItems("[{\"description\":\"" + lineItemDescription +
-                            "\",\"sacCode\":\"998439\",\"amount\":" + subscription.getBaseAmount() +
-                            ",\"taxAmount\":" + subscription.getTaxAmount() + "}]")
+                    .lineItems(lineItemsJson)
                     .build();
 
             invoice = invoiceRepository.save(invoice);
+            String displayCurr = isSubscriptionUsd ? "$" : "₹";
             System.out.println("  🧾 [GST Invoice Generated] Invoice No: " + invoice.getInvoiceNumber()
                     + " | Plan: " + planName
-                    + " | Customer: " + customerName + " <" + customerEmail + ">"
-                    + " | Total: ₹" + invoice.getTotalAmount());
+                    + " | Transition: " + transitionType
+                    + " | Total: " + displayCurr + invoice.getTotalAmount());
+
+            // Record Immutable Subscription Transition Audit Trail
+            try {
+                Instant prevEndInstant = null;
+                if (previousPeriodEndStr != null) {
+                    try {
+                        prevEndInstant = Instant.parse(previousPeriodEndStr);
+                    } catch (Exception ignored) {}
+                }
+
+                String prevPlanId = (String) snapshot.get("previousPlanId");
+                BigDecimal leftoverCreditVal = snapshot.get("leftoverCredit") != null
+                        ? new BigDecimal(snapshot.get("leftoverCredit").toString())
+                        : BigDecimal.ZERO;
+
+                com.suvix.payment.domain.subscription.entity.SubscriptionTransition transition =
+                        com.suvix.payment.domain.subscription.entity.SubscriptionTransition.builder()
+                                .subscriptionId(subscription.getId())
+                                .userId(subscription.getUserId())
+                                .transitionType(transitionType != null ? transitionType : "NEW_SUBSCRIPTION")
+                                .fromPlanId(prevPlanId != null ? prevPlanId : "none")
+                                .toPlanId(subscription.getPlan() != null ? subscription.getPlan().getId() : "unknown")
+                                .prorationCreditCalculated(prorationCredit)
+                                .prorationCreditApplied(prorationCredit)
+                                .leftoverCreditGenerated(leftoverCreditVal)
+                                .grossTargetPrice(targetPlanPrice)
+                                .couponDiscountApplied(couponDiscountAmount)
+                                .couponCode(appliedCoupon)
+                                .netAmountCharged(subscription.getTotalAmount())
+                                .amountInPaise(subscription.getTotalAmount().multiply(BigDecimal.valueOf(100)).longValue())
+                                .currency(subscription.getCurrency() != null ? subscription.getCurrency() : "INR")
+                                .invoiceId(invoice.getId())
+                                .previousPeriodEnd(prevEndInstant)
+                                .newPeriodEnd(periodEnd)
+                                .metadata(subscription.getPlanSnapshot())
+                                .build();
+
+                transitionRepository.save(transition);
+                System.out.println("  📋 [Transition Audit Logged] ID=" + transition.getId() + " | Type=" + transition.getTransitionType());
+
+                // Handle Rollover Leftover Credit if credit exceeded target price
+                if (leftoverCreditVal.compareTo(BigDecimal.ZERO) > 0) {
+                    final String subUserId = subscription.getUserId();
+                    com.suvix.payment.domain.subscription.entity.CustomerCreditBalance creditBalance =
+                            creditBalanceRepository.findByUserId(subUserId)
+                                    .orElseGet(() -> com.suvix.payment.domain.subscription.entity.CustomerCreditBalance.builder()
+                                            .userId(subUserId)
+                                            .balanceAmount(BigDecimal.ZERO)
+                                            .currency("INR")
+                                            .build());
+                    creditBalance.setBalanceAmount(creditBalance.getBalanceAmount().add(leftoverCreditVal));
+                    creditBalanceRepository.save(creditBalance);
+                    log.info("Saved leftover proration credit of ₹{} to user {} credit balance", leftoverCreditVal, subUserId);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to record subscription transition audit: {}", e.getMessage());
+            }
+
+            // If upgrade, mark older active subscriptions as cancelled/superseded
+            if ((transitionType != null && transitionType.startsWith("UPGRADE")) || prorationCredit.compareTo(BigDecimal.ZERO) > 0) {
+                List<Subscription> userSubs = subscriptionRepository.findByUserIdOrderByCreatedAtDesc(subscription.getUserId());
+                for (Subscription s : userSubs) {
+                    if (!s.getId().equals(subscription.getId()) && s.getStatus() == Subscription.SubscriptionStatus.active) {
+                        s.setStatus(Subscription.SubscriptionStatus.cancelled);
+                        s.setStatusChangeReason("Upgraded to " + planName);
+                        subscriptionRepository.save(s);
+                        System.out.println("  🔄 [Subscription Replaced] Marked prior subscription " + s.getId() + " as CANCELLED (Upgraded to " + planName + ")");
+                    }
+                }
+            }
+
             invoiceService.prewarmInvoicePdfAsync(invoice.getId());
         } catch (Exception e) {
             log.warn("Failed to create invoice during subscription activation: {}", e.getMessage());

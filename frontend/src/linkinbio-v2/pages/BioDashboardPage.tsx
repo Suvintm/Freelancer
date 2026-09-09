@@ -8,11 +8,12 @@ import { selectUser } from '../../store/slices/authSlice';
 import { AnalyticsTeaser } from '../components/dashboard/AnalyticsTeaser';
 import { BioPageGrid } from '../components/dashboard/BioPageGrid';
 import { EmptyBioState } from '../components/dashboard/EmptyBioState';
-import { TriDeviceShowcase } from '../components/dashboard/TriDeviceShowcase';
+// import { TriDeviceShowcase } from '../components/dashboard/TriDeviceShowcase';
 import { BioQrCodeCard } from '../components/dashboard/BioQrCodeCard';
 import { TemplatePickerModal } from '../components/templates/TemplatePickerModal';
 import { bioApiService } from '../services/bioApiService';
-import { ExternalLink, HelpCircle, Plus, Loader2 } from 'lucide-react';
+import { ExternalLink, HelpCircle, Plus, Loader2, Sparkles } from 'lucide-react';
+import linkInBioBannerImg from '../../assets/linkinbiobanner.png';
 
 interface BioDashboardPageProps {
   username?: string;
@@ -32,7 +33,7 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
   const username = authUser?.username || authUser?.name?.toLowerCase().replace(/\s+/g, '') || propUsername || 'creator';
   const displayName = authUser?.name || (authUser as any)?.profile?.display_name || username || 'SuviX Creator';
   const avatarUrl = authUser?.profilePicture || (authUser as any)?.profile_picture || (authUser as any)?.avatarUrl || (authUser as any)?.profile?.avatar_url || '';
-  const userBio = (authUser as any)?.bio || (authUser as any)?.profile?.bio || 'Building digital products, sharing knowledge and exploring the world of tech.';
+  // const userBio = (authUser as any)?.bio || (authUser as any)?.profile?.bio || 'Building digital products, sharing knowledge and exploring the world of tech.';
 
   const [pages, setPages] = useState<BioPageSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -240,8 +241,9 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
       {/* ── FIXED TOP HEADER ROW ── */}
       <div className="shrink-0 w-full mb-5">
         <div className="relative w-full flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Left Side: Create Page Button */}
-          <div className="flex items-center justify-start sm:w-[220px]">
+          
+          {/* Left Side: Create Page Button + Slogan */}
+          <div className="flex items-center justify-start gap-3 sm:w-[260px]">
             <button
               onClick={handleCreateNew}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all font-sans font-semibold text-xs shadow-xs active:scale-95 cursor-pointer"
@@ -249,24 +251,50 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
               <Plus className="w-3.5 h-3.5" />
               <span>Create Page</span>
             </button>
+
+            <div className="hidden sm:flex items-center gap-1 text-xs text-slate-500 dark:text-zinc-400 font-medium">
+              <span>Create. Share. Grow.</span>
+              <Sparkles className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+            </div>
           </div>
 
-          {/* Centered Heading */}
-          <h1 
-            style={{ fontFamily: '"Bubblegum Sans", cursive, sans-serif', fontWeight: 400 }}
-            className="text-3xl sm:text-4xl text-slate-900 dark:text-white tracking-wide text-center"
-          >
-            Link in Bio
-          </h1>
+          {/* Centered Heading: Bold "Link in" + Cursive Green "Bio" with dynamic underline */}
+          <div className="flex items-center justify-center">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-baseline gap-2">
+              <span>Link in</span>
+              <span 
+                style={{ fontFamily: '"Oregano", "Caveat", cursive, sans-serif' }}
+                className="text-emerald-500 italic text-4xl sm:text-5xl font-normal relative"
+              >
+                Bio
+                <svg className="absolute -bottom-2 -left-1 w-[110%] h-3 text-emerald-500" viewBox="0 0 100 20" fill="none" preserveAspectRatio="none">
+                  <path d="M2 14 Q 50 2, 98 12" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+              </span>
+            </h1>
+          </div>
 
-          {/* Right Primary URL Capsule */}
-          <div className="flex items-center justify-center sm:justify-end sm:w-[220px]">
+          {/* Right Side: Slogan & Primary URL Capsule */}
+          <div className="flex items-center justify-center sm:justify-end gap-4 sm:w-[260px]">
+            <div 
+              style={{ fontFamily: '"Oregano", "Caveat", cursive, sans-serif' }}
+              className="hidden lg:flex flex-col items-center justify-center text-center leading-tight"
+            >
+              <span className="text-sm font-semibold text-slate-700 dark:text-zinc-300">One Link</span>
+              <span className="text-xs text-slate-500 dark:text-zinc-400 relative">
+                Infinite Possibilities.
+                <svg className="absolute -bottom-1 left-0 w-full h-1 text-slate-400 dark:text-zinc-600" viewBox="0 0 60 8" fill="none">
+                  <path d="M2 4 Q 30 1, 58 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </span>
+            </div>
+
             <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 shadow-xs">
               <div className="flex flex-col text-left sm:text-right">
                 <span className="text-[9px] text-slate-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
                   Primary Link
                 </span>
-                <span className="text-xs font-semibold text-slate-900 dark:text-zinc-200 font-mono truncate max-w-[140px]">
+                <span className="text-xs font-semibold text-slate-900 dark:text-zinc-200 font-mono truncate max-w-[120px]">
                   {brandedUrl}
                 </span>
               </div>
@@ -285,8 +313,8 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
         </div>
       </div>
 
-      {/* ── 2-COLUMN SPLIT: Left Column (Lenis Smooth Scroll) + Right Column (Fixed Stationary) ── */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch overflow-hidden">
+      {/* ── 2-COLUMN SPLIT: Left Column (Lenis Smooth Scroll) + Right Column (Fixed Showcase Image) ── */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-6 items-stretch overflow-hidden">
         
         {/* Left Column (7 cols): Smooth Lenis Scroller */}
         <ReactLenis
@@ -361,8 +389,15 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
           </motion.div>
         </ReactLenis>
 
-        {/* Right Column (5 cols): 3D Tri-Device Showcase Hero with SuviX Signature Olive Center Phone */}
-        <div className="xl:col-span-5 h-full flex flex-col items-center justify-center overflow-hidden p-0 sm:p-2 select-none">
+        {/* Right Column (5 cols): Link in Bio Banner Image with subtle spacing and full visibility */}
+        <div className="xl:col-span-5 h-full w-full flex items-center justify-center p-2 sm:p-3 xl:p-4 select-none">
+          <img 
+            src={linkInBioBannerImg} 
+            alt="SuviX Link in Bio" 
+            className="w-full h-auto max-h-[84vh] xl:max-h-[88vh] object-contain drop-shadow-xl rounded-2xl transition-transform duration-300 hover:scale-[1.01]" 
+          />
+
+          {/* Commented out React mobile showcase component for future reference
           <TriDeviceShowcase 
             username={username}
             displayName={displayName}
@@ -370,6 +405,7 @@ export const BioDashboardPage: React.FC<BioDashboardPageProps> = ({
             bio={userBio}
             primaryPage={activePage}
           />
+          */}
         </div>
 
       </div>

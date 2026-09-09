@@ -53,6 +53,7 @@ export interface ProrationQuote {
   targetPlanName: string;
   currentPlanPrice: number;
   targetPlanPrice: number;
+  proratedTargetCharge?: number;
   unusedCredit: number;
   netSubtotal: number;
   taxRate: number;
@@ -62,6 +63,15 @@ export interface ProrationQuote {
   remainingSeconds: number;
   totalPeriodSeconds: number;
   currentPeriodEnd: string;
+  isCoTerm?: boolean;
+  transitionType?: string;
+  priceDelta?: number;
+  leftoverCredit?: number;
+  amountInPaise?: number;
+  newPeriodEnd?: string;
+  totalDays?: number;
+  usedDays?: number;
+  currency?: string;
 }
 
 export interface UsageFeatureDetail {
@@ -101,6 +111,7 @@ export interface InvoiceItem {
   isProrated: boolean;
   prorationCredit: number;
   lineItems: string;
+  currentPeriodEnd?: string;
 }
 
 export interface SubscriptionDashboardData {
@@ -151,9 +162,14 @@ export const subscriptionService = {
   },
 
   // 3. Get Real-Time Proration Quote for Plan Upgrade
-  getQuoteUpgrade: async (targetPlanId: string): Promise<ProrationQuote> => {
+  getQuoteUpgrade: async (targetPlanId: string, billingCycle: string = 'monthly', userId?: string): Promise<ProrationQuote> => {
+    const headers: Record<string, string> = {};
+    if (userId) {
+      headers['X-User-Id'] = userId;
+    }
     const res = await api.get('/subscriptions/quote-upgrade', {
-      params: { targetPlanId },
+      params: { targetPlanId, billingCycle, userId },
+      headers,
     });
     return res.data;
   },
