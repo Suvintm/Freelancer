@@ -73,6 +73,20 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
   return proxyToPaymentService(req, res, 'post', '/subscriptions/cancel');
 });
 
+export const quoteUpgrade = asyncHandler(async (req, res) => {
+  const userId = req.user?._id || req.user?.id || req.query.userId;
+  if (userId) req.query.userId = userId;
+  return proxyToPaymentService(req, res, 'get', '/subscriptions/quote-upgrade');
+});
+
+export const upgradeSubscription = asyncHandler(async (req, res) => {
+  return proxyToPaymentService(req, res, 'post', '/subscriptions/upgrade');
+});
+
+export const downgradeSubscription = asyncHandler(async (req, res) => {
+  return proxyToPaymentService(req, res, 'post', '/subscriptions/downgrade');
+});
+
 export const getPaymentStatus = asyncHandler(async (req, res) => {
   return proxyToPaymentService(req, res, 'get', '/subscriptions/status');
 });

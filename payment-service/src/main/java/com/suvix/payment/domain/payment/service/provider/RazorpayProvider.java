@@ -117,7 +117,7 @@ public class RazorpayProvider implements PaymentProvider {
         Instant now = Instant.now();
         Instant periodEnd = plan.getBillingInterval() == SubscriptionPlan.BillingInterval.year
                 ? now.plus(365, ChronoUnit.DAYS)
-                : now.plus(30, ChronoUnit.DAYS);
+                : now.plus(1, ChronoUnit.DAYS);
 
         return SubscriptionResponse.builder()
                 .success(true)

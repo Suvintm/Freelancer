@@ -4,7 +4,6 @@ import {
   X,
   ArrowRight,
   AlertCircle,
-  HelpCircle,
   Sparkles,
   RefreshCw,
   Lock,
@@ -22,6 +21,8 @@ import { ImSpinner2 } from 'react-icons/im';
 import { subscriptionService, type ProrationQuote } from '../../../api/services/subscription.service';
 import type { PlanCardPresenter, WorkspaceRole } from '../rolePlanConfig';
 import { usePaymentStateMachine } from '../hooks/usePaymentStateMachine';
+import { UpgradeStoryModal } from './UpgradeStoryModal';
+import { round2 } from '../../../utils/money';
 import razorpayLogoImg from '../../../assets/razorpay.png';
 import stripeLogoImg from '../../../assets/stripe.png';
 import logoImg from '../../../assets/logo.png';
@@ -51,9 +52,16 @@ interface CheckoutModalProps {
   billingCycle: 'monthly' | 'annual';
   role: WorkspaceRole;
   user: any;
+  activePlan?: any | null;
+  plans?: PlanCardPresenter[] | null;
   prorationQuote?: ProrationQuote | null;
   onSuccess: (result: any) => void;
   isDarkMode?: boolean;
+}
+function generateCheckoutIdempotencyKey(userId?: string, planId?: string, cycle?: string): string {
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 7);
+  return `idemp_sub_${userId || 'guest'}_${planId || 'plan'}_${cycle || 'cycle'}_${timestamp}_${randomSuffix}`;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -63,6 +71,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   billingCycle: initialBillingCycle,
   role,
   user,
+  activePlan,
+  plans,
   prorationQuote,
   onSuccess,
   isDarkMode = false,
@@ -86,6 +96,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponValidating, setCouponValidating] = useState(false);
+
+  // Upgrade Story Explainer State
+  const [showStoryModal, setShowStoryModal] = useState(false);
 
   // Compliance & Consent state
   const [consentAccepted, setConsentAccepted] = useState(true);
@@ -169,19 +182,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   // Coupon discount calculation
   const couponDiscountAmount = appliedCoupon
-    ? Math.round(actualSubtotal * (appliedCoupon.discountPercent / 100))
+    ? round2(actualSubtotal * (appliedCoupon.discountPercent / 100))
     : 0;
 
   const discountedSubtotal = Math.max(0, actualSubtotal - couponDiscountAmount);
 
   // Tax-Inclusive Pricing (MRP Standard for B2C SaaS / Creator Subscriptions)
-  // Advertised price is the exact total payable amount (clean round integers like Netflix/Spotify/YouTube)
-  const prorationCredit = Math.round(prorationQuote?.unusedCredit || 0);
-  const totalPayable = Math.max(0, discountedSubtotal - prorationCredit);
+  // Server is the single authoritative source of truth for totalAmount when a prorationQuote exists
+  const prorationCredit = round2(prorationQuote?.unusedCredit || 0);
+  const totalPayable = (prorationQuote && prorationQuote.totalAmount !== undefined && prorationQuote.totalAmount !== null && prorationQuote.totalAmount > 0)
+    ? (couponDiscountAmount > 0 ? round2(Math.max(0, prorationQuote.totalAmount - couponDiscountAmount)) : round2(prorationQuote.totalAmount))
+    : round2(Math.max(0, discountedSubtotal - prorationCredit));
 
   // GST 18% (SAC 998439) is included within the total price and back-calculated for compliance
-  const taxableBase = isUsd ? totalPayable : Math.round((totalPayable / 1.18) * 100) / 100;
-  const gstAmount = isUsd ? 0 : Math.round((totalPayable - taxableBase) * 100) / 100;
+  const taxableBase = isUsd ? totalPayable : round2(totalPayable / 1.18);
+  const gstAmount = isUsd ? 0 : round2(totalPayable - taxableBase);
 
   // Smart Coupon Application
   const handleApplyCoupon = async (codeToApply?: string) => {
@@ -201,12 +216,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setCouponError(res?.message || 'Invalid or expired promo code.');
       }
     } catch (err: any) {
-      if (['CREATOR20', 'SUVI20', 'LAUNCH50', 'SUVIPRO'].includes(targetCode)) {
-        const discount = targetCode === 'LAUNCH50' ? 50 : targetCode === 'SUVIPRO' ? 15 : 20;
-        setAppliedCoupon({ code: targetCode, discountPercent: discount });
-      } else {
-        setCouponError(err.response?.data?.message || 'Invalid promo code for this plan.');
-      }
+      setCouponError(err.response?.data?.message || 'Invalid promo code for this plan.');
     } finally {
       setCouponValidating(false);
     }
@@ -232,7 +242,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const currentUserId = user?.id || user?._id;
     const currentUserName = user?.name || user?.fullName || user?.username || 'SuviX Creator';
     const currentUserEmail = user?.email || '';
-    const idempotencyKey = `idemp_sub_${currentUserId || 'guest'}_${plan.id}_${selectedCycle}_${Date.now()}`;
+    const idempotencyKey = generateCheckoutIdempotencyKey(currentUserId, plan.id, selectedCycle);
 
     try {
       if (selectedGateway === 'razorpay') {
@@ -408,7 +418,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const PlanIcon = plan.icon || Sparkles;
 
   // Formatted user email & name
-  const userEmail = user?.email || 'suvintm19@gmail.com';
+  const userEmail = user?.email || '';
   const userRoleBadge = (role || user?.role || 'creator').toUpperCase();
 
   // Highlighted features for What's included
@@ -989,29 +999,92 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       </div>
 
       <div className={`space-y-0.5 font-medium ${isCompactMobile ? 'text-[9px]' : 'text-xs space-y-1.5'}`}>
-        {/* Plan Line */}
-        <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-          <span>
-            Plan Amount ({selectedCycle === 'annual' ? `${currencySymbol}${monthlyPrice} × 12` : `${currencySymbol}${monthlyPrice}`})
-          </span>
-          <div className="text-right flex items-center gap-1.5 font-mono">
-            {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
-              <span className="line-through text-zinc-400 dark:text-zinc-500 text-[9px]">
-                {currencySymbol}{normalAnnualSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        {/* Co-Term Proration or Normal Plan Line */}
+        {prorationQuote && (prorationQuote.isCoTerm || prorationCredit > 0) ? (
+          <>
+            <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+              <span>
+                {plan.name} ({prorationQuote.remainingDays !== undefined ? prorationQuote.remainingDays : 1} {(prorationQuote.remainingDays || 1) === 1 ? 'day' : 'days'} remaining)
               </span>
-            )}
-            <span className="font-extrabold text-zinc-900 dark:text-white">
-              {currencySymbol}{actualSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-        </div>
+              <div className="text-right font-mono">
+                <span className="font-extrabold text-zinc-900 dark:text-white">
+                  {currencySymbol}{(prorationQuote.proratedTargetCharge || round2(totalPayable + prorationCredit)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
 
-        {/* Annual Discount Row */}
-        {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
-          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
-            <span>Annual Discount ({savingsPercent}%)</span>
-            <span className="font-mono">- {currencySymbol}{exactAnnualSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          </div>
+            {/* Proration Credit Row */}
+            {prorationCredit > 0 && (
+              <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span>
+                    Less: {prorationQuote.currentPlanName || 'Current Plan'} Credit ({prorationQuote.remainingDays !== undefined ? prorationQuote.remainingDays : 1} {(prorationQuote.remainingDays || 1) === 1 ? 'day' : 'days'})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowStoryModal(true);
+                    }}
+                    className="px-1.5 py-0.5 rounded text-[8.5px] font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 cursor-pointer flex items-center gap-0.5 active:scale-95 shadow-2xs"
+                    title="View story scenario & exact proration math calculation"
+                  >
+                    <span>💡 Story & Math</span>
+                  </button>
+                </div>
+                <span className="font-mono">- {currencySymbol}{prorationCredit.toFixed(2)}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+              <span>
+                Plan Amount ({selectedCycle === 'annual' ? `${currencySymbol}${monthlyPrice} × 12` : `${currencySymbol}${monthlyPrice}`})
+              </span>
+              <div className="text-right flex items-center gap-1.5 font-mono">
+                {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+                  <span className="line-through text-zinc-400 dark:text-zinc-500 text-[9px]">
+                    {currencySymbol}{normalAnnualSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+                <span className="font-extrabold text-zinc-900 dark:text-white">
+                  {currencySymbol}{actualSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Annual Discount Row */}
+            {selectedCycle === 'annual' && exactAnnualSavings > 0 && (
+              <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                <span>Annual Discount ({savingsPercent}%)</span>
+                <span className="font-mono">- {currencySymbol}{exactAnnualSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+
+            {/* Proration Credit Row (Interval Reset) */}
+            {prorationCredit > 0 && (
+              <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span>
+                    Unused Credit ({prorationQuote?.remainingDays || 0} days)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowStoryModal(true);
+                    }}
+                    className="px-1.5 py-0.5 rounded text-[8.5px] font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 cursor-pointer flex items-center gap-0.5 active:scale-95 shadow-2xs"
+                    title="View story scenario & exact proration math calculation"
+                  >
+                    <span>💡 Story & Math</span>
+                  </button>
+                </div>
+                <span className="font-mono">- {currencySymbol}{prorationCredit.toFixed(2)}</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Coupon Discount Row */}
@@ -1022,24 +1095,33 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
         )}
 
-        {/* Proration Credit Row */}
-        {prorationCredit > 0 && (
-          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
-            <span>Unused Credit</span>
-            <span className="font-mono">- {currencySymbol}{prorationCredit.toFixed(2)}</span>
+        {/* Tax Breakdown Row */}
+        {!isUsd ? (
+          <div className="space-y-1 pt-1 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px]">
+            <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400 font-normal">
+              <span>Taxable Subtotal</span>
+              <span className="font-mono">₹{taxableBase.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center text-zinc-700 dark:text-zinc-300">
+              <span className="flex items-center gap-1">
+                <span className="font-semibold">GST (18% Included)</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-bold">
+                  SAC 998439
+                </span>
+              </span>
+              <span className="font-mono font-bold text-zinc-900 dark:text-white">
+                ₹{gstAmount.toFixed(2)}
+              </span>
+            </div>
+            <div className="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-normal italic flex justify-between">
+              <span>* CGST 9% (₹{(gstAmount / 2).toFixed(2)}) + SGST 9% (₹{(gstAmount / 2).toFixed(2)})</span>
+              <span>100% Tax Compliant</span>
+            </div>
           </div>
-        )}
-
-        {/* GST Row (INR only) */}
-        {!isUsd && (
-          <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-            <span className="flex items-center gap-1">
-              <span>GST (18% Included)</span>
-              <HelpCircle className="w-2.5 h-2.5 text-zinc-400" />
-            </span>
-            <span className="font-mono font-extrabold text-zinc-900 dark:text-white">
-              ₹{gstAmount.toFixed(2)}
-            </span>
+        ) : (
+          <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400 text-[11px] pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+            <span>Tax (0% Export under LUT)</span>
+            <span className="font-mono font-bold text-zinc-900 dark:text-white">$0.00</span>
           </div>
         )}
       </div>
@@ -1168,6 +1250,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }}
       onWheel={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
+      data-lenis-prevent="true"
       className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-3 md:p-4 bg-black/80 backdrop-blur-md animate-fadeIn font-sans"
     >
       <div
@@ -1264,6 +1347,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {renderTrustBadges(true)}
         </div>
       </div>
+
+      {/* Embedded Upgrade Story Explainer Modal */}
+      {showStoryModal && (
+        <UpgradeStoryModal
+          isOpen={showStoryModal}
+          onClose={() => setShowStoryModal(false)}
+          targetPlan={plan}
+          activePlan={activePlan}
+          plans={plans || [plan]}
+          user={user}
+          prorationQuote={prorationQuote}
+          billingCycle={selectedCycle}
+          isDarkMode={isDarkMode}
+        />
+      )}
     </div>,
     document.body
   );

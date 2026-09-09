@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import { selectUser } from '../store/slices/authSlice';
 import { subscriptionService } from '../api/services/subscription.service';
 import type { Plan, ProrationQuote, UsageSummary, InvoiceItem } from '../api/services/subscription.service';
@@ -18,8 +19,24 @@ import {
   getDynamicComparisonMatrix,
 } from '../features/subscription/rolePlanConfig';
 import type { WorkspaceRole, PlanCardPresenter } from '../features/subscription/rolePlanConfig';
-import { CheckoutModal } from '../features/subscription/components/CheckoutModal';
-import { SubscriptionSuccessModal } from '../features/subscription/components/SubscriptionSuccessModal';
+import { ActivePlanCelebrationOverlay } from '../features/subscription/components/ActivePlanCelebrationOverlay';
+import { PlanExpirationCountdown } from '../features/subscription/components/PlanExpirationCountdown';
+import { round2 } from '../utils/money';
+
+// Lazy load heavy modal dialogs to maximize initial page performance
+const CheckoutModal = lazy(() =>
+  import('../features/subscription/components/CheckoutModal').then((m) => ({ default: m.CheckoutModal }))
+);
+const SubscriptionSuccessModal = lazy(() =>
+  import('../features/subscription/components/SubscriptionSuccessModal').then((m) => ({
+    default: m.SubscriptionSuccessModal,
+  }))
+);
+const UpgradeStoryModal = lazy(() =>
+  import('../features/subscription/components/UpgradeStoryModal').then((m) => ({
+    default: m.UpgradeStoryModal,
+  }))
+);
 
 import {
   Check,
@@ -47,6 +64,7 @@ import {
   Send,
   Star,
   ArrowRight,
+  Calculator,
 } from 'lucide-react';
 import { ImSpinner2 } from 'react-icons/im';
 
@@ -108,7 +126,12 @@ export default function Subscription() {
     billingCycle: 'monthly' | 'annual';
     amountPaid: number;
     paymentId?: string;
+    currentPeriodEnd?: string | Date | null;
   } | null>(null);
+
+  // Upgrade Story Modal state
+  const [showUpgradeStoryModal, setShowUpgradeStoryModal] = useState(false);
+  const [storyTargetPlan, setStoryTargetPlan] = useState<PlanCardPresenter | null>(null);
 
   // Lifecycle Modals State
   const [prorationQuote, setProrationQuote] = useState<ProrationQuote | null>(null);
@@ -319,6 +342,13 @@ export default function Subscription() {
     return getDynamicComparisonMatrix(displayPlans, selectedRole);
   }, [displayPlans, selectedRole]);
 
+  // Normalized active subscription cycle (monthly vs annual)
+  const activeCycle: 'monthly' | 'annual' = useMemo(() => {
+    if (!activePlan) return 'monthly';
+    const c = (activePlan.billingCycle || activePlan.interval || 'monthly').toLowerCase();
+    return c === 'annual' || c === 'yearly' || c === 'year' ? 'annual' : 'monthly';
+  }, [activePlan]);
+
   // 4. Enterprise Checkout Handlers
   const handlePlanCardClick = async (displayPlan: PlanCardPresenter) => {
     if (!user) {
@@ -331,9 +361,15 @@ export default function Subscription() {
       return;
     }
 
-    // Guard against re-purchasing active tier
-    if (activePlan && activePlan.tierLevel === displayPlan.tierLevel && displayPlan.tierLevel > 0) {
-      triggerToast(`You are already subscribed to the ${displayPlan.name} plan!`, 'info');
+    // Guard against re-purchasing the EXACT same tier AND billing cycle
+    const isExactCurrent = Boolean(
+      activePlan &&
+      activePlan.tierLevel === displayPlan.tierLevel &&
+      displayPlan.tierLevel > 0 &&
+      activeCycle === billingCycle
+    );
+    if (isExactCurrent) {
+      triggerToast(`You are already subscribed to the ${displayPlan.name} (${billingCycle}) plan!`, 'info');
       return;
     }
 
@@ -363,14 +399,40 @@ export default function Subscription() {
       return;
     }
 
-    // Paid Plan: Fetch proration in background if user is upgrading
-    if (activePlan && activePlan.tierLevel > 1) {
+    // 1. Lower Tier Guard: In prepaid model, user already has higher tier access
+    const isLowerTier = Boolean(
+      activePlan &&
+      activePlan.tierLevel &&
+      displayPlan.tierLevel < activePlan.tierLevel
+    );
+
+    if (isLowerTier) {
+      const expiryFormatted = activePlan?.currentPeriodEnd
+        ? new Date(activePlan.currentPeriodEnd).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : 'the end of your current cycle';
+      triggerToast(
+        `You currently have active access on ${activePlan?.planName || 'a higher tier'} (valid until ${expiryFormatted}). You can choose this plan after your current plan validity completes.`,
+        'info'
+      );
+      return;
+    }
+
+    // 2. Paid Plan Upgrade: Fetch proration and present the Upgrade Story Explainer popup
+    if (activePlan && activePlan.tierLevel && displayPlan.tierLevel > activePlan.tierLevel) {
       try {
-        const quote = await subscriptionService.getQuoteUpgrade(displayPlan.id).catch(() => null);
+        const quote = await subscriptionService.getQuoteUpgrade(displayPlan.id, billingCycle, user?.id).catch(() => null);
         setProrationQuote(quote);
       } catch (e) {
         console.warn('Proration quote skipped:', e);
       }
+      setSelectedCheckoutPlan(displayPlan);
+      setStoryTargetPlan(displayPlan);
+      setShowUpgradeStoryModal(true);
+      return;
     } else {
       setProrationQuote(null);
     }
@@ -386,9 +448,26 @@ export default function Subscription() {
       billingCycle: result.billingCycle || billingCycle,
       amountPaid: result.amountPaid || 0,
       paymentId: result.paymentId,
+      currentPeriodEnd: result.currentPeriodEnd || result.subscription?.currentPeriodEnd || result.activeSubscription?.currentPeriodEnd || activePlan?.currentPeriodEnd,
     });
     setShowSuccessModal(true);
     await loadData();
+  };
+
+  const handleTestSuccessModal = () => {
+    const samplePlan = displayPlans.find((p) => p.tierLevel === 2) || displayPlans[1] || displayPlans[0];
+    const testAmount =
+      billingCycle === 'annual'
+        ? (samplePlan.priceAnnualTotal || (samplePlan.priceAnnual ? samplePlan.priceAnnual * 12 : 4788))
+        : (samplePlan.priceMonthly || 499);
+
+    setSuccessData({
+      plan: samplePlan,
+      billingCycle: billingCycle,
+      amountPaid: testAmount,
+      paymentId: `pay_${Math.random().toString(36).substring(2, 8).toUpperCase()}${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+    });
+    setShowSuccessModal(true);
   };
 
   const handleConfirmPause = async () => {
@@ -482,7 +561,12 @@ export default function Subscription() {
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-12 flex flex-col gap-6 sm:gap-7">
 
         {/* ── 1. 3D PRISM SHOWCASE HERO BANNER (Controls Placed Next to Text & Centered) ── */}
-        <section className="relative w-full rounded-3xl p-6 sm:p-8 lg:p-9 bg-transparent border-none transition-all overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8">
+        <motion.section
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+          className="relative w-full rounded-3xl p-6 sm:p-8 lg:p-9 bg-transparent border-none transition-all overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8"
+        >
           {/* Top Right Slogan Watermark */}
           <div className="hidden lg:block absolute top-6 right-8 text-right font-mono text-[9px] font-bold uppercase tracking-[0.25em] leading-relaxed text-zinc-400 dark:text-zinc-500 pointer-events-none select-none opacity-80">
             <div>CREATE</div>
@@ -665,9 +749,59 @@ export default function Subscription() {
                   ))}
                 </div>
               )}
+
+              {/* Billing & Invoices History Button */}
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setShowInvoicesModal(true)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer shadow-xs active:scale-95 ${
+                    isDarkMode
+                      ? 'border-white/15 bg-white/5 hover:bg-white/10 text-zinc-200'
+                      : 'border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-800'
+                  }`}
+                  title="View Billing History & Download Tax Invoices"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Invoices</span>
+                  {invoices.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500 text-black leading-none">
+                      {invoices.length}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Test Button to Preview Subscription Success Modal (Dev Only) */}
+              {(import.meta as any).env?.DEV && (
+                <button
+                  type="button"
+                  onClick={handleTestSuccessModal}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Test and preview the Subscription Activated success modal"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500 fill-emerald-500" />
+                  <span>Preview Success Popup</span>
+                </button>
+              )}
+
+              {/* Interactive Story Explainer Modal Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const target = displayPlans.find((p) => p.tierLevel === 3) || displayPlans[2] || displayPlans[1];
+                  setStoryTargetPlan(target);
+                  setShowUpgradeStoryModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-all cursor-pointer shadow-xs active:scale-95"
+                title="View the interactive story scenario and live proration math breakdown"
+              >
+                <Calculator className="w-3.5 h-3.5 text-violet-500" />
+                <span>How Upgrades Work (Story & Math)</span>
+              </button>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── 3. DYNAMIC PRICING CARDS GRID (High-Boldness 3-Tier Layout) ── */}
         {(loading || isRefreshingPlans) && plans.length === 0 ? (
@@ -733,24 +867,34 @@ export default function Subscription() {
               const planTitle = isOffline ? `Plan ${planIndex + 1}` : displayPlan.name;
               const planSubtitle = isOffline ? '--' : displayPlan.subtitle;
 
-              const isCurrentPlan = activePlan && (
-                (activePlan.planId && activePlan.planId === displayPlan.id) ||
-                (activePlan.tierLevel === displayPlan.tierLevel && (activePlan.role === selectedRole || !activePlan.role)) ||
-                (activePlan.planName && activePlan.planName.toLowerCase().includes(displayPlan.name.toLowerCase()))
+              const isSameTierPlan = Boolean(
+                activePlan && (
+                  (activePlan.planId && activePlan.planId === displayPlan.id) ||
+                  (activePlan.tierLevel === displayPlan.tierLevel && (activePlan.role === selectedRole || !activePlan.role)) ||
+                  (activePlan.planName && activePlan.planName.toLowerCase().includes(displayPlan.name.toLowerCase()))
+                )
               );
 
+              const isCurrentPlan = isSameTierPlan && activeCycle === billingCycle;
+              const isUpgradeToAnnual = isSameTierPlan && activeCycle === 'monthly' && billingCycle === 'annual';
+              const isSwitchToMonthly = isSameTierPlan && activeCycle === 'annual' && billingCycle === 'monthly';
+
               const isUpgrade = activePlan && activePlan.tierLevel && displayPlan.tierLevel > activePlan.tierLevel;
-              const isDowngrade = activePlan && activePlan.tierLevel && displayPlan.tierLevel < activePlan.tierLevel;
+              const isLowerTier = activePlan && activePlan.tierLevel && displayPlan.tierLevel < activePlan.tierLevel;
 
               let buttonLabel = displayPlan.buttonText;
               if (isOffline) {
                 buttonLabel = 'Unavailable';
               } else if (isCurrentPlan) {
                 buttonLabel = 'Current Plan';
+              } else if (isUpgradeToAnnual) {
+                buttonLabel = `Upgrade to Yearly (${displayPlan.savingsPercent || maxSavingsPercent}% off)`;
+              } else if (isSwitchToMonthly) {
+                buttonLabel = 'Switch to Monthly';
               } else if (isUpgrade) {
                 buttonLabel = 'Upgrade';
-              } else if (isDowngrade) {
-                buttonLabel = 'Downgrade';
+              } else if (isLowerTier) {
+                buttonLabel = 'Included in Current Plan';
               }
 
               // Card Specific Icon Selector
@@ -764,10 +908,22 @@ export default function Subscription() {
                 : null;
 
               return (
-                <div
+                <motion.div
                   key={displayPlan.key}
-                  className={`relative rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 ${
-                    isPopular
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.35,
+                    delay: planIndex * 0.08,
+                    ease: [0.25, 1, 0.5, 1],
+                  }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  className={`relative rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-colors duration-200 transform-gpu will-change-transform ${
+                    isCurrentPlan
+                      ? isDarkMode
+                        ? 'bg-[#0e0e11] border-2 border-emerald-500/70 shadow-2xl shadow-emerald-950/40 scale-[1.01] z-10'
+                        : 'bg-white border-2 border-emerald-500/80 shadow-xl shadow-emerald-500/15 scale-[1.01] z-10'
+                      : isPopular
                       ? isDarkMode
                         ? 'bg-[#0e0e11] border-2 border-white/40 shadow-2xl scale-[1.02] z-10'
                         : 'bg-white border-2 border-zinc-900 shadow-xl scale-[1.02] z-10'
@@ -776,9 +932,31 @@ export default function Subscription() {
                       : 'bg-white border border-zinc-200 hover:border-zinc-300 shadow-sm'
                   }`}
                 >
-                  {/* Top Popular Badge */}
-                  {isPopular && (
-                    <div className="absolute -top-2.5 right-6">
+                  {/* Active Plan Celebration Lottie Overlay */}
+                  {isCurrentPlan && (
+                    <ActivePlanCelebrationOverlay
+                      isActive={true}
+                      isDarkMode={isDarkMode}
+                      showBadge={false}
+                    />
+                  )}
+
+                  {/* Top Attached Expiration & Renewal Countdown Pill for Active Plan (Beginning / Left Side) */}
+                  {isCurrentPlan && (
+                    <div className="absolute -top-3.5 left-4 sm:left-6 z-30">
+                      <PlanExpirationCountdown
+                        currentPeriodEnd={activePlan?.currentPeriodEnd || activePlan?.expiresAt}
+                        currentPeriodStart={activePlan?.currentPeriodStart || activePlan?.startDate}
+                        cancelAtPeriodEnd={activePlan?.cancelAtPeriodEnd}
+                        status={activePlan?.status}
+                        isDarkMode={isDarkMode}
+                      />
+                    </div>
+                  )}
+
+                  {/* Top Popular Badge (only shown when not current plan to prevent overlap) */}
+                  {isPopular && !isCurrentPlan && (
+                    <div className="absolute -top-2.5 right-6 z-20">
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 ${
                         isDarkMode ? 'bg-white text-black' : 'bg-black text-white'
                       }`}>
@@ -788,7 +966,7 @@ export default function Subscription() {
                     </div>
                   )}
 
-                  <div>
+                  <div className="relative z-10">
                     {/* Header Row: Icon + Title + Audience Tag */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-3">
@@ -839,9 +1017,16 @@ export default function Subscription() {
                       </div>
 
                       {displayPlan.tierLevel > 1 && (
-                        <p className={`text-[11px] font-bold mt-0.5 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>
-                          {isOffline ? 'Save --' : `Save ${displayPlan.savingsPercent || maxSavingsPercent}% with yearly`}
-                        </p>
+                        <div className="space-y-0.5 mt-0.5">
+                          <p className={`text-[11px] font-bold ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>
+                            {isOffline ? 'Save --' : `Save ${displayPlan.savingsPercent || maxSavingsPercent}% with yearly`}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">
+                            {!isUsd
+                              ? `All taxes included (18% GST: ₹${(price ? Math.round((price - price / 1.18) * 100) / 100 : 0).toFixed(2)} included)`
+                              : '0% tax for overseas creators (Export of Services)'}
+                          </p>
+                        </div>
                       )}
                     </div>
 
@@ -890,29 +1075,89 @@ export default function Subscription() {
                     </ul>
                   </div>
 
+                  {/* Active Plan Tax Invoice Quick Download Pill */}
+                  {isCurrentPlan && displayPlan.tierLevel > 0 && (
+                    <div className={`relative z-10 p-2.5 rounded-xl border flex items-center justify-between text-xs mb-3.5 transition-colors ${
+                      isDarkMode ? 'bg-white/[0.03] border-white/10 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+                    }`}>
+                      <div className="flex items-center gap-2 min-w-0 pr-1">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                          <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                        </div>
+                        <div className="truncate">
+                          <span className="text-[11px] font-semibold block truncate leading-tight">
+                            {invoices.length > 0 ? (invoices[0].invoiceNumber || 'Latest Tax Invoice') : 'Official GST Invoice'}
+                          </span>
+                          <span className="text-[9.5px] text-zinc-400 dark:text-zinc-500 block leading-none mt-0.5">
+                            {invoices.length > 0 ? (invoices[0].invoiceDate || 'Tax Compliant') : 'Generated upon billing'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {invoices.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(invoices[0])}
+                          disabled={actionLoading === 'invoice-' + invoices[0].id}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition-all shadow-xs shrink-0 ${
+                            isDarkMode
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 active:scale-95 cursor-pointer'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 active:scale-95 cursor-pointer'
+                          }`}
+                          title="Download Official Tax Invoice (PDF)"
+                        >
+                          {actionLoading === 'invoice-' + invoices[0].id ? (
+                            <ImSpinner2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Download className="w-3 h-3" />
+                          )}
+                          <span>Download PDF</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={true}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-medium border opacity-60 cursor-not-allowed shrink-0 ${
+                            isDarkMode ? 'bg-white/5 text-zinc-500 border-white/10' : 'bg-zinc-100 text-zinc-400 border-zinc-200'
+                          }`}
+                          title="Invoice will be generated when payment is completed"
+                        >
+                          <Download className="w-3 h-3 opacity-40" />
+                          <span>Pending</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Action CTA Button */}
                   <button
                     onClick={() => handlePlanCardClick(displayPlan)}
-                    disabled={isOffline || isCurrentPlan || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
-                    className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5 ${
+                    disabled={isOffline || isCurrentPlan || isLowerTier || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
+                    className={`relative z-10 w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5 ${
                       isOffline
                         ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed'
                         : isCurrentPlan
                         ? isDarkMode ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default' : 'bg-emerald-50 text-emerald-700 border border-emerald-300 cursor-default'
+                        : isLowerTier
+                        ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed opacity-60' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed opacity-75'
+                        : isUpgradeToAnnual
+                        ? isDarkMode
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold shadow-lg shadow-emerald-950/50 active:scale-95 cursor-pointer'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer'
                         : isPopular
                         ? isDarkMode
-                          ? 'bg-white hover:bg-zinc-200 text-black shadow-lg active:scale-95'
-                          : 'bg-black hover:bg-zinc-800 text-white shadow-lg active:scale-95'
+                          ? 'bg-white hover:bg-zinc-200 text-black shadow-lg active:scale-95 cursor-pointer'
+                          : 'bg-black hover:bg-zinc-800 text-white shadow-lg active:scale-95 cursor-pointer'
                         : isDarkMode
-                        ? 'bg-white/10 hover:bg-white/15 text-white border border-white/10 active:scale-95'
-                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200 active:scale-95'
+                        ? 'bg-white/10 hover:bg-white/15 text-white border border-white/10 active:scale-95 cursor-pointer'
+                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200 active:scale-95 cursor-pointer'
                     }`}
                   >
                     {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>{buttonLabel}</span>
-                    {!isCurrentPlan && !isOffline && <ArrowRight className="w-3.5 h-3.5 ml-0.5" />}
+                    {!isCurrentPlan && !isOffline && !isLowerTier && <ArrowRight className="w-3.5 h-3.5 ml-0.5" />}
                   </button>
-                </div>
+                </motion.div>
               );
             })}
           </section>
@@ -920,13 +1165,14 @@ export default function Subscription() {
 
         {/* ── 4. EXPANDABLE FEATURE COMPARISON MATRIX ───────────────────────── */}
         <section
+          style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}
           className={`w-full rounded-3xl border overflow-hidden transition-all ${
             isDarkMode ? 'bg-[#101013] border-white/10' : 'bg-white border-zinc-200 shadow-md'
           }`}
         >
           <button
             onClick={() => setShowMatrix((prev) => !prev)}
-            className="w-full p-6 sm:p-7 flex items-center justify-between text-left hover:opacity-90 transition-opacity"
+            className="w-full p-6 sm:p-7 flex items-center justify-between text-left hover:opacity-90 transition-opacity cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-2xl ${isDarkMode ? 'bg-white/5 text-zinc-300' : 'bg-zinc-100 text-zinc-800'}`}>
@@ -950,73 +1196,82 @@ export default function Subscription() {
             </div>
           </button>
 
-          {showMatrix && (
-            <div className="border-t border-white/[0.06] p-6 sm:p-7 overflow-x-auto">
-              <table className="w-full text-left text-xs text-zinc-300">
-                <thead>
-                  <tr className={`border-b ${isDarkMode ? 'border-white/10 text-white' : 'border-zinc-200 text-zinc-900'}`}>
-                    {comparisonMatrix.headers.map((h, idx) => (
-                      <th key={idx} className="pb-4 font-medium uppercase tracking-wider text-[11px] first:pl-2">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDarkMode ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
-                  {comparisonMatrix.rows.map((row, idx) => (
-                    <tr key={idx} className={`${isDarkMode ? 'hover:bg-white/[0.02]' : 'hover:bg-zinc-50'} transition-colors`}>
-                      <td className={`py-3.5 pl-2 font-normal ${isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}`}>
-                        {row.featureName}
-                      </td>
-                      {row.values && row.values.length > 0 ? (
-                        row.values.map((val, vIdx) => (
-                          <td key={vIdx} className="py-3.5">
-                            {typeof val === 'boolean' ? (
-                              val ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
-                            ) : (
-                              <span className={vIdx === row.values!.length - 1 && val !== '-' ? 'text-emerald-400 font-medium' : isDarkMode ? 'text-zinc-300 font-normal' : 'text-zinc-700 font-normal'}>
-                                {val}
-                              </span>
-                            )}
-                          </td>
-                        ))
-                      ) : (
-                        <>
-                          <td className="py-3.5">
-                            {typeof row.tier1 === 'boolean' ? (
-                              row.tier1 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
-                            ) : (
-                              <span className={isDarkMode ? 'text-zinc-400 font-normal' : 'text-zinc-600 font-normal'}>{row.tier1}</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 font-normal">
-                            {typeof row.tier2 === 'boolean' ? (
-                              row.tier2 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
-                            ) : (
-                              <span className={isDarkMode ? 'text-white font-normal' : 'text-zinc-900 font-normal'}>{row.tier2}</span>
-                            )}
-                          </td>
-                          {row.tier3 !== '' && (
-                            <td className="py-3.5 font-medium">
-                              {typeof row.tier3 === 'boolean' ? (
-                                row.tier3 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+          <AnimatePresence>
+            {showMatrix && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.35, ease: [0.04, 0.62, 0.23, 0.98] }}
+                className="border-t border-white/[0.06] p-6 sm:p-7 overflow-x-auto"
+              >
+                <table className="w-full text-left text-xs text-zinc-300">
+                  <thead>
+                    <tr className={`border-b ${isDarkMode ? 'border-white/10 text-white' : 'border-zinc-200 text-zinc-900'}`}>
+                      {comparisonMatrix.headers.map((h, idx) => (
+                        <th key={idx} className="pb-4 font-medium uppercase tracking-wider text-[11px] first:pl-2">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDarkMode ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
+                    {comparisonMatrix.rows.map((row, idx) => (
+                      <tr key={idx} className={`${isDarkMode ? 'hover:bg-white/[0.02]' : 'hover:bg-zinc-50'} transition-colors`}>
+                        <td className={`py-3.5 pl-2 font-normal ${isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}`}>
+                          {row.featureName}
+                        </td>
+                        {row.values && row.values.length > 0 ? (
+                          row.values.map((val, vIdx) => (
+                            <td key={vIdx} className="py-3.5">
+                              {typeof val === 'boolean' ? (
+                                val ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
                               ) : (
-                                <span className="text-emerald-400 font-medium">{row.tier3}</span>
+                                <span className={vIdx === row.values!.length - 1 && val !== '-' ? 'text-emerald-400 font-medium' : isDarkMode ? 'text-zinc-300 font-normal' : 'text-zinc-700 font-normal'}>
+                                  {val}
+                                </span>
                               )}
                             </td>
-                          )}
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          ))
+                        ) : (
+                          <>
+                            <td className="py-3.5">
+                              {typeof row.tier1 === 'boolean' ? (
+                                row.tier1 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                              ) : (
+                                <span className={isDarkMode ? 'text-zinc-400 font-normal' : 'text-zinc-600 font-normal'}>{row.tier1}</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 font-normal">
+                              {typeof row.tier2 === 'boolean' ? (
+                                row.tier2 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                              ) : (
+                                <span className={isDarkMode ? 'text-white font-normal' : 'text-zinc-900 font-normal'}>{row.tier2}</span>
+                              )}
+                            </td>
+                            {row.tier3 !== '' && (
+                              <td className="py-3.5 font-medium">
+                                {typeof row.tier3 === 'boolean' ? (
+                                  row.tier3 ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-zinc-600" />
+                                ) : (
+                                  <span className="text-emerald-400 font-medium">{row.tier3}</span>
+                                )}
+                              </td>
+                            )}
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
         {/* ── 5. ENTERPRISE BILLING FAQS ────────────────────────────────────── */}
         <section
+          style={{ contentVisibility: 'auto', containIntrinsicSize: '500px' }}
           className={`w-full rounded-3xl p-6 sm:p-8 border transition-all ${
             isDarkMode ? 'bg-[#101013] border-white/10' : 'bg-white border-zinc-200 shadow-md'
           }`}
@@ -1046,16 +1301,24 @@ export default function Subscription() {
                 >
                   <button
                     onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                    className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-normal text-xs sm:text-sm"
+                    className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-normal text-xs sm:text-sm cursor-pointer"
                   >
                     <span className={isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}>{faq.question}</span>
                     {isOpen ? <ChevronUp className="w-4 h-4 shrink-0 ml-2" /> : <ChevronDown className="w-4 h-4 shrink-0 ml-2" />}
                   </button>
-                  {isOpen && (
-                    <div className={`px-4 sm:px-5 pb-5 text-xs font-normal leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                      {faq.answer}
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
+                        className={`px-4 sm:px-5 pb-5 text-xs font-normal leading-relaxed overflow-hidden ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                      >
+                        {faq.answer}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
@@ -1341,6 +1604,7 @@ export default function Subscription() {
       {showInvoicesModal &&
         createPortal(
           <div
+            data-lenis-prevent="true"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowInvoicesModal(false);
             }}
@@ -1353,89 +1617,322 @@ export default function Subscription() {
                 isDarkMode ? 'bg-[#101014] border-white/15 text-white' : 'bg-white border-zinc-300 text-zinc-900'
               }`}
             >
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-5 h-5" />
-                  <h3 className="text-base font-semibold">Billing & Invoices</h3>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                      <Receipt className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold tracking-tight">Official Billing & Invoices</h3>
+                      <p className={`text-[11px] font-normal ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        Digitally signed & GST (SAC 998439) compliant tax receipts
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <button onClick={() => setShowInvoicesModal(false)}><X className="w-4 h-4" /></button>
+                <button
+                  onClick={() => setShowInvoicesModal(false)}
+                  className={`p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer ${
+                    isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                {invoices.map((inv) => (
-                  <div
-                    key={inv.id}
-                    className={`p-3.5 rounded-2xl border flex items-center justify-between ${
-                      isDarkMode ? 'bg-white/5 border-white/10' : 'bg-zinc-50 border-zinc-200'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold text-xs">{inv.invoiceNumber}</div>
-                      <div className="text-[11px] text-zinc-400 font-normal">
-                        {inv.invoiceDate} • <span className="text-emerald-400 font-medium uppercase">{inv.status}</span>
-                      </div>
+                {invoices.length === 0 ? (
+                  <div className="py-10 px-4 text-center flex flex-col items-center justify-center space-y-3">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+                      isDarkMode ? 'bg-white/5 border-white/10 text-zinc-500' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
+                    }`}>
+                      <Receipt className="w-6 h-6 opacity-60" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-xs">
-                        {(inv.currency || '').toUpperCase() === 'USD' ? '$' : '₹'}{inv.totalAmount}
-                      </span>
-                      <button
-                        onClick={() => handleDownloadPdf(inv)}
-                        disabled={actionLoading === 'invoice-' + inv.id}
-                        className={`p-2 rounded-xl border transition-all ${
-                          isDarkMode ? 'border-white/10 hover:bg-white/10' : 'border-zinc-300 hover:bg-zinc-200'
-                        }`}
-                      >
-                        {actionLoading === 'invoice-' + inv.id ? (
-                          <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                    <div className="max-w-xs space-y-1">
+                      <h4 className={`text-xs font-bold ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>
+                        No Invoices Generated Yet
+                      </h4>
+                      <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                        When you subscribe to a paid plan or process a renewal, your official tax invoices will appear here automatically with instant PDF download.
+                      </p>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  invoices.map((inv) => {
+                    const isPaid = (inv.status || '').toLowerCase() === 'paid' || (inv.status || '').toLowerCase() === 'success';
+                    const isPending = (inv.status || '').toLowerCase() === 'pending' || (inv.status || '').toLowerCase() === 'processing';
+                    const isUsd = (inv.currency || '').toUpperCase() === 'USD';
+                    const currSymbol = isUsd ? '$' : '₹';
+                    const totalVal = Number(inv.totalAmount || 0);
+                    const prorationCreditVal = Number(inv.prorationCredit || 0);
+
+                    // Parse Line Items & Extract Upgrade Metadata
+                    let parsedItems: any[] = [];
+                    let upgradeMeta: any = null;
+                    if (inv.lineItems) {
+                      try {
+                        parsedItems = typeof inv.lineItems === 'string' ? JSON.parse(inv.lineItems) : inv.lineItems;
+                        if (Array.isArray(parsedItems)) {
+                          upgradeMeta = parsedItems.find((it: any) => it.type === 'UPGRADE_METADATA');
+                        }
+                      } catch {
+                        // ignore malformed line items
+                      }
+                    }
+
+                    const isUpgrade = inv.isProrated || prorationCreditVal > 0 || (inv.lineItems && inv.lineItems.includes('PRORATION')) || upgradeMeta !== null;
+                    const isDowngrade = inv.lineItems && inv.lineItems.includes('DOWNGRADE');
+                    const taxableVal = isUsd ? totalVal : (inv.subtotal ? Number(inv.subtotal) : Math.round((totalVal / 1.18) * 100) / 100);
+                    const gstVal = isUsd ? 0 : (inv.taxAmount ? Number(inv.taxAmount) : Math.round((totalVal - taxableVal) * 100) / 100);
+
+                    // Upgrade pathway names and dates
+                    const fromPlanName = upgradeMeta?.fromPlanName || 'Creator Pro';
+                    const toPlanName = upgradeMeta?.toPlanName || 'Creator Elite';
+                    const fromPlanPrice = upgradeMeta?.fromPlanPrice ? Number(upgradeMeta.fromPlanPrice) : 499;
+                    const toPlanPrice = upgradeMeta?.toPlanPrice ? Number(upgradeMeta.toPlanPrice) : 1499;
+                    const remainingDaysCount = upgradeMeta?.remainingDays || 29;
+                    const proratedTargetCharge = upgradeMeta?.proratedTargetCharge ? Number(upgradeMeta.proratedTargetCharge) : round2(totalVal + prorationCreditVal);
+
+                    let formattedValidUntil = 'End of current billing cycle';
+                    if (upgradeMeta?.validUntil) {
+                      try {
+                        const vDate = new Date(upgradeMeta.validUntil);
+                        formattedValidUntil = vDate.toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                      } catch {
+                        // ignore invalid date string
+                      }
+                    } else if (inv.currentPeriodEnd) {
+                      try {
+                        const vDate = new Date(inv.currentPeriodEnd);
+                        formattedValidUntil = vDate.toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        });
+                      } catch {
+                        // ignore invalid date string
+                      }
+                    }
+                    
+                    return (
+                      <div
+                        key={inv.id}
+                        className={`p-4 sm:p-5 rounded-2xl border flex flex-col gap-3 transition-all ${
+                          isDarkMode
+                            ? isUpgrade
+                              ? 'bg-gradient-to-b from-[#131422] to-[#0e0f14] border-indigo-500/30 hover:border-indigo-500/50 shadow-lg'
+                              : 'bg-white/5 border-white/10 hover:border-white/20'
+                            : isUpgrade
+                            ? 'bg-gradient-to-b from-indigo-50/50 to-white border-indigo-200 hover:border-indigo-300 shadow-sm'
+                            : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+                        }`}
+                      >
+                        {/* Top Row: Invoice Number, Badges, Status & Download */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <span className="font-extrabold text-xs sm:text-sm tracking-tight">{inv.invoiceNumber}</span>
+                            
+                            {isUpgrade && (
+                              <span className="text-[9.5px] px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wide bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+                                ★ Plan Upgrade
+                              </span>
+                            )}
+
+                            {isDowngrade && (
+                              <span className="text-[9.5px] px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wide bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                Downgrade
+                              </span>
+                            )}
+
+                            <span className={`text-[9.5px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
+                              isPaid
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                : isPending
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                                : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadPdf(inv)}
+                            disabled={!isPaid || actionLoading === 'invoice-' + inv.id}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 ${
+                              !isPaid
+                                ? 'opacity-40 cursor-not-allowed border-zinc-300 dark:border-white/10'
+                                : isDarkMode
+                                ? 'border-indigo-500/40 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 active:scale-95 cursor-pointer shadow-xs'
+                                : 'border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 active:scale-95 cursor-pointer shadow-xs'
+                            }`}
+                            title={isPaid ? 'Download Official Tax Invoice PDF' : 'Invoice generation pending'}
+                          >
+                            {actionLoading === 'invoice-' + inv.id ? (
+                              <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5" />
+                            )}
+                            <span>{isPaid ? 'Download PDF' : 'Pending'}</span>
+                          </button>
+                        </div>
+
+                        {/* Upgrade Pathway Card (If Upgrade Invoice) */}
+                        {isUpgrade && (
+                          <div className={`p-3 rounded-xl border flex flex-col gap-1.5 text-xs ${
+                            isDarkMode
+                              ? 'bg-black/40 border-indigo-500/20 text-zinc-300'
+                              : 'bg-white border-indigo-100 text-zinc-800 shadow-2xs'
+                          }`}>
+                            <div className="flex items-center gap-2 flex-wrap font-bold text-[11px] sm:text-xs text-indigo-600 dark:text-indigo-400">
+                              <span>{fromPlanName} ({currSymbol}{fromPlanPrice}/mo)</span>
+                              <ArrowRight className="w-3 h-3 text-indigo-500" />
+                              <span className="text-zinc-900 dark:text-white">{toPlanName} ({currSymbol}{toPlanPrice}/mo)</span>
+                              <span className="text-[9px] px-2 py-0.2 rounded-full font-mono bg-indigo-500/10 border border-indigo-500/20">
+                                {remainingDaysCount} days remaining
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 text-[10.5px] pt-1.5 border-t border-indigo-500/10 dark:border-white/5">
+                              <div>
+                                <span className="text-zinc-500 dark:text-zinc-400">New Plan Prorated ({remainingDaysCount}d): </span>
+                                <strong className="font-semibold text-zinc-900 dark:text-white">{currSymbol}{proratedTargetCharge.toFixed(2)}</strong>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500 dark:text-zinc-400">Unused Credit Refund: </span>
+                                <strong className="font-semibold text-emerald-600 dark:text-emerald-400">- {currSymbol}{prorationCreditVal.toFixed(2)}</strong>
+                              </div>
+                              <div className="sm:col-span-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                                <Check className="w-3 h-3" />
+                                <span>Plan Active Immediately &bull; Valid until: {formattedValidUntil}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Middle Row: Date, SAC Code & Big Total Paid Amount Badge */}
+                        <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 flex-wrap ${
+                          isDarkMode ? 'bg-black/20 border-white/5' : 'bg-zinc-100/70 border-zinc-200/80'
+                        }`}>
+                          <div>
+                            <div className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">
+                              Total Paid Today
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-black text-xl sm:text-2xl tracking-tight text-indigo-600 dark:text-indigo-400">
+                                {currSymbol}{totalVal.toFixed(2)}
+                              </span>
+                              <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/25 uppercase">
+                                Tax-Inclusive (PAID)
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right text-[10.5px] text-zinc-500 dark:text-zinc-400 font-medium">
+                            <div>Issued: {inv.invoiceDate || 'Recent'}</div>
+                            <div className="font-mono text-[10px]">SAC 998439 (SaaS Services)</div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Row: GST Tax Invoice Compliance Breakdown */}
+                        <div className={`text-[10px] p-2 rounded-xl border flex flex-col gap-1 ${
+                          isDarkMode ? 'bg-black/30 border-white/5 text-zinc-400' : 'bg-white/90 border-zinc-200 text-zinc-600'
+                        }`}>
+                          {isUsd ? (
+                            <span>Export of Services &bull; 0.0% GST (LUT Sec 16) &bull; Net Amount: ${totalVal.toFixed(2)}</span>
+                          ) : (
+                            <div className="flex flex-wrap items-center justify-between w-full gap-1">
+                              <span>Taxable Base Subtotal: <strong className="text-zinc-800 dark:text-zinc-200">₹{taxableVal.toFixed(2)}</strong></span>
+                              <span>18% GST (Included): <strong className="text-zinc-800 dark:text-zinc-200">₹{gstVal.toFixed(2)}</strong> (CGST 9%: ₹{(gstVal / 2).toFixed(2)} + SGST 9%: ₹{(gstVal / 2).toFixed(2)})</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>,
           document.body
         )}
 
-      {/* ── 12. ENTERPRISE CHECKOUT & ORDER REVIEW MODAL ──────────────────── */}
+      {/* ── 12. ENTERPRISE CHECKOUT & ORDER REVIEW MODAL (Lazy Loaded) ──────────────────── */}
       {selectedCheckoutPlan && (
-        <CheckoutModal
-          isOpen={showCheckoutModal}
-          onClose={() => {
-            setShowCheckoutModal(false);
-            setSelectedCheckoutPlan(null);
-          }}
-          plan={selectedCheckoutPlan}
-          billingCycle={billingCycle}
-          role={selectedRole}
-          user={user}
-          prorationQuote={prorationQuote}
-          onSuccess={handleCheckoutSuccess}
-          isDarkMode={isDarkMode}
-        />
+        <Suspense fallback={null}>
+          <CheckoutModal
+            isOpen={showCheckoutModal}
+            onClose={() => {
+              setShowCheckoutModal(false);
+              setSelectedCheckoutPlan(null);
+            }}
+            plan={selectedCheckoutPlan}
+            billingCycle={billingCycle}
+            role={selectedRole}
+            user={user}
+            activePlan={activePlan}
+            plans={displayPlans}
+            prorationQuote={prorationQuote}
+            onSuccess={handleCheckoutSuccess}
+            isDarkMode={isDarkMode}
+          />
+        </Suspense>
       )}
 
-      {/* ── 13. SUBSCRIPTION ACTIVATION CELEBRATION MODAL ────────────────── */}
+      {/* ── 13. SUBSCRIPTION ACTIVATION CELEBRATION MODAL (Lazy Loaded) ────────────────── */}
       {successData && (
-        <SubscriptionSuccessModal
-          isOpen={showSuccessModal}
-          onClose={() => {
-            setShowSuccessModal(false);
-            setSuccessData(null);
-          }}
-          plan={successData.plan}
-          billingCycle={successData.billingCycle}
-          role={selectedRole}
-          amountPaid={successData.amountPaid}
-          paymentId={successData.paymentId}
-          currency={successData.plan?.currency || userCurrency}
-          currencySymbol={currencySymbol}
-          isDarkMode={isDarkMode}
-        />
+        <Suspense fallback={null}>
+          <SubscriptionSuccessModal
+            isOpen={showSuccessModal}
+            onClose={() => {
+              setShowSuccessModal(false);
+              setSuccessData(null);
+            }}
+            plan={successData.plan}
+            billingCycle={successData.billingCycle}
+            role={selectedRole}
+            amountPaid={successData.amountPaid}
+            paymentId={successData.paymentId}
+            currency={successData.plan?.currency || userCurrency}
+            currencySymbol={currencySymbol}
+            currentPeriodEnd={successData.currentPeriodEnd}
+            isDarkMode={isDarkMode}
+          />
+        </Suspense>
+      )}
+
+      {/* ── 14. UPGRADE PRORATION STORY EXPLAINER MODAL (Lazy Loaded) ────────────────── */}
+      {showUpgradeStoryModal && (
+        <Suspense fallback={null}>
+          <UpgradeStoryModal
+            isOpen={showUpgradeStoryModal}
+            onClose={() => {
+              setShowUpgradeStoryModal(false);
+              setStoryTargetPlan(null);
+            }}
+            onProceedToCheckout={() => {
+              setShowUpgradeStoryModal(false);
+              if (storyTargetPlan) {
+                setSelectedCheckoutPlan(storyTargetPlan);
+              }
+              setShowCheckoutModal(true);
+            }}
+            targetPlan={storyTargetPlan || selectedCheckoutPlan || displayPlans.find((p) => p.tierLevel === 3) || displayPlans[2] || displayPlans[1]}
+            activePlan={activePlan}
+            plans={displayPlans}
+            user={user}
+            prorationQuote={prorationQuote}
+            billingCycle={billingCycle}
+            isDarkMode={isDarkMode}
+          />
+        </Suspense>
       )}
 
     </div>

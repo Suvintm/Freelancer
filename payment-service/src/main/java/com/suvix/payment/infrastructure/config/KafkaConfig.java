@@ -92,6 +92,7 @@ public class KafkaConfig {
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.ACKS_CONFIG, "all");
         config.put(ProducerConfig.RETRIES_CONFIG, 3);
+        config.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 3000); // Fail fast in 3s instead of hanging for 60s
         config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         addSaslConfig(config); // no-op for local profile
         return new DefaultKafkaProducerFactory<>(config);
@@ -154,6 +155,25 @@ public class KafkaConfig {
 
         factory.setCommonErrorHandler(errorHandler);
         return factory;
+    }
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getEffectiveBootstrapServers());
+        addSaslConfig(configs);
+        KafkaAdmin admin = new KafkaAdmin(configs);
+        admin.setFatalIfBrokerNotAvailable(false);
+        admin.setAutoCreate(false);
+        return admin;
+    }
+
+    @Bean
+    public org.apache.kafka.clients.admin.NewTopic subscriptionEventsTopic() {
+        return org.springframework.kafka.config.TopicBuilder.name("subscription.events")
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 }
 

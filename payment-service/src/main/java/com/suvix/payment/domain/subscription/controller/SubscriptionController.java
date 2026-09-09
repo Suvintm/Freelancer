@@ -209,9 +209,10 @@ public class SubscriptionController {
     @GetMapping("/quote-upgrade")
     public ResponseEntity<ProrationCalculationResult> quoteUpgrade(
             @RequestParam("targetPlanId") String targetPlanId,
+            @RequestParam(value = "billingCycle", required = false, defaultValue = "monthly") String billingCycle,
             @RequestHeader(value = "X-User-Id", required = false, defaultValue = "anonymous") String userId
     ) {
-        return ResponseEntity.ok(transitionService.quoteUpgrade(userId, targetPlanId));
+        return ResponseEntity.ok(transitionService.quoteUpgrade(userId, targetPlanId, billingCycle));
     }
 
     @PostMapping("/upgrade")
