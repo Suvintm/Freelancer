@@ -1676,7 +1676,9 @@ export default function Subscription() {
                         if (Array.isArray(parsedItems)) {
                           upgradeMeta = parsedItems.find((it: any) => it.type === 'UPGRADE_METADATA');
                         }
-                      } catch {}
+                      } catch {
+                        // ignore malformed line items
+                      }
                     }
 
                     const isUpgrade = inv.isProrated || prorationCreditVal > 0 || (inv.lineItems && inv.lineItems.includes('PRORATION')) || upgradeMeta !== null;
@@ -1703,7 +1705,9 @@ export default function Subscription() {
                           hour: '2-digit',
                           minute: '2-digit',
                         });
-                      } catch {}
+                      } catch {
+                        // ignore invalid date string
+                      }
                     } else if (inv.currentPeriodEnd) {
                       try {
                         const vDate = new Date(inv.currentPeriodEnd);
@@ -1712,7 +1716,9 @@ export default function Subscription() {
                           month: 'short',
                           year: 'numeric',
                         });
-                      } catch {}
+                      } catch {
+                        // ignore invalid date string
+                      }
                     }
                     
                     return (

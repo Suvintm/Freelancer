@@ -58,6 +58,11 @@ interface CheckoutModalProps {
   onSuccess: (result: any) => void;
   isDarkMode?: boolean;
 }
+function generateCheckoutIdempotencyKey(userId?: string, planId?: string, cycle?: string): string {
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 7);
+  return `idemp_sub_${userId || 'guest'}_${planId || 'plan'}_${cycle || 'cycle'}_${timestamp}_${randomSuffix}`;
+}
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
@@ -237,7 +242,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const currentUserId = user?.id || user?._id;
     const currentUserName = user?.name || user?.fullName || user?.username || 'SuviX Creator';
     const currentUserEmail = user?.email || '';
-    const idempotencyKey = `idemp_sub_${currentUserId || 'guest'}_${plan.id}_${selectedCycle}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const idempotencyKey = generateCheckoutIdempotencyKey(currentUserId, plan.id, selectedCycle);
 
     try {
       if (selectedGateway === 'razorpay') {

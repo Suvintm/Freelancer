@@ -38,6 +38,10 @@ interface SubscriptionSuccessModalProps {
   isDarkMode?: boolean;
 }
 
+function generateFallbackPaymentId(): string {
+  return `pay_${Math.random().toString(36).substring(2, 9).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+}
+
 export const SubscriptionSuccessModal: React.FC<SubscriptionSuccessModalProps> = ({
   isOpen,
   onClose,
@@ -53,6 +57,7 @@ export const SubscriptionSuccessModal: React.FC<SubscriptionSuccessModalProps> =
 }) => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [fallbackPaymentRef] = useState(generateFallbackPaymentId);
 
   const isUsd = (currency || plan?.currency || '').toUpperCase() === 'USD';
   const sym = currencySymbol || (isUsd ? '$' : '₹');
@@ -105,8 +110,7 @@ export const SubscriptionSuccessModal: React.FC<SubscriptionSuccessModalProps> =
   })();
 
   // Payment reference ID formatter
-  const rawPaymentRef =
-    paymentId || `pay_${Math.random().toString(36).substring(2, 9).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+  const rawPaymentRef = paymentId || fallbackPaymentRef;
   
   const displayPaymentId =
     rawPaymentRef.length > 16

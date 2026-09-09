@@ -22,6 +22,12 @@ interface TimeRemaining {
   formattedDate: string;
 }
 
+function parseDateProp(val?: string | Date): Date | null {
+  if (!val) return null;
+  const parsed = typeof val === 'string' ? new Date(val) : val;
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 const PlanExpirationCountdownComponent: React.FC<PlanExpirationCountdownProps> = ({
   currentPeriodEnd,
   currentPeriodStart,
@@ -31,32 +37,19 @@ const PlanExpirationCountdownComponent: React.FC<PlanExpirationCountdownProps> =
   compact: _compact = false,
   className = '',
 }) => {
-  // Parse target date safely with fallback
-  const targetDate = useMemo(() => {
-    if (!currentPeriodEnd) {
-      const d = new Date();
-      d.setDate(d.getDate() + 28);
-      d.setHours(d.getHours() + 14);
-      return d;
-    }
-    const parsed = new Date(currentPeriodEnd);
-    return isNaN(parsed.getTime()) ? new Date(Date.now() + 28 * 86400000) : parsed;
-  }, [currentPeriodEnd]);
+  // Parse target date safely with pure prop parser
+  const targetDate = useMemo(() => parseDateProp(currentPeriodEnd), [currentPeriodEnd]);
 
-  // Parse start date safely with fallback
-  const startDate = useMemo(() => {
-    if (!currentPeriodStart) {
-      return new Date(targetDate.getTime() - 30 * 86400000);
-    }
-    const parsed = new Date(currentPeriodStart);
-    return isNaN(parsed.getTime()) ? new Date(targetDate.getTime() - 30 * 86400000) : parsed;
-  }, [currentPeriodStart, targetDate]);
+  // Parse start date safely with pure prop parser
+  const startDate = useMemo(() => parseDateProp(currentPeriodStart), [currentPeriodStart]);
 
   // Calculate remaining time with 100% precision
   const calculateTimeRemaining = useCallback((): TimeRemaining => {
     const now = Date.now();
-    const targetEpoch = targetDate.getTime();
-    const startEpoch = startDate.getTime();
+    const effectiveTarget = targetDate || new Date(now + 28 * 86400000);
+    const effectiveStart = startDate || new Date(effectiveTarget.getTime() - 30 * 86400000);
+    const targetEpoch = effectiveTarget.getTime();
+    const startEpoch = effectiveStart.getTime();
 
     const totalMs = targetEpoch - now;
     const isExpired = totalMs <= 0;
@@ -71,7 +64,7 @@ const PlanExpirationCountdownComponent: React.FC<PlanExpirationCountdownProps> =
     const elapsedMs = Math.min(totalCycleMs, Math.max(0, now - startEpoch));
     const progressPercent = Math.min(100, Math.max(0, Math.round((elapsedMs / totalCycleMs) * 100)));
 
-    const formattedDate = targetDate.toLocaleDateString('en-US', {
+    const formattedDate = effectiveTarget.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
