@@ -21,24 +21,41 @@ test.describe('Welcome Page E2E', () => {
     });
   });
 
-  test('should load the welcome page and display the logo', async ({ page }) => {
+  test('should load the welcome page and display the logo and hero headline', async ({ page }) => {
     await page.goto('/');
     
-    // Check for logo
+    // Check for logo in header
     const logo = page.locator('header img');
     await expect(logo).toBeVisible();
     
-    // Check for main title (handle newline with regex)
-    await expect(page.getByRole('heading', { name: /Scale Your/i })).toBeVisible();
+    // Check for main hero title
+    await expect(page.getByRole('heading', { name: /Turn Your/i }).first()).toBeVisible();
   });
 
-  test('should navigate to the next slide when clicking Next', async ({ page }) => {
+  test('should display call-to-action buttons and initial slide', async ({ page }) => {
     await page.goto('/');
     
-    // Click Continue button (target the first visible one)
-    await page.getByRole('button', { name: /continue/i }).first().click();
+    // Check for "Get started for free" button
+    const getStarted = page.getByRole('link', { name: /Get started for free/i }).first();
+    await expect(getStarted).toBeVisible();
+    await expect(getStarted).toHaveAttribute('href', '/signup');
+
+    // Check for "Create your account" button in presentation card
+    const createAccount = page.getByRole('link', { name: /Create your account/i }).first();
+    await expect(createAccount).toBeVisible();
+    await expect(createAccount).toHaveAttribute('href', '/signup');
+
+    // Check for initial presentation slide title
+    await expect(page.getByRole('heading', { name: /Scale Your/i }).first()).toBeVisible();
+  });
+
+  test('should auto-advance presentation slides', async ({ page }) => {
+    await page.goto('/');
     
-    // Verify next slide title is visible
-    await expect(page.getByRole('heading', { name: /Promote with/i })).toBeVisible();
+    // Initial slide
+    await expect(page.getByRole('heading', { name: /Scale Your/i }).first()).toBeVisible();
+    
+    // Auto-advances to next slide
+    await expect(page.getByRole('heading', { name: /Promote with/i }).first()).toBeVisible({ timeout: 10000 });
   });
 });
