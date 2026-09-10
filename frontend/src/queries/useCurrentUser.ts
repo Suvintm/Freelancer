@@ -43,7 +43,7 @@ export const useAuthInit = () => {
       err.message?.includes('Network Error') ||
       err.message?.includes('Failed to fetch') ||
       !err.response;
-    const isServerError = err.response?.status >= 500;
+    const isServerError = err.response?.status >= 502 && err.response?.status <= 504;
     return isNetworkErr || isServerError;
   };
 
