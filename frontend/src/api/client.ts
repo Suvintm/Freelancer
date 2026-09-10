@@ -76,16 +76,32 @@ api.interceptors.response.use(
   },
   async (error: AxiosError) => {
     // 🛰️ Detect API Gateway Offline / Network Error / Bad Gateway
-    // Exclude domain microservice routes (subscriptions, invoices, payments) from taking down the whole app
+    // Exclude domain microservice routes (subscriptions, invoices, payments, analytics) from taking down the whole app
     const reqUrl = (error.config?.url || '').toLowerCase();
     const isIsolatedMicroservice =
       reqUrl.includes('/subscriptions') ||
       reqUrl.includes('/invoices') ||
       reqUrl.includes('/payments') ||
+      reqUrl.includes('/analytics') ||
+      reqUrl.includes('/notifications') ||
       Boolean((error.config as unknown as { skipGatewayOfflineCheck?: boolean })?.skipGatewayOfflineCheck);
 
+    // Also, if the user is on a public route or viewing subscription, never fire global gateway-down
+    const isPublicPath =
+      typeof window !== 'undefined' && (
+        window.location.pathname === '/' ||
+        window.location.pathname === '/login' ||
+        window.location.pathname === '/signup' ||
+        window.location.pathname === '/verify-email' ||
+        window.location.pathname === '/about' ||
+        window.location.pathname === '/privacy' ||
+        window.location.pathname === '/terms' ||
+        window.location.pathname === '/subscription'
+      );
+
     const isGatewayError =
-      !isIsolatedMicroservice && (
+      !isIsolatedMicroservice &&
+      !isPublicPath && (
         error.code === 'ERR_NETWORK' ||
         error.code === 'ECONNREFUSED' ||
         error.code === 'ETIMEDOUT' ||
@@ -176,10 +192,22 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         isRefreshing = false;
         refreshSubscribers = [];
         
+        // 🛡️ CRITICAL: Only clear session if server explicitly tells us the refresh token is revoked/invalid (401/403/400).
+        // If the server is offline or experiencing temporary network errors, do NOT log the user out!
+        const isExplicitAuthFailure = 
+          refreshError?.response?.status === 401 ||
+          refreshError?.response?.status === 403 ||
+          refreshError?.response?.status === 400;
+
+        if (!isExplicitAuthFailure) {
+          console.warn('⚠️ [Auth] Background token refresh skipped due to temporary network/server error. Session preserved.');
+          return Promise.reject(refreshError);
+        }
+
         const { store } = await import('../store');
         const { clearAuth, selectAllSessions } = await import('../store/slices/authSlice');
         

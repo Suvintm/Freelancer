@@ -4,7 +4,7 @@ import { TrendingUp, Users, Eye, Flame } from 'lucide-react';
 
 interface WidgetProps {
   className?: string;
-  variant?: 'desktop' | 'mobile-flank';
+  variant?: 'desktop' | 'mobile-flank' | 'column2';
 }
 
 // ── INTERNAL HOOK FOR SYNCHRONIZED METRICS ANIMATION ────────────────────────
@@ -64,22 +64,22 @@ export const ViewsGrowthWidget = React.memo(function ViewsGrowthWidget({
       className={`relative select-none ${
         isFlank
           ? 'rounded-xl xs:rounded-2xl bg-white/[0.04] backdrop-blur-none p-2 xs:p-2.5 border border-white/20 shadow-sm flex flex-col items-start text-left'
-          : 'overflow-hidden rounded-2xl bg-white/[0.06] backdrop-blur-md p-3 sm:p-3.5 border border-white/20'
+          : 'overflow-hidden rounded-2xl bg-black/85 backdrop-blur-md p-2.5 sm:p-3 border border-white/20 shadow-xl text-white'
       } ${className}`}
     >
       {/* Header Row */}
-      <div className={`flex items-center justify-between w-full ${isFlank ? 'mb-0.5 gap-1' : 'mb-1.5'}`}>
-        <div className="flex items-center gap-1">
+      <div className={`flex items-center justify-between w-full ${isFlank ? 'mb-0.5 gap-1' : 'mb-1'}`}>
+        <div className="flex items-center gap-1.5">
           <div
             className={`rounded flex items-center justify-center text-white ${
-              isFlank ? 'w-3.5 h-3.5 bg-white/20' : 'w-6 h-6 bg-white/15 border border-white/25 shadow-xs'
+              isFlank ? 'w-3.5 h-3.5 bg-white/20' : 'w-5 h-5 sm:w-5.5 sm:h-5.5 bg-white/15 border border-white/25 shadow-xs'
             }`}
           >
-            <Eye size={isFlank ? 9 : 13} className="stroke-[2.5] text-white" />
+            <Eye size={isFlank ? 9 : 12} className="stroke-[2.5] text-white" />
           </div>
           <span
             className={`font-bold text-white uppercase tracking-wider ${
-              isFlank ? 'text-[7.5px] xs:text-[8px]' : 'text-[10px] sm:text-[11px]'
+              isFlank ? 'text-[7.5px] xs:text-[8px]' : 'text-[9.5px] sm:text-[10.5px]'
             }`}
           >
             Views
@@ -90,7 +90,7 @@ export const ViewsGrowthWidget = React.memo(function ViewsGrowthWidget({
           className={`flex items-center gap-1 rounded-full ${
             isFlank
               ? 'px-1 py-0.2 bg-white/20 text-[6.5px] xs:text-[7px]'
-              : 'px-2 py-0.5 bg-white/15 border border-white/30 text-[8.5px]'
+              : 'px-1.5 py-0.5 bg-white/15 border border-white/25 text-[7.5px] sm:text-[8px]'
           }`}
         >
           <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
@@ -102,31 +102,31 @@ export const ViewsGrowthWidget = React.memo(function ViewsGrowthWidget({
       <div className={`flex items-baseline gap-0.5 ${isFlank ? 'my-0' : 'my-0.5'}`}>
         <span
           className={`font-black text-white tracking-tight font-mono ${
-            isFlank ? 'text-xs xs:text-sm sm:text-base' : 'text-xl sm:text-2xl'
+            isFlank ? 'text-xs xs:text-sm sm:text-base' : 'text-base sm:text-lg'
           }`}
         >
           {viewsCount.toFixed(1)}M
         </span>
-        <span className={`font-bold text-white/80 ${isFlank ? 'text-[8px]' : 'text-[11px]'}`}>+</span>
+        <span className={`font-bold text-white/80 ${isFlank ? 'text-[8px]' : 'text-[10px]'}`}>+</span>
       </div>
 
       {/* Animated SVG Sparkline Wave */}
-      <div className={`relative w-full overflow-hidden ${isFlank ? 'h-3 xs:h-3.5 my-0.5' : 'h-6 my-1'}`}>
+      <div className={`relative w-full overflow-hidden ${isFlank ? 'h-3 xs:h-3.5 my-0.5' : 'h-4 sm:h-5 my-0.5'}`}>
         <svg viewBox="0 0 100 24" className="w-full h-full preserve-3d" fill="none">
           <defs>
-            <linearGradient id="viewsGradFlank" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.30" />
+            <linearGradient id="viewsGradWidget" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.35" />
               <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
             </linearGradient>
           </defs>
           <path
             d="M0,20 Q15,18 30,12 T60,8 T85,4 T100,2 L100,24 L0,24 Z"
-            fill="url(#viewsGradFlank)"
+            fill="url(#viewsGradWidget)"
           />
           <path
             d="M0,20 Q15,18 30,12 T60,8 T85,4 T100,2"
             stroke="#ffffff"
-            strokeWidth={isFlank ? "1.8" : "2.2"}
+            strokeWidth={isFlank ? '1.8' : '2'}
             strokeLinecap="round"
           />
           <circle cx="98" cy="3" r="1.8" fill="#ffffff" />
@@ -138,10 +138,10 @@ export const ViewsGrowthWidget = React.memo(function ViewsGrowthWidget({
         className={`flex items-center gap-1 font-bold text-white rounded-md w-fit ${
           isFlank
             ? 'text-[7px] xs:text-[7.5px] bg-white/20 px-1 py-0.2'
-            : 'text-[9.5px] sm:text-[10px] bg-white/15 border border-white/25 px-2 py-0.5'
+            : 'text-[8.5px] sm:text-[9px] bg-white/15 border border-white/25 px-1.5 py-0.5'
         }`}
       >
-        <TrendingUp size={isFlank ? 8 : 11} className="stroke-[2.5] text-white" />
+        <TrendingUp size={isFlank ? 8 : 10} className="stroke-[2.5] text-white" />
         <span>+340%</span>
       </div>
     </motion.div>
@@ -162,22 +162,22 @@ export const AudienceReachWidget = React.memo(function AudienceReachWidget({
       className={`relative select-none ${
         isFlank
           ? 'rounded-xl xs:rounded-2xl bg-white/[0.04] backdrop-blur-none p-2 xs:p-2.5 border border-white/20 shadow-sm flex flex-col items-end text-right'
-          : 'overflow-hidden rounded-2xl bg-white/[0.06] backdrop-blur-md p-3 sm:p-3.5 border border-white/20'
+          : 'overflow-hidden rounded-2xl bg-black/85 backdrop-blur-md p-2.5 sm:p-3 border border-white/20 shadow-xl text-white'
       } ${className}`}
     >
       {/* Header Row */}
-      <div className={`flex items-center justify-between w-full ${isFlank ? 'mb-0.5 gap-1 flex-row-reverse' : 'mb-1.5'}`}>
-        <div className="flex items-center gap-1">
+      <div className={`flex items-center justify-between w-full ${isFlank ? 'mb-0.5 gap-1 flex-row-reverse' : 'mb-1'}`}>
+        <div className="flex items-center gap-1.5">
           <div
             className={`rounded flex items-center justify-center text-white ${
-              isFlank ? 'w-3.5 h-3.5 bg-white/20' : 'w-6 h-6 bg-white/15 border border-white/25 shadow-xs'
+              isFlank ? 'w-3.5 h-3.5 bg-white/20' : 'w-5 h-5 sm:w-5.5 sm:h-5.5 bg-white/15 border border-white/25 shadow-xs'
             }`}
           >
-            <Users size={isFlank ? 9 : 13} className="stroke-[2.5] text-white" />
+            <Users size={isFlank ? 9 : 12} className="stroke-[2.5] text-white" />
           </div>
           <span
             className={`font-bold text-white uppercase tracking-wider ${
-              isFlank ? 'text-[7.5px] xs:text-[8px]' : 'text-[10px] sm:text-[11px]'
+              isFlank ? 'text-[7.5px] xs:text-[8px]' : 'text-[9.5px] sm:text-[10.5px]'
             }`}
           >
             Reach
@@ -188,10 +188,10 @@ export const AudienceReachWidget = React.memo(function AudienceReachWidget({
           className={`flex items-center gap-1 rounded-full ${
             isFlank
               ? 'px-1 py-0.2 bg-white/20 text-[6.5px] xs:text-[7px]'
-              : 'px-2 py-0.5 bg-white/15 border border-white/30 text-[8.5px]'
+              : 'px-1.5 py-0.5 bg-white/15 border border-white/25 text-[7.5px] sm:text-[8px]'
           }`}
         >
-          <Flame size={isFlank ? 7 : 10} className="text-white fill-white" />
+          <Flame size={isFlank ? 7 : 9} className="text-white fill-white" />
           <span className="font-black text-white uppercase tracking-tight">Viral</span>
         </div>
       </div>
@@ -200,34 +200,28 @@ export const AudienceReachWidget = React.memo(function AudienceReachWidget({
       <div className={`flex items-baseline gap-0.5 ${isFlank ? 'my-0' : 'my-0.5'}`}>
         <span
           className={`font-black text-white tracking-tight font-mono ${
-            isFlank ? 'text-xs xs:text-sm sm:text-base' : 'text-xl sm:text-2xl'
+            isFlank ? 'text-xs xs:text-sm sm:text-base' : 'text-base sm:text-lg'
           }`}
         >
-          {audienceCount >= 1000 ? `${(audienceCount / 1000).toFixed(1)}M` : `${audienceCount}K`}
+          {audienceCount}K
         </span>
-        <span className={`font-bold text-white/80 ${isFlank ? 'text-[8px]' : 'text-[11px]'}`}>Reach</span>
+        <span className={`font-bold text-white/80 ${isFlank ? 'text-[8px]' : 'text-[10px]'}`}>+</span>
       </div>
 
-      {/* Animated Pure White Equalizer Bars */}
-      <div className={`flex items-end justify-between gap-0.5 w-full ${isFlank ? 'h-3 xs:h-3.5 my-0.5' : 'h-6 my-1'}`}>
-        {[40, 75, 55, 95, 65, 85, 45, 90, 70, 100, 60, 80].map((height, i) => (
+      {/* Animated Equalizer / Growth Bars */}
+      <div className={`flex items-end gap-1 w-full ${isFlank ? 'h-3 xs:h-3.5 my-0.5' : 'h-4 sm:h-5 my-0.5'}`}>
+        {[40, 65, 45, 85, 70, 95, 60, 100].map((h, i) => (
           <motion.div
             key={i}
-            className="flex-1 bg-white rounded-full opacity-90"
-            animate={{
-              height: [
-                `${height * 0.4}%`,
-                `${Math.min(height * 1.1, 100)}%`,
-                `${height * 0.5}%`,
-              ],
-            }}
+            initial={{ height: `${h * 0.5}%` }}
+            animate={{ height: [`${h * 0.4}%`, `${h}%`, `${h * 0.6}%`] }}
             transition={{
-              duration: 1.2 + (i % 4) * 0.3,
               repeat: Infinity,
-              repeatType: 'reverse',
+              duration: 1.8 + (i % 3) * 0.4,
               ease: 'easeInOut',
-              delay: i * 0.08,
+              delay: i * 0.1,
             }}
+            className="flex-1 bg-white rounded-full opacity-85"
           />
         ))}
       </div>
@@ -237,23 +231,24 @@ export const AudienceReachWidget = React.memo(function AudienceReachWidget({
         className={`flex items-center gap-1 font-bold text-white rounded-md w-fit ${
           isFlank
             ? 'text-[7px] xs:text-[7.5px] bg-white/20 px-1 py-0.2'
-            : 'text-[9.5px] sm:text-[10px] bg-white/15 border border-white/25 px-2 py-0.5'
+            : 'text-[8.5px] sm:text-[9px] bg-white/15 border border-white/25 px-1.5 py-0.5'
         }`}
       >
-        <span>+98% Ret.</span>
+        <TrendingUp size={isFlank ? 8 : 10} className="stroke-[2.5] text-white" />
+        <span>+180%</span>
       </div>
     </motion.div>
   );
 });
 
-// ── DESKTOP COMBINED TICKER ──────────────────────────────────────────────────
+// ── COMPONENT 3: COMBINED TICKER FOR COLUMN 2 ────────────────────────────────
 export const CreatorMetricsTicker = React.memo(function CreatorMetricsTicker({
   className = '',
 }: {
   className?: string;
 }) {
   return (
-    <div className={`w-full max-w-[28rem] xl:max-w-[31rem] mx-auto mt-3 grid grid-cols-2 gap-2.5 sm:gap-3.5 select-none ${className}`}>
+    <div className={`grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full select-none ${className}`}>
       <ViewsGrowthWidget variant="desktop" />
       <AudienceReachWidget variant="desktop" />
     </div>

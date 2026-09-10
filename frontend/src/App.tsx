@@ -69,7 +69,7 @@ function PageFallback() {
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isInitialized, isGatewayDown } = useAuthInit();
+  const { isInitialized } = useAuthInit();
   const [isGatewayOffline, setIsGatewayOffline] = useState(false);
   const [isCheckingServer, setIsCheckingServer] = useState(true);
   const token = useSelector(selectToken);
@@ -80,9 +80,31 @@ function App() {
     }
   }, [token]);
 
+  // Define routes that are always rendered client-side without being blocked by gateway outages
+  const isPublicRoute =
+    location.pathname === '/' ||
+    location.pathname === '/welcome' ||
+    location.pathname === '/login' ||
+    location.pathname === '/signup' ||
+    location.pathname === '/verify-email' ||
+    location.pathname === '/about' ||
+    location.pathname === '/privacy' ||
+    location.pathname === '/privacy-policy' ||
+    location.pathname === '/terms' ||
+    location.pathname === '/terms-and-conditions' ||
+    location.pathname === '/subscription' ||
+    location.pathname === '/creator-tools' ||
+    location.pathname.startsWith('/p/') ||
+    location.pathname.startsWith('/bio/');
+
   // Listen for global gateway health events
   useEffect(() => {
-    const handleGatewayDown = () => setIsGatewayOffline(true);
+    const handleGatewayDown = () => {
+      // Never hijack public routes with a full offline screen
+      if (!isPublicRoute) {
+        setIsGatewayOffline(true);
+      }
+    };
     const handleGatewayUp = () => setIsGatewayOffline(false);
 
     window.addEventListener('suvix:gateway-down', handleGatewayDown);
@@ -92,74 +114,93 @@ function App() {
       window.removeEventListener('suvix:gateway-down', handleGatewayDown);
       window.removeEventListener('suvix:gateway-up', handleGatewayUp);
     };
-  }, []);
+  }, [isPublicRoute]);
 
-  // 🛰️ FAST PARALLEL SERVER HEALTH CHECK
+  // 🛰️ SMART MULTI-STEP SERVER HEALTH CHECK (Cold-start resilient)
   useEffect(() => {
     let isMounted = true;
 
-    const checkServer = async () => {
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
-        let baseUrl = apiUrl;
-        if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
-          try {
-            baseUrl = new URL(apiUrl).origin;
-          } catch {
-            // fallback
-          }
-        } else {
-          if (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -7);
-          else if (baseUrl.endsWith('/api')) baseUrl = baseUrl.slice(0, -4);
+    const checkServerWithRetry = async () => {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api';
+      let baseUrl = apiUrl;
+      if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+        try {
+          baseUrl = new URL(apiUrl).origin;
+        } catch {
+          // fallback
         }
+      } else {
+        if (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -7);
+        else if (baseUrl.endsWith('/api')) baseUrl = baseUrl.slice(0, -4);
+      }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+      // Probing helper with timeout
+      const singleProbe = async (timeoutMs: number): Promise<boolean> => {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-        const response = await fetch(`${baseUrl}/api/health`, {
-          signal: controller.signal,
-          cache: 'no-cache',
-        }).catch(async () => {
-          return await fetch(`${baseUrl}/health`, {
+          const response = await fetch(`${baseUrl}/api/health`, {
             signal: controller.signal,
             cache: 'no-cache',
+          }).catch(async () => {
+            return await fetch(`${baseUrl}/health`, {
+              signal: controller.signal,
+              cache: 'no-cache',
+            });
           });
-        });
 
-        clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
+          return Boolean(response && response.ok);
+        } catch {
+          return false;
+        }
+      };
 
-        if (response && response.ok) {
-          if (isMounted) {
-            setIsGatewayOffline(false);
-            if (location.pathname === '/maintenance') {
-              navigate('/', { replace: true });
-            }
+      // Attempt 1: Fast probe (2500ms)
+      let isHealthy = await singleProbe(2500);
+
+      // Attempt 2: Cold-start buffer probe if attempt 1 failed (3500ms)
+      if (!isHealthy && isMounted) {
+        await new Promise((r) => setTimeout(r, 1200));
+        if (isMounted) {
+          isHealthy = await singleProbe(3500);
+        }
+      }
+
+      // Attempt 3: Final confirmation probe if still failing (4000ms)
+      if (!isHealthy && isMounted) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (isMounted) {
+          isHealthy = await singleProbe(4000);
+        }
+      }
+
+      if (isMounted) {
+        if (isHealthy) {
+          setIsGatewayOffline(false);
+          if (location.pathname === '/maintenance') {
+            navigate('/', { replace: true });
           }
         } else {
-          if (isMounted) {
+          // Only show full maintenance screen if NOT a public marketing/welcome page
+          if (!isPublicRoute) {
             setIsGatewayOffline(true);
           }
         }
-      } catch {
-        if (isMounted) {
-          setIsGatewayOffline(true);
-        }
-      } finally {
-        if (isMounted) {
-          setIsCheckingServer(false);
-        }
+        setIsCheckingServer(false);
       }
     };
 
-    checkServer();
+    checkServerWithRetry();
 
     return () => {
       isMounted = false;
     };
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, isPublicRoute]);
 
-  // 🚨 If API Gateway is down (Docker container stopped or network error), render Google/Meta-grade Offline Screen
-  if ((isGatewayOffline || isGatewayDown) && location.pathname !== '/maintenance') {
+  // 🚨 If API Gateway is down on protected routes, render Google/Meta-grade Offline Screen
+  if (isGatewayOffline && !isPublicRoute && location.pathname !== '/maintenance') {
     return (
       <GatewayOfflineScreen
         onRetrySuccess={() => {
@@ -170,8 +211,8 @@ function App() {
     );
   }
 
-  // 🔄 Initial authentication/server resolution loader (short-lived)
-  if ((!isInitialized || isCheckingServer) && location.pathname !== '/maintenance') {
+  // 🔄 Initial authentication/server resolution loader (short-lived, non-blocking for public routes)
+  if ((!isInitialized || isCheckingServer) && !isPublicRoute && location.pathname !== '/maintenance') {
     return (
       <div className="h-screen w-full bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-32 h-32">
