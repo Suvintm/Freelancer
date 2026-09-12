@@ -848,7 +848,8 @@ export function mapPlanIcon(plan: Plan | any, role: WorkspaceRole): any {
  */
 export function dynamicPlanToPresenter(
   backendPlan: Plan | any,
-  role: WorkspaceRole
+  role: WorkspaceRole,
+  currencyOverride?: string
 ): PlanCardPresenter {
   const tierLevel = Number(backendPlan.tierLevel || 1);
   const priceMonthly = Math.round(Number(backendPlan.priceMonthly ?? 0));
@@ -868,15 +869,22 @@ export function dynamicPlanToPresenter(
     priceAnnualTotal = priceAnnual * 12;
   }
 
-  const savingsPercent = calculateSavingsPercent(priceMonthly, priceAnnual);
+  const savingsPercent = typeof backendPlan.savingsPercent === 'number' && backendPlan.savingsPercent > 0
+    ? backendPlan.savingsPercent
+    : (backendPlan.pricing?.annual?.savingsPercent && Number(backendPlan.pricing.annual.savingsPercent) > 0)
+    ? Number(backendPlan.pricing.annual.savingsPercent)
+    : calculateSavingsPercent(priceMonthly, priceAnnual);
 
   const isPopular = Boolean(backendPlan.isPopular || backendPlan.is_popular || tierLevel === 2);
   const badge = backendPlan.badge || (isPopular ? 'MOST POPULAR' : tierLevel === 3 ? 'VIP' : undefined);
 
+  const effectiveCurrency = (currencyOverride || backendPlan.currency || 'INR').toUpperCase();
+  const contactSalesThreshold = effectiveCurrency === 'USD' ? 99 : 2500;
+
   let buttonText = 'Start Free Trial';
   if (tierLevel === 1) {
     buttonText = role === 'user' ? 'Join Free' : 'Get Started Free';
-  } else if (priceMonthly >= 2500) {
+  } else if (priceMonthly >= contactSalesThreshold) {
     buttonText = 'Contact Sales';
   }
 
@@ -894,7 +902,7 @@ export function dynamicPlanToPresenter(
     priceAnnual,
     priceAnnualTotal,
     savingsPercent,
-    currency: (backendPlan.currency || 'INR').toUpperCase(),
+    currency: effectiveCurrency,
     isPopular,
     badge,
     buttonText,
@@ -918,12 +926,15 @@ export function mergeBackendPlansWithPresenter(
   const config = ROLE_CONFIGS[role] || ROLE_CONFIGS.creator;
 
   if (!backendPlans || !Array.isArray(backendPlans) || backendPlans.length === 0) {
-    return config.fallbackPlans.map((fp) => ({
+    return config.fallbackPlans.map((fp, idx) => ({
       ...fp,
+      name: `Plan ${idx + 1}`,
+      subtitle: '--',
       currency: currency.toUpperCase(),
-      priceMonthly: fp.tierLevel === 1 ? 0 : null,
-      priceAnnual: fp.tierLevel === 1 ? 0 : null,
-      buttonText: fp.tierLevel === 1 ? fp.buttonText : 'Unavailable',
+      priceMonthly: null,
+      priceAnnual: null,
+      savingsPercent: 0,
+      buttonText: 'Get Started',
       isOfflineFallback: true,
     }));
   }
@@ -949,12 +960,15 @@ export function mergeBackendPlansWithPresenter(
   });
 
   if (matchingBackendPlans.length === 0) {
-    return config.fallbackPlans.map((fp) => ({
+    return config.fallbackPlans.map((fp, idx) => ({
       ...fp,
+      name: `Plan ${idx + 1}`,
+      subtitle: '--',
       currency: currency.toUpperCase(),
-      priceMonthly: fp.tierLevel === 1 ? 0 : null,
-      priceAnnual: fp.tierLevel === 1 ? 0 : null,
-      buttonText: fp.tierLevel === 1 ? fp.buttonText : 'Unavailable',
+      priceMonthly: null,
+      priceAnnual: null,
+      savingsPercent: 0,
+      buttonText: 'Get Started',
       isOfflineFallback: true,
     }));
   }
@@ -965,5 +979,5 @@ export function mergeBackendPlansWithPresenter(
   );
 
   // Convert EVERY matching database plan into a dynamic presenter card
-  return sortedPlans.map((bp) => dynamicPlanToPresenter(bp, role));
+  return sortedPlans.map((bp) => dynamicPlanToPresenter(bp, role, currency));
 }

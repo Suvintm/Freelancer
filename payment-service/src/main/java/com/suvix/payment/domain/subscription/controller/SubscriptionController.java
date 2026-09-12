@@ -61,6 +61,20 @@ public class SubscriptionController {
     }
 
     /**
+     * Ultra-Lightweight Public Pricing Summary (Zero DB hit on cached reads)
+     * For high-traffic landing / welcome page pricing table
+     */
+    @GetMapping("/public/pricing-summary")
+    public ResponseEntity<PublicPricingSummaryResponse> getPublicPricingSummary(
+            @RequestParam(value = "currency", required = false, defaultValue = "USD") String currency
+    ) {
+        PublicPricingSummaryResponse summary = subscriptionService.getPublicPricingSummary(currency);
+        return ResponseEntity.ok()
+                .header("Cache-Control", "public, max-age=300, s-maxage=600, stale-while-revalidate=86400")
+                .body(summary);
+    }
+
+    /**
      * Single-Roundtrip Consolidated Subscription Dashboard Bootstrap
      * Returns: Plan Catalog + Active Subscription + Usage Summary in 1 Request
      */

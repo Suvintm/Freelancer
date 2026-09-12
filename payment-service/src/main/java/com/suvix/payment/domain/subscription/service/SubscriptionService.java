@@ -6,6 +6,8 @@ import com.suvix.payment.domain.subscription.dto.request.CancelSubscriptionReque
 import com.suvix.payment.domain.subscription.dto.request.CreateSubscriptionRequest;
 import com.suvix.payment.domain.subscription.dto.response.PlanCatalogResponse;
 import com.suvix.payment.domain.subscription.dto.response.PlanPresenterDto;
+import com.suvix.payment.domain.subscription.dto.response.PublicPricingSummaryResponse;
+import com.suvix.payment.domain.subscription.dto.response.PublicPlanSummaryDto;
 import com.suvix.payment.domain.subscription.dto.response.SubscriptionDashboardResponse;
 import com.suvix.payment.domain.subscription.dto.response.SubscriptionResponse;
 import com.suvix.payment.domain.subscription.entity.Subscription;
@@ -266,6 +268,119 @@ public class SubscriptionService {
                 System.out.println("  💾 [Redis Cache SET] Cached catalog for 300s under key: " + cacheKey);
             } catch (Exception e) {
                 log.warn("Redis catalog cache write failed: {}", e.getMessage());
+            }
+        }
+
+        return response;
+    }
+
+    /**
+     * Ultra-Lightweight Public Pricing Summary (Zero DB hit on cached reads)
+     * Returns minimal fields: availableRoles + plans (id, name, slug, targetRole, tierLevel, priceMonthly, priceAnnual, savingsPercent, concise features)
+     */
+    public PublicPricingSummaryResponse getPublicPricingSummary(String currency) {
+        String targetCurrency = "INR".equalsIgnoreCase(currency) ? "INR" : "USD";
+        String cacheKey = "plans:public:v3:pricing-summary:" + targetCurrency;
+
+        if (redisTemplate != null) {
+            try {
+                String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+                if (cachedJson != null && !cachedJson.isBlank()) {
+                    return objectMapper.readValue(cachedJson, PublicPricingSummaryResponse.class);
+                }
+            } catch (Exception e) {
+                log.warn("Redis public pricing summary cache read failed: {}", e.getMessage());
+            }
+        }
+
+        List<SubscriptionPlan> activePlans = planRepository.findByIsActiveTrueOrderByTierLevelAsc();
+
+        List<String> availableRoles = activePlans.stream()
+                .map(SubscriptionPlan::getTargetRole)
+                .filter(r -> r != null && !r.isBlank() && !"all".equalsIgnoreCase(r))
+                .map(String::toLowerCase)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (!availableRoles.contains("creator")) availableRoles.add(0, "creator");
+        if (!availableRoles.contains("brand")) availableRoles.add("brand");
+        if (!availableRoles.contains("editor")) availableRoles.add("editor");
+        if (!availableRoles.contains("user")) availableRoles.add("user");
+
+        List<PublicPlanSummaryDto> planDtos = activePlans.stream().map(plan -> {
+            BigDecimal monthlyAmount = plan.getMonthlyPriceForCurrency(targetCurrency).setScale(0, RoundingMode.HALF_UP);
+            BigDecimal annualAmount = plan.getAnnualPriceForCurrency(targetCurrency).setScale(0, RoundingMode.HALF_UP);
+            if (annualAmount.compareTo(BigDecimal.ZERO) <= 0 && monthlyAmount.compareTo(BigDecimal.ZERO) > 0) {
+                annualAmount = monthlyAmount.multiply(BigDecimal.valueOf(0.8)).multiply(BigDecimal.valueOf(12)).setScale(0, RoundingMode.HALF_UP);
+            }
+            BigDecimal monthlyEquivalent = annualAmount.compareTo(BigDecimal.ZERO) > 0
+                    ? annualAmount.divide(BigDecimal.valueOf(12), 0, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
+            int savingsPercent = 0;
+            if (monthlyAmount.compareTo(BigDecimal.ZERO) > 0 && monthlyEquivalent.compareTo(BigDecimal.ZERO) > 0 && monthlyEquivalent.compareTo(monthlyAmount) < 0) {
+                BigDecimal diff = monthlyAmount.subtract(monthlyEquivalent);
+                savingsPercent = diff.multiply(BigDecimal.valueOf(100))
+                        .divide(monthlyAmount, 0, RoundingMode.HALF_UP)
+                        .intValue();
+            }
+
+            List<String> conciseFeatures = new ArrayList<>();
+            try {
+                if (plan.getFeatures() != null && !plan.getFeatures().isBlank()) {
+                    JsonNode rootFeatures = objectMapper.readTree(plan.getFeatures());
+                    if (rootFeatures.isObject() && rootFeatures.has("list") && rootFeatures.get("list").isArray()) {
+                        for (JsonNode item : rootFeatures.get("list")) {
+                            conciseFeatures.add(item.asText());
+                            if (conciseFeatures.size() >= 6) break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // ignore
+            }
+
+            String planSlug = plan.getId() != null ? plan.getId() : plan.getName().toLowerCase().replace(" ", "-");
+            int dynamicSavings = savingsPercent > 0 ? savingsPercent : (plan.getTierLevel() > 1 && monthlyAmount.compareTo(BigDecimal.ZERO) > 0 ? 20 : 0);
+
+            PublicPlanSummaryDto dto = PublicPlanSummaryDto.builder()
+                    .id(plan.getId())
+                    .name(plan.getName())
+                    .slug(planSlug)
+                    .subtitle(plan.getDescription())
+                    .targetRole(plan.getTargetRole())
+                    .tierLevel(plan.getTierLevel())
+                    .priceMonthly(monthlyAmount)
+                    .priceAnnual(monthlyEquivalent)
+                    .currency(targetCurrency)
+                    .isPopular(plan.isPopular())
+                    .badge(plan.getBadge())
+                    .icon(plan.getTierLevel() == 1 ? "Send" : (plan.getTierLevel() == 2 ? "Crown" : (plan.getTierLevel() == 3 ? "Users" : "Building2")))
+                    .buttonText(plan.isPopular() ? "Start Pro" : (plan.getTierLevel() >= 4 ? "Contact Sales" : (plan.getTierLevel() == 3 ? "Start Business" : "Get Started")))
+                    .savingsPercent(dynamicSavings)
+                    .features(conciseFeatures)
+                    .build();
+            return dto;
+        }).collect(Collectors.toList());
+
+        int maxSavings = planDtos.stream()
+                .mapToInt(PublicPlanSummaryDto::getSavingsPercent)
+                .max()
+                .orElse(0);
+
+        PublicPricingSummaryResponse response = PublicPricingSummaryResponse.builder()
+                .success(true)
+                .availableRoles(availableRoles)
+                .currency(targetCurrency)
+                .maxSavingsPercent(maxSavings)
+                .plans(planDtos)
+                .build();
+
+        if (redisTemplate != null) {
+            try {
+                redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(response), Duration.ofSeconds(3600));
+            } catch (Exception e) {
+                log.warn("Redis public pricing summary cache write failed: {}", e.getMessage());
             }
         }
 

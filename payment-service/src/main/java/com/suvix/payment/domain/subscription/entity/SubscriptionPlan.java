@@ -120,16 +120,36 @@ public class SubscriptionPlan {
 
     public BigDecimal getMonthlyPriceForCurrency(String currency) {
         if (currency != null && "USD".equalsIgnoreCase(currency)) {
-            return priceMonthlyUsd != null ? priceMonthlyUsd : BigDecimal.ZERO;
+            if (priceMonthlyUsd != null && priceMonthlyUsd.compareTo(BigDecimal.ZERO) > 0) {
+                return priceMonthlyUsd;
+            }
+            if (tierLevel == 1) return BigDecimal.ZERO;
+            if (tierLevel == 2) return BigDecimal.valueOf(12);
+            if (tierLevel == 3) return BigDecimal.valueOf(29);
+            if (tierLevel >= 4) return BigDecimal.valueOf(99);
+            return BigDecimal.ZERO;
         }
         return priceMonthly != null ? priceMonthly : BigDecimal.ZERO;
     }
 
     public BigDecimal getAnnualPriceForCurrency(String currency) {
         if (currency != null && "USD".equalsIgnoreCase(currency)) {
-            return priceAnnualUsd != null ? priceAnnualUsd : BigDecimal.ZERO;
+            if (priceAnnualUsd != null && priceAnnualUsd.compareTo(BigDecimal.ZERO) > 0) {
+                return priceAnnualUsd;
+            }
+            BigDecimal monthly = getMonthlyPriceForCurrency("USD");
+            if (monthly.compareTo(BigDecimal.ZERO) > 0) {
+                return monthly.multiply(BigDecimal.valueOf(0.8)).multiply(BigDecimal.valueOf(12)).setScale(0, java.math.RoundingMode.HALF_UP);
+            }
+            return BigDecimal.ZERO;
         }
-        return priceAnnual != null ? priceAnnual : BigDecimal.ZERO;
+        if (priceAnnual != null && priceAnnual.compareTo(BigDecimal.ZERO) > 0) {
+            return priceAnnual;
+        }
+        if (priceMonthly != null && priceMonthly.compareTo(BigDecimal.ZERO) > 0) {
+            return priceMonthly.multiply(BigDecimal.valueOf(0.8)).multiply(BigDecimal.valueOf(12)).setScale(0, java.math.RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO;
     }
 
     public enum BillingInterval {

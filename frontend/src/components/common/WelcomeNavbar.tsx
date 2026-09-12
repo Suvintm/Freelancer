@@ -322,13 +322,13 @@ export const WelcomeNavbar: React.FC = () => {
             </Link>
 
             {/* Direct: Pricing */}
-            <Link
-              to="/subscription"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-bold text-zinc-900 hover:text-black hover:bg-zinc-50 tracking-tight transition-colors"
+            <a
+              href="#pricing"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-bold text-zinc-900 hover:text-black hover:bg-zinc-50 tracking-tight transition-colors cursor-pointer"
             >
               <CreditCard className="w-4 h-4 text-zinc-700" />
               <span>Pricing</span>
-            </Link>
+            </a>
 
             {/* Resources Dropdown */}
             <div
@@ -513,14 +513,14 @@ export const WelcomeNavbar: React.FC = () => {
                 <Building2 className="w-4 h-4 text-zinc-700" />
                 <span>For Business</span>
               </Link>
-              <Link
-                to="/subscription"
+              <a
+                href="#pricing"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100 cursor-pointer"
               >
                 <CreditCard className="w-4 h-4 text-zinc-700" />
                 <span>Pricing Plans</span>
-              </Link>
+              </a>
               <Link
                 to="/community"
                 onClick={() => setIsMobileMenuOpen(false)}

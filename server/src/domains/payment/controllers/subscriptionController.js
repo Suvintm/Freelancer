@@ -17,6 +17,10 @@ export const getPlans = asyncHandler(async (req, res) => {
   return proxyToPaymentService(req, res, 'get', '/subscriptions/plans');
 });
 
+export const getPublicPricingSummary = asyncHandler(async (req, res) => {
+  return proxyToPaymentService(req, res, 'get', '/subscriptions/public/pricing-summary');
+});
+
 export const getSubscriptionDashboard = asyncHandler(async (req, res) => {
   const userId = req.user?._id || req.user?.id || req.query.userId;
   if (userId) req.query.userId = userId;
