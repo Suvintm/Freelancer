@@ -458,8 +458,8 @@ export default function Subscription() {
     const samplePlan = displayPlans.find((p) => p.tierLevel === 2) || displayPlans[1] || displayPlans[0];
     const testAmount =
       billingCycle === 'annual'
-        ? (samplePlan.priceAnnualTotal || (samplePlan.priceAnnual ? samplePlan.priceAnnual * 12 : 4788))
-        : (samplePlan.priceMonthly || 499);
+        ? (samplePlan.priceAnnualTotal || (samplePlan.priceAnnual ? samplePlan.priceAnnual * 12 : (samplePlan.priceMonthly ? samplePlan.priceMonthly * 12 : 0)))
+        : (samplePlan.priceMonthly || 0);
 
     setSuccessData({
       plan: samplePlan,
@@ -858,7 +858,14 @@ export default function Subscription() {
             ))}
           </section>
         ) : (
-          <section className={`grid grid-cols-1 md:grid-cols-2 ${displayPlans.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 sm:gap-5 items-stretch`}>
+          <section className={`grid grid-cols-1 md:grid-cols-2 ${
+            displayPlans.length === 1 ? 'lg:grid-cols-1 max-w-md mx-auto' :
+            displayPlans.length === 2 ? 'lg:grid-cols-2 max-w-3xl mx-auto' :
+            displayPlans.length === 4 ? 'lg:grid-cols-4' :
+            displayPlans.length === 5 ? 'lg:grid-cols-3 xl:grid-cols-5' :
+            displayPlans.length >= 6 ? 'lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6' :
+            'lg:grid-cols-3'
+          } gap-4 sm:gap-5 items-stretch`}>
             {displayPlans.map((displayPlan, planIndex) => {
               const isOffline = Boolean(displayPlan.isOfflineFallback || plans.length === 0 || (displayPlan.tierLevel > 1 && displayPlan.priceMonthly === null));
               const price = isOffline ? null : (billingCycle === 'annual' ? displayPlan.priceAnnual : displayPlan.priceMonthly);
@@ -899,8 +906,7 @@ export default function Subscription() {
 
               // Card Specific Icon Selector
               const CardIcon = displayPlan.tierLevel === 1 ? Send : displayPlan.tierLevel === 2 ? Rocket : Crown;
-              const isPopular = !isOffline && (displayPlan.isPopular || displayPlan.tierLevel === 2);
-              const tierBadgeText = isOffline ? '--' : (displayPlan.tierLevel === 1 ? 'For Beginners' : displayPlan.tierLevel === 2 ? 'Most Popular' : 'For Agencies');
+              const isPopular = !isOffline && (displayPlan.isPopular || Boolean(displayPlan.badge));
 
               // Strikethrough comparison calculation: on annual view, show monthly price as crossed-out anchor
               const originalMonthlyPrice = (!isOffline && billingCycle === 'annual' && displayPlan.priceMonthly && displayPlan.priceAnnual && displayPlan.priceMonthly > displayPlan.priceAnnual)
@@ -954,14 +960,14 @@ export default function Subscription() {
                     </div>
                   )}
 
-                  {/* Top Popular Badge (only shown when not current plan to prevent overlap) */}
-                  {isPopular && !isCurrentPlan && (
+                  {/* Top Popular / Dynamic Badge (only shown when not current plan to prevent overlap) */}
+                  {(isPopular || displayPlan.badge) && !isCurrentPlan && (
                     <div className="absolute -top-2.5 right-6 z-20">
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 ${
                         isDarkMode ? 'bg-white text-black' : 'bg-black text-white'
                       }`}>
                         <Star className="w-3 h-3 fill-current" />
-                        <span>Most Popular</span>
+                        <span>{displayPlan.badge || 'Most Popular'}</span>
                       </span>
                     </div>
                   )}
@@ -995,7 +1001,7 @@ export default function Subscription() {
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
                           isDarkMode ? 'bg-white/5 border-white/10 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
                         }`}>
-                          {tierBadgeText}
+                          {displayPlan.badge || (displayPlan.tierLevel === 1 ? 'For Starters' : displayPlan.tierLevel === 2 ? 'Pro Tier' : 'Advanced')}
                         </span>
                       )}
                     </div>
@@ -1023,7 +1029,7 @@ export default function Subscription() {
                           </p>
                           <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">
                             {!isUsd
-                              ? `All taxes included (18% GST: ₹${(price ? Math.round((price - price / 1.18) * 100) / 100 : 0).toFixed(2)} included)`
+                              ? 'All taxes & GST included in price'
                               : '0% tax for overseas creators (Export of Services)'}
                           </p>
                         </div>
@@ -1683,15 +1689,16 @@ export default function Subscription() {
 
                     const isUpgrade = inv.isProrated || prorationCreditVal > 0 || (inv.lineItems && inv.lineItems.includes('PRORATION')) || upgradeMeta !== null;
                     const isDowngrade = inv.lineItems && inv.lineItems.includes('DOWNGRADE');
-                    const taxableVal = isUsd ? totalVal : (inv.subtotal ? Number(inv.subtotal) : Math.round((totalVal / 1.18) * 100) / 100);
+                    const invTaxRate = inv.taxRate ? Number(inv.taxRate) : 18;
+                    const taxableVal = isUsd ? totalVal : (inv.subtotal ? Number(inv.subtotal) : Math.round((totalVal / (1 + invTaxRate / 100)) * 100) / 100);
                     const gstVal = isUsd ? 0 : (inv.taxAmount ? Number(inv.taxAmount) : Math.round((totalVal - taxableVal) * 100) / 100);
 
                     // Upgrade pathway names and dates
-                    const fromPlanName = upgradeMeta?.fromPlanName || 'Creator Pro';
-                    const toPlanName = upgradeMeta?.toPlanName || 'Creator Elite';
-                    const fromPlanPrice = upgradeMeta?.fromPlanPrice ? Number(upgradeMeta.fromPlanPrice) : 499;
-                    const toPlanPrice = upgradeMeta?.toPlanPrice ? Number(upgradeMeta.toPlanPrice) : 1499;
-                    const remainingDaysCount = upgradeMeta?.remainingDays || 29;
+                    const fromPlanName = upgradeMeta?.fromPlanName || activePlan?.planName || 'Previous Plan';
+                    const toPlanName = upgradeMeta?.toPlanName || inv.planName || activePlan?.planName || 'Upgraded Plan';
+                    const fromPlanPrice = upgradeMeta?.fromPlanPrice ? Number(upgradeMeta.fromPlanPrice) : 0;
+                    const toPlanPrice = upgradeMeta?.toPlanPrice ? Number(upgradeMeta.toPlanPrice) : totalVal;
+                    const remainingDaysCount = upgradeMeta?.remainingDays || 0;
                     const proratedTargetCharge = upgradeMeta?.proratedTargetCharge ? Number(upgradeMeta.proratedTargetCharge) : round2(totalVal + prorationCreditVal);
 
                     let formattedValidUntil = 'End of current billing cycle';

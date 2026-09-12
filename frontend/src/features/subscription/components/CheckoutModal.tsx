@@ -194,9 +194,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     ? (couponDiscountAmount > 0 ? round2(Math.max(0, prorationQuote.totalAmount - couponDiscountAmount)) : round2(prorationQuote.totalAmount))
     : round2(Math.max(0, discountedSubtotal - prorationCredit));
 
-  // GST 18% (SAC 998439) is included within the total price and back-calculated for compliance
-  const taxableBase = isUsd ? totalPayable : round2(totalPayable / 1.18);
-  const gstAmount = isUsd ? 0 : round2(totalPayable - taxableBase);
+  // Dynamic Tax calculation: Server quote is single source of truth when present
+  const effectiveTaxRate = prorationQuote?.taxRate !== undefined && prorationQuote?.taxRate !== null
+    ? Number(prorationQuote.taxRate)
+    : (isUsd ? 0 : 18);
+
+  const taxableBase = (prorationQuote?.netSubtotal !== undefined && prorationQuote?.netSubtotal !== null)
+    ? round2(prorationQuote.netSubtotal)
+    : (isUsd || effectiveTaxRate === 0
+        ? totalPayable
+        : round2(totalPayable / (1 + effectiveTaxRate / 100)));
+
+  const gstAmount = (prorationQuote?.taxAmount !== undefined && prorationQuote?.taxAmount !== null)
+    ? round2(prorationQuote.taxAmount)
+    : (isUsd ? 0 : round2(totalPayable - taxableBase));
 
   // Smart Coupon Application
   const handleApplyCoupon = async (codeToApply?: string) => {
