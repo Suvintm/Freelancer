@@ -29,7 +29,7 @@ export const SmartCouponInput: React.FC<SmartCouponInputProps> = ({
   error,
   isDarkMode: _isDarkMode = false,
 }) => {
-  // Auto-apply from URL params
+  // Auto-apply from URL params on mount
   useEffect(() => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
@@ -39,9 +39,10 @@ export const SmartCouponInput: React.FC<SmartCouponInputProps> = ({
         setCouponCode(clean);
         onApply(clean);
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

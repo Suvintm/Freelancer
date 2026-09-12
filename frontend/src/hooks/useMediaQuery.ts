@@ -22,7 +22,6 @@ export function useMediaQuery(query: string): boolean {
       mediaQueryList.addListener(listener);
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMatches(mediaQueryList.matches);
 
     return () => {

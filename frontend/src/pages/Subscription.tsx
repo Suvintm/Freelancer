@@ -104,6 +104,7 @@ export default function Subscription() {
     }
   }, [user?.role, userRole]);
 
+  const [nowTimestamp] = useState(() => Date.now());
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [rolePlansCache, setRolePlansCache] = useState<Partial<Record<WorkspaceRole, Plan[]>>>({});
@@ -309,7 +310,7 @@ export default function Subscription() {
       const rolePlans = dashboard?.plans || (await subscriptionService.getPlans(role, userCurrency));
       setPlans(rolePlans);
       setRolePlansCache((prev) => ({ ...prev, [role]: rolePlans }));
-    } catch (_err: any) {
+    } catch {
       triggerToast('Failed to load ' + role + ' plans from backend', 'error');
     } finally {
       setActionLoading(null);
@@ -359,12 +360,12 @@ export default function Subscription() {
     const endStr = activePlan.currentPeriodEnd || activePlan.expiresAt || activePlan.validUntil;
     if (endStr) {
       const endTime = new Date(endStr).getTime();
-      if (!isNaN(endTime) && endTime < Date.now()) {
+      if (!isNaN(endTime) && endTime < nowTimestamp) {
         return true;
       }
     }
     return false;
-  }, [activePlan]);
+  }, [activePlan, nowTimestamp]);
 
   // Plan is genuinely active and within valid prepaid period
   const isPlanActive = useMemo(() => {
@@ -569,7 +570,7 @@ export default function Subscription() {
     try {
       await subscriptionService.downloadInvoicePdf(inv.id, inv.invoiceNumber);
       triggerToast('Downloaded ' + inv.invoiceNumber + '.pdf', 'success');
-    } catch (_err: any) {
+    } catch {
       triggerToast('Failed to download invoice PDF', 'error');
     } finally {
       setActionLoading(null);
