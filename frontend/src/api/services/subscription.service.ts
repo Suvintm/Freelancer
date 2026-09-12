@@ -111,6 +111,7 @@ export interface InvoiceItem {
   isProrated: boolean;
   prorationCredit: number;
   lineItems: string;
+  planName?: string;
   currentPeriodEnd?: string;
 }
 

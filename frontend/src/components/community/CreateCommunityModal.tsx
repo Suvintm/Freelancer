@@ -37,7 +37,6 @@ const CreateCommunityModal: React.FC<CreateCommunityModalProps> = ({ isOpen, onC
   // Reset state when opened
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStep(1);
       setSelectedChannel(null);
       setFormData({
@@ -56,7 +55,6 @@ const CreateCommunityModal: React.FC<CreateCommunityModalProps> = ({ isOpen, onC
   // Magic Auto-fill when channel selected
   useEffect(() => {
     if (selectedChannel) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData(prev => ({
         ...prev,
         name: selectedChannel.channel_name || prev.name,

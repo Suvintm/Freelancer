@@ -38,7 +38,6 @@ export function RealFeedYoutube({
 
   useEffect(() => {
     if (!isArticleInView && showEmbed) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowEmbed(false);
     }
   }, [isArticleInView, showEmbed]);

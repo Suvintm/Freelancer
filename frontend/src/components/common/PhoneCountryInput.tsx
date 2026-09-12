@@ -56,7 +56,7 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
         setSelectedCountry(match);
       }
     }
-  }, [country]);
+  }, [country, selectedCountry.code]);
 
   const checkValidation = (num: string, cCode: string): boolean => {
     if (!num || num.trim().length < 4) return false;
@@ -93,6 +93,7 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
     const valid = checkValidation(parsedNumber, currentCountry.code);
     setIsValid(valid);
     onValidityChange?.(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter countries based on search

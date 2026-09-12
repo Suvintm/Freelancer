@@ -36,6 +36,8 @@ public class InvoicePdfService {
 
     private final GstTaxRuleEngine gstTaxRuleEngine;
     private final ObjectMapper objectMapper;
+    private final com.suvix.payment.domain.billing.repository.CompanyBillingProfileRepository companyBillingProfileRepository;
+    private final com.suvix.payment.domain.billing.repository.TaxRuleRepository taxRuleRepository;
 
     @Value("${suvix.billing.company-name:SuviX Platform Services}")
     private String companyName;
@@ -123,6 +125,33 @@ public class InvoicePdfService {
             leftHeader.setBorder(Rectangle.NO_BORDER);
             leftHeader.setPaddingBottom(8);
 
+            // Load Dynamic Company Billing Profile from DB
+            com.suvix.payment.domain.billing.entity.CompanyBillingProfile companyProfile = companyBillingProfileRepository.findFirstByIsDefaultTrue()
+                    .orElseGet(() -> com.suvix.payment.domain.billing.entity.CompanyBillingProfile.builder()
+                            .legalName(companyName)
+                            .tradeName("SuviX")
+                            .gstin(platformGstin)
+                            .addressLine1(platformAddress)
+                            .city("Bengaluru")
+                            .stateName("Karnataka")
+                            .stateCode("29 - Karnataka (India)")
+                            .postalCode("560103")
+                            .supportEmail("billing@suvix.in")
+                            .sacCode("998439")
+                            .hsnDescription("Software-as-a-Service (SaaS) Subscription")
+                            .build());
+
+            String effectiveCompanyName = companyProfile.getLegalName() != null ? companyProfile.getLegalName() : companyName;
+            String effectiveGstin = companyProfile.getGstin() != null ? companyProfile.getGstin() : platformGstin;
+            String effectiveAddress = (companyProfile.getAddressLine1() != null ? companyProfile.getAddressLine1() : platformAddress)
+                    + (companyProfile.getAddressLine2() != null ? ", " + companyProfile.getAddressLine2() : "")
+                    + (companyProfile.getCity() != null ? ", " + companyProfile.getCity() : "")
+                    + (companyProfile.getStateName() != null ? ", " + companyProfile.getStateName() : "")
+                    + (companyProfile.getPostalCode() != null ? " - " + companyProfile.getPostalCode() : "");
+            String effectiveEmail = companyProfile.getSupportEmail() != null ? companyProfile.getSupportEmail() : "billing@suvix.in";
+            String effectiveSac = companyProfile.getSacCode() != null ? companyProfile.getSacCode() : "998439";
+            String effectiveStateCode = companyProfile.getStateCode() != null ? companyProfile.getStateCode() : "29 - Karnataka (India)";
+
             // Embed brand logo
             try {
                 java.io.InputStream logoStream = getClass().getResourceAsStream("/images/blackbglogo.png");
@@ -135,17 +164,17 @@ public class InvoicePdfService {
                     logoImg.scaleToFit(145, 42);
                     leftHeader.addElement(logoImg);
                 } else {
-                    leftHeader.addElement(new Paragraph(companyName, companyHeaderFont));
+                    leftHeader.addElement(new Paragraph(effectiveCompanyName, companyHeaderFont));
                 }
             } catch (Exception e) {
-                leftHeader.addElement(new Paragraph(companyName, companyHeaderFont));
+                leftHeader.addElement(new Paragraph(effectiveCompanyName, companyHeaderFont));
             }
 
             Paragraph compDetails = new Paragraph();
             compDetails.setSpacingBefore(3);
-            compDetails.add(new Chunk("GSTIN: " + platformGstin + "  |  SAC: 998439 (SaaS Services)\n", boldFont));
-            compDetails.add(new Chunk(platformAddress + "\n", smallFont));
-            compDetails.add(new Chunk("Email: billing@suvix.in  |  Website: https://suvix.in", smallFont));
+            compDetails.add(new Chunk("GSTIN: " + effectiveGstin + "  |  SAC: " + effectiveSac + " (SaaS Services)\n", boldFont));
+            compDetails.add(new Chunk(effectiveAddress + "\n", smallFont));
+            compDetails.add(new Chunk("Email: " + effectiveEmail + "  |  Website: https://suvix.in", smallFont));
             leftHeader.addElement(compDetails);
 
             PdfPCell rightHeader = new PdfPCell();
@@ -197,7 +226,7 @@ public class InvoicePdfService {
             invDate.setAlignment(Element.ALIGN_RIGHT);
             rightHeader.addElement(invDate);
 
-            String placeOfSupplyText = isUsd ? "Place of Supply: International Export (LUT: Sec 16)" : "Place of Supply: 29 - Karnataka (India)";
+            String placeOfSupplyText = isUsd ? "Place of Supply: International Export (LUT: Sec 16)" : "Place of Supply: " + effectiveStateCode;
             Paragraph posPara = new Paragraph(placeOfSupplyText, mutedFont);
             posPara.setAlignment(Element.ALIGN_RIGHT);
             rightHeader.addElement(posPara);

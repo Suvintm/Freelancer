@@ -154,7 +154,7 @@ export function usePaymentStateMachine(): PaymentStateMachineResult {
             );
           }
         }
-      } catch (err: any) {
+      } catch {
         if (pollCountRef.current < maxAttempts) {
           pollTimerRef.current = setTimeout(poll, pollInterval);
         } else {

@@ -58,6 +58,7 @@ export const BioStudioPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetPageId]);
 
   // Auto-switch to 'block' tab whenever a block is selected

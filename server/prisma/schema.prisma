@@ -1746,6 +1746,51 @@ model subscription_status_history {
   @@map("subscription_status_history")
 }
 
+model TaxRule {
+  id             String    @id @db.VarChar(50)
+  countryCode    String    @map("country_code") @db.VarChar(10)
+  stateCode      String?   @map("state_code") @db.VarChar(10)
+  taxName        String    @map("tax_name") @db.VarChar(50)
+  taxRate        Decimal   @map("tax_rate") @db.Decimal(5, 2)
+  cgstRate       Decimal?  @default(0.00) @map("cgst_rate") @db.Decimal(5, 2)
+  sgstRate       Decimal?  @default(0.00) @map("sgst_rate") @db.Decimal(5, 2)
+  igstRate       Decimal?  @default(0.00) @map("igst_rate") @db.Decimal(5, 2)
+  sacCode        String?   @default("998439") @map("sac_code") @db.VarChar(20)
+  isTaxInclusive Boolean?  @default(true) @map("is_tax_inclusive")
+  isActive       Boolean?  @default(true) @map("is_active")
+  effectiveFrom  DateTime? @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo    DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([countryCode, stateCode, isActive], map: "idx_tax_rules_lookup")
+  @@map("tax_rules")
+}
+
+model CompanyBillingProfile {
+  id                String    @id @db.VarChar(50)
+  companyName       String    @map("company_name") @db.VarChar(200)
+  tradeName         String?   @map("trade_name") @db.VarChar(200)
+  gstin             String?   @db.VarChar(20)
+  cin               String?   @db.VarChar(30)
+  pan               String?   @db.VarChar(20)
+  registeredAddress String    @map("registered_address")
+  city              String    @db.VarChar(100)
+  state             String    @db.VarChar(100)
+  stateCode         String    @map("state_code") @db.VarChar(10)
+  country           String?   @default("India") @db.VarChar(100)
+  postalCode        String    @map("postal_code") @db.VarChar(20)
+  supportEmail      String?   @map("support_email") @db.VarChar(150)
+  supportPhone      String?   @map("support_phone") @db.VarChar(30)
+  sacCode           String?   @default("998439") @map("sac_code") @db.VarChar(20)
+  placeOfSupply     String?   @default("Karnataka (29)") @map("place_of_supply") @db.VarChar(100)
+  isActive          Boolean?  @default(true) @map("is_active")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_billing_profiles")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model outbox {
   id            BigInt    @id @default(autoincrement())
