@@ -349,6 +349,28 @@ export default function Subscription() {
     return c === 'annual' || c === 'yearly' || c === 'year' ? 'annual' : 'monthly';
   }, [activePlan]);
 
+  // Check if current user subscription is expired or inactive
+  const isSubscriptionExpired = useMemo(() => {
+    if (!activePlan) return false;
+    const status = (activePlan.status || '').toLowerCase();
+    if (['expired', 'cancelled', 'canceled', 'ended', 'inactive', 'unpaid', 'past_due'].includes(status)) {
+      return true;
+    }
+    const endStr = activePlan.currentPeriodEnd || activePlan.expiresAt || activePlan.validUntil;
+    if (endStr) {
+      const endTime = new Date(endStr).getTime();
+      if (!isNaN(endTime) && endTime < Date.now()) {
+        return true;
+      }
+    }
+    return false;
+  }, [activePlan]);
+
+  // Plan is genuinely active and within valid prepaid period
+  const isPlanActive = useMemo(() => {
+    return Boolean(activePlan && !isSubscriptionExpired);
+  }, [activePlan, isSubscriptionExpired]);
+
   // 4. Enterprise Checkout Handlers
   const handlePlanCardClick = async (displayPlan: PlanCardPresenter) => {
     if (!user) {
@@ -361,9 +383,9 @@ export default function Subscription() {
       return;
     }
 
-    // Guard against re-purchasing the EXACT same tier AND billing cycle
+    // Guard against re-purchasing the EXACT same tier AND billing cycle ONLY when actively valid
     const isExactCurrent = Boolean(
-      activePlan &&
+      isPlanActive &&
       activePlan.tierLevel === displayPlan.tierLevel &&
       displayPlan.tierLevel > 0 &&
       activeCycle === billingCycle
@@ -399,8 +421,32 @@ export default function Subscription() {
       return;
     }
 
-    // 1. Lower Tier Guard: In prepaid model, user already has higher tier access
+    // Guard: Active on Annual trying to buy Monthly for same tier (already covered)
+    const isCoveredByActiveAnnual = Boolean(
+      isPlanActive &&
+      activePlan &&
+      activePlan.tierLevel === displayPlan.tierLevel &&
+      activeCycle === 'annual' &&
+      billingCycle === 'monthly'
+    );
+    if (isCoveredByActiveAnnual) {
+      const expiryFormatted = activePlan?.currentPeriodEnd
+        ? new Date(activePlan.currentPeriodEnd).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : 'the end of your annual period';
+      triggerToast(
+        `You currently have active Annual access for ${displayPlan.name} (valid until ${expiryFormatted}).`,
+        'info'
+      );
+      return;
+    }
+
+    // 1. Lower Tier Guard: In prepaid model, user already has higher tier access (only when currently active!)
     const isLowerTier = Boolean(
+      isPlanActive &&
       activePlan &&
       activePlan.tierLevel &&
       displayPlan.tierLevel < activePlan.tierLevel
@@ -421,8 +467,23 @@ export default function Subscription() {
       return;
     }
 
-    // 2. Paid Plan Upgrade: Fetch proration and present the Upgrade Story Explainer popup
-    if (activePlan && activePlan.tierLevel && displayPlan.tierLevel > activePlan.tierLevel) {
+    // 2. Paid Plan Upgrade: Upgrading to higher tier OR upgrading active Monthly to Annual on same tier (only when currently active!)
+    const isUpgradeToAnnualOnSameTier = Boolean(
+      isPlanActive &&
+      activePlan &&
+      activePlan.tierLevel === displayPlan.tierLevel &&
+      activeCycle === 'monthly' &&
+      billingCycle === 'annual'
+    );
+
+    const isHigherTierUpgrade = Boolean(
+      isPlanActive &&
+      activePlan &&
+      activePlan.tierLevel &&
+      displayPlan.tierLevel > activePlan.tierLevel
+    );
+
+    if (isPlanActive && (isHigherTierUpgrade || isUpgradeToAnnualOnSameTier)) {
       try {
         const quote = await subscriptionService.getQuoteUpgrade(displayPlan.id, billingCycle, user?.id).catch(() => null);
         setProrationQuote(quote);
@@ -882,22 +943,33 @@ export default function Subscription() {
                 )
               );
 
-              const isCurrentPlan = isSameTierPlan && activeCycle === billingCycle;
-              const isUpgradeToAnnual = isSameTierPlan && activeCycle === 'monthly' && billingCycle === 'annual';
-              const isSwitchToMonthly = isSameTierPlan && activeCycle === 'annual' && billingCycle === 'monthly';
+              // 1. Expired state resolution (separated by exact cycle vs other cycle)
+              const isExactExpiredPlan = isSameTierPlan && isSubscriptionExpired && activeCycle === billingCycle;
+              const isExpiredPlanOtherCycle = isSameTierPlan && isSubscriptionExpired && activeCycle !== billingCycle;
 
-              const isUpgrade = activePlan && activePlan.tierLevel && displayPlan.tierLevel > activePlan.tierLevel;
-              const isLowerTier = activePlan && activePlan.tierLevel && displayPlan.tierLevel < activePlan.tierLevel;
+              // 2. Active plan cycle state resolution
+              const isCurrentPlan = isSameTierPlan && isPlanActive && activeCycle === billingCycle;
+              const isUpgradeToAnnual = isSameTierPlan && isPlanActive && activeCycle === 'monthly' && billingCycle === 'annual';
+              const isCoveredByAnnual = isSameTierPlan && isPlanActive && activeCycle === 'annual' && billingCycle === 'monthly';
+
+              const isUpgrade = isPlanActive && activePlan.tierLevel && displayPlan.tierLevel > activePlan.tierLevel;
+              const isLowerTier = isPlanActive && activePlan.tierLevel && displayPlan.tierLevel < activePlan.tierLevel;
 
               let buttonLabel = displayPlan.buttonText;
               if (isOffline) {
                 buttonLabel = 'Unavailable';
+              } else if (isExactExpiredPlan) {
+                buttonLabel = billingCycle === 'annual' ? 'Renew Annual Plan' : 'Renew Monthly Plan';
+              } else if (isExpiredPlanOtherCycle) {
+                buttonLabel = billingCycle === 'annual'
+                  ? `Get Yearly (${displayPlan.savingsPercent || maxSavingsPercent}% off)`
+                  : 'Get Monthly Plan';
               } else if (isCurrentPlan) {
                 buttonLabel = 'Current Plan';
               } else if (isUpgradeToAnnual) {
                 buttonLabel = `Upgrade to Yearly (${displayPlan.savingsPercent || maxSavingsPercent}% off)`;
-              } else if (isSwitchToMonthly) {
-                buttonLabel = 'Switch to Monthly';
+              } else if (isCoveredByAnnual) {
+                buttonLabel = 'Covered by Annual Plan';
               } else if (isUpgrade) {
                 buttonLabel = 'Upgrade';
               } else if (isLowerTier) {
@@ -929,6 +1001,10 @@ export default function Subscription() {
                       ? isDarkMode
                         ? 'bg-[#0e0e11] border-2 border-emerald-500/70 shadow-2xl shadow-emerald-950/40 scale-[1.01] z-10'
                         : 'bg-white border-2 border-emerald-500/80 shadow-xl shadow-emerald-500/15 scale-[1.01] z-10'
+                      : isExactExpiredPlan
+                      ? isDarkMode
+                        ? 'bg-[#0e0e11] border-2 border-amber-500/60 shadow-xl z-10'
+                        : 'bg-white border-2 border-amber-500/70 shadow-lg z-10'
                       : isPopular
                       ? isDarkMode
                         ? 'bg-[#0e0e11] border-2 border-white/40 shadow-2xl scale-[1.02] z-10'
@@ -938,8 +1014,8 @@ export default function Subscription() {
                       : 'bg-white border border-zinc-200 hover:border-zinc-300 shadow-sm'
                   }`}
                 >
-                  {/* Active Plan Celebration Lottie Overlay */}
-                  {isCurrentPlan && (
+                  {/* Active Plan Celebration Lottie Overlay (only shown when plan is active, not expired) */}
+                  {isCurrentPlan && isPlanActive && (
                     <ActivePlanCelebrationOverlay
                       isActive={true}
                       isDarkMode={isDarkMode}
@@ -947,21 +1023,21 @@ export default function Subscription() {
                     />
                   )}
 
-                  {/* Top Attached Expiration & Renewal Countdown Pill for Active Plan (Beginning / Left Side) */}
-                  {isCurrentPlan && (
+                  {/* Top Attached Expiration & Renewal Countdown Pill for Active or Exact Expired Plan */}
+                  {(isCurrentPlan || isExactExpiredPlan) && (
                     <div className="absolute -top-3.5 left-4 sm:left-6 z-30">
                       <PlanExpirationCountdown
                         currentPeriodEnd={activePlan?.currentPeriodEnd || activePlan?.expiresAt}
                         currentPeriodStart={activePlan?.currentPeriodStart || activePlan?.startDate}
                         cancelAtPeriodEnd={activePlan?.cancelAtPeriodEnd}
-                        status={activePlan?.status}
+                        status={isSubscriptionExpired ? 'expired' : activePlan?.status}
                         isDarkMode={isDarkMode}
                       />
                     </div>
                   )}
 
-                  {/* Top Popular / Dynamic Badge (only shown when not current plan to prevent overlap) */}
-                  {(isPopular || displayPlan.badge) && !isCurrentPlan && (
+                  {/* Top Popular / Dynamic Badge (only shown when not current plan and not exact expired plan to prevent overlap) */}
+                  {(isPopular || displayPlan.badge) && !isCurrentPlan && !isExactExpiredPlan && (
                     <div className="absolute -top-2.5 right-6 z-20">
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 ${
                         isDarkMode ? 'bg-white text-black' : 'bg-black text-white'
@@ -1138,13 +1214,17 @@ export default function Subscription() {
                   {/* Action CTA Button */}
                   <button
                     onClick={() => handlePlanCardClick(displayPlan)}
-                    disabled={isOffline || isCurrentPlan || isLowerTier || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
+                    disabled={isOffline || isCurrentPlan || isLowerTier || isCoveredByAnnual || actionLoading === 'upgrade' || actionLoading === 'starter-' + displayPlan.id}
                     className={`relative z-10 w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5 ${
                       isOffline
                         ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed'
                         : isCurrentPlan
                         ? isDarkMode ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-600/40 cursor-default' : 'bg-emerald-50 text-emerald-700 border border-emerald-300 cursor-default'
-                        : isLowerTier
+                        : isExactExpiredPlan
+                        ? isDarkMode
+                          ? 'bg-amber-500 hover:bg-amber-400 text-black font-extrabold shadow-lg shadow-amber-950/50 active:scale-95 cursor-pointer'
+                          : 'bg-amber-600 hover:bg-amber-700 text-white font-extrabold shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer'
+                        : isCoveredByAnnual || isLowerTier
                         ? isDarkMode ? 'bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed opacity-60' : 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed opacity-75'
                         : isUpgradeToAnnual
                         ? isDarkMode
@@ -1161,7 +1241,7 @@ export default function Subscription() {
                   >
                     {actionLoading === 'starter-' + displayPlan.id && <ImSpinner2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>{buttonLabel}</span>
-                    {!isCurrentPlan && !isOffline && !isLowerTier && <ArrowRight className="w-3.5 h-3.5 ml-0.5" />}
+                    {!isCurrentPlan && !isOffline && !isLowerTier && !isCoveredByAnnual && <ArrowRight className="w-3.5 h-3.5 ml-0.5" />}
                   </button>
                 </motion.div>
               );
