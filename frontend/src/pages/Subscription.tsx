@@ -334,9 +334,15 @@ export default function Subscription() {
 
   const maxSavingsPercent = useMemo(() => {
     const validSavings = displayPlans
-      .map((p) => p.savingsPercent)
-      .filter((s): s is number => typeof s === 'number' && s > 0);
-    return validSavings.length > 0 ? Math.max(...validSavings) : 20;
+      .map((p) => {
+        if (typeof p.savingsPercent === 'number' && p.savingsPercent > 0) return p.savingsPercent;
+        if (p.priceMonthly && p.priceAnnual && p.priceMonthly > p.priceAnnual) {
+          return Math.round(((p.priceMonthly - p.priceAnnual) / p.priceMonthly) * 100);
+        }
+        return 0;
+      })
+      .filter((s) => s > 0);
+    return validSavings.length > 0 ? Math.max(...validSavings) : 0;
   }, [displayPlans]);
 
   const comparisonMatrix = useMemo(() => {
@@ -733,7 +739,11 @@ export default function Subscription() {
                       : 'bg-zinc-200 text-zinc-800'
                   }`}
                 >
-                  {plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback) ? 'Save --' : `Save ${maxSavingsPercent}%`}
+                  {plans.length === 0 || displayPlans.some((p) => p.isOfflineFallback)
+                    ? 'Save --'
+                    : maxSavingsPercent > 0
+                    ? `Save ${maxSavingsPercent}%`
+                    : 'Yearly'}
                 </span>
               </button>
             </div>

@@ -7,6 +7,7 @@ import express from "express";
 import protect from "../../shared/middleware/auth.middleware.js";
 import {
   getPlans,
+  getPublicPricingSummary,
   getSubscriptionDashboard,
   getMySubscriptions,
   checkSubscriptionStatus,
@@ -26,13 +27,16 @@ import {
   getAllSubscriptions,
 } from "./controllers/subscriptionController.js";
 import { publicApiLimiter, heavyLimiter, interactionLimiter } from "../../shared/middleware/rate-limiter.middleware.js";
-import { planCatalogCacheMiddleware } from "./middleware/planCache.js";
+import { planCatalogCacheMiddleware, publicPricingSummaryCacheMiddleware } from "./middleware/planCache.js";
 
 const router = express.Router();
 
 // ============ 1. PUBLIC ROUTES (Edge Cached) ============
 // Consolidated single-roundtrip dashboard bootstrap
 router.get("/dashboard", publicApiLimiter, getSubscriptionDashboard);
+
+// Public Lightweight Pricing Summary for Welcome/Landing Page (Multi-tier: Memory L1 -> Redis L2 -> Single-Flight Java)
+router.get("/public/pricing-summary", publicApiLimiter, publicPricingSummaryCacheMiddleware, getPublicPricingSummary);
 
 // Fetch live role-based plans catalog (Multi-tier Cache: LRU Memory -> Redis -> Java Single-Flight)
 router.get("/plans", publicApiLimiter, planCatalogCacheMiddleware, getPlans);

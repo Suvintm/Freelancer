@@ -9,6 +9,7 @@ import { HeroPresentationCard } from '../components/shared/HeroPresentationCard'
 import { HeroBrandsRow } from '../components/shared/HeroBrandsRow';
 import { HeroStatsBar } from '../components/shared/HeroStatsBar';
 import { CreatorMetricsTicker } from '../components/shared/CreatorMetricsTicker';
+import { WelcomePricingSection } from '../components/welcome/WelcomePricingSection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUVIX WELCOME — High-Performance Production Onboarding
@@ -251,9 +252,9 @@ export default function Welcome() {
       </div>
 
       {/* ── MOBILE / TABLET DEDICATED VIEW (< lg) Matching Reference Mockup ── */}
-      <div className="flex lg:hidden flex-col w-full z-20 gap-2.5 xs:gap-3 sm:gap-4 pb-6 overflow-x-hidden">
-        {/* Background ambient image fixed in the center of the mobile screen/viewport */}
-        <div className="fixed inset-0 w-full h-[100dvh] flex items-center justify-center pointer-events-none select-none z-0 opacity-85">
+      <div className="relative flex lg:hidden flex-col w-full z-20 gap-2.5 xs:gap-3 sm:gap-4 pb-6 overflow-hidden">
+        {/* Background ambient image scoped to mobile hero container */}
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none select-none z-0 opacity-85 overflow-hidden">
           <img
             src={reelsCardBg}
             alt=""
@@ -402,6 +403,9 @@ export default function Welcome() {
 
       {/* TRUSTED CREATOR & BRAND PARTNERS ROW */}
       <HeroBrandsRow />
+
+      {/* PUBLIC DYNAMIC PRICING SECTION */}
+      <WelcomePricingSection />
 
       {/* LEGAL DISCLAIMER FOOTER */}
       <footer className="relative z-20 pb-2 sm:pb-4 text-center px-4">

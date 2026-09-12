@@ -154,6 +154,20 @@ export const subscriptionService = {
     return Array.isArray(res.data) ? res.data : (res.data?.data?.plans || res.data?.plans || []);
   },
 
+  // 1b. Lightweight Public Pricing Summary (For Welcome/Landing page)
+  getPublicPricingSummary: async (currency?: string): Promise<{ availableRoles: string[]; currency: string; maxSavingsPercent?: number; plans: Plan[] }> => {
+    const res = await api.get('/subscriptions/public/pricing-summary', {
+      params: currency ? { currency } : {},
+    });
+    const raw = res.data?.data || res.data || {};
+    return {
+      availableRoles: Array.isArray(raw.availableRoles) ? raw.availableRoles : ['creator', 'brand', 'editor', 'user'],
+      currency: raw.currency || currency || 'USD',
+      maxSavingsPercent: typeof raw.maxSavingsPercent === 'number' ? raw.maxSavingsPercent : undefined,
+      plans: Array.isArray(raw.plans) ? raw.plans : [],
+    };
+  },
+
   // 2. Fetch User Entitlements & Active Subscription
   getEntitlements: async (userId?: string) => {
     const res = await api.get('/subscriptions/entitlements', {
