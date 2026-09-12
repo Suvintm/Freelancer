@@ -267,6 +267,7 @@ const SingleReelCard = React.memo(function SingleReelCard({
             src={card.videoUrl}
             poster={card.imageUrl}
             autoPlay={isCenter}
+            preload="metadata"
             loop
             muted
             playsInline

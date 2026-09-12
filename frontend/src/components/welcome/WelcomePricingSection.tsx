@@ -5,8 +5,6 @@ import {
   Send,
   Rocket,
   Crown,
-  ShieldCheck,
-  CreditCard,
   ChevronLeft,
   ChevronRight,
   Scissors,
@@ -268,7 +266,13 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
         <div className="relative w-full text-center max-w-2xl mx-auto mb-3 sm:mb-8 pt-1">
           
           {/* Top Left Handwritten Note (Visible on Mobile & Desktop, tucked cleanly in corner) */}
-          <div className="absolute top-0 left-0 xs:-left-1 sm:-left-8 md:-left-12 rotate-[-7deg] pointer-events-none select-none text-left z-20">
+          <motion.div
+            initial={{ opacity: 0, rotate: -12, scale: 0.95 }}
+            whileInView={{ opacity: 1, rotate: -7, scale: 1 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute top-0 left-0 xs:-left-1 sm:-left-8 md:-left-12 pointer-events-none select-none text-left z-20"
+          >
             <div className="flex flex-col items-start leading-none">
               <span className="font-['Caveat'] text-[11px] xs:text-xs sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none drop-shadow-2xs">
                 Invest
@@ -283,17 +287,29 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 <path d="M2 8 C 30 2, 70 14, 98 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
               </svg>
             </div>
-          </div>
+          </motion.div>
 
           {/* PRICING Pill Badge - Always Centered */}
-          <div className="w-full flex items-center justify-center mb-1.5 sm:mb-2.5">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full flex items-center justify-center mb-1.5 sm:mb-2.5"
+          >
             <span className="px-3 py-0.5 rounded-full bg-white/90 backdrop-blur-md border border-zinc-200/90 text-zinc-800 text-[9px] xs:text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest shadow-2xs">
               PRICING
             </span>
-          </div>
+          </motion.div>
 
           {/* Heading with Serif Italic 'Bigger Possibilities' and Signature Amazon-Orange Smile Underline */}
-          <div className="w-full text-center flex flex-col items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.95, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full text-center flex flex-col items-center justify-center"
+          >
             <h2 className="text-xl xs:text-2xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-950 tracking-tight leading-[1.18] text-center">
               <span>Simple Pricing for</span>
               <br />
@@ -321,16 +337,28 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 </svg>
               </span>
             </h2>
-          </div>
+          </motion.div>
 
           {/* Subtitle description */}
-          <p className="text-[10.5px] xs:text-xs sm:text-sm text-zinc-600 max-w-xl mx-auto font-normal leading-relaxed mt-2.5 sm:mt-4 px-2 text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="text-[10.5px] xs:text-xs sm:text-sm text-zinc-600 max-w-xl mx-auto font-normal leading-relaxed mt-2.5 sm:mt-4 px-2 text-center"
+          >
             Whether you&apos;re just starting or building a global brand, SuviX has a plan that fits your journey. Upgrade, create, and grow — on your terms.
-          </p>
+          </motion.p>
         </div>
 
         {/* ── 2. DYNAMIC ROLE FILTER BUTTONS (4 BUTTON GRID / ROW - NO OVERFLOW) ── */}
-        <div className="w-full max-w-md mx-auto mb-2.5 sm:mb-4 px-0.5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.9, delay: 0.14, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-md mx-auto mb-2.5 sm:mb-4 px-0.5"
+        >
           <div className="grid grid-cols-4 gap-1 xs:gap-1.5 sm:gap-2 w-full">
             {visibleRoles.map((roleItem) => {
               const isSelected = selectedRoleTab === roleItem.id;
@@ -353,10 +381,16 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* ── 3. BILLING CYCLE TOGGLE + DISCOUNT BADGE + CURRENCY TOGGLE ─ */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 xs:gap-2 sm:gap-3 mb-3.5 sm:mb-6 w-full px-1">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.9, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-wrap items-center justify-center gap-1.5 xs:gap-2 sm:gap-3 mb-3.5 sm:mb-6 w-full px-1"
+        >
           {/* Monthly / Yearly Toggle */}
           <div className="inline-flex p-0.5 rounded-full bg-white/90 backdrop-blur-md border border-zinc-200/90 shadow-2xs">
             <button
@@ -419,14 +453,20 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
               <span className="text-[9.5px] xs:text-[10px] font-normal opacity-90">($)</span>
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ── MOBILE VIEW (< lg): TOP SHOWCASE BANNER + 2-CARD CAROUSEL ─── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         <div className="block lg:hidden w-full">
           {/* 1. Mobile Showcase Hero Banner Card */}
-          <div className="w-full mb-3.5">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.95, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full mb-3.5 transform-gpu"
+          >
             <div className="relative rounded-2xl p-3.5 xs:p-4 bg-zinc-950 text-white border border-zinc-800 shadow-[0_10px_30px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col justify-between min-h-[150px]">
               {/* Background Artwork */}
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-end">
@@ -507,10 +547,16 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* 2. Choose Your Plan Title + Carousel Controls */}
-          <div className="w-full flex items-center justify-between mb-2.5 px-0.5">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.85, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full flex items-center justify-between mb-2.5 px-0.5"
+          >
             <div className="flex items-center gap-1.5">
               <h3 className="text-sm xs:text-base font-black text-zinc-950 tracking-tight">
                 Choose Your Plan
@@ -557,7 +603,7 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 <ChevronRight size={13} />
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* 3. Mobile Plan Cards Carousel (2 Cards Side-by-Side) */}
           <div
@@ -695,7 +741,13 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
         {/* ══════════════════════════════════════════════════════════════════ */}
         <div className="hidden lg:flex w-full max-w-7xl flex-row gap-6 items-stretch">
           {/* Column 1: Showcase Intro Card (Pinned Left) */}
-          <div className="w-[280px] xl:w-[310px] shrink-0 py-1 flex flex-col">
+          <motion.div
+            initial={{ opacity: 0, x: -35, y: 15 }}
+            whileInView={{ opacity: 1, x: 0, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="w-[280px] xl:w-[310px] shrink-0 py-1 flex flex-col transform-gpu"
+          >
             <div className="relative rounded-3xl p-7 flex flex-col justify-between h-full bg-zinc-950 text-white border border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-hidden">
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <img
@@ -771,10 +823,16 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Column 2: Plan Cards Carousel Track */}
-          <div className="flex-1 min-w-0 flex flex-col justify-between relative">
+          <motion.div
+            initial={{ opacity: 0, x: 35, y: 15 }}
+            whileInView={{ opacity: 1, x: 0, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 1.0, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="flex-1 min-w-0 flex flex-col justify-between relative transform-gpu"
+          >
             {displayPlans.length > 3 && (
               <button
                 type="button"
@@ -983,40 +1041,7 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 Swipe to explore more plans
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* ── 7. BOTTOM TRUST BAR (4 Columns) ───────────────────────── */}
-        <div className="relative w-full max-w-4xl mt-6 sm:mt-12 pt-4 sm:pt-6 border-t border-zinc-200/80">
-          <div className="grid grid-cols-4 divide-x divide-zinc-200/80 text-center items-center">
-            {/* 1. Money Back */}
-            <div className="flex flex-col items-center px-1">
-              <ShieldCheck size={18} className="text-zinc-800 mb-1" />
-              <div className="text-[9.5px] xs:text-[10.5px] sm:text-xs font-bold text-zinc-900 leading-tight">14-day</div>
-              <div className="text-[7.5px] xs:text-[8.5px] sm:text-[10px] text-zinc-500 font-medium leading-tight mt-0.5">money back</div>
-            </div>
-
-            {/* 2. 2M+ Creators */}
-            <div className="flex flex-col items-center px-1">
-              <Users size={18} className="text-zinc-800 mb-1" />
-              <div className="text-[9.5px] xs:text-[10.5px] sm:text-xs font-bold text-zinc-900 leading-tight">2M+</div>
-              <div className="text-[7.5px] xs:text-[8.5px] sm:text-[10px] text-zinc-500 font-medium leading-tight mt-0.5">creators trust SuviX</div>
-            </div>
-
-            {/* 3. Rating */}
-            <div className="flex flex-col items-center px-1">
-              <Star size={18} className="text-zinc-800 mb-1" />
-              <div className="text-[9.5px] xs:text-[10.5px] sm:text-xs font-bold text-zinc-900 leading-tight">4.8/5</div>
-              <div className="text-[7.5px] xs:text-[8.5px] sm:text-[10px] text-zinc-500 font-medium leading-tight mt-0.5">average rating</div>
-            </div>
-
-            {/* 4. Secure & Flexible */}
-            <div className="flex flex-col items-center px-1">
-              <CreditCard size={18} className="text-zinc-800 mb-1" />
-              <div className="text-[9.5px] xs:text-[10.5px] sm:text-xs font-bold text-zinc-900 leading-tight">Secure &amp; flexible</div>
-              <div className="text-[7.5px] xs:text-[8.5px] sm:text-[10px] text-zinc-500 font-medium leading-tight mt-0.5">payment options</div>
-            </div>
-          </div>
+          </motion.div>
         </div>
 
       </div>

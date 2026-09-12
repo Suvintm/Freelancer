@@ -1,3 +1,5 @@
+import { motion } from 'framer-motion';
+
 interface HeroBrandsRowProps {
   className?: string;
 }
@@ -7,17 +9,29 @@ export function HeroBrandsRow({ className = '' }: HeroBrandsRowProps) {
     <div className={`w-full py-4 sm:py-5 border-t border-zinc-100/90 bg-white select-none ${className}`}>
       <div className="w-full max-w-[96vw] xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 lg:gap-6">
         {/* Left Label: TRUSTED BY CREATORS AND BRANDS WORLDWIDE */}
-        <div className="shrink-0 text-left">
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+          className="shrink-0 text-left"
+        >
           <p className="text-[9.5px] sm:text-[10.5px] font-black text-zinc-600 uppercase tracking-[0.18em] leading-tight">
             Trusted By Creators
           </p>
           <p className="text-[9.5px] sm:text-[10.5px] font-black text-zinc-600 uppercase tracking-[0.18em] leading-tight">
             And Brands Worldwide
           </p>
-        </div>
+        </motion.div>
 
         {/* Center Brands List */}
-        <div className="flex-1 flex items-center justify-center md:justify-start lg:justify-center gap-5 sm:gap-7 lg:gap-8 flex-wrap overflow-x-auto no-scrollbar py-1">
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.95, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="flex-1 flex items-center justify-center md:justify-start lg:justify-center gap-5 sm:gap-7 lg:gap-8 flex-wrap overflow-x-auto no-scrollbar py-1"
+        >
           {/* 1. Google */}
           <div className="flex items-center gap-1.5 shrink-0 opacity-85 hover:opacity-100 transition-opacity">
             <svg viewBox="0 0 24 24" className="w-4.5 h-4.5" xmlns="http://www.w3.org/2000/svg">
@@ -125,10 +139,16 @@ export function HeroBrandsRow({ className = '' }: HeroBrandsRowProps) {
             </svg>
             <span className="font-bold text-zinc-900 text-sm sm:text-[15px] tracking-tight">Adobe</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Section: Divider + Handwritten Cursive Doodle */}
-        <div className="shrink-0 flex items-center gap-4 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-zinc-200 pt-3 md:pt-0">
+        <motion.div
+          initial={{ opacity: 0, x: 30, rotate: -6 }}
+          whileInView={{ opacity: 1, x: 0, rotate: -2 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.9, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          className="shrink-0 flex items-center gap-4 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-zinc-200 pt-3 md:pt-0"
+        >
           <div className="font-['Caveat',cursive] text-zinc-900 font-bold text-sm sm:text-[15px] leading-tight text-left select-none -rotate-2">
             <p>Create today.</p>
             <p>A brighter tomorrow.</p>
@@ -140,7 +160,7 @@ export function HeroBrandsRow({ className = '' }: HeroBrandsRowProps) {
               <path d="M3 4 Q 55 10, 107 3" />
             </svg>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
