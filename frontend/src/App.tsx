@@ -80,6 +80,20 @@ function App() {
     }
   }, [token]);
 
+  // Set history scrollRestoration to manual so SPA transitions always start at top
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  // Scroll to top immediately whenever route/pathname changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location.pathname]);
+
   // Define routes that are always rendered client-side without being blocked by gateway outages
   const isPublicRoute =
     location.pathname === '/' ||

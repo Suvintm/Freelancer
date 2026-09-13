@@ -455,4 +455,22 @@ html.lenis, html.lenis body { height: auto; }
   animation: continuousMarquee 48s linear infinite;
 }
 
+/* SuviX Heading Brand Text (White on mobile; White with crisp black outline border on laptop/desktop) */
+.suvix-heading-brand {
+  color: #ffffff;
+}
+
+@media (min-width: 640px) {
+  .suvix-heading-brand {
+    color: #ffffff;
+    -webkit-text-stroke: 1.75px #000000;
+    paint-order: stroke fill;
+    text-shadow:
+      -1.5px -1.5px 0 #000000,
+       1.5px -1.5px 0 #000000,
+      -1.5px  1.5px 0 #000000,
+       1.5px  1.5px 0 #000000;
+  }
+}
+
 
