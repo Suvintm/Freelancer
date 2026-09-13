@@ -1,3 +1,307 @@
+export interface RolePresentation {
+  id: string;
+  name: string;
+  slug: string;
+  roleGroup: 'PROVIDER' | 'CLIENT';
+  headlineTop: string;
+  headlineHighlight: string;
+  highlightColor: string;
+  badgeBg: string;
+  badgeIcon: 'video' | 'film' | 'briefcase' | 'users' | 'camera' | 'music' | 'sparkles';
+  badgeLabel: string;
+  bgImage: string;
+  floatingPill?: {
+    text: string;
+    position?: 'top-right' | 'mid-right' | 'bottom-left' | 'bottom-right';
+  };
+  statsPill?: {
+    leftValue: string;
+    leftLabel: string;
+    leftType: 'heart' | 'star';
+    rightValue: string;
+    rightLabel: string;
+    rightType: 'play' | 'eye';
+  };
+  brandLogos?: boolean;
+  baseRotateY: number;
+  baseRotateX: number;
+  baseRotateZ: number;
+  description: string;
+  perks: string[];
+}
+
+export const PRIMARY_ROLE_CARDS: RolePresentation[] = [
+  // 1. Content Creator
+  {
+    id: 'creator',
+    name: 'Content Creator',
+    slug: 'creator',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Turn\nMoments into',
+    headlineHighlight: 'Movements',
+    highlightColor: 'text-[#ec4899]',
+    badgeBg: 'from-[#ec4899] to-[#db2777]',
+    badgeIcon: 'video',
+    badgeLabel: 'Content Creator',
+    bgImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+    floatingPill: {
+      text: 'Live • Create • Inspire',
+      position: 'mid-right',
+    },
+    statsPill: {
+      leftValue: '12.9K',
+      leftLabel: 'Followers',
+      leftType: 'heart',
+      rightValue: '3.4M',
+      rightLabel: 'Views',
+      rightType: 'play',
+    },
+    baseRotateY: 6,
+    baseRotateX: 2,
+    baseRotateZ: -1,
+    description: 'Scale your audience, land premium sponsorship deals, and collaborate with top video editors.',
+    perks: ['Direct Brand Deal Matching', 'Vetted Video Editor Network', 'YouTube & Instagram API Sync', 'Milestone Escrow Payouts'],
+  },
+
+  // 2. Video Editor
+  {
+    id: 'editor',
+    name: 'Video Editor',
+    slug: 'editor',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Edit\nIdeas into',
+    headlineHighlight: 'Impact',
+    highlightColor: 'text-[#a855f7]',
+    badgeBg: 'from-[#a855f7] to-[#7c3aed]',
+    badgeIcon: 'film',
+    badgeLabel: 'Video Editor',
+    bgImage: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=800&auto=format&fit=crop',
+    floatingPill: {
+      text: 'Cut • Create • Polish • Perform',
+      position: 'mid-right',
+    },
+    baseRotateY: 2,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Get hired by top creators and brands for high-converting video edits, VFX, and reels.',
+    perks: ['Guaranteed Escrow Payments', 'Direct Creator Retainers', 'Custom Video Reel Showcase', 'Multi-Format Project Hub'],
+  },
+
+  // 3. Brand & Sponsor
+  {
+    id: 'brand',
+    name: 'Brand & Sponsor',
+    slug: 'brand',
+    roleGroup: 'CLIENT',
+    headlineTop: 'Partner\nwith Creators',
+    headlineHighlight: 'for Real Impact',
+    highlightColor: 'text-[#3b82f6]',
+    badgeBg: 'from-[#3b82f6] to-[#2563eb]',
+    badgeIcon: 'briefcase',
+    badgeLabel: 'Brand & Sponsor',
+    bgImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop',
+    floatingPill: {
+      text: 'BRANDS GROW WITH CREATORS',
+      position: 'mid-right',
+    },
+    brandLogos: true,
+    baseRotateY: -2,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Launch high-ROI influencer marketing campaigns with verified creators and performance tracking.',
+    perks: ['Verified Creator Discovery', 'Automated Campaign Bidding', 'Real-Time ROI Analytics', 'Escrow Protected Deliverables'],
+  },
+
+  // 4. Normal User
+  {
+    id: 'user',
+    name: 'Normal User',
+    slug: 'user',
+    roleGroup: 'CLIENT',
+    headlineTop: 'Discover\nAmazing',
+    headlineHighlight: 'Content',
+    highlightColor: 'text-[#f97316]',
+    badgeBg: 'from-[#f97316] to-[#ea580c]',
+    badgeIcon: 'users',
+    badgeLabel: 'Normal User',
+    bgImage: 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?q=80&w=800&auto=format&fit=crop',
+    floatingPill: {
+      text: '✈️ Explore • Follow • Support • Be a Part',
+      position: 'bottom-left',
+    },
+    baseRotateY: -6,
+    baseRotateX: 2,
+    baseRotateZ: 1,
+    description: 'Explore exclusive creator content, hire talented creatives, and join thriving communities.',
+    perks: ['Personalized Content Feed', 'Direct Creator Messaging', '100% Protected Bookings', 'Exclusive Community Perks'],
+  },
+];
+
+export const ROLE_PRESENTATION_MAP: Record<string, RolePresentation> = {
+  creator: PRIMARY_ROLE_CARDS[0],
+  yt_influencer: PRIMARY_ROLE_CARDS[0],
+  editor: PRIMARY_ROLE_CARDS[1],
+  video_editor: PRIMARY_ROLE_CARDS[1],
+  brand: PRIMARY_ROLE_CARDS[2],
+  social_promoter: PRIMARY_ROLE_CARDS[2],
+  user: PRIMARY_ROLE_CARDS[3],
+  direct_client: PRIMARY_ROLE_CARDS[3],
+  client: PRIMARY_ROLE_CARDS[3],
+  photographer: {
+    id: 'photographer',
+    name: 'Photographer',
+    slug: 'photographer',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Capture\nStories into',
+    headlineHighlight: 'Frames',
+    highlightColor: 'text-[#06b6d4]',
+    badgeBg: 'from-[#06b6d4] to-[#0284c7]',
+    badgeIcon: 'camera',
+    badgeLabel: 'Photographer',
+    bgImage: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: 'Studio • Editorial • Commercial', position: 'mid-right' },
+    statsPill: { leftValue: '4.9★', leftLabel: 'Rating', leftType: 'star', rightValue: '180+', rightLabel: 'Shoots', rightType: 'eye' },
+    baseRotateY: 3,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Showcase visual portfolios, accept direct booking inquiries, and secure commercial licensing.',
+    perks: ['Visual Portfolio Gallery', 'Client Booking Calendar', 'Secure Deposit Escrow', 'Commercial Licensing Tools'],
+  },
+  videographer: {
+    id: 'videographer',
+    name: 'Videographer',
+    slug: 'videographer',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Direct\nVision into',
+    headlineHighlight: 'Cinema',
+    highlightColor: 'text-[#6366f1]',
+    badgeBg: 'from-[#6366f1] to-[#4f46e5]',
+    badgeIcon: 'film',
+    badgeLabel: 'Videographer',
+    bgImage: 'https://images.unsplash.com/photo-1534972195531-a756b1126f24?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: '4K Cinema • Production • Direction', position: 'mid-right' },
+    baseRotateY: -3,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Accept commercial film projects, collaborate on high-production shoots, and manage client briefs.',
+    perks: ['Production Reel Showcase', 'Crew & Gear Collaboration', 'Milestone Escrow Contracts', 'Direct Client Bidding'],
+  },
+  musician: {
+    id: 'musician',
+    name: 'Musician & Audio',
+    slug: 'musician',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Compose\nEmotion into',
+    headlineHighlight: 'Melodies',
+    highlightColor: 'text-[#f43f5e]',
+    badgeBg: 'from-[#f43f5e] to-[#e11d48]',
+    badgeIcon: 'music',
+    badgeLabel: 'Musician & Audio',
+    bgImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: 'Beats • Soundtracks • Audio Design', position: 'mid-right' },
+    baseRotateY: 4,
+    baseRotateX: 2,
+    baseRotateZ: -1,
+    description: 'License royalty-free tracks, compose custom audio beats for YouTubers, and produce podcasts.',
+    perks: ['Audio Track Licensing', 'Custom Beat Bidding', 'Creator Collaboration', 'Instant Royalty Payouts'],
+  },
+  actor: {
+    id: 'actor',
+    name: 'Actor & Talent',
+    slug: 'actor',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Bring\nCharacters to',
+    headlineHighlight: 'Life',
+    highlightColor: 'text-[#8b5cf6]',
+    badgeBg: 'from-[#8b5cf6] to-[#7c3aed]',
+    badgeIcon: 'sparkles',
+    badgeLabel: 'Actor & Talent',
+    bgImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: 'Casting • Commercials • Voiceover', position: 'mid-right' },
+    baseRotateY: -4,
+    baseRotateX: 2,
+    baseRotateZ: 1,
+    description: 'Get cast in commercial ads, digital brand campaigns, UGC promos, and short films.',
+    perks: ['Headshot & Reel Profile', 'Verified Casting Calls', 'Direct Director Contact', 'Fast-track Booking'],
+  },
+  singer: {
+    id: 'singer',
+    name: 'Singer & Vocalist',
+    slug: 'singer',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Sing\nMelodies into',
+    headlineHighlight: 'Harmony',
+    highlightColor: 'text-[#ec4899]',
+    badgeBg: 'from-[#ec4899] to-[#be185d]',
+    badgeIcon: 'music',
+    badgeLabel: 'Singer & Vocalist',
+    bgImage: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: 'Vocals • Live Gigs • Tracks', position: 'mid-right' },
+    baseRotateY: 3,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Vocal production, live gigs, and original music releases.',
+    perks: ['Vocal Sample Showcase', 'Live Gig Bookings', 'Royalty Splits', 'Studio Collaborations'],
+  },
+  dancer: {
+    id: 'dancer',
+    name: 'Dancer & Choreographer',
+    slug: 'dancer',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Move\nRhythm into',
+    headlineHighlight: 'Energy',
+    highlightColor: 'text-[#f59e0b]',
+    badgeBg: 'from-[#f59e0b] to-[#d97706]',
+    badgeIcon: 'sparkles',
+    badgeLabel: 'Dancer & Choreographer',
+    bgImage: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: 'Choreography • Viral • Stage', position: 'mid-right' },
+    baseRotateY: -3,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Dance choreography, viral trends, and stage performances.',
+    perks: ['Viral Campaign Matching', 'Dance Workshop Hub', 'Music Video Bookings', 'Brand Sponsorships'],
+  },
+  fitness_expert: {
+    id: 'fitness_expert',
+    name: 'Fitness Coach & Trainer',
+    slug: 'fitness_expert',
+    roleGroup: 'PROVIDER',
+    headlineTop: 'Train\nBody into',
+    headlineHighlight: 'Power',
+    highlightColor: 'text-[#10b981]',
+    badgeBg: 'from-[#10b981] to-[#059669]',
+    badgeIcon: 'sparkles',
+    badgeLabel: 'Fitness Coach',
+    bgImage: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: '1:1 Coaching • Programs • Nutrition', position: 'mid-right' },
+    baseRotateY: 4,
+    baseRotateX: 2,
+    baseRotateZ: -1,
+    description: 'Workout programs, nutrition guides, and 1:1 fitness coaching.',
+    perks: ['Custom Training Plans', 'Brand Sponsorships', 'Escrow Bookings', 'Client Progress Hub'],
+  },
+  rent_service: {
+    id: 'rent_service',
+    name: 'Rental Studio & Gear',
+    slug: 'rent_service',
+    roleGroup: 'CLIENT',
+    headlineTop: 'Equip\nCreations with',
+    headlineHighlight: 'Pro Gear',
+    highlightColor: 'text-[#6366f1]',
+    badgeBg: 'from-[#6366f1] to-[#4338ca]',
+    badgeIcon: 'briefcase',
+    badgeLabel: 'Rental Studio & Gear',
+    bgImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800&auto=format&fit=crop',
+    floatingPill: { text: 'Cinema Cameras • Lenses • Studios', position: 'mid-right' },
+    baseRotateY: -2,
+    baseRotateX: 1,
+    baseRotateZ: 0,
+    description: 'Rent cinema cameras, studio spaces, and audio gear.',
+    perks: ['Verified Rental Protection', 'Instant Availability Calendar', 'Deposit Escrow', 'Flexible Booking'],
+  },
+};
+
 export interface PopoutWidget {
   title: string;
   subtitle?: string;
