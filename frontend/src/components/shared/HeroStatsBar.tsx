@@ -38,11 +38,7 @@ export function HeroStatsBar({ className = '' }: HeroStatsBarProps) {
     >
       <div className="w-full max-w-[96vw] xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-6">
         {/* Left Metrics Cluster */}
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false, amount: 0.15 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        <div
           className="flex items-center justify-center sm:justify-start flex-wrap gap-4 sm:gap-7 md:gap-9"
         >
           {/* 1. 2M+ Active Creators */}
@@ -78,14 +74,10 @@ export function HeroStatsBar({ className = '' }: HeroStatsBarProps) {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Right Testimonial Quote & Navigation Arrows */}
-        <motion.div
-          initial={{ opacity: 0, x: 25 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: false, amount: 0.15 }}
-          transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        <div
           className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-0 lg:pl-6 border-t lg:border-t-0 lg:border-l border-zinc-200 pt-3 lg:pt-0 w-full lg:w-auto"
         >
           <div className="text-left min-h-[38px] flex flex-col justify-center">
@@ -128,7 +120,7 @@ export function HeroStatsBar({ className = '' }: HeroStatsBarProps) {
               <ChevronRight size={14} />
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

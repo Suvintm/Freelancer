@@ -87,6 +87,26 @@
     scroll-behavior: smooth;
   }
 
+  html.lenis, html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  .lenis.lenis-scrolling iframe {
+    pointer-events: none;
+  }
+
   body {
     font-family: var(--font-sans) !important;
     background-color: var(--bg-page);
@@ -416,9 +436,23 @@ html.lenis, html.lenis body { height: auto; }
   100% { transform: scale3d(0, 0, 1) rotate(360deg); opacity: 0; }
 }
 
-@keyframes thoughtBubbleGpu {
-  0% { opacity: 0; transform: translate3d(0, 30px, 0) scale(0.85); }
-  12% { opacity: 1; transform: translate3d(0, 0px, 0) scale(1); }
-  85% { opacity: 1; transform: translate3d(0, -60px, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(0, -90px, 0) scale(0.9); }
+@keyframes continuousMarquee {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
+
+.animate-continuous-marquee {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: continuousMarquee 38s linear infinite;
+}
+
+.animate-brands-marquee {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: continuousMarquee 48s linear infinite;
+}
+
+
