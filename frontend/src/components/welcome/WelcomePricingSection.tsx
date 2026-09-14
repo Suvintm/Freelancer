@@ -124,11 +124,27 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
 
   const currencySymbol = currency === 'USD' ? '$' : '₹';
 
-  // Reference for horizontal scrollable/swipeable track
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // References for horizontal scrollable/swipeable tracks (separate for mobile and desktop)
+  const mobileScrollContainerRef = useRef<HTMLDivElement>(null);
+  const desktopScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Touch swipe gesture tracking for mobile devices
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const isSwipingRef = useRef<boolean>(false);
+
+  const getActiveScrollContainer = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return mobileScrollContainerRef.current || desktopScrollContainerRef.current;
+    }
+    return desktopScrollContainerRef.current || mobileScrollContainerRef.current;
+  };
 
   // Smoothly scroll to the top of the welcome page when clicking on any plan card or button
   const handlePlanSelect = () => {
+    // If user was swiping or dragging cards horizontally, do not trigger page jump
+    if (isSwipingRef.current) return;
+
     window.scrollTo({
       top: 0,
       behavior: 'smooth',
@@ -205,13 +221,19 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
 
   // Handle Carousel Scroll & Pagination (rAF throttled to prevent mobile render stutter)
   const scrollRafRef = useRef<number | null>(null);
-  const handleScroll = () => {
+  const handleScroll = (e?: React.UIEvent<HTMLDivElement>) => {
     if (scrollRafRef.current) return;
+    const targetElement = (e?.currentTarget as HTMLDivElement) || getActiveScrollContainer();
     scrollRafRef.current = requestAnimationFrame(() => {
-      if (scrollContainerRef.current) {
-        const { scrollLeft, clientWidth } = scrollContainerRef.current;
-        const isMobile = window.innerWidth < 640;
-        const cardStep = isMobile ? (clientWidth / 2) : 316;
+      if (targetElement) {
+        const { scrollLeft, clientWidth } = targetElement;
+        const firstCard = targetElement.firstElementChild as HTMLElement | null;
+        const gap = window.innerWidth < 1024 ? 8 : 16;
+        const cardStep = firstCard
+          ? firstCard.getBoundingClientRect().width + gap
+          : window.innerWidth < 640
+          ? clientWidth / 2
+          : 316;
         const index = Math.round(scrollLeft / cardStep);
         setCarouselIndex(Math.min(Math.max(0, index), Math.max(0, displayPlans.length - 1)));
       }
@@ -220,11 +242,16 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
   };
 
   const scrollToIndex = (index: number) => {
-    if (scrollContainerRef.current) {
-      const { clientWidth } = scrollContainerRef.current;
-      const isMobile = window.innerWidth < 640;
-      const cardStep = isMobile ? (clientWidth / 2) : 316;
-      scrollContainerRef.current.scrollTo({
+    const container = getActiveScrollContainer();
+    if (container) {
+      const firstCard = container.firstElementChild as HTMLElement | null;
+      const gap = window.innerWidth < 1024 ? 8 : 16;
+      const cardStep = firstCard
+        ? firstCard.getBoundingClientRect().width + gap
+        : window.innerWidth < 640
+        ? container.clientWidth / 2
+        : 316;
+      container.scrollTo({
         left: index * cardStep,
         behavior: 'smooth',
       });
@@ -242,11 +269,52 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
     scrollToIndex(target);
   };
 
+  // Touch swipe gesture event handlers for 100% swipe reliability on all mobile browsers
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    isSwipingRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = Math.abs(currentX - touchStartXRef.current);
+    const deltaY = Math.abs(currentY - touchStartYRef.current);
+
+    if (deltaX > 8 && deltaX > deltaY) {
+      isSwipingRef.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const deltaX = touchStartXRef.current - e.changedTouches[0].clientX;
+    const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
+
+    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    setTimeout(() => {
+      isSwipingRef.current = false;
+    }, 100);
+  };
+
   // Reset scroll position on role/currency change
   useEffect(() => {
     setCarouselIndex(0);
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    if (mobileScrollContainerRef.current) {
+      mobileScrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+    if (desktopScrollContainerRef.current) {
+      desktopScrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
     }
   }, [selectedRoleTab, currency]);
 
@@ -566,9 +634,18 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
 
           {/* 3. Mobile Plan Cards Carousel (2 Cards Side-by-Side) */}
           <div
-            ref={scrollContainerRef}
+            ref={mobileScrollContainerRef}
             onScroll={handleScroll}
-            className="w-full flex gap-2 overflow-x-auto snap-x snap-mandatory py-1 px-0.5 no-scrollbar items-stretch touch-pan-y"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            data-lenis-prevent="true"
+            data-lenis-prevent-touch="true"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x pan-y',
+            }}
+            className="w-full flex gap-2 overflow-x-auto snap-x snap-mandatory py-1 px-0.5 no-scrollbar items-stretch overscroll-x-contain"
           >
             {displayPlans.map((displayPlan, planIndex) => {
               const isPopular = Boolean(displayPlan.isPopular || displayPlan.tierLevel === 2 || (displayPlans.length > 2 && planIndex === 1));
@@ -795,9 +872,14 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
             )}
 
             <div
-              ref={scrollContainerRef}
+              ref={desktopScrollContainerRef}
               onScroll={handleScroll}
-              className="w-full flex gap-4 overflow-x-auto snap-x snap-mandatory pt-4 pb-6 px-2 no-scrollbar items-stretch touch-pan-y"
+              data-lenis-prevent="true"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x pan-y',
+              }}
+              className="w-full flex gap-4 overflow-x-auto snap-x snap-mandatory pt-4 pb-6 px-2 no-scrollbar items-stretch overscroll-x-contain"
             >
               {displayPlans.map((displayPlan, planIndex) => {
                 const isPopular = Boolean(displayPlan.isPopular || displayPlan.tierLevel === 2 || (displayPlans.length > 2 && planIndex === 1));
