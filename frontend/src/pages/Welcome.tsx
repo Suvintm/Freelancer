@@ -13,6 +13,7 @@ import { HeroStatsBar } from '../components/shared/HeroStatsBar';
 import { CreatorMetricsTicker } from '../components/shared/CreatorMetricsTicker';
 import { FeaturedCreatorsCarousel } from '../components/welcome/FeaturedCreatorsCarousel';
 import { WelcomePricingSection } from '../components/welcome/WelcomePricingSection';
+import { CookiePreferencesButton, useConsent } from '../features/consent';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUVIX WELCOME — High-Performance Production Onboarding
@@ -68,6 +69,7 @@ const LAST_SLIDE_IMAGES = [
 ];
 
 export default function Welcome() {
+  const { openPreferences } = useConsent();
   const [active, setActive] = useState(0);
   const [direction, setDirection] = useState(1);
   const [lastSlideImageIndex, setLastSlideImageIndex] = useState(0);
@@ -505,8 +507,19 @@ export default function Welcome() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.2 }}
           transition={{ duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-          className="relative z-20 pb-2 sm:pb-4 text-center px-4"
+          className="relative z-20 pb-4 sm:pb-6 text-center px-4 space-y-2.5"
         >
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
+            <Link to="/privacy-policy" className="hover:text-zinc-200 transition-colors">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link to="/terms" className="hover:text-zinc-200 transition-colors">
+              Terms of Service
+            </Link>
+            <span>•</span>
+            <CookiePreferencesButton onClick={openPreferences} className="text-zinc-400 hover:text-zinc-200" />
+          </div>
           <p className="text-[7.5px] sm:text-[9.5px] text-zinc-500 font-medium tracking-wide max-w-2xl mx-auto leading-relaxed">
             SuviX is an independent creator platform connecting creators, video editors, and brands. Google and YouTube are trademarks of Google LLC. Meta and Instagram are trademarks of Meta Platforms, Inc.
           </p>

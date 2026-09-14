@@ -80,7 +80,7 @@ export const getClientIP = (req) => {
     if (ips[0]) return ips[0];
   }
 
-  const rawIp = req.socket.remoteAddress || req.ip || "127.0.0.1";
+  const rawIp = req.socket?.remoteAddress || req.ip || "127.0.0.1";
   if (rawIp === "::1") return "127.0.0.1";
   if (rawIp.startsWith("::ffff:")) return rawIp.substring(7);
   return rawIp;

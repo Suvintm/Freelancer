@@ -70,6 +70,7 @@ model User {
   youtube_posts             YoutubePost[]
   youtubeProfile            YouTubeProfile?
   youtube_videos            YouTubeVideo[]
+  consent_logs              UserConsentLog[]
 
   @@index([role])
   @@index([is_onboarded])
@@ -2171,3 +2172,29 @@ enum PublicProfileAnalyticsEvent {
   PAGE_VIEW
   BLOCK_CLICK
 }
+
+model UserConsentLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  visitorHash     String   @map("visitor_hash") @db.VarChar(64)
+  consentVersion  String   @default("1.0.0") @map("consent_version") @db.VarChar(20)
+  userRole        String?  @map("user_role") @db.VarChar(30)
+  necessary       Boolean  @default(true)
+  analytics       Boolean  @default(false)
+  functional      Boolean  @default(false)
+  marketing       Boolean  @default(false)
+  action          String   @map("action") @db.VarChar(30)
+  countryCode     String?  @map("country_code") @db.VarChar(10)
+  deviceHash      String?  @map("device_hash") @db.VarChar(64)
+  ipHash          String?  @map("ip_hash") @db.VarChar(64)
+  yearMonth       String   @map("year_month") @db.VarChar(7)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([visitorHash, createdAt(sort: Desc)])
+  @@index([yearMonth])
+  @@map("user_consent_logs")
+}
+

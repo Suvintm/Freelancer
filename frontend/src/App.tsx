@@ -54,6 +54,7 @@ const LinkInBioAnalytics = lazy(() => import('./linkinbio-v2/pages/BioAnalyticsP
 const PublicBioVisitorPage = lazy(() => import('./linkinbio-v2/pages/PublicBioVisitorPage'));
 
 import { GatewayOfflineScreen } from './components/common/GatewayOfflineScreen';
+import { CookieConsentBanner } from './features/consent';
 
 // Lightweight fallback for lazy-loaded route transitions
 function PageFallback() {
@@ -636,6 +637,8 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      {/* Global Cookie Consent & Privacy Manager */}
+      <CookieConsentBanner />
     </main>
   );
 }
