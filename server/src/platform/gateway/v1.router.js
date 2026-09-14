@@ -14,6 +14,7 @@ import { communityRouter } from "../../domains/community/index.js";
 import { messagingRouter } from "../../domains/messaging/index.js";
 import { pollRouter } from "../../domains/polls/index.js";
 import { linkinbioRouter } from "../../domains/linkinbio/index.js";
+import { consentRoutes } from "../../domains/consent/index.js";
 
 /**
  * 🚀 API GATEWAY - V1
@@ -46,6 +47,7 @@ v1Router.use("/payments", subscriptionRouter);
 v1Router.use("/subscriptions", subscriptionRouter);
 v1Router.use("/invoices", invoiceRouter);
 v1Router.use("/linkinbio", linkinbioRouter);
+v1Router.use("/consent", consentRoutes);
 
 
 export default v1Router;

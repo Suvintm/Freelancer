@@ -2,10 +2,12 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Shield, Eye, Database, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
+import { CookiePreferencesButton, useConsent } from '../features/consent';
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const { openPreferences } = useConsent();
 
   return (
     <div className={`min-h-[80vh] py-8 px-4 sm:px-6 lg:px-8 font-sans ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>
@@ -83,6 +85,17 @@ export default function PrivacyPolicy() {
             <p className="mt-2">
               You can choose to disable cookies through your individual browser options or manage personalized ad preferences via Google's Ad Settings page.
             </p>
+            <div className="pt-2">
+              <CookiePreferencesButton
+                variant="button"
+                onClick={openPreferences}
+                className={
+                  isDarkMode
+                    ? 'border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 shadow-sm'
+                    : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 shadow-sm'
+                }
+              />
+            </div>
           </div>
         </motion.section>
 
