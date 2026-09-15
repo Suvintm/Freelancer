@@ -3,12 +3,12 @@ import {
   Play,
   Heart,
   UserPlus,
-  Check,
   MoreHorizontal,
   Globe,
 } from 'lucide-react';
 
 import creatorBg from '../../assets/creatorbg.png';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 
 interface SocialLink {
   type: 'youtube' | 'instagram' | 'linkedin' | 'tiktok' | 'x' | 'spotify' | 'globe';
@@ -216,12 +216,11 @@ const CreatorCard: React.FC<{ creator: CreatorCardData }> = ({ creator }) => {
               <h3 className="text-[13.5px] sm:text-[15px] font-black text-white tracking-tight leading-tight truncate">
                 {creator.name}
               </h3>
-              <div
-                className="w-3.5 h-3.5 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0"
-                title="Verified Creator"
-              >
-                <Check size={8} strokeWidth={3.5} />
-              </div>
+              <VerifiedBadge
+                isVerified={true}
+                role="creator"
+                className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"
+              />
             </div>
 
             {/* Username */}
