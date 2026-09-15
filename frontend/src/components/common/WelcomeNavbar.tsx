@@ -391,14 +391,14 @@ export const WelcomeNavbar: React.FC = () => {
           </nav>
         </div>
 
-        {/* ── 3. RIGHT SIDE: LANGUAGE SELECTOR & ACTIONS ── */}
+        {/* ── 3. RIGHT SIDE: ACTIONS & AUTH ── */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Language Selector Dropdown (Visible on both mobile & desktop) */}
-          <div ref={langRef} className="relative">
+          {/* Language Selector Dropdown (Desktop only) */}
+          <div ref={langRef} className="relative hidden sm:block">
             <button
               type="button"
               onClick={() => setIsLangOpen(!isLangOpen)}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold text-zinc-800 hover:text-black hover:bg-zinc-100 transition-colors cursor-pointer border border-zinc-200/90 bg-white shadow-2xs"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-zinc-800 hover:text-black hover:bg-zinc-100 transition-colors cursor-pointer border border-zinc-200/90 bg-white shadow-2xs"
               title="Select Language"
             >
               <Globe className="w-3.5 h-3.5 text-zinc-700" />
@@ -461,12 +461,20 @@ export const WelcomeNavbar: React.FC = () => {
             </Link>
           </div>
 
+          {/* Mobile Only: Direct Log In Button in Navbar */}
+          <Link
+            to="/login"
+            className="sm:hidden flex items-center justify-center px-3.5 py-1.5 rounded-full bg-black text-white text-xs font-bold tracking-tight shadow-2xs hover:bg-zinc-800 active:scale-95 transition-all"
+          >
+            Log In
+          </Link>
+
           {/* Mobile Hamburger Button */}
           <div className="flex sm:hidden items-center">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="w-8.5 h-8.5 rounded-lg border border-zinc-200/90 bg-zinc-50 hover:bg-zinc-100 flex items-center justify-center text-zinc-900 transition-colors shadow-2xs cursor-pointer"
+              className="w-8.5 h-8.5 rounded-full border border-zinc-200/90 bg-zinc-50 hover:bg-zinc-100 flex items-center justify-center text-zinc-900 transition-colors shadow-2xs cursor-pointer active:scale-95"
               aria-label="Toggle Navigation Menu"
             >
               {isMobileMenuOpen ? <X className="w-4.5 h-4.5" /> : <Menu className="w-4.5 h-4.5" />}
@@ -475,64 +483,137 @@ export const WelcomeNavbar: React.FC = () => {
         </div>
       </div>
 
-      {/* ── 5. MOBILE EXPANDED MENU DRAWER ──────────────────────── */}
+      {/* ── 4. MOBILE EXPANDED MENU DRAWER ──────────────────────── */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="sm:hidden border-t border-zinc-200/90 bg-white px-4 pt-3 pb-6 shadow-xl space-y-4 overflow-hidden"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="sm:hidden border-t border-zinc-200/90 bg-white px-4 pt-3 pb-6 shadow-2xl space-y-4 overflow-hidden"
           >
+            {/* Black & White Clean Mobile Menu Items */}
             <div className="space-y-1">
               <div className="px-2 py-1 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                Menu
+                Explore Platform
               </div>
+
+              {/* Products & Tools */}
               <Link
                 to="/creator-tools"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-50 active:bg-zinc-100 transition-colors group"
               >
-                <Layers className="w-4 h-4 text-zinc-700" />
-                <span>Products & Tools</span>
+                <div className="w-9 h-9 rounded-lg bg-zinc-100 group-hover:bg-zinc-900 group-hover:text-white transition-colors text-zinc-900 flex items-center justify-center shrink-0">
+                  <Layers className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-zinc-900 group-hover:text-black">Products & Tools</div>
+                  <p className="text-xs text-zinc-500 truncate">Video editing workspace & AI tools</p>
+                </div>
               </Link>
+
+              {/* For Creators */}
               <Link
                 to="/role-selection"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-50 active:bg-zinc-100 transition-colors group"
               >
-                <Video className="w-4 h-4 text-zinc-700" />
-                <span>For Creators</span>
+                <div className="w-9 h-9 rounded-lg bg-zinc-100 group-hover:bg-zinc-900 group-hover:text-white transition-colors text-zinc-900 flex items-center justify-center shrink-0">
+                  <Video className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-zinc-900 group-hover:text-black">For Creators</div>
+                  <p className="text-xs text-zinc-500 truncate">Find editors & scale your channel</p>
+                </div>
               </Link>
+
+              {/* For Business */}
               <Link
                 to="/role-selection"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-50 active:bg-zinc-100 transition-colors group"
               >
-                <Building2 className="w-4 h-4 text-zinc-700" />
-                <span>For Business</span>
+                <div className="w-9 h-9 rounded-lg bg-zinc-100 group-hover:bg-zinc-900 group-hover:text-white transition-colors text-zinc-900 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-zinc-900 group-hover:text-black">For Business</div>
+                  <p className="text-xs text-zinc-500 truncate">Brand sponsorships & campaigns</p>
+                </div>
               </Link>
+
+              {/* Pricing Plans */}
               <a
                 href="#pricing"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100 cursor-pointer"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-50 active:bg-zinc-100 transition-colors group cursor-pointer"
               >
-                <CreditCard className="w-4 h-4 text-zinc-700" />
-                <span>Pricing Plans</span>
+                <div className="w-9 h-9 rounded-lg bg-zinc-100 group-hover:bg-zinc-900 group-hover:text-white transition-colors text-zinc-900 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-zinc-900 group-hover:text-black">Pricing Plans</div>
+                  <p className="text-xs text-zinc-500 truncate">Flexible transparent tier pricing</p>
+                </div>
               </a>
+
+              {/* Resources & Community */}
               <Link
                 to="/community"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-zinc-900 hover:bg-zinc-100"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-50 active:bg-zinc-100 transition-colors group"
               >
-                <BookOpen className="w-4 h-4 text-zinc-700" />
-                <span>Resources & Community</span>
+                <div className="w-9 h-9 rounded-lg bg-zinc-100 group-hover:bg-zinc-900 group-hover:text-white transition-colors text-zinc-900 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-zinc-900 group-hover:text-black">Resources & Community</div>
+                  <p className="text-xs text-zinc-500 truncate">Guides, networking & 24/7 help</p>
+                </div>
               </Link>
             </div>
 
+            {/* Language Selector Inside Mobile Drawer (Black & White Theme) */}
+            <div className="pt-2 border-t border-zinc-100">
+              <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-zinc-800">
+                  <span className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-white border border-zinc-200/90 text-zinc-800 flex items-center justify-center shadow-2xs">
+                      <Globe className="w-3.5 h-3.5" />
+                    </div>
+                    <span>Language & Region</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-zinc-500">
+                    {selectedLang.flag} {selectedLang.label.split(' ')[0]}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => setSelectedLang(lang)}
+                      className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        selectedLang.code === lang.code
+                          ? 'bg-black text-white shadow-2xs'
+                          : 'bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-100'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <span>{lang.flag}</span>
+                        <span className="truncate">{lang.label.split(' ')[0]}</span>
+                      </span>
+                      {selectedLang.code === lang.code && <Check className="w-3 h-3 text-white" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Mobile Auth CTAs */}
-            <div className="pt-2 border-t border-zinc-100 space-y-2">
+            <div className="pt-1 border-t border-zinc-100 space-y-2">
               <Link
                 to="/login"
                 onClick={() => setIsMobileMenuOpen(false)}

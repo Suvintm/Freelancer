@@ -1,23 +1,20 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ArrowRight,
-  Plus,
   Check,
   AlertCircle,
-  Play,
-  Sparkles,
   ShieldCheck,
-  Star,
-  Zap,
-  Flame,
-  Instagram,
+  BarChart3,
+  Globe,
+  Users,
   Compass,
   RefreshCw,
+  LayoutGrid,
+  X as CloseIcon,
 } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setTempSignupData,
@@ -33,15 +30,9 @@ import type { RootState } from '../../store';
 import { api } from '../../api/client';
 import { LoadingOverlay } from '../../components/shared/LoadingOverlay';
 import { SuccessOverlay } from '../../components/shared/SuccessOverlay';
-import logo from '../../assets/lightlogo.png';
-import brandLogo from '../../assets/logo.png';
-
-// ── Local Showcase Video Assets ───────────────────────────────────────────
-import video1V from '../../assets/cardassets/video1V.mp4';
-import video2V from '../../assets/cardassets/video2V.mp4';
-import video3V from '../../assets/cardassets/video3V.mp4';
-import video5H from '../../assets/cardassets/video5H.mp4';
-import video6H from '../../assets/cardassets/video6H.mp4';
+import blackLogo from '../../assets/blackbglogo.png';
+import socialConnectBg from '../../assets/socialconnectbg.png';
+import socialConnectComp from '../../assets/socialconnectcomp.png';
 
 const formatCount = (n: number | string): string => {
   const num = Number(n);
@@ -68,119 +59,6 @@ const DEFAULT_NICHES = [
   'Science & Nature',
 ];
 
-// ── Showcase 3D Cards Data ────────────────────────────────────────────────
-interface CreatorCardData {
-  id: string;
-  name: string;
-  handle: string;
-  subscribers: string;
-  avatar: string;
-  mediaUrl: string;
-  videoUrl?: string;
-  mediaType: 'short' | 'video';
-  tag?: string;
-  badgeIcon?: 'growth' | 'verified' | 'viral';
-  positionClass: string;
-  rotation: number;
-  zIndex: number;
-  chipPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-  floatDuration: number;
-  floatDelay: number;
-}
-
-const SHOWCASE_CARDS: CreatorCardData[] = [
-  {
-    id: 'vanessa-lau',
-    name: 'Vanessa Lau',
-    handle: '@VanessaLau',
-    subscribers: '954K subscribers',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=faces',
-    mediaUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&h=650&fit=crop',
-    videoUrl: video1V,
-    mediaType: 'short',
-    tag: '⚡ Top Educator',
-    badgeIcon: 'verified',
-    positionClass: 'w-[42%] sm:w-[38%] aspect-[3/4] top-[0%] left-[2%]',
-    rotation: -5,
-    zIndex: 20,
-    chipPosition: 'bottom-right',
-    floatDuration: 5.2,
-    floatDelay: 0,
-  },
-  {
-    id: 'jenny-hoyos',
-    name: 'Jenny Hoyos',
-    handle: '@JennyHoyos',
-    subscribers: '9M subscribers',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&h=120&fit=crop&crop=faces',
-    mediaUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=500&h=750&fit=crop',
-    videoUrl: video2V,
-    mediaType: 'short',
-    tag: '🔥 100M+ Monthly Views',
-    badgeIcon: 'viral',
-    positionClass: 'w-[44%] sm:w-[42%] aspect-[3/4.2] top-[2%] right-[1%]',
-    rotation: 5,
-    zIndex: 25,
-    chipPosition: 'bottom-left',
-    floatDuration: 5.8,
-    floatDelay: 0.7,
-  },
-  {
-    id: 'saucestache',
-    name: 'Sauce Stache',
-    handle: '@SauceStache',
-    subscribers: '655K subscribers',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=faces',
-    mediaUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600&h=400&fit=crop',
-    videoUrl: video5H,
-    mediaType: 'video',
-    tag: '🍳 Studio Creator',
-    badgeIcon: 'growth',
-    positionClass: 'w-[46%] sm:w-[42%] aspect-[16/11] bottom-[12%] left-[0%]',
-    rotation: -3,
-    zIndex: 15,
-    chipPosition: 'bottom-right',
-    floatDuration: 6.2,
-    floatDelay: 1.2,
-  },
-  {
-    id: 'danie-jay',
-    name: 'Danie Jay',
-    handle: '@DanieJay',
-    subscribers: '80K subscribers',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop&crop=faces',
-    mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=500&h=650&fit=crop',
-    videoUrl: video3V,
-    mediaType: 'short',
-    tag: '📈 +310% YoY',
-    badgeIcon: 'growth',
-    positionClass: 'w-[40%] sm:w-[36%] aspect-[3/4] bottom-[0%] left-[30%]',
-    rotation: 2,
-    zIndex: 35,
-    chipPosition: 'bottom-left',
-    floatDuration: 4.8,
-    floatDelay: 0.3,
-  },
-  {
-    id: 'devin-supertramp',
-    name: 'Devin Super Tramp',
-    handle: '@devinsupertramp',
-    subscribers: '6.4M subscribers',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=faces',
-    mediaUrl: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop',
-    videoUrl: video6H,
-    mediaType: 'video',
-    tag: '🎬 4K Action Films',
-    badgeIcon: 'verified',
-    positionClass: 'w-[46%] sm:w-[44%] aspect-[16/11] bottom-[8%] right-[0%]',
-    rotation: 4,
-    zIndex: 18,
-    chipPosition: 'bottom-left',
-    floatDuration: 5.5,
-    floatDelay: 1.5,
-  },
-];
-
 const SOCIAL_PROOF_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=faces',
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=faces',
@@ -189,168 +67,122 @@ const SOCIAL_PROOF_AVATARS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&h=80&fit=crop&crop=faces',
 ];
 
-
-function ShowcaseVideo({ videoUrl, poster, alt }: { videoUrl: string; poster: string; alt: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-    video.autoplay = true;
-
-    const playVideo = () => {
-      video.play().catch(() => {
-        // Fallback for browsers that require user gesture on first load
-        const retry = () => {
-          video.play().catch(() => {});
-          window.removeEventListener('touchstart', retry);
-          window.removeEventListener('click', retry);
-        };
-        window.addEventListener('touchstart', retry, { once: true });
-        window.addEventListener('click', retry, { once: true });
-      });
-    };
-
-    if (video.readyState >= 2) {
-      playVideo();
-    } else {
-      video.addEventListener('loadeddata', playVideo, { once: true });
-      video.addEventListener('canplay', playVideo, { once: true });
-    }
-
-    return () => {
-      video.removeEventListener('loadeddata', playVideo);
-      video.removeEventListener('canplay', playVideo);
-    };
-  }, [videoUrl]);
-
+// ── Custom High-Fidelity Social Platform Icons ────────────────────────────
+function YouTubeIcon() {
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        poster={poster}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        aria-label={alt}
-        className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
-      />
+    <div className="w-10 h-10 rounded-xl bg-[#FF0000] text-white flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+      </svg>
     </div>
   );
 }
 
-function FloatingCreatorShowcase() {
+function InstagramIcon() {
   return (
-    <div className="relative w-full aspect-[16/13] max-w-[42rem] mx-auto select-none">
-      <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-red-500/10 to-transparent rounded-full blur-3xl -z-10 pointer-events-none" />
-
-      {SHOWCASE_CARDS.map((card) => (
-        <motion.div
-          key={card.id}
-          initial={{ opacity: 0, y: 30, rotate: card.rotation, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, rotate: card.rotation, scale: 1 }}
-          transition={{ duration: 0.8, delay: card.floatDelay * 0.25, ease: [0.16, 1, 0.3, 1] }}
-          style={{ zIndex: card.zIndex }}
-          className={`absolute ${card.positionClass}`}
-        >
-          <motion.div
-            animate={{
-              y: [0, -12, 0],
-              rotate: [card.rotation, card.rotation + (card.rotation > 0 ? 1 : -1), card.rotation],
-            }}
-            transition={{
-              duration: card.floatDuration,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: card.floatDelay,
-            }}
-            className="relative w-full h-full group cursor-pointer"
-          >
-            <div className="relative w-full h-full rounded-[1.6rem] overflow-hidden border-[3.5px] border-white bg-white shadow-[0_20px_50px_rgba(0,0,0,0.14),0_6px_15px_rgba(0,0,0,0.08)] transition-all duration-300 group-hover:shadow-[0_28px_65px_rgba(0,0,0,0.22)] group-hover:border-zinc-50">
-              {card.videoUrl ? (
-                <ShowcaseVideo videoUrl={card.videoUrl} poster={card.mediaUrl} alt={card.name} />
-              ) : (
-                <img
-                  src={card.mediaUrl}
-                  alt={card.name}
-                  className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
-
-              {card.tag && (
-                <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md border border-white/20 text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
-                  {card.badgeIcon === 'viral' && <Flame size={10} className="text-amber-400 fill-amber-400" />}
-                  {card.badgeIcon === 'growth' && <Zap size={10} className="text-emerald-400 fill-emerald-400" />}
-                  {card.badgeIcon === 'verified' && <Sparkles size={10} className="text-red-400" />}
-                  <span>{card.tag}</span>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={`absolute ${
-                card.chipPosition === 'bottom-left'
-                  ? '-bottom-4 -left-4 sm:-bottom-5 sm:-left-5'
-                  : '-bottom-4 -right-4 sm:-bottom-5 sm:-right-5'
-              } z-40 bg-white rounded-full shadow-[0_12px_30px_rgba(0,0,0,0.18)] border border-zinc-100/90 pl-1.5 pr-4 py-1.5 flex items-center gap-2.5 whitespace-nowrap transition-transform duration-300 group-hover:scale-105`}
-            >
-              <div className="w-8 h-8 rounded-full bg-zinc-900 border border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
-                <img src={card.avatar} alt={card.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex flex-col leading-tight pr-1">
-                <span className="text-[11px] font-black text-zinc-900 tracking-tight flex items-center gap-1">
-                  {card.handle}
-                </span>
-                <span className="text-[9.5px] font-semibold text-zinc-500">{card.subscribers}</span>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      ))}
-
-      <motion.div
-        initial={{ scale: 0, rotate: -25 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 150, damping: 14, delay: 0.5 }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
-      >
-        <motion.div
-          animate={{ scale: [1, 1.08, 1], rotate: [0, 2, -2, 0] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="relative flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-red-600 rounded-full blur-xl opacity-50 animate-ping" />
-          <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border-[3px] border-white shadow-[0_14px_35px_rgba(0,0,0,0.25)] flex items-center justify-center p-2.5 overflow-hidden">
-            <img src={brandLogo} alt="SuviX" className="w-full h-full object-contain" />
-          </div>
-        </motion.div>
-      </motion.div>
+    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+      </svg>
     </div>
   );
 }
+
+function TikTokIcon() {
+  return (
+    <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.35 0 .68.06 1 .18V8.9a6.38 6.38 0 0 0-1-.08 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.41a8.3 8.3 0 0 0 4.76 1.47V6.69z" />
+      </svg>
+    </div>
+  );
+}
+
+function TwitterXIcon() {
+  return (
+    <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    </div>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <div className="w-10 h-10 rounded-xl bg-[#1877F2] text-white flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+      </svg>
+    </div>
+  );
+}
+
+function SnapchatIcon() {
+  return (
+    <div className="w-10 h-10 rounded-xl bg-[#FFFC00] text-black flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+        <path d="M12.004 2c-3.52 0-6.32 2.5-6.32 5.58 0 .55.07 1.09.22 1.58-.58.26-1.28.7-1.39 1.36-.08.45.16.89.57 1.07.47.2.98.07 1.39-.1.17.75.56 1.43 1.15 1.95-.57.38-1.28.6-1.97.68-.45.05-.87.35-.95.8-.08.47.2.93.65 1.07 1.38.43 2.92.23 4.3-.23.44.75 1.34 1.24 2.35 1.24 1.01 0 1.91-.49 2.35-1.24 1.38.46 2.92.66 4.3.23.45-.14.73-.6.65-1.07-.08-.45-.5-.75-.95-.8-.69-.08-1.4-.3-1.97-.68.59-.52.98-1.2 1.15-1.95.41.17.92.3 1.39.1.41-.18.65-.62.57-1.07-.11-.66-.81-1.1-1.39-1.36.15-.49.22-1.03.22-1.58 0-3.08-2.8-5.58-6.32-5.58z" />
+      </svg>
+    </div>
+  );
+}
+
+function LinkedInIcon() {
+  return (
+    <div className="w-10 h-10 rounded-xl bg-[#0A66C2] text-white flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.64a1.64 1.64 0 1 0 0 3.28 1.64 1.64 0 0 0 0-3.28z" />
+      </svg>
+    </div>
+  );
+}
+
+function SpotifyIcon() {
+  return (
+    <div className="w-10 h-10 rounded-xl bg-[#1DB954] text-black flex items-center justify-center shadow-xs shrink-0">
+      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.308-1.76-8.793-.963-.335.077-.67-.133-.746-.468-.077-.334.132-.67.467-.746 3.808-.87 7.076-.502 9.722 1.113.294.18.386.563.207.857zm1.224-2.72c-.226.367-.708.482-1.075.257-2.69-1.653-6.79-2.133-9.97-1.168-.413.125-.85-.11-.975-.523-.125-.413.11-.85.523-.975 3.633-1.102 8.147-.568 11.24 1.334.367.225.482.708.257 1.075zm.105-2.835C14.692 8.94 8.71 8.74 5.25 9.79c-.49.15-1.01-.133-1.16-.623-.15-.49.133-1.01.623-1.16 3.98-1.208 10.59-.982 14.42 1.293.44.262.585.835.323 1.275-.262.44-.835.585-1.275.323z" />
+      </svg>
+    </div>
+  );
+}
+
+const PLATFORM_TABS = [
+  'All Platforms',
+  'Video',
+  'Photo & Reels',
+  'Short Form',
+  'Audio',
+  'Live',
+  'Blog',
+];
 
 export default function ConnectSocials() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
-  const tempSignupData = useSelector((state: RootState) => state.onboarding.tempSignupData);
-  const youtubeDiscovery = useSelector((state: RootState) => state.onboarding.youtubeDiscovery);
-  const instagramAccounts = useSelector((state: RootState) => state.onboarding.creatorData?.instagramAccounts || []);
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const onboardingState = useSelector((state: RootState) => state.onboarding);
+  const tempSignupData = onboardingState?.tempSignupData;
+  const youtubeDiscovery = onboardingState?.youtubeDiscovery || { channels: [], selectedChannelIds: [], categorizations: {} };
+  const creatorData = onboardingState?.creatorData || { channels: [], selectedChannelIds: [], instagramAccounts: [], selectedInstagramAccountIds: [], selectedNiches: [], discoveryToken: null };
+  const channels = youtubeDiscovery?.channels || creatorData?.channels || [];
+  const instagramAccounts = creatorData?.instagramAccounts || [];
 
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+
+  const [activeTab, setActiveTab] = useState('All Platforms');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [instaFetchError, setInstaFetchError] = useState<string | null>(null);
+  const [showMorePlatformsModal, setShowMorePlatformsModal] = useState(false);
+  const [manualLinkPlatform, setManualLinkPlatform] = useState<string | null>(null);
+  const [manualHandleInput, setManualHandleInput] = useState('');
+
   const fetchStarted = useRef(false);
   const instaFetchStarted = useRef(false);
 
@@ -371,31 +203,29 @@ export default function ConnectSocials() {
     sessionStorage.getItem('youtube_access_token') ||
     undefined;
 
-  const isInstaOAuthPending = 
-    localStorage.getItem('instagram_oauth_pending') === 'true' || 
+  const isInstaOAuthPending =
+    localStorage.getItem('instagram_oauth_pending') === 'true' ||
     sessionStorage.getItem('oauth_intent') === 'connect_instagram';
 
   const rawInstaToken = isInstaOAuthPending
-    ? (sessionStorage.getItem('instagram_access_token') || localStorage.getItem('instagram_access_token') || undefined)
+    ? sessionStorage.getItem('instagram_access_token') || localStorage.getItem('instagram_access_token') || undefined
     : (location.state?.instagramAccessToken as string | undefined);
 
-
-  const connected = youtubeDiscovery.channels.length > 0;
-  const primaryChannel = youtubeDiscovery.channels[0];
+  const connected = (channels || []).length > 0;
+  const primaryChannel = (channels || [])[0];
   const isChannelClaimed = connected && Boolean(primaryChannel?.isClaimed);
 
-  const freshChannels = youtubeDiscovery.channels.filter((c) => !c.isClaimed);
+  const freshChannels = (channels || []).filter((c) => !c.isClaimed);
   const hasFreshYoutube = freshChannels.length > 0;
-  const hasFreshInstagram = instagramAccounts.length > 0;
+  const hasFreshInstagram = (instagramAccounts || []).length > 0;
   const hasAnyValidSocial = hasFreshYoutube || hasFreshInstagram;
   const isContinueDisabled = !hasAnyValidSocial || (hasFreshYoutube && !selectedNiche);
 
-  const instaConnected = instagramAccounts.length > 0;
-  const primaryInstaAccount = instagramAccounts[0];
+  const instaConnected = (instagramAccounts || []).length > 0;
+  const primaryInstaAccount = (instagramAccounts || [])[0];
 
   const handleConnectYoutube = () => {
     sessionStorage.setItem('oauth_intent', 'connect_youtube');
-    // Preserve any currently connected Instagram accounts across the redirect
     if (instagramAccounts && instagramAccounts.length > 0) {
       try {
         sessionStorage.setItem('suvix_saved_instagram_accounts', JSON.stringify(instagramAccounts));
@@ -418,12 +248,10 @@ export default function ConnectSocials() {
 
   const handleConnectInstagram = () => {
     sessionStorage.setItem('oauth_intent', 'connect_instagram');
-    // Save to localStorage so it survives the full-page navigation to Instagram and back
     localStorage.setItem('instagram_oauth_pending', 'true');
-    // Preserve any currently connected YouTube channels across the redirect
-    if (youtubeDiscovery.channels && youtubeDiscovery.channels.length > 0) {
+    if (channels && channels.length > 0) {
       try {
-        sessionStorage.setItem('suvix_saved_youtube_channels', JSON.stringify(youtubeDiscovery.channels));
+        sessionStorage.setItem('suvix_saved_youtube_channels', JSON.stringify(channels));
       } catch {
         // ignore
       }
@@ -434,7 +262,6 @@ export default function ConnectSocials() {
     if (tempSignupData?.categoryId) {
       try {
         sessionStorage.setItem('suvix_temp_signup_data', JSON.stringify(tempSignupData));
-        // Also persist to localStorage so OnboardingGuard can recover it on return
         localStorage.setItem('suvix_temp_signup_data_backup', JSON.stringify(tempSignupData));
       } catch {
         // ignore
@@ -442,6 +269,11 @@ export default function ConnectSocials() {
     }
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5051/api/v1';
     window.location.href = `${apiUrl}/auth/meta/instagram`;
+  };
+
+  const handleOtherPlatformClick = (platformName: string) => {
+    setManualLinkPlatform(platformName);
+    setManualHandleInput('');
   };
 
   const fetchChannels = useCallback(
@@ -520,7 +352,7 @@ export default function ConnectSocials() {
           } catch {
             // ignore
           }
-          
+
           if (showOverlay) {
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 2400);
@@ -542,28 +374,21 @@ export default function ConnectSocials() {
     [dispatch]
   );
 
-  // Intercept instaToken from hash if returning from backend OAuth redirect
-  // NOTE: must be defined AFTER fetchInstagramAccounts to avoid ReferenceError
   useEffect(() => {
     if (window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const instaTokenFromHash = hashParams.get('instaToken');
       if (instaTokenFromHash) {
-        // Save to BOTH storages for reliability
         sessionStorage.setItem('instagram_access_token', instaTokenFromHash);
         localStorage.setItem('instagram_access_token', instaTokenFromHash);
-        // Clear the pending flag
         localStorage.removeItem('instagram_oauth_pending');
-        // Clear hash from URL cleanly
         window.history.replaceState(null, '', window.location.pathname);
-        // Trigger the fetch directly without a reload — no redirect needed
         instaFetchStarted.current = false;
         fetchInstagramAccounts(instaTokenFromHash, true);
       }
     }
   }, [fetchInstagramAccounts]);
 
-  // 1. Session Storage State Recovery (Temp signup data, Instagram accounts, and YouTube channels)
   useEffect(() => {
     if (!tempSignupData?.categoryId) {
       try {
@@ -579,7 +404,6 @@ export default function ConnectSocials() {
       }
     }
 
-    // Recover persisted Instagram accounts across full-page OAuth redirects
     try {
       const savedInsta = sessionStorage.getItem('suvix_saved_instagram_accounts');
       if (savedInsta && instagramAccounts.length === 0) {
@@ -592,10 +416,9 @@ export default function ConnectSocials() {
       // ignore
     }
 
-    // Recover persisted YouTube channels across full-page OAuth redirects
     try {
       const savedYt = sessionStorage.getItem('suvix_saved_youtube_channels');
-      if (savedYt && youtubeDiscovery.channels.length === 0) {
+      if (savedYt && channels.length === 0) {
         const parsed = JSON.parse(savedYt);
         if (Array.isArray(parsed) && parsed.length > 0) {
           dispatch(addDiscoveredChannels(parsed));
@@ -604,9 +427,8 @@ export default function ConnectSocials() {
     } catch {
       // ignore
     }
-  }, [tempSignupData, instagramAccounts.length, youtubeDiscovery.channels.length, dispatch]);
+  }, [tempSignupData, instagramAccounts.length, channels.length, dispatch]);
 
-  // 2. Category Auto-heal
   useEffect(() => {
     if (categoriesLoading) return;
     if (!tempSignupData?.categoryId && categories.length > 0) {
@@ -633,16 +455,14 @@ export default function ConnectSocials() {
     }
   }, [categories, categoriesLoading, tempSignupData, dispatch, navigate]);
 
-  // 3. Channel Fetch on Token Arrival
   useEffect(() => {
     const token = rawToken;
-    if (token && youtubeDiscovery.channels.length === 0 && !fetchStarted.current) {
+    if (token && channels.length === 0 && !fetchStarted.current) {
       fetchStarted.current = true;
       fetchChannels(token, true);
     }
-  }, [rawToken, fetchChannels, youtubeDiscovery.channels.length]);
+  }, [rawToken, fetchChannels, channels.length]);
 
-  // 4. Instagram Account Fetch on Token Arrival
   useEffect(() => {
     const token = rawInstaToken;
     if (token && instagramAccounts.length === 0 && !instaFetchStarted.current) {
@@ -651,14 +471,9 @@ export default function ConnectSocials() {
     }
   }, [rawInstaToken, fetchInstagramAccounts, instagramAccounts.length]);
 
-  /**
-   * Complete Social Account Linking and Proceed to Sign Up
-   */
   const handleProceedToSignup = () => {
     const ytCat = categories.find((c) => c.slug === 'creator' || c.slug === 'yt_influencer');
-
-    // Only forward fresh, unclaimed YouTube channels
-    const validYoutubeChannels = youtubeDiscovery.channels.filter((c) => !c.isClaimed);
+    const validYoutubeChannels = channels.filter((c) => !c.isClaimed);
 
     const formattedYoutubeChannels = validYoutubeChannels.map((channel, index: number) => ({
       channelId: channel.channelId,
@@ -673,7 +488,6 @@ export default function ConnectSocials() {
       videos: channel.videos || [],
     }));
 
-    // If YouTube channel was claimed, clear it from session storage and Redux so it is completely dropped
     if (isChannelClaimed && validYoutubeChannels.length === 0) {
       sessionStorage.removeItem('suvix_saved_youtube_channels');
       sessionStorage.removeItem('youtube_access_token');
@@ -711,9 +525,6 @@ export default function ConnectSocials() {
     }
   };
 
-  /**
-   * Skip All Social Connections (Not Recommended)
-   */
   const handleSkipAllConnections = () => {
     const ytCat = categories.find((c) => c.slug === 'creator' || c.slug === 'yt_influencer');
     const updatePayload = {
@@ -747,476 +558,848 @@ export default function ConnectSocials() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 flex flex-col relative overflow-x-hidden selection:bg-red-500 selection:text-white">
-      {/* ── ARCHITECTURAL GRID BACKGROUND ─────────────────────────────────── */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-[0.4]"
-          style={{
-            backgroundImage: `
-              linear-gradient(to right, rgba(228, 228, 231, 0.7) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(228, 228, 231, 0.7) 1px, transparent 1px)
-            `,
-            backgroundSize: '44px 44px',
-          }}
+    <div className="min-h-screen w-full bg-[#f8f9fc] text-zinc-900 flex flex-col relative overflow-x-hidden selection:bg-black selection:text-white font-sans">
+      {/* ── BACKGROUND ARTWORK ────────────────────────────────────────── */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
+        <img
+          src={socialConnectBg}
+          alt=""
+          className="w-full h-full object-cover object-right-bottom"
         />
       </div>
 
-      <LoadingOverlay isVisible={isLoading} theme="youtube" message="Connecting to YouTube..." />
+      <LoadingOverlay isVisible={isLoading} theme="youtube" message="Connecting your account..." />
       <SuccessOverlay
         isVisible={showSuccess}
         type="youtube"
-        title="Channel Found!"
-        message={primaryChannel?.channelName ? `Discovered and verified "${primaryChannel.channelName}"` : "Your YouTube channel was discovered and verified."}
+        title="Account Linked!"
+        message={primaryChannel?.channelName ? `Discovered and verified "${primaryChannel.channelName}"` : "Your creator profile was successfully discovered."}
       />
 
-      {/* ── TOP NAVIGATION ────────────────────────────────────────────────── */}
-      <header className="relative z-50 w-full px-6 py-6 md:px-12 md:py-8 max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="SuviX" className="h-7 md:h-9 object-contain" />
+      {/* ── TOP HEADER / LOGO BAR ──────────────────────────────────────── */}
+      <header className="relative z-40 w-full px-4 sm:px-8 md:px-12 pt-4 sm:pt-6 pb-2 max-w-[1440px] mx-auto flex items-center justify-between">
+        <div
+          onClick={() => navigate('/')}
+          className="flex items-center gap-3 cursor-pointer group select-none"
+        >
+          <img
+            src={blackLogo}
+            alt="SuviX"
+            className="h-12 xs:h-14 sm:h-18 md:h-22 w-auto object-contain transition-transform group-hover:scale-105"
+          />
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-600">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span>Step 2 of 3 • Link Social Profiles</span>
-          </div>
-
-          <button
-            onClick={() => {
-              dispatch(clearTempSignupData());
-              try {
-                sessionStorage.removeItem('suvix_temp_signup_data');
-                sessionStorage.removeItem('suvix_saved_instagram_accounts');
-                sessionStorage.removeItem('suvix_saved_youtube_channels');
-                sessionStorage.removeItem('instagram_access_token');
-                sessionStorage.removeItem('instagram_oauth_pending');
-                sessionStorage.removeItem('youtube_access_token');
-                sessionStorage.removeItem('youtube_oauth_pending');
-                sessionStorage.removeItem('oauth_intent');
-                sessionStorage.removeItem('suvix_oauth_role');
-                sessionStorage.removeItem('suvix_oauth_category');
-              } catch {
-                // ignore
-              }
-              navigate('/role-selection');
-            }}
-            className="group relative h-9 sm:h-10 pl-1.5 pr-3 sm:pr-4 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-600 hover:text-zinc-900 text-[10px] sm:text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-2 active:scale-95 cursor-pointer overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-zinc-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            
-            <div className="relative z-10 flex items-center gap-1.5 sm:gap-2">
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-zinc-100 group-hover:bg-white shadow-inner flex items-center justify-center border border-zinc-200/50 group-hover:shadow-sm transition-all duration-300">
-                 <ChevronLeft size={14} strokeWidth={2.5} className="text-zinc-500 group-hover:text-zinc-900 group-hover:-translate-x-0.5 transition-transform duration-300" />
-              </div>
-              <span className="tracking-wide uppercase sm:normal-case font-black sm:font-bold">Change Role</span>
-            </div>
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            dispatch(clearTempSignupData());
+            try {
+              sessionStorage.removeItem('suvix_temp_signup_data');
+              sessionStorage.removeItem('suvix_saved_instagram_accounts');
+              sessionStorage.removeItem('suvix_saved_youtube_channels');
+              sessionStorage.removeItem('instagram_access_token');
+              sessionStorage.removeItem('instagram_oauth_pending');
+              sessionStorage.removeItem('youtube_access_token');
+              sessionStorage.removeItem('youtube_oauth_pending');
+              sessionStorage.removeItem('oauth_intent');
+            } catch {
+              // ignore
+            }
+            navigate('/role-selection');
+          }}
+          className="group h-8.5 sm:h-9 px-3 sm:px-4 rounded-full bg-white/90 hover:bg-zinc-100 border border-zinc-200/90 text-zinc-700 text-xs font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
+        >
+          <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Change Role</span>
+        </button>
       </header>
 
-      {/* ── MAIN CONTENT CONTAINER ────────────────────────────────────────── */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-6 md:px-12 pt-2 pb-28 relative z-10 flex flex-col justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+      {/* ── MAIN TWO-COLUMN CONTAINER ─────────────────────────────────── */}
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 md:px-12 pb-36 sm:pb-40 pt-1 sm:pt-2 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-14 items-start">
+          
+          {/* ── LEFT COLUMN: MAIN HEADING & PLATFORM CARDS (~7 Cols) ─────── */}
+          <div className="lg:col-span-7 flex flex-col items-start text-left space-y-3.5 sm:space-y-4.5 w-full">
+            
+            {/* Step 2 of 3 */}
+            <div className="flex items-center gap-2 select-none">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">
+                STEP 2 OF 3
+              </span>
+              <div className="lg:hidden w-12 h-1 rounded-full bg-zinc-200 overflow-hidden flex">
+                <div className="w-2/3 h-full bg-zinc-950 rounded-full" />
+              </div>
+            </div>
 
-          {/* ── LEFT COLUMN: CENTRAL CONNECTOR HUB (7 Cols on lg) ──────────── */}
-          <motion.div
-            initial={{ opacity: 0, x: -25 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-7 flex flex-col items-start text-left space-y-6 lg:space-y-8 max-w-2xl mx-auto lg:mx-0 w-full"
-          >
-            {/* Main Headline & Mobile Animation (50:50 Split) */}
-            <div className="flex items-center justify-between gap-4 w-full">
-              
-              {/* Left Side: Headline */}
-              <div className="w-[55%] lg:w-full space-y-2">
-                <h1 className="text-xl xs:text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-zinc-950 leading-[1.15]">
-                  Connect Your{' '}
-                  <span className="relative inline-block text-zinc-950">
-                    Creator Accounts
-                    <span className="absolute left-0 bottom-1 w-full h-2 sm:h-3 bg-amber-400/35 -z-10 rounded-sm transform -rotate-1" />
-                  </span>
+            {/* Hero Title & Subtitle + Mobile Side Illustration */}
+            <div className="w-full flex items-start justify-between gap-2.5 sm:gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-zinc-950 leading-[1.12]">
+                  Connect Your<br />Creator Accounts
                 </h1>
-                
-                <p className="text-[10px] xs:text-[11px] sm:text-sm md:text-base text-zinc-650 font-medium leading-relaxed">
-                  Link your channels and social profiles to verify your audience, unlock direct brand sponsorships, and auto-match with vetted video editors.
+                <p className="lg:hidden text-[10.5px] sm:text-xs text-zinc-500 font-normal leading-relaxed mt-1.5 max-w-md">
+                  Link your social profiles to verify your audience, unlock brand opportunities, and get matched with the right collaborations.
                 </p>
               </div>
 
-              {/* Right Side: Mobile-only Card Animation */}
-              <div className="w-[45%] lg:hidden relative flex items-center justify-end min-h-[120px]">
-                <div className="absolute right-[-10px] xs:right-0 top-1/2 -translate-y-1/2 w-[260px] xs:w-[300px] sm:w-[380px] transform scale-[0.6] xs:scale-[0.65] sm:scale-[0.75] origin-right pointer-events-none">
-                  <FloatingCreatorShowcase />
-                </div>
+              {/* Mobile Graphic: Showcase Image on Mobile Top Right Only */}
+              <div className="lg:hidden w-[48%] xs:w-[50%] sm:w-[44%] shrink-0 flex items-center justify-end rounded-tl-[2.25rem] rounded-br-[2.25rem] rounded-tr-lg rounded-bl-lg overflow-hidden border-none shadow-none -mt-3">
+                <motion.img
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6 }}
+                  src={socialConnectComp}
+                  alt="SuviX Social Connect"
+                  className="w-full max-h-[230px] xs:max-h-[260px] sm:max-h-[290px] object-contain select-none pointer-events-none"
+                />
               </div>
-              
             </div>
 
-            {/* ── CONNECTOR CARDS HUB ────────────────────────────────────────── */}
-            <div className="w-full space-y-3 pt-1">
-              
-              {/* 1. YOUTUBE CONNECTOR */}
-              <div className={`w-full rounded-2xl border transition-all duration-350 overflow-hidden ${
-                isChannelClaimed
-                  ? 'bg-red-50/40 border-red-200/90 shadow-sm'
-                  : connected 
-                    ? 'bg-white border-zinc-200/90 shadow-sm' 
-                    : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-sm'
-              }`}>
-                <div className="flex flex-col lg:grid lg:grid-cols-10 gap-0">
-                  
-                  {/* Left Side (60%) */}
-                  <div className="lg:col-span-6 p-3.5 sm:p-5 flex flex-col justify-between gap-4">
-                    <div className="flex items-start gap-3 text-left">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
-                        <Play size={16} className="fill-white ml-0.5" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5 flex-wrap">
-                          YouTube Channel
-                          {isChannelClaimed ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-650 text-[10px] sm:text-xs font-black uppercase tracking-wider">
-                              Already Linked
-                            </span>
-                          ) : connected ? (
-                            <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] sm:text-xs font-black">
-                              <Check size={10} strokeWidth={4} /> Connected
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[8px] sm:text-[9px] font-black uppercase tracking-wider animate-pulse">
-                              Link Required
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
-                          {isChannelClaimed
-                            ? `The channel "${primaryChannel?.channelName}" is already linked to another user.`
-                            : connected 
-                              ? `Connected to Google Account successfully.` 
-                              : 'Sync subscriber analytics, recent uploads & verify your identity.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {!primaryChannel ? (
-                        <Button
-                          onClick={handleConnectYoutube}
-                          disabled={isLoading}
-                          className="h-8.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] sm:text-xs sm:h-10 sm:px-5 sm:rounded-xl flex items-center justify-center gap-2 shadow-sm shrink-0 active:scale-95 transition-all cursor-pointer w-full sm:w-auto"
-                        >
-                          <Play size={12} className="fill-white" />
-                          <span>Link YouTube</span>
-                        </Button>
-                      ) : (
-                        <button
-                          onClick={handleConnectYoutube}
-                          className={`h-8.5 sm:h-10 px-3 sm:px-5 rounded-lg sm:rounded-xl border bg-white text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0 w-full sm:w-auto ${isChannelClaimed ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-zinc-200 text-zinc-700 hover:bg-zinc-50'}`}
-                        >
-                          <RefreshCw size={12} strokeWidth={2.5} />
-                          <span>{isChannelClaimed ? 'Link Another' : 'Switch Account'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Side (40%) - Fetched Channel Details */}
-                  {primaryChannel && (
-                    <div className={`lg:col-span-4 p-3.5 sm:p-5 border-t lg:border-t-0 lg:border-l flex flex-col gap-3 justify-center ${isChannelClaimed ? 'bg-red-50/50 border-red-200/70' : 'bg-zinc-50/50 border-zinc-200/70'}`}>
-                      
-                      {/* Premium Mini Card */}
-                      <div className={`flex flex-col gap-2 p-2.5 sm:p-3 rounded-xl shadow-sm border bg-white relative overflow-hidden ${isChannelClaimed ? 'border-red-200' : 'border-zinc-200'}`}>
-                        {isChannelClaimed && (
-                          <div className="absolute top-0 right-0 w-0 h-0 border-t-[28px] border-l-[28px] border-t-red-500 border-l-transparent">
-                             <span className="absolute -top-[26px] -left-[12px] text-white text-[9px] font-black">!</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2.5">
-                          <img 
-                            src={primaryChannel.thumbnailUrl || 'https://via.placeholder.com/40'}
-                            alt={primaryChannel.channelName}
-                            className={`w-8 h-8 rounded-full object-cover border shadow-sm shrink-0 ${isChannelClaimed ? 'border-red-200' : 'border-zinc-200'}`} 
-                          />
-                          <div className="flex flex-col text-left min-w-0 flex-1">
-                            <span className={`text-[11px] sm:text-xs font-extrabold leading-tight truncate ${isChannelClaimed ? 'text-red-950' : 'text-zinc-900'}`}>
-                              {primaryChannel.channelName}
-                            </span>
-                            <span className="text-[9px] text-zinc-500 font-semibold tracking-wide">
-                              {formatCount(primaryChannel.subscriberCount)} subs
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Recent Videos Grid */}
-                        {primaryChannel.videos && primaryChannel.videos.length > 0 && (
-                          <div className="grid grid-cols-3 gap-1.5 mt-1">
-                            {primaryChannel.videos.slice(0, 3).map((v, i) => (
-                              <div key={i} className="aspect-video bg-zinc-100 rounded-md overflow-hidden border border-zinc-200/50 relative group">
-                                <img src={v.thumbnail || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                   <Play size={8} className="text-white fill-white" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Niche Selector */}
-                      {!isChannelClaimed && (
-                        <div className="w-full space-y-1 mt-0.5">
-                          <label className="text-[9px] font-black text-zinc-500 uppercase tracking-wider flex items-center gap-1 text-left">
-                            <Compass size={10} className="text-amber-500" />
-                            Select Niche
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={selectedNiche}
-                              onChange={(e) => setSelectedNiche(e.target.value)}
-                              className="w-full h-8 sm:h-9 pl-2.5 pr-8 rounded-lg border border-zinc-200 bg-white text-zinc-800 text-[10px] sm:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-all cursor-pointer appearance-none shadow-sm"
-                            >
-                              <option value="" disabled className="text-zinc-400">Choose...</option>
-                              {availableNiches.map(n => <option key={n} value={n}>{n}</option>)}
-                            </select>
-                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-400">
-                              <Compass size={12} />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 2. INSTAGRAM CONNECTOR (Optional / Multi-Platform) */}
-              <div className={`w-full rounded-2xl border transition-all duration-350 overflow-hidden ${
-                  instaConnected 
-                    ? 'bg-white border-zinc-200/90 shadow-sm' 
-                    : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-sm'
-                }`}>
-                <div className="flex flex-col lg:grid lg:grid-cols-10 gap-0">
-                  
-                  {/* Left Side (60%) */}
-                  <div className="lg:col-span-6 p-3.5 sm:p-5 flex flex-col justify-between gap-4">
-                    <div className="flex items-start gap-3 text-left">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-md shrink-0">
-                        <Instagram size={16} />
-                      </div>
-                      <div>
-                        <h3 className="text-xs sm:text-sm md:text-base font-black text-zinc-955 flex items-center gap-1.5 flex-wrap">
-                          Instagram Profile
-                          {instaConnected ? (
-                            <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px] sm:text-xs font-black">
-                              <Check size={10} strokeWidth={4} /> Connected
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500 text-[8px] sm:text-[9px] font-bold">
-                              Optional
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 leading-snug">
-                          {instaConnected 
-                            ? 'Connected to Meta Account successfully.' 
-                            : 'Sync Reels engagement, follower demographics & rate cards.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {!instaConnected ? (
-                        <Button
-                          onClick={handleConnectInstagram}
-                          disabled={isLoading}
-                          className="h-8.5 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-bold text-[10px] sm:text-xs sm:h-10 sm:px-4 sm:rounded-xl flex items-center justify-center gap-1.5 shrink-0 cursor-pointer w-full sm:w-auto"
-                        >
-                          <Plus size={10} />
-                          <span>Link Instagram</span>
-                        </Button>
-                      ) : (
-                        <button
-                          onClick={handleConnectInstagram}
-                          className="h-8.5 sm:h-10 px-3 sm:px-5 rounded-lg sm:rounded-xl border bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0 w-full sm:w-auto"
-                        >
-                          <RefreshCw size={12} strokeWidth={2.5} />
-                          <span>Switch Account</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Side (40%) - Fetched Account Details */}
-                  {instaConnected && primaryInstaAccount && (
-                    <div className="lg:col-span-4 p-3.5 sm:p-5 border-t lg:border-t-0 lg:border-l flex flex-col gap-3 justify-center bg-zinc-50/50 border-zinc-200/70">
-                      
-                      {/* Premium Mini Card */}
-                      <div className="flex flex-col gap-2 p-2.5 sm:p-3 rounded-xl shadow-sm border bg-white relative overflow-hidden border-zinc-200">
-                        <div className="flex items-center gap-2.5">
-                          <img 
-                            src={primaryInstaAccount.profilePictureUrl || 'https://via.placeholder.com/40'}
-                            alt={primaryInstaAccount.handle}
-                            className="w-8 h-8 rounded-full object-cover border shadow-sm shrink-0 border-zinc-200" 
-                          />
-                          <div className="flex flex-col text-left min-w-0 flex-1">
-                            <span className="text-[11px] sm:text-xs font-extrabold leading-tight truncate text-zinc-900">
-                              @{primaryInstaAccount.handle}
-                            </span>
-                            <span className="text-[9px] text-zinc-500 font-semibold tracking-wide flex items-center gap-2">
-                              <span>{formatCount(primaryInstaAccount.followerCount)} followers</span>
-                              <span>•</span>
-                              <span>{formatCount(primaryInstaAccount.mediaCount)} posts</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Bio snippet if available */}
-                        {primaryInstaAccount.bio && (
-                          <p className="text-[9px] text-zinc-600 line-clamp-1 text-left">
-                            {primaryInstaAccount.bio}
-                          </p>
-                        )}
-
-                        {/* Recent Media Thumbnails Grid (Up to 3 thumbnails preview) */}
-                        {primaryInstaAccount.recentMedia && primaryInstaAccount.recentMedia.length > 0 && (
-                          <div className="grid grid-cols-3 gap-1.5 mt-1">
-                            {primaryInstaAccount.recentMedia.slice(0, 3).map((m, i) => (
-                              <a
-                                key={m.id || i}
-                                href={m.permalink || '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="aspect-square bg-zinc-100 rounded-md overflow-hidden border border-zinc-200/50 relative group block"
-                              >
-                                <img
-                                  src={m.thumbnailUrl || 'https://via.placeholder.com/150'}
-                                  alt={m.caption || 'Instagram Post'}
-                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                />
-                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
-                                  ❤️ {formatCount(m.likeCount || 0)}
-                                </div>
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {instaFetchError && (
-                <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-red-600 text-xs font-medium">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
-                  <span>{instaFetchError}</span>
-                </div>
-              )}
-
-              {fetchError && (
-                <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-red-600 text-xs font-medium">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
-                  <span>{fetchError}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Removed Mobile-only Live Identity Card - it now renders inside the connector */}
-
-            {/* ── ACTION CONTROLS: CONTINUE & SKIP ───────────────────────────── */}
-            <div className="w-full pt-2 space-y-3">
-              <div className="space-y-3">
-                <Button
-                  onClick={handleProceedToSignup}
-                  disabled={isContinueDisabled}
-                  className={`w-full h-13 sm:h-15 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-all ${
-                    isContinueDisabled
-                      ? 'bg-zinc-100 border border-zinc-250 text-zinc-400 cursor-not-allowed'
-                      : 'bg-zinc-950 hover:bg-zinc-800 text-white shadow-xl shadow-zinc-950/10 cursor-pointer active:scale-[0.99]'
-                  }`}
-                >
-                  <span>Continue to Account Details</span>
-                  <ArrowRight size={18} strokeWidth={2.5} />
-                </Button>
-
-                {isChannelClaimed && !hasFreshInstagram ? (
-                  <p className="text-center text-xs font-semibold text-red-600 animate-pulse">
-                    ⚠️ The connected YouTube channel is already linked to another SuviX user. Please connect another channel or link your Instagram.
-                  </p>
-                ) : isChannelClaimed && hasFreshInstagram ? (
-                  <p className="text-center text-xs font-semibold text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                    ℹ️ Note: Your already-linked YouTube channel will be omitted, and only your verified Instagram account will be connected.
-                  </p>
-                ) : hasFreshYoutube && !selectedNiche ? (
-                  <p className="text-center text-xs font-semibold text-amber-600 animate-pulse">
-                    ⚠️ Please select your channel niche in the preview card to continue.
-                  </p>
-                ) : null}
-
-                {/* Skip button: visible if no valid social account has been linked */}
-                {!hasAnyValidSocial && (
+            {/* Platform Filter Tabs */}
+            <div className="w-full overflow-x-auto no-scrollbar py-0.5">
+              <div className="flex items-center gap-1.5 min-w-max">
+                {PLATFORM_TABS.map((tab) => (
                   <button
-                    type="button"
-                    onClick={handleSkipAllConnections}
-                    className="w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm text-zinc-650 hover:text-zinc-900 hover:bg-zinc-100/80 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                      activeTab === tab
+                        ? 'bg-black text-white shadow-xs'
+                        : 'bg-zinc-100/90 text-zinc-600 hover:text-black hover:bg-zinc-200/80'
+                    }`}
                   >
-                    <span>Skip and setup manually</span>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-zinc-200 text-zinc-700">
-                      Not recommended
-                    </span>
+                    {tab}
                   </button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-center lg:justify-start gap-2 pt-1 text-[11px] font-medium text-zinc-500">
-                <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
-                <span>Google Verified OAuth • Read-only discovery • 100% Privacy Protected</span>
-              </div>
-            </div>
-
-            {/* Social Proof Bar */}
-            <div className="pt-4 flex flex-col sm:flex-row items-center gap-4 text-left border-t border-zinc-200/70 w-full">
-              <div className="flex -space-x-2.5 overflow-hidden p-0.5">
-                {SOCIAL_PROOF_AVATARS.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt="Creator"
-                    className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover shadow-sm"
-                  />
                 ))}
               </div>
-              <div className="flex flex-col leading-tight">
-                <div className="flex items-center gap-1 text-amber-500">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
-                  ))}
+            </div>
+
+            {/* ── 2-COLUMN PLATFORM CARDS GRID ──────────────────────────── */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full">
+              
+              {/* 1. YOUTUBE CARD */}
+              <div className={`rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
+                isChannelClaimed
+                  ? 'border-red-300 bg-red-50/30'
+                  : connected
+                    ? 'border-emerald-300 bg-emerald-50/10'
+                    : 'border-zinc-200/90 hover:border-zinc-300'
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <YouTubeIcon />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">YouTube</span>
+                        {isChannelClaimed ? (
+                          <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[8.5px] font-semibold uppercase">
+                            Claimed
+                          </span>
+                        ) : connected ? (
+                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[8.5px] font-semibold flex items-center gap-0.5">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" /> Connected
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[8.5px] font-semibold border border-rose-100">
+                            Required
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        {isChannelClaimed
+                          ? 'Channel linked to another account.'
+                          : connected
+                            ? `Verified ${primaryChannel?.channelName || 'channel'}`
+                            : 'Verify your channel, uploads and audience details.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Desktop Connect Button */}
+                  <div className="hidden sm:block shrink-0">
+                    {!connected ? (
+                      <button
+                        onClick={handleConnectYoutube}
+                        disabled={isLoading}
+                        className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Connect
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleConnectYoutube}
+                        className="p-1.5 rounded-full border border-zinc-200 hover:bg-zinc-100 text-zinc-700 transition-colors shadow-2xs cursor-pointer"
+                        title="Switch YouTube Channel"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-zinc-800 mt-1">
-                  10M+ creators worldwide trust SuviX
-                </span>
+
+                {/* If YouTube is Connected: Show Mini Preview Card + Niche Picker */}
+                {primaryChannel && (
+                  <div className="pt-2 border-t border-zinc-100 space-y-2">
+                    <div className="flex items-center gap-2 p-1.5 rounded-xl bg-zinc-50 border border-zinc-200/80">
+                      <img
+                        src={primaryChannel.thumbnailUrl || 'https://via.placeholder.com/40'}
+                        alt={primaryChannel.channelName}
+                        className="w-6 h-6 rounded-full object-cover border border-zinc-200 shadow-2xs shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] sm:text-xs font-semibold text-zinc-900 truncate">
+                          {primaryChannel.channelName}
+                        </p>
+                        <p className="text-[9px] sm:text-[10px] text-zinc-500 font-normal truncate">
+                          {formatCount(primaryChannel.subscriberCount)} subscribers
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Channel Niche Selection */}
+                    {!isChannelClaimed && (
+                      <div className="space-y-1">
+                        <label className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                          <Compass className="w-3 h-3 text-amber-500" />
+                          <span>Channel Niche</span>
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          value={selectedNiche}
+                          onChange={(e) => setSelectedNiche(e.target.value)}
+                          className="w-full h-7.5 sm:h-8 px-2 rounded-xl border border-zinc-300 bg-white text-zinc-900 text-[11px] sm:text-xs font-medium focus:outline-none focus:ring-1 focus:ring-black transition-all cursor-pointer shadow-2xs"
+                        >
+                          <option value="" disabled>Select niche...</option>
+                          {availableNiches.map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Mobile Full-width Connect Button */}
+                <div className="sm:hidden">
+                  {!connected ? (
+                    <button
+                      onClick={handleConnectYoutube}
+                      disabled={isLoading}
+                      className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      <span>Connect</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnectYoutube}
+                      className="w-full py-1.5 rounded-full border border-zinc-200 hover:bg-zinc-100 text-zinc-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Switch Channel</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. INSTAGRAM CARD */}
+              <div className={`rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
+                instaConnected
+                  ? 'border-emerald-300 bg-emerald-50/10'
+                  : 'border-zinc-200/90 hover:border-zinc-300'
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <InstagramIcon />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">Instagram</span>
+                        {instaConnected ? (
+                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[8.5px] font-semibold flex items-center gap-0.5">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" /> Connected
+                          </span>
+                        ) : hasFreshYoutube ? (
+                          <span className="px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[8.5px] font-semibold">
+                            Optional
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[8.5px] font-semibold border border-rose-100">
+                            Required
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        {instaConnected
+                          ? `Verified @${primaryInstaAccount?.handle}`
+                          : 'Sync your profile, reels and engagement insights.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Desktop Connect Button */}
+                  <div className="hidden sm:block shrink-0">
+                    {!instaConnected ? (
+                      <button
+                        onClick={handleConnectInstagram}
+                        disabled={isLoading}
+                        className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Connect
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleConnectInstagram}
+                        className="p-1.5 rounded-full border border-zinc-200 hover:bg-zinc-100 text-zinc-700 transition-colors shadow-2xs cursor-pointer"
+                        title="Switch Instagram Account"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* If Instagram is Connected: Show Account Details */}
+                {instaConnected && primaryInstaAccount && (
+                  <div className="pt-2 border-t border-zinc-100">
+                    <div className="flex items-center gap-2 p-1.5 rounded-xl bg-zinc-50 border border-zinc-200/80">
+                      <img
+                        src={primaryInstaAccount.profilePictureUrl || 'https://via.placeholder.com/40'}
+                        alt={primaryInstaAccount.handle}
+                        className="w-6 h-6 rounded-full object-cover border border-zinc-200 shadow-2xs shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] sm:text-xs font-semibold text-zinc-900 truncate">
+                          @{primaryInstaAccount.handle}
+                        </p>
+                        <p className="text-[9px] sm:text-[10px] text-zinc-500 font-normal truncate">
+                          {formatCount(primaryInstaAccount.followerCount)} followers
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mobile Full-width Connect Button */}
+                <div className="sm:hidden">
+                  {!instaConnected ? (
+                    <button
+                      onClick={handleConnectInstagram}
+                      disabled={isLoading}
+                      className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      <span>Connect</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnectInstagram}
+                      className="w-full py-1.5 rounded-full border border-zinc-200 hover:bg-zinc-100 text-zinc-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Switch Account</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. TIKTOK CARD */}
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <TikTokIcon />
+                    <div>
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">TikTok</span>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        Showcase your content and reach.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <button
+                      onClick={() => handleOtherPlatformClick('TikTok')}
+                      className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => handleOtherPlatformClick('TikTok')}
+                    className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Connect</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. X (TWITTER) CARD */}
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <TwitterXIcon />
+                    <div>
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">X (Twitter)</span>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        Link your profile to show your audience and influence.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <button
+                      onClick={() => handleOtherPlatformClick('X (Twitter)')}
+                      className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => handleOtherPlatformClick('X (Twitter)')}
+                    className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Connect</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. FACEBOOK CARD */}
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <FacebookIcon />
+                    <div>
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">Facebook</span>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        Connect your page to share your followers and engagement.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <button
+                      onClick={() => handleOtherPlatformClick('Facebook')}
+                      className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => handleOtherPlatformClick('Facebook')}
+                    className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Connect</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 6. SNAPCHAT CARD */}
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <SnapchatIcon />
+                    <div>
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">Snapchat</span>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        Showcase your content and audience.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <button
+                      onClick={() => handleOtherPlatformClick('Snapchat')}
+                      className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => handleOtherPlatformClick('Snapchat')}
+                    className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Connect</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 7. LINKEDIN CARD */}
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <LinkedInIcon />
+                    <div>
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">LinkedIn</span>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        Highlight your professional presence.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <button
+                      onClick={() => handleOtherPlatformClick('LinkedIn')}
+                      className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => handleOtherPlatformClick('LinkedIn')}
+                    className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Connect</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 8. SPOTIFY CARD */}
+              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <SpotifyIcon />
+                    <div>
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">Spotify</span>
+                      <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
+                        Connect your artist or creator profile.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <button
+                      onClick={() => handleOtherPlatformClick('Spotify')}
+                      className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => handleOtherPlatformClick('Spotify')}
+                    className="w-full py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 tracking-tight shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Connect</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
-          </motion.div>
 
-          {/* ── RIGHT COLUMN: SHOWCASE OR DYNAMIC PREVIEW CARD (5 Cols on lg) ── */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full lg:col-span-5 flex flex-col items-center justify-center relative py-4"
-          >
-            {/* Always show FloatingCreatorShowcase regardless of connection status */}
-            <div className="hidden lg:block w-full">
-              <FloatingCreatorShowcase />
+            {/* View More Platforms Button */}
+            <button
+              type="button"
+              onClick={() => setShowMorePlatformsModal(true)}
+              className="w-full p-3 sm:p-3.5 rounded-2xl border border-zinc-200/90 bg-white hover:bg-zinc-50 text-zinc-900 text-xs font-semibold tracking-tight flex items-center justify-between shadow-2xs transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <LayoutGrid className="w-4 h-4 text-zinc-800" />
+                <span>View More Platforms</span>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+            </button>
+
+            {/* Error notifications */}
+            {instaFetchError && (
+              <div className="w-full flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-2xl p-3.5 text-left text-red-600 text-xs font-medium">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                <span>{instaFetchError}</span>
+              </div>
+            )}
+
+            {fetchError && (
+              <div className="w-full flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-2xl p-3.5 text-left text-red-600 text-xs font-medium">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                <span>{fetchError}</span>
+              </div>
+            )}
+
+            {/* Social Proof Footer Strip (Left bottom) */}
+            <div className="pt-4 border-t border-zinc-200/80 w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+              <div className="space-y-1">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">
+                  TRUSTED BY 1M+ CREATORS WORLDWIDE
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2 overflow-hidden p-0.5">
+                    {SOCIAL_PROOF_AVATARS.map((src, i) => (
+                      <img
+                        key={i}
+                        src={src}
+                        alt="Creator"
+                        className="inline-block h-6.5 w-6.5 rounded-full ring-2 ring-white object-cover shadow-xs"
+                      />
+                    ))}
+                    <div className="h-6.5 w-6.5 rounded-full bg-zinc-900 text-white text-[9px] font-bold ring-2 ring-white flex items-center justify-center shadow-xs">
+                      +1M
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-500 font-medium max-w-xs">
+                Join a global community of creators growing with SuviX.
+              </p>
             </div>
-          </motion.div>
+          </div>
+
+          {/* ── RIGHT COLUMN: SHOWCASE COMPOSITE & CTA (~5 Cols, Desktop only) ─────────── */}
+          <div className="hidden lg:flex lg:col-span-5 flex-col items-center justify-start space-y-6 lg:pl-4 w-full">
+            
+            {/* Hero Showcase Illustration in Clean White Box (Matching Desktop Mockup) */}
+            <div className="relative w-full max-w-[500px] xl:max-w-[540px] flex items-center justify-center rounded-3xl bg-white/95 border border-zinc-200/90 shadow-sm p-5 sm:p-6 backdrop-blur-xs">
+              <motion.img
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                src={socialConnectComp}
+                alt="SuviX - One Profile. More Opportunities."
+                className="w-full h-auto object-contain max-h-[460px] xl:max-h-[500px] select-none pointer-events-none"
+              />
+            </div>
+
+            {/* Value Card Box ("Turn Your Content Into Opportunities") */}
+            <div className="w-full rounded-2xl bg-white/95 border border-zinc-200/90 shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-xs">
+              {/* Handwritten Left Accent */}
+              <div className="sm:w-1/2 text-left">
+                <p className="font-['Caveat',_cursive,_sans-serif] text-2xl sm:text-3xl font-bold text-zinc-900 leading-tight">
+                  Turn<br />
+                  Your Content<br />
+                  Into Opportunities
+                </p>
+              </div>
+
+              {/* Stats List Right */}
+              <div className="sm:w-1/2 flex flex-col gap-2.5 text-left border-t sm:border-t-0 sm:border-l border-zinc-200/80 pt-3 sm:pt-0 sm:pl-4 w-full">
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4 text-zinc-700 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-zinc-900 block leading-tight">500+</span>
+                    <span className="text-[10px] text-zinc-500 font-normal">Partner Brands</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <BarChart3 className="w-4 h-4 text-zinc-700 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-zinc-900 block leading-tight">Real</span>
+                    <span className="text-[10px] text-zinc-500 font-normal">Growth Opportunities</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <Globe className="w-4 h-4 text-zinc-700 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-zinc-900 block leading-tight">Global</span>
+                    <span className="text-[10px] text-zinc-500 font-normal">Reach</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Privacy Protection Note */}
+            <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] font-semibold text-zinc-500">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Google & Meta Verified OAuth • Read-only discovery • 100% Privacy Protected</span>
+            </div>
+
+          </div>
 
         </div>
       </main>
+
+      {/* ── BOTTOM STICKY ACTION DOCK ────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 36 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl rounded-t-[2rem] sm:rounded-t-3xl border-t border-zinc-200/90 shadow-[0_-12px_40px_rgba(0,0,0,0.08)] px-4 sm:px-8 md:px-12 py-3.5 sm:py-4"
+      >
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 sm:gap-6">
+          {/* Left: Connection Status */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div
+              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 shadow-xs transition-colors duration-200 ${
+                hasAnyValidSocial && (!hasFreshYoutube || selectedNiche)
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-zinc-200 text-zinc-400'
+              }`}
+            >
+              {hasAnyValidSocial && (!hasFreshYoutube || selectedNiche) ? (
+                <Check size={14} strokeWidth={3} />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-zinc-400" />
+              )}
+            </div>
+            <div className="flex flex-col text-left min-w-0">
+              <span className="text-xs sm:text-sm font-semibold text-zinc-700 truncate">
+                {hasAnyValidSocial ? (
+                  <>
+                    Connected:{' '}
+                    <span className="text-zinc-950 font-bold">
+                      {hasFreshYoutube && hasFreshInstagram
+                        ? 'YouTube & Instagram'
+                        : hasFreshYoutube
+                        ? primaryChannel?.channelName || 'YouTube Channel'
+                        : `@${primaryInstaAccount?.handle || 'Instagram'}`}
+                    </span>
+                    {hasFreshYoutube && !selectedNiche && (
+                      <span className="text-rose-600 font-bold text-xs ml-1.5">(Select Niche)</span>
+                    )}
+                  </>
+                ) : (
+                  'Connect at least one creator account to proceed'
+                )}
+              </span>
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 font-normal truncate">
+                {isChannelClaimed && !hasFreshInstagram
+                  ? '⚠️ Channel is claimed by another user'
+                  : 'Zero commitment • Fast setup in 60 seconds'}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Continue Button & Manual Skip */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ">
+            {/* Skip Button if no accounts connected */}
+            {!hasAnyValidSocial && (
+              <button
+                type="button"
+                onClick={handleSkipAllConnections}
+                className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-full border border-zinc-200 bg-white hover:bg-zinc-50 text-xs sm:text-sm font-bold text-zinc-800 shadow-2xs transition-all flex items-center justify-center cursor-pointer whitespace-nowrap"
+              >
+                <span>Skip Manually</span>
+              </button>
+            )}
+
+            {/* Continue to Account Details Button */}
+            <button
+              type="button"
+              onClick={handleProceedToSignup}
+              disabled={isContinueDisabled}
+              className={`h-9 sm:h-10 px-4 sm:px-6 md:px-7 rounded-full text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                !isContinueDisabled
+                  ? 'bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 cursor-pointer opacity-100'
+                  : 'bg-zinc-100 text-zinc-400 border border-zinc-200 opacity-80 cursor-not-allowed'
+              }`}
+            >
+              <span>Continue to Account Details</span>
+              <ArrowRight size={14} className="shrink-0" />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── MODAL: VIEW MORE PLATFORMS ─────────────────────────────────── */}
+      <AnimatePresence>
+        {showMorePlatformsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-zinc-200 space-y-4 text-left"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black text-zinc-950">More Creator Platforms</h3>
+                <button
+                  onClick={() => setShowMorePlatformsModal(false)}
+                  className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-600 transition-colors cursor-pointer"
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-600">
+                Connect your profiles across other platforms to consolidate your digital footprint on SuviX.
+              </p>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-2">
+                {['Twitch', 'Pinterest', 'Discord', 'Threads', 'Patreon', 'Substack'].map((platform) => (
+                  <div
+                    key={platform}
+                    className="p-3 rounded-xl border border-zinc-200 bg-zinc-50/50 flex items-center justify-between gap-2"
+                  >
+                    <span className="text-xs font-bold text-zinc-900">{platform}</span>
+                    <button
+                      onClick={() => {
+                        setShowMorePlatformsModal(false);
+                        handleOtherPlatformClick(platform);
+                      }}
+                      className="px-2.5 py-1 rounded-full bg-black text-white text-[11px] font-bold hover:bg-zinc-800 transition-colors"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL: MANUAL HANDLE LINK PROMPT FOR OTHER PLATFORMS ────────── */}
+      <AnimatePresence>
+        {manualLinkPlatform && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-zinc-200 space-y-4 text-left"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black text-zinc-950">Connect {manualLinkPlatform}</h3>
+                <button
+                  onClick={() => setManualLinkPlatform(null)}
+                  className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-600 transition-colors cursor-pointer"
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-600">
+                Enter your {manualLinkPlatform} profile link or username to showcase on your SuviX profile.
+              </p>
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={manualHandleInput}
+                  onChange={(e) => setManualHandleInput(e.target.value)}
+                  placeholder={`e.g. @yourhandle or https://${manualLinkPlatform.toLowerCase()}.com/...`}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-xs font-semibold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-black"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setManualLinkPlatform(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (manualHandleInput.trim()) {
+                      setManualLinkPlatform(null);
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-black hover:bg-zinc-800 text-white text-xs font-bold shadow-xs transition-colors"
+                >
+                  Save Profile
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
