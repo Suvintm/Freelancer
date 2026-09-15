@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Star,
   Send,
-  Rocket,
   Crown,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +14,8 @@ import {
   Layers,
   ArrowRight,
   Lock,
+  MoreHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import subscriptionBg from '../../assets/subscriptionbg.png';
 import cardBg from '../../assets/cardbg.png';
@@ -111,6 +111,71 @@ const ROLE_INTRO_DATA: Record<WorkspaceRole, RoleIntroContent> = {
     ],
     footerTag: 'WATCH  •  SUPPORT  •  ENGAGE',
   },
+};
+
+// Dynamic glob import of role pricing artwork added under assets/pricing/{role}/*.{png,jpg,jpeg,webp}
+const rolePricingImages = import.meta.glob<string>('../../assets/pricing/**/*.{png,jpg,jpeg,webp}', {
+  eager: true,
+  import: 'default',
+});
+
+// Helper to look up image dynamically by active role and tier/index.
+// Supported folder structure: assets/pricing/<role>/<role><number>.<ext>
+// Examples:
+// - assets/pricing/creator/creator1.png, creator2.png, creator3.png, creator4.png
+// - assets/pricing/brand/brand1.png, brand2.png, brand3.png, brand4.png
+// - assets/pricing/editor/editor1.png, editor2.png, editor3.png, editor4.png
+// - assets/pricing/normaluser/normaluser1.png, normaluser2.png (or user1.png)
+// If the image is not found, returns null so the card displays a sleek solid black background (bg-zinc-950) by default.
+const getRolePlanImage = (role: string, tierLevel: number, planIndex: number): string | null => {
+  const normRole = (role || 'creator').toLowerCase();
+  const folderNames = (normRole === 'user' || normRole === 'audience' || normRole === 'normaluser')
+    ? ['normaluser', 'user']
+    : [normRole];
+
+  const candidateNums = [planIndex + 1, tierLevel];
+
+  // Dynamic glob lookup across assets/pricing/{folder}/{file}
+  for (const [path, url] of Object.entries(rolePricingImages)) {
+    const normalizedPath = path.toLowerCase().replace(/\\/g, '/');
+    for (const f of folderNames) {
+      if (normalizedPath.includes(`/pricing/${f}/`)) {
+        for (const num of candidateNums) {
+          const prefixes = Array.from(new Set([f, normRole]));
+          for (const prefix of prefixes) {
+            if (
+              normalizedPath.endsWith(`/${prefix}${num}.png`) ||
+              normalizedPath.endsWith(`/${prefix}${num}.jpg`) ||
+              normalizedPath.endsWith(`/${prefix}${num}.jpeg`) ||
+              normalizedPath.endsWith(`/${prefix}${num}.webp`)
+            ) {
+              return url;
+            }
+          }
+          if (
+            normalizedPath.endsWith(`/${num}.png`) ||
+            normalizedPath.endsWith(`/${num}.jpg`) ||
+            normalizedPath.endsWith(`/${num}.jpeg`) ||
+            normalizedPath.endsWith(`/${num}.webp`)
+          ) {
+            return url;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
+const getPlanBadgeConfig = (tierLevel: number) => {
+  if (tierLevel === 1) {
+    return { text: 'For Starters', Icon: Send };
+  }
+  if (tierLevel === 2) {
+    return { text: 'For Professionals', Icon: Sparkles };
+  }
+  return { text: 'VIP', Icon: Crown };
 };
 
 export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ className = '' }) => {
@@ -333,7 +398,7 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
         <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-white/40" />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-5xl lg:max-w-[85vw] lg:w-[85vw] mx-auto flex flex-col items-center">
         
         {/* ── 1. HEADER SECTION ─ */}
         <div className="relative w-full text-center max-w-2xl mx-auto mb-3 sm:mb-8 pt-1">
@@ -341,16 +406,16 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
           {/* Top Left Handwritten Note (Visible on Mobile & Desktop, tucked cleanly in corner) */}
           <div className="absolute top-0 left-0 xs:-left-1 sm:-left-8 md:-left-12 pointer-events-none select-none text-left z-20 -rotate-7">
             <div className="flex flex-col items-start leading-none">
-              <span className="font-['Caveat'] text-[11px] xs:text-xs sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none drop-shadow-2xs">
+              <span className="font-['Caveat'] text-xs xs:text-sm sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none drop-shadow-2xs">
                 Invest
               </span>
-              <span className="font-['Caveat'] text-[11px] xs:text-xs sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none">
+              <span className="font-['Caveat'] text-xs xs:text-sm sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none">
                 . in Your
               </span>
-              <span className="font-['Caveat'] text-[11px] xs:text-xs sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none">
+              <span className="font-['Caveat'] text-xs xs:text-sm sm:text-xl md:text-2xl font-bold text-zinc-700 tracking-tight leading-none">
                 Next Chapter
               </span>
-              <svg className="w-10 xs:w-14 sm:w-20 md:w-24 h-1.5 sm:h-2 text-zinc-600 mt-0.5" viewBox="0 0 100 15" fill="none">
+              <svg className="w-11 xs:w-16 sm:w-20 md:w-24 h-1.5 sm:h-2 text-zinc-600 mt-0.5" viewBox="0 0 100 15" fill="none">
                 <path d="M2 8 C 30 2, 70 14, 98 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
               </svg>
             </div>
@@ -365,7 +430,7 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
 
           {/* Heading with Serif Italic 'Bigger Possibilities' and Signature Amazon-Orange Smile Underline */}
           <div className="w-full text-center flex flex-col items-center justify-center">
-            <h2 className="text-xl xs:text-2xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-950 tracking-tight leading-[1.18] text-center">
+            <h2 className="text-2xl xs:text-3xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-950 tracking-tight leading-[1.15] text-center">
               <span>Simple Pricing for</span>
               <br />
               <span className="font-['Playfair_Display'] italic font-medium tracking-normal text-zinc-950 relative inline-block mt-0.5">
@@ -395,7 +460,7 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
           </div>
 
           {/* Subtitle description */}
-          <p className="text-[10.5px] xs:text-xs sm:text-sm text-zinc-600 max-w-xl mx-auto font-normal leading-relaxed mt-2.5 sm:mt-4 px-2 text-center">
+          <p className="text-xs xs:text-[13px] sm:text-sm text-zinc-600 max-w-xl mx-auto font-normal leading-relaxed mt-2.5 sm:mt-4 px-2 text-center">
             Whether you&apos;re just starting or building a global brand, SuviX has a plan that fits your journey. Upgrade, create, and grow — on your terms.
           </p>
         </div>
@@ -493,11 +558,190 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* ── MOBILE VIEW (< lg): TOP SHOWCASE BANNER + 2-CARD CAROUSEL ─── */}
+        {/* ── MOBILE VIEW (< lg): PLAN CAROUSEL + SHOWCASE BANNER BELOW ───── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         <div className="block lg:hidden w-full">
-          {/* 1. Mobile Showcase Hero Banner Card */}
-          <div className="w-full mb-3.5 transform-gpu">
+          {/* 1. Choose Your Plan Title + Carousel Controls */}
+          <div
+            className="w-full flex items-center justify-between mb-2.5 px-0.5"
+          >
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm xs:text-base font-black text-zinc-950 tracking-tight">
+                Choose Your Plan
+              </h3>
+              <span className="w-5 h-[1.5px] bg-zinc-300 rounded-full inline-block" />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handlePrev}
+                disabled={carouselIndex === 0}
+                className={`w-6 h-6 rounded-full bg-white border border-zinc-200 shadow-2xs flex items-center justify-center text-zinc-700 ${
+                  carouselIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'active:scale-95 cursor-pointer'
+                }`}
+                title="Previous Plan"
+              >
+                <ChevronLeft size={13} />
+              </button>
+
+              <div className="flex items-center gap-1">
+                {displayPlans.map((_, dotIdx) => (
+                  <button
+                    key={dotIdx}
+                    type="button"
+                    onClick={() => scrollToIndex(dotIdx)}
+                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      carouselIndex === dotIdx ? 'w-3.5 bg-zinc-950' : 'w-1.5 bg-zinc-300'
+                    }`}
+                    title={`Go to slide ${dotIdx + 1}`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={carouselIndex >= displayPlans.length - 1}
+                className={`w-6 h-6 rounded-full bg-white border border-zinc-200 shadow-2xs flex items-center justify-center text-zinc-700 ${
+                  carouselIndex >= displayPlans.length - 1 ? 'opacity-30 cursor-not-allowed' : 'active:scale-95 cursor-pointer'
+                }`}
+                title="Next Plan"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Mobile Plan Cards Carousel (2 Cards Side-by-Side) */}
+          <div
+            ref={mobileScrollContainerRef}
+            onScroll={handleScroll}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="w-full flex gap-2 overflow-x-auto snap-x snap-mandatory py-1 px-0.5 no-scrollbar items-stretch"
+          >
+            {displayPlans.map((displayPlan, planIndex) => {
+              const isPopular = Boolean(displayPlan.isPopular || displayPlan.tierLevel === 2 || (displayPlans.length > 2 && planIndex === 1));
+              const isEnterprise = Boolean(displayPlan.tierLevel >= 4 || displayPlan.name.toLowerCase().includes('enterprise'));
+
+              const monthlyPrice = displayPlan.priceMonthly;
+              const annualPrice = displayPlan.priceAnnual;
+              const price = billingCycle === 'annual' ? annualPrice : monthlyPrice;
+              const isOffline = Boolean(displayPlan.isOfflineFallback || price === null || price === undefined);
+              const isFree = !isOffline && (displayPlan.tierLevel === 0 || (displayPlan.tierLevel === 1 && price === 0));
+
+              const formattedPrice = isEnterprise ? "Let's Talk" : isOffline ? '--' : isFree ? `${currencySymbol}0` : `${currencySymbol}${price}`;
+              const planTitle = isOffline ? `Plan ${planIndex + 1}` : displayPlan.name;
+
+              const planImage = getRolePlanImage(effectiveRole, displayPlan.tierLevel, planIndex);
+              const badgeConfig = getPlanBadgeConfig(displayPlan.tierLevel);
+              const BadgeIcon = badgeConfig.Icon;
+              const badgeText = displayPlan.badge || badgeConfig.text;
+              const subtitleText = displayPlan.subtitle && !isOffline
+                ? displayPlan.subtitle
+                : (displayPlan.tierLevel === 1 || planIndex === 0 ? 'Get started for free' : 'For scaling professionals');
+
+              return (
+                <div
+                  key={displayPlan.key || displayPlan.id || planIndex}
+                  className="w-[calc(50%-4px)] shrink-0 snap-start flex flex-col py-0.5 relative"
+                >
+                  {isPopular && (
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                      <span className="text-[7.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 bg-black text-white border border-zinc-700 whitespace-nowrap">
+                        <Crown className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                        <span>MOST POPULAR</span>
+                      </span>
+                    </div>
+                  )}
+
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    onClick={handlePlanSelect}
+                    className={`relative rounded-2xl p-2.5 xs:p-3 flex flex-col justify-between h-full bg-zinc-950 text-white border-0 ${
+                      isPopular ? 'shadow-lg' : 'shadow-sm'
+                    } overflow-hidden transition-colors duration-200 cursor-pointer select-none`}
+                  >
+                    {/* Role Plan Background Artwork (If provided, else default to solid black card) */}
+                    {planImage && (
+                      <div className="absolute inset-x-0 top-0 h-[105px] xs:h-[115px] overflow-hidden z-0 pointer-events-none">
+                        <img
+                          src={planImage}
+                          alt={`${planTitle} background`}
+                          className="w-full h-full object-cover object-center scale-105"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-10 xs:h-12 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
+                      </div>
+                    )}
+
+                    {/* Header Row over Top */}
+                    <div className="relative z-10 flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1 px-1.5 xs:px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white text-[8px] xs:text-[9px] font-medium shadow-xs">
+                        <BadgeIcon className="w-2.5 h-2.5 text-white" />
+                        <span className="truncate max-w-[70px]">{badgeText}</span>
+                      </div>
+
+                      <div className="w-5 h-5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-xs">
+                        <MoreHorizontal className="w-3 h-3 text-white" />
+                      </div>
+                    </div>
+
+                    {/* Middle: Price, Title & Subtitle */}
+                    <div className={`relative z-10 ${planImage ? 'mt-10 xs:mt-12' : 'mt-3'}`}>
+                      <div className="flex items-baseline gap-0.5 mb-1">
+                        <span className="text-base xs:text-lg font-bold tracking-tight text-white leading-none">
+                          {formattedPrice}
+                        </span>
+                        {!isEnterprise && (
+                          <span className="text-[7.5px] xs:text-[8px] font-normal text-zinc-400">
+                            / month
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-xs font-bold tracking-tight leading-tight text-white truncate">
+                        {planTitle}
+                      </h3>
+                      <p className="text-[7.5px] xs:text-[8px] mt-0.5 font-normal text-zinc-400 truncate">
+                        {subtitleText}
+                      </p>
+
+                      {/* Locked Features Box */}
+                      <div className="relative rounded-xl p-2 my-1.5 flex flex-col items-center justify-center text-center bg-zinc-900/80 border border-zinc-800/80 backdrop-blur-sm min-h-[48px]">
+                        <Lock size={9} className="text-zinc-400 mb-0.5" />
+                        <span className="text-[8px] font-semibold leading-tight text-zinc-200">
+                          Log in or sign up
+                        </span>
+                        <span className="text-[7px] font-normal leading-tight mt-0.5 text-zinc-400">
+                          to view features
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* White Bottom Button */}
+                    <div className="relative z-10 mt-auto pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePlanSelect();
+                        }}
+                        className="w-full py-1.5 rounded-xl text-[9px] xs:text-[10px] font-bold bg-white hover:bg-zinc-100 text-zinc-950 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        <span className="truncate">{isOffline ? 'Unavailable' : (displayPlan.tierLevel === 1 || planIndex === 0 ? 'Get Started Free' : 'Start Free Trial')}</span>
+                        <ArrowRight className="w-2.5 h-2.5 shrink-0 text-zinc-950" />
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 2. Mobile Showcase Hero Banner Card (Placed Below Plan Cards) */}
+          <div className="w-full mt-3.5 transform-gpu">
             <div className="relative rounded-2xl p-3.5 xs:p-4 bg-zinc-950 text-white border border-zinc-800 shadow-[0_10px_30px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col justify-between min-h-[150px]">
               {/* Background Artwork */}
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-end">
@@ -579,206 +823,15 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
               </div>
             </div>
           </div>
-
-          {/* 2. Choose Your Plan Title + Carousel Controls */}
-          <div
-            className="w-full flex items-center justify-between mb-2.5 px-0.5"
-          >
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-sm xs:text-base font-black text-zinc-950 tracking-tight">
-                Choose Your Plan
-              </h3>
-              <span className="w-5 h-[1.5px] bg-zinc-300 rounded-full inline-block" />
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handlePrev}
-                disabled={carouselIndex === 0}
-                className={`w-6 h-6 rounded-full bg-white border border-zinc-200 shadow-2xs flex items-center justify-center text-zinc-700 ${
-                  carouselIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'active:scale-95 cursor-pointer'
-                }`}
-                title="Previous Plan"
-              >
-                <ChevronLeft size={13} />
-              </button>
-
-              <div className="flex items-center gap-1">
-                {displayPlans.map((_, dotIdx) => (
-                  <button
-                    key={dotIdx}
-                    type="button"
-                    onClick={() => scrollToIndex(dotIdx)}
-                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                      carouselIndex === dotIdx ? 'w-3.5 bg-zinc-950' : 'w-1.5 bg-zinc-300'
-                    }`}
-                    title={`Go to slide ${dotIdx + 1}`}
-                  />
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={carouselIndex >= displayPlans.length - 1}
-                className={`w-6 h-6 rounded-full bg-white border border-zinc-200 shadow-2xs flex items-center justify-center text-zinc-700 ${
-                  carouselIndex >= displayPlans.length - 1 ? 'opacity-30 cursor-not-allowed' : 'active:scale-95 cursor-pointer'
-                }`}
-                title="Next Plan"
-              >
-                <ChevronRight size={13} />
-              </button>
-            </div>
-          </div>
-
-          {/* 3. Mobile Plan Cards Carousel (2 Cards Side-by-Side) */}
-          <div
-            ref={mobileScrollContainerRef}
-            onScroll={handleScroll}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            data-lenis-prevent="true"
-            data-lenis-prevent-touch="true"
-            style={{
-              WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x pan-y',
-            }}
-            className="w-full flex gap-2 overflow-x-auto snap-x snap-mandatory py-1 px-0.5 no-scrollbar items-stretch overscroll-x-contain"
-          >
-            {displayPlans.map((displayPlan, planIndex) => {
-              const isPopular = Boolean(displayPlan.isPopular || displayPlan.tierLevel === 2 || (displayPlans.length > 2 && planIndex === 1));
-              const isEnterprise = Boolean(displayPlan.tierLevel >= 4 || displayPlan.name.toLowerCase().includes('enterprise'));
-
-              const monthlyPrice = displayPlan.priceMonthly;
-              const annualPrice = displayPlan.priceAnnual;
-              const price = billingCycle === 'annual' ? annualPrice : monthlyPrice;
-              const isOffline = Boolean(displayPlan.isOfflineFallback || price === null || price === undefined);
-              const isFree = !isOffline && (displayPlan.tierLevel === 0 || (displayPlan.tierLevel === 1 && price === 0));
-
-              const formattedPrice = isEnterprise ? "Let's Talk" : isOffline ? '--' : isFree ? `${currencySymbol}0` : `${currencySymbol}${price}`;
-              const CardIcon = displayPlan.tierLevel === 1 ? Send : displayPlan.tierLevel === 2 ? Rocket : Crown;
-              const planTitle = isOffline ? `Plan ${planIndex + 1}` : displayPlan.name;
-              const planSubtitle = isOffline ? '--' : displayPlan.subtitle;
-
-              return (
-                <div
-                  key={displayPlan.key || displayPlan.id || planIndex}
-                  className="w-[calc(50%-4px)] shrink-0 snap-start flex flex-col py-0.5"
-                >
-                  <motion.div
-                    whileHover={{ y: -3 }}
-                    onClick={handlePlanSelect}
-                    className={`relative rounded-2xl p-2.5 xs:p-3 flex flex-col justify-between h-full transition-colors duration-200 cursor-pointer select-none ${
-                      isPopular
-                        ? 'bg-white border-2 border-zinc-950 shadow-md z-10'
-                        : 'bg-white border border-zinc-200 shadow-2xs'
-                    }`}
-                  >
-                    {isPopular && (
-                      <div className="absolute -top-2 right-2 z-20">
-                        <span className="text-[7.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs flex items-center gap-0.5 bg-black text-white">
-                          <Star className="w-2 h-2 fill-current" />
-                          <span>MOST POPULAR</span>
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="relative z-10">
-                      {/* Header Row */}
-                      <div className="flex items-start justify-between gap-1 mb-1.5">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center border shrink-0 ${
-                            isPopular ? 'bg-zinc-100 border-zinc-300 text-zinc-900' : 'bg-zinc-100 border-zinc-200 text-zinc-800'
-                          }`}
-                        >
-                          <CardIcon className="w-3 h-3" />
-                        </div>
-                        {!isPopular && (
-                          <span className="text-[8px] font-medium px-1.5 py-0.5 rounded-full border shrink-0 bg-white border-zinc-200 text-zinc-600">
-                            {displayPlan.badge || (displayPlan.tierLevel === 1 ? 'For Starters' : 'Basic')}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Title & Subtitle */}
-                      <div className="mb-1.5">
-                        <h3 className="text-xs font-bold tracking-tight leading-tight text-zinc-950 truncate">
-                          {planTitle}
-                        </h3>
-                        <p className="text-[8px] mt-0.5 font-normal text-zinc-500 truncate">
-                          {planSubtitle}
-                        </p>
-                      </div>
-
-                      {/* Price Block */}
-                      <div className="my-1.5">
-                        <div className="flex items-baseline gap-0.5">
-                          <span className="text-base xs:text-lg font-black tracking-tight text-zinc-950 leading-none">
-                            {formattedPrice}
-                          </span>
-                          {!isEnterprise && (
-                            <span className="text-[8px] font-normal text-zinc-500">
-                              / month
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Blurred Features Lock Box */}
-                      <div className="relative rounded-xl p-2 my-1.5 flex flex-col items-center justify-center text-center overflow-hidden min-h-[50px] bg-zinc-50/90 border border-zinc-200 shadow-2xs">
-                        <div className="absolute inset-0 p-2 opacity-25 filter blur-[2px] flex flex-col justify-around pointer-events-none text-zinc-400">
-                          <div className="h-1 bg-zinc-400 rounded-full w-3/4 mx-auto" />
-                          <div className="h-1 bg-zinc-400 rounded-full w-5/6 mx-auto" />
-                        </div>
-
-                        <div className="relative z-10 flex flex-col items-center">
-                          <div className="w-5 h-5 rounded-full shadow-2xs border bg-white border-zinc-200 text-zinc-800 flex items-center justify-center mb-0.5">
-                            <Lock size={9} className="text-zinc-700" />
-                          </div>
-                          <span className="text-[8px] font-bold leading-tight text-zinc-900">
-                            Log in or sign up
-                          </span>
-                          <span className="text-[7px] font-medium leading-tight mt-0.5 text-zinc-500">
-                            to view features
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Button */}
-                    <div className="mt-1.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePlanSelect();
-                        }}
-                        className={`relative z-10 w-full py-1.5 rounded-xl text-[9.5px] font-bold transition-all shadow-xs flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
-                          isPopular
-                            ? 'bg-black hover:bg-zinc-800 text-white shadow-md'
-                            : 'bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200'
-                        }`}
-                      >
-                        <span className="truncate">{isOffline ? 'Unavailable' : (displayPlan.buttonText || (isPopular ? 'Start Free Trial' : 'Get Started Free'))}</span>
-                        <ArrowRight className="w-2.5 h-2.5 shrink-0" />
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              );
-            })}
-          </div>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ── LAPTOP / DESKTOP VIEW (lg:flex): 2-COLUMN MAIN ROW ─────────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
-        <div className="hidden lg:flex w-full max-w-7xl flex-row gap-6 items-stretch">
+        <div className="hidden lg:flex w-full lg:max-w-[85vw] lg:w-[85vw] flex-row gap-5 items-stretch justify-center">
           {/* Column 1: Showcase Intro Card (Pinned Left) */}
-          <div className="w-[280px] xl:w-[310px] shrink-0 py-1 flex flex-col">
-            <div className="relative rounded-3xl p-7 flex flex-col justify-between h-full bg-zinc-950 text-white border border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-hidden">
+          <div className="w-[245px] xl:w-[265px] shrink-0 py-1 flex flex-col">
+            <div className="relative rounded-2xl xl:rounded-3xl p-5 xl:p-6 flex flex-col justify-between h-full bg-zinc-950 text-white border border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-hidden">
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <img
                   src={cardBg}
@@ -791,11 +844,11 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-1 mb-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-widest text-zinc-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">
                     {introContent.tag}
                   </span>
                   <div className="text-right">
-                    <span className="font-['Caveat'] text-lg font-bold text-zinc-300 italic tracking-tight leading-tight block">
+                    <span className="font-['Caveat'] text-base font-bold text-zinc-300 italic tracking-tight leading-tight block">
                       {introContent.scriptTag.split('\n').map((line, i) => (
                         <span key={i} className="block leading-none">{line}</span>
                       ))}
@@ -803,21 +856,21 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                   </div>
                 </div>
 
-                <h3 className="text-2xl font-black text-white tracking-tight leading-tight mb-2 mt-1">
+                <h3 className="text-xl xl:text-2xl font-black text-white tracking-tight leading-tight mb-2 mt-1">
                   {introContent.title}
                 </h3>
 
-                <p className="text-xs text-zinc-300 font-normal leading-relaxed mb-5 max-w-[250px]">
+                <p className="text-xs text-zinc-300 font-normal leading-relaxed mb-4 max-w-[220px]">
                   {introContent.subtitle}
                 </p>
 
-                <div className="space-y-3.5 mb-6">
+                <div className="space-y-2.5 mb-4">
                   {introContent.bullets.map((item, bIdx) => {
                     const BulletIcon = item.icon;
                     return (
-                      <div key={bIdx} className="flex items-center gap-3 text-xs text-zinc-200 font-medium">
-                        <div className="w-6 h-6 rounded-lg bg-zinc-800/90 border border-zinc-700/60 flex items-center justify-center shrink-0 shadow-2xs">
-                          <BulletIcon size={13} className="text-zinc-300" />
+                      <div key={bIdx} className="flex items-center gap-2.5 text-xs text-zinc-200 font-medium">
+                        <div className="w-5 h-5 rounded-md bg-zinc-800/90 border border-zinc-700/60 flex items-center justify-center shrink-0 shadow-2xs">
+                          <BulletIcon size={12} className="text-zinc-300" />
                         </div>
                         <span className="leading-tight">{item.text}</span>
                       </div>
@@ -826,29 +879,29 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 </div>
               </div>
 
-              <div className="relative z-10 pt-4 border-t border-zinc-800/80 mt-auto">
-                <div className="flex items-center gap-3 mb-3">
+              <div className="relative z-10 pt-3.5 border-t border-zinc-800/80 mt-auto">
+                <div className="flex items-center gap-2.5 mb-2.5">
                   <div className="flex -space-x-2">
                     <img
                       src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&auto=format&fit=crop&crop=faces&q=80"
                       alt="Creator Avatar"
-                      className="w-7 h-7 rounded-full border border-zinc-900 object-cover"
+                      className="w-6 h-6 rounded-full border border-zinc-900 object-cover"
                     />
                     <img
                       src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&auto=format&fit=crop&crop=faces&q=80"
                       alt="Creator Avatar"
-                      className="w-7 h-7 rounded-full border border-zinc-900 object-cover"
+                      className="w-6 h-6 rounded-full border border-zinc-900 object-cover"
                     />
-                    <div className="w-7 h-7 rounded-full bg-zinc-800 text-white text-[9px] font-black flex items-center justify-center border border-zinc-900">
+                    <div className="w-6 h-6 rounded-full bg-zinc-800 text-white text-[8px] font-black flex items-center justify-center border border-zinc-900">
                       2M+
                     </div>
                   </div>
-                  <span className="text-[11px] font-medium text-zinc-300 leading-tight">
+                  <span className="text-[10px] font-medium text-zinc-300 leading-tight">
                     {introContent.proof}
                   </span>
                 </div>
 
-                <div className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-zinc-500 pt-0.5">
+                <div className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-zinc-500 pt-0.5">
                   {introContent.footerTag}
                 </div>
               </div>
@@ -874,12 +927,7 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
             <div
               ref={desktopScrollContainerRef}
               onScroll={handleScroll}
-              data-lenis-prevent="true"
-              style={{
-                WebkitOverflowScrolling: 'touch',
-                touchAction: 'pan-x pan-y',
-              }}
-              className="w-full flex gap-4 overflow-x-auto snap-x snap-mandatory pt-4 pb-6 px-2 no-scrollbar items-stretch overscroll-x-contain"
+              className="w-full flex gap-3.5 xl:gap-4 overflow-x-auto snap-x snap-mandatory pt-4 pb-6 px-2 no-scrollbar items-stretch"
             >
               {displayPlans.map((displayPlan, planIndex) => {
                 const isPopular = Boolean(displayPlan.isPopular || displayPlan.tierLevel === 2 || (displayPlans.length > 2 && planIndex === 1));
@@ -892,9 +940,15 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 const isFree = !isOffline && (displayPlan.tierLevel === 0 || (displayPlan.tierLevel === 1 && price === 0));
 
                 const formattedPrice = isEnterprise ? "Let's Talk" : isOffline ? '--' : isFree ? `${currencySymbol}0` : `${currencySymbol}${price}`;
-                const CardIcon = displayPlan.tierLevel === 1 ? Send : displayPlan.tierLevel === 2 ? Rocket : Crown;
                 const planTitle = isOffline ? `Plan ${planIndex + 1}` : displayPlan.name;
-                const planSubtitle = isOffline ? '--' : displayPlan.subtitle;
+
+                const planImage = getRolePlanImage(effectiveRole, displayPlan.tierLevel, planIndex);
+                const badgeConfig = getPlanBadgeConfig(displayPlan.tierLevel);
+                const BadgeIcon = badgeConfig.Icon;
+                const badgeText = displayPlan.badge || badgeConfig.text;
+                const subtitleText = displayPlan.subtitle && !isOffline
+                  ? displayPlan.subtitle
+                  : (displayPlan.tierLevel === 1 || planIndex === 0 ? 'Get started for free' : 'For scaling professionals');
 
                 const originalMonthlyPrice = (!isOffline && billingCycle === 'annual' && displayPlan.priceMonthly && displayPlan.priceAnnual && displayPlan.priceMonthly > displayPlan.priceAnnual)
                   ? displayPlan.priceMonthly
@@ -903,119 +957,99 @@ export const WelcomePricingSection: React.FC<WelcomePricingSectionProps> = ({ cl
                 return (
                   <div
                     key={displayPlan.key || displayPlan.id || planIndex}
-                    className="w-[280px] xl:w-[300px] shrink-0 snap-start flex flex-col py-1"
+                    className="w-[235px] xl:w-[255px] shrink-0 snap-start flex flex-col py-1 relative"
                   >
+                    {isPopular && (
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-lg flex items-center gap-1.5 bg-black text-white border border-zinc-700 whitespace-nowrap">
+                          <Crown className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          <span>MOST POPULAR</span>
+                        </span>
+                      </div>
+                    )}
+
                     <motion.div
-                      whileHover={{ y: -6, transition: { duration: 0.25 } }}
+                      whileHover={{ y: -5, transition: { duration: 0.25 } }}
                       onClick={handlePlanSelect}
-                      className={`relative rounded-2xl p-6 flex flex-col justify-between h-full transition-colors duration-200 transform-gpu cursor-pointer select-none ${
-                        isPopular
-                          ? 'bg-white border-2 border-zinc-950 shadow-xl scale-[1.01] z-10'
-                          : 'bg-white border-2 border-zinc-900/85 hover:border-zinc-950 shadow-sm'
-                      }`}
+                      className={`relative rounded-2xl xl:rounded-3xl p-4 xl:p-5 flex flex-col justify-between h-full bg-zinc-950 text-white border-0 ${
+                        isPopular ? 'shadow-2xl' : 'shadow-xl'
+                      } overflow-hidden transform-gpu cursor-pointer select-none`}
                     >
-                      {isPopular && (
-                        <div className="absolute -top-2.5 right-6 z-20">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 bg-black text-white">
-                            <Star className="w-3 h-3 fill-current" />
-                            <span>{displayPlan.badge || 'Most Popular'}</span>
-                          </span>
+                      {/* Role Plan Background Artwork (If provided, else default to solid black card) */}
+                      {planImage && (
+                        <div className="absolute inset-x-0 top-0 h-[160px] xl:h-[175px] overflow-hidden z-0 pointer-events-none">
+                          <img
+                            src={planImage}
+                            alt={`${planTitle} background`}
+                            className="w-full h-full object-cover object-center scale-105"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 h-16 xl:h-20 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
                         </div>
                       )}
 
-                      <div className="relative z-10">
-                        <div className="flex items-start justify-between gap-2 mb-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-9 h-9 rounded-full flex items-center justify-center border shrink-0 ${
-                                isPopular ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-zinc-100 border-zinc-900/40 text-zinc-800'
-                              }`}
-                            >
-                              <CardIcon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h3 className="text-base font-bold tracking-tight leading-tight text-zinc-900">
-                                {planTitle}
-                              </h3>
-                              <p className="text-[11px] mt-0.5 font-normal text-zinc-500">
-                                {planSubtitle}
-                              </p>
-                            </div>
-                          </div>
-
-                          {!isPopular && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 bg-zinc-100 border-zinc-900/30 text-zinc-700">
-                              {displayPlan.badge || (displayPlan.tierLevel === 1 ? 'For Starters' : displayPlan.tierLevel === 2 ? 'Pro Tier' : 'VIP')}
-                            </span>
-                          )}
+                      {/* Header Row over Top */}
+                      <div className="relative z-10 flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white text-[10px] xl:text-[11px] font-medium shadow-xs">
+                          <BadgeIcon className="w-3.5 h-3.5 text-white" />
+                          <span>{badgeText}</span>
                         </div>
 
-                        <div className="my-4">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-900">
-                              {formattedPrice}
-                            </span>
-                            {!isEnterprise && (
-                              <span className="text-xs font-normal text-zinc-500">
-                                / month
-                              </span>
-                            )}
-                            {originalMonthlyPrice && displayPlan.tierLevel > 1 && (
-                              <span className="text-sm font-semibold line-through text-zinc-400 ml-1">
-                                {currencySymbol}{originalMonthlyPrice}
-                              </span>
-                            )}
-                          </div>
-
-                          {displayPlan.tierLevel > 1 && !isEnterprise && (
-                            <div className="space-y-0.5 mt-1">
-                              <p className="text-[11px] font-bold text-zinc-800">
-                                {isOffline ? 'Save --' : `Save ${displayPlan.savingsPercent || maxSavingsPercent}% with yearly`}
-                              </p>
-                              <p className="text-[10px] text-zinc-400 font-normal">
-                                {currency === 'INR' ? 'All taxes & GST included in price' : '0% tax for overseas creators'}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="relative rounded-2xl p-5 my-5 flex flex-col items-center justify-center text-center overflow-hidden min-h-[140px] bg-zinc-50/90 border border-zinc-200/80 shadow-2xs">
-                          <div className="absolute inset-0 p-4 opacity-30 filter blur-[3px] flex flex-col justify-around pointer-events-none text-zinc-400">
-                            <div className="h-2 bg-zinc-400 rounded-full w-3/4 mx-auto" />
-                            <div className="h-2 bg-zinc-400 rounded-full w-5/6 mx-auto" />
-                            <div className="h-2 bg-zinc-400 rounded-full w-2/3 mx-auto" />
-                            <div className="h-2 bg-zinc-400 rounded-full w-4/5 mx-auto" />
-                          </div>
-
-                          <div className="relative z-10 flex flex-col items-center">
-                            <div className="w-8 h-8 rounded-full shadow-2xs border bg-white border-zinc-200 text-zinc-800 flex items-center justify-center mb-2">
-                              <Lock size={14} className="text-zinc-700" />
-                            </div>
-                            <span className="text-xs font-bold leading-tight text-zinc-900">
-                              Log in or sign up
-                            </span>
-                            <span className="text-[11px] font-medium leading-tight mt-0.5 text-zinc-500">
-                              to view features
-                            </span>
-                          </div>
+                        <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-xs">
+                          <MoreHorizontal className="w-3 h-3 text-white" />
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-2">
+                      {/* Price, Title & Subtitle */}
+                      <div className={`relative z-10 ${planImage ? 'mt-20 xl:mt-22' : 'mt-5'}`}>
+                        <div className="flex items-baseline gap-1.5 mb-1">
+                          <span className="text-2xl xl:text-3xl font-bold tracking-tight text-white leading-none">
+                            {formattedPrice}
+                          </span>
+                          {!isEnterprise && (
+                            <span className="text-[11px] xl:text-xs font-normal text-zinc-400">
+                              / month
+                            </span>
+                          )}
+                          {originalMonthlyPrice && displayPlan.tierLevel > 1 && (
+                            <span className="text-xs font-normal line-through text-zinc-500 ml-1.5">
+                              {currencySymbol}{originalMonthlyPrice}
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <h3 className="text-base xl:text-lg font-bold tracking-tight text-white leading-tight">
+                            {planTitle}
+                          </h3>
+                          <p className="text-[11px] xl:text-xs text-zinc-400 font-normal mt-0.5">
+                            {subtitleText}
+                          </p>
+                        </div>
+
+                        {/* Features Lock Box */}
+                        <div className="relative rounded-xl p-3 my-2.5 flex flex-col items-center justify-center text-center bg-zinc-900/80 border border-zinc-800/80 backdrop-blur-sm min-h-[70px]">
+                          <Lock className="w-3.5 h-3.5 text-zinc-400 mb-1" />
+                          <span className="text-[11px] xl:text-xs font-semibold text-zinc-200">
+                            Log in or sign up
+                          </span>
+                          <span className="text-[10px] xl:text-[11px] font-normal text-zinc-400 mt-0.5">
+                            to view features
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* White Bottom Action Button */}
+                      <div className="relative z-10 mt-auto pt-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlanSelect();
                           }}
-                          className={`relative z-10 w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
-                            isPopular
-                              ? 'bg-black hover:bg-zinc-800 text-white shadow-lg border-2 border-black'
-                              : 'bg-white hover:bg-zinc-100 text-zinc-900 border-2 border-zinc-950 shadow-xs'
-                          }`}
+                          className="w-full py-2.5 xl:py-3 rounded-xl text-xs font-bold bg-white hover:bg-zinc-100 text-zinc-950 flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
                         >
-                          <span>{isOffline ? 'Unavailable' : (displayPlan.buttonText || 'Get Started Free')}</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <span>{isOffline ? 'Unavailable' : (displayPlan.tierLevel === 1 || planIndex === 0 ? 'Get Started Free' : 'Start Free Trial')}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-zinc-950" />
                         </button>
                       </div>
                     </motion.div>
