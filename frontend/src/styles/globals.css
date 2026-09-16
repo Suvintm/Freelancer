@@ -472,4 +472,21 @@ html.lenis, html.lenis body { height: auto; }
   }
 }
 
+/* ── Prevent dark / black background on light-card input fields & autofill ── */
+.light-card input,
+.light-card input:focus,
+.light-card input:active {
+  color-scheme: light !important;
+  background-color: transparent !important;
+  color: #09090b !important;
+}
 
+.light-card input:-webkit-autofill,
+.light-card input:-webkit-autofill:hover, 
+.light-card input:-webkit-autofill:focus, 
+.light-card input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #f8f9fa inset !important;
+  -webkit-text-fill-color: #09090b !important;
+  color: #09090b !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

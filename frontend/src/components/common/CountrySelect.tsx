@@ -11,6 +11,7 @@ interface CountrySelectProps {
   lockable?: boolean;
   className?: string;
   variant?: 'suvix-dark' | 'suvix-light';
+  placement?: 'top' | 'bottom';
 }
 
 export const CountrySelect: React.FC<CountrySelectProps> = ({
@@ -21,6 +22,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   lockable = true,
   className = '',
   variant = 'suvix-dark',
+  placement = 'bottom',
 }) => {
   const [selectedCountry, setSelectedCountry] = useState<CountryData>(() => {
     if (value) {
@@ -105,13 +107,13 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
     return (
       <div className={`relative w-full ${className}`}>
         <div
-          className={`w-full h-10 px-3.5 flex items-center gap-2.5 rounded-xl text-xs sm:text-[13px] font-medium select-none ${
+          className={`w-full h-8.5 sm:h-10 px-2.5 sm:px-3.5 flex items-center gap-2 rounded-xl text-[11px] sm:text-[13px] font-medium select-none ${
             isDark
               ? 'bg-zinc-100 !border-2 !border-zinc-300 text-zinc-600 animate-pulse'
               : 'bg-zinc-100 border border-zinc-200 text-zinc-600 animate-pulse'
           }`}
         >
-          <Loader2 size={14} className="animate-spin text-zinc-500 shrink-0" />
+          <Loader2 size={13} className="animate-spin text-zinc-500 shrink-0" />
           <span className="text-zinc-500 font-medium">Detecting your location...</span>
         </div>
       </div>
@@ -126,9 +128,9 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
       </div>
 
       <div
-        className={`w-full h-10 px-3.5 flex items-center justify-between rounded-xl transition-all ${
+        className={`w-full h-8.5 sm:h-10 px-2.5 sm:px-3.5 flex items-center justify-between rounded-xl transition-all ${
           isDark
-            ? 'bg-white !border-2 !border-black text-black font-medium'
+            ? 'bg-[#F8F9FA] hover:bg-zinc-100/70 border border-zinc-200/80 focus-within:border-zinc-400 focus-within:bg-white text-zinc-950 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
             : 'bg-white border border-zinc-300 focus-within:border-zinc-950 text-zinc-900 font-medium'
         }`}
       >
@@ -136,7 +138,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`flex-1 flex items-center gap-2 truncate text-left text-xs sm:text-[13px] ${
+          className={`flex-1 flex items-center gap-1.5 sm:gap-2 truncate text-left text-[11px] sm:text-[13px] ${
             disabled ? 'cursor-default' : 'cursor-pointer'
           }`}
         >
@@ -186,17 +188,23 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
 
       {/* Searchable Dropdown Modal */}
       {isOpen && (
-        <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-full bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-72 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className={`absolute left-0 z-50 w-full bg-white rounded-2xl overflow-hidden flex flex-col max-h-64 sm:max-h-72 animate-in fade-in zoom-in-95 duration-150 ${
+            placement === 'top'
+              ? 'bottom-[calc(100%+6px)] shadow-[0_-10px_35px_rgba(0,0,0,0.18)]'
+              : 'top-[calc(100%+6px)] shadow-2xl'
+          } border border-zinc-200`}
+        >
           {/* Search Box */}
-          <div className="p-2.5 border-b border-zinc-100 bg-zinc-50/70 flex items-center gap-2">
-            <Search size={14} className="text-zinc-400 shrink-0 ml-1" />
+          <div className="p-2.5 border-b border-zinc-200 bg-zinc-50 flex items-center gap-2">
+            <Search size={14} className="text-zinc-500 shrink-0 ml-1" />
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search country..."
-              className="w-full bg-transparent text-xs sm:text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+              className="w-full bg-transparent text-xs sm:text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none font-medium"
             />
             {searchQuery && (
               <button

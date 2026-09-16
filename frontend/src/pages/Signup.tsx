@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactLenis } from 'lenis/react';
 import { motion } from 'framer-motion';
 import { 
   User, 
   Mail, 
   Lock, 
   ArrowRight,
+  ArrowLeft,
   Eye,
   EyeOff,
   Globe,
@@ -14,13 +14,16 @@ import {
   Loader2,
   Youtube,
   CheckCircle2,
+  AlertCircle,
   Camera,
   Bell,
   Check,
-  ChevronLeft
+  Building2
 } from 'lucide-react';
-import logo from '../assets/lightlogo.png';
-import { AuthBackground } from '../components/auth/AuthBackground';
+import lightLogo from '../assets/lightlogo.png';
+import logoDefault from '../assets/blackbglogo.png';
+import cloudflareLogo from '../assets/cloudflare.png';
+import loginMobileBg from '../assets/loginmobilebg.png';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTempSignupData, clearTempSignupData } from '../store/slices/onboardingSlice';
@@ -36,56 +39,13 @@ import { detectBrowserCountry, findCountryByName, autoDetectCountryAsync } from 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const LANGUAGES = ['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Marathi'];
 
-// ── Step progress indicator ───────────────────────────────────────────────────
-// Shows user where they are in the registration flow
-interface StepBarProps {
-  categorySlug?: string;
-}
+// Dynamically resolve loginbg.png if it exists on disk, falling back to clean white background if not yet created
+const desktopBgModules = import.meta.glob<{ default: string }>('../assets/loginbg.png', { eager: true });
+const loginBg = desktopBgModules['../assets/loginbg.png']?.default || null;
 
-function StepBar({ categorySlug }: StepBarProps) {
-  const isCreator = categorySlug === 'creator' || categorySlug === 'yt_influencer';
-  const isEditor = categorySlug === 'editor' || categorySlug === 'video_editor';
-
-  const steps = isCreator
-    ? ['Role', 'YouTube', 'Details']
-    : isEditor
-    ? ['Role', 'Specialization', 'Details']
-    : ['Role', 'Details'];
-
-  const activeIndex = steps.length - 1; // Always on last step (Details) in this page
-
-  return (
-    <div className="flex items-center justify-center gap-1.5 sm:gap-3 mb-1 lg:mb-3">
-      {steps.map((step, i) => (
-        <React.Fragment key={step}>
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <div
-              className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-black transition-all ${
-                i < activeIndex
-                  ? 'bg-emerald-500 text-white'
-                  : i === activeIndex
-                  ? 'bg-black text-white shadow-md'
-                  : 'bg-zinc-200 text-zinc-500'
-              }`}
-            >
-              {i < activeIndex ? <Check size={8} strokeWidth={3.5} /> : i + 1}
-            </div>
-            <span
-              className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-wider ${
-                i === activeIndex ? 'text-black' : i < activeIndex ? 'text-emerald-500' : 'text-zinc-400'
-              }`}
-            >
-              {step}
-            </span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`w-6 sm:w-16 lg:w-20 h-px ${i < activeIndex ? 'bg-emerald-500/40' : 'bg-zinc-200'}`} />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
+// Dynamically resolve blacklogo.png if added, fallback to lightLogo/logoDefault
+const blackLogoModules = import.meta.glob<{ default: string }>('../assets/blacklogo.png', { eager: true });
+const logo = blackLogoModules['../assets/blacklogo.png']?.default || lightLogo || logoDefault;
 
 // ── Main Signup Page ──────────────────────────────────────────────────────────
 export default function Signup() {
@@ -119,7 +79,12 @@ export default function Signup() {
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(socialProfile?.picture || null);
   const [enableNotifications, setEnableNotifications] = useState(false);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+  const [turnstileToken, setTurnstileToken] = useState<string>(() => (!siteKey ? 'dev-bypass' : ''));
+  const [, setTurnstileStatus] = useState<'verifying' | 'success' | 'error' | 'expired'>(
+    () => (!siteKey ? 'success' : 'verifying')
+  );
+  const [currentLevel, setCurrentLevel] = useState<1 | 2>(1);
   const [isPhoneValid, setIsPhoneValid] = useState(false);
 
   const navigate = useNavigate();
@@ -179,7 +144,7 @@ export default function Signup() {
     }
   };
 
-  // Auto-validates username/handle while typing, debounced to 2000ms (2 seconds) to protect DB costs
+  // Auto-validates username/handle while typing, debounced to 2000ms
   useEffect(() => {
     if (!form.username || form.username.trim().length < 3) {
       const resetTimer = setTimeout(() => {
@@ -193,8 +158,6 @@ export default function Signup() {
       const startTime = Date.now();
       try {
         const available = await authService.checkUsername(form.username.trim().toLowerCase());
-        
-        // Enforce a minimum display time of 400ms for the loading spinner to prevent instant flashes
         const elapsed = Date.now() - startTime;
         const remainingDelay = Math.max(0, 400 - elapsed);
         
@@ -211,22 +174,35 @@ export default function Signup() {
 
   const selectedChannels = tempSignupData?.youtubeChannels ?? [];
 
-  const isFormValid = Boolean(
+  // Level 1 Validation: Name, Available Username, Valid Email
+  const isLevel1Valid = Boolean(
     form.fullName.trim() &&
     form.username.trim() &&
+    form.username.length >= 3 &&
+    userStatus === 'available' &&
     form.email.trim() &&
+    form.email.includes('@') &&
+    form.email.includes('.')
+  );
+
+  // Level 2 Validation: Valid Phone, Password (if not social), Website (if brand)
+  const isLevel2Valid = Boolean(
     form.phone.trim() &&
     isPhoneValid &&
     (isSocialUser || form.password.trim()) &&
-    (!isBrandClient || form.website.trim()) &&
-    userStatus === 'available' &&
+    (!isBrandClient || form.website.trim())
+  );
+
+  // Complete Form Validation
+  const isFormValid = Boolean(
+    isLevel1Valid &&
+    isLevel2Valid &&
     turnstileToken
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Client-side completeness check before hitting the backend
     if (!isAccessAllowed(form.email)) { setError(RESTRICTED_ACCESS_MESSAGE); return; }
     if (userStatus === 'taken') { setError('This username is already taken.'); return; }
     if (!form.username || form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
@@ -238,7 +214,6 @@ export default function Signup() {
     setError(null);
 
     try {
-      // Pre-validate email + username uniqueness before full registration
       await import('../api/client').then(({ api }) =>
         api.post('/auth/validate-signup', {
           email: form.email.trim().toLowerCase(),
@@ -246,7 +221,6 @@ export default function Signup() {
         })
       );
 
-      // Build complete registration payload from tempSignupData + form data
       const response = await signupMutation({
         ...form,
         role: tempSignupData?.role || 'creator',
@@ -310,394 +284,648 @@ export default function Signup() {
   };
 
   return (
-    <div className="relative h-[100dvh] w-full bg-black flex flex-col overflow-hidden font-sans">
+    <div className="relative min-h-[100dvh] w-full bg-zinc-900 lg:bg-white flex flex-col justify-between overflow-x-hidden select-none font-sans">
       {showSyncOverlay && <OnboardingSyncOverlay nextRoute="/home" />}
       
-      {/* Full Screen Background */}
-      <div className="absolute inset-0 z-0">
-        <AuthBackground />
+      {/* ── BACKGROUND LAYER ── */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-zinc-900 lg:bg-white">
+        {/* Mobile Background - Clean & shifted upwards so artwork is visible above the form */}
+        <img 
+          src={loginMobileBg} 
+          alt="SuviX Mobile Background" 
+          className="block lg:hidden absolute inset-x-0 -top-14 sm:-top-0 w-full h-[calc(100%+56px)] sm:h-full object-cover object-[center_35%] opacity-100"
+        />
+        {/* Desktop Background */}
+        {loginBg ? (
+          <img 
+            src={loginBg} 
+            alt="SuviX Desktop Background" 
+            className="hidden lg:block w-full h-full object-cover object-center opacity-100"
+          />
+        ) : null}
+
+        {/* Desktop Right-Side Black Gradient Overlay (behind the form card) */}
+        <div className="hidden lg:block absolute inset-0 bg-gradient-to-r from-transparent from-25% via-black/45 via-60% to-black/85 pointer-events-none" />
       </div>
 
-      {/* Foreground Container */}
-      <div className="relative z-10 flex-1 flex flex-col lg:flex-row h-full w-full">
+      {/* ── MAIN CONTENT LAYER ── */}
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-14 pt-4 sm:pt-6 lg:pt-8 pb-28 sm:pb-32 lg:pb-10 flex-1 flex flex-col justify-between">
         
-        {/* Top Left Global Back Button */}
-        <div className="absolute top-6 left-6 lg:top-10 lg:left-10 z-50">
-          <button 
-            onClick={handleBack}
-            className="flex items-center gap-2 px-4 py-2 lg:px-5 lg:py-2.5 bg-white border border-gray-200 lg:border-black rounded-full text-black text-[11px] lg:text-sm font-bold transition-all shadow-md hover:scale-105"
-          >
-            <ChevronLeft size={14} className="lg:w-4 lg:h-4" />
-            <span>Back</span>
-          </button>
-        </div>
-
-        {/* Left Side (30% approx) - Spacer */}
-        <div className="hidden lg:block lg:w-[40%] xl:w-[30%] h-full pointer-events-none"></div>
-
-        {/* Right Side Form Container (70%) */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 pt-20 sm:p-6 lg:p-12 h-full lg:w-[60%] xl:w-[70%]">
+        {/* MAIN BODY: TOP-LEFT BACK BUTTON & RIGHT SIGNUP CARD */}
+        <div className="w-full flex flex-col lg:flex-row lg:items-start justify-between gap-5 sm:gap-8 lg:gap-10 flex-1">
           
-          {/* Floating Rounded Form Card */}
-          <div className="w-full max-w-[600px] bg-white rounded-3xl lg:rounded-[2rem] shadow-2xl flex flex-col relative shrink-0 max-h-full overflow-hidden mt-2 lg:mt-0">
-            
-            {/* Fixed Header Container */}
-            <div className="w-full shrink-0 px-5 pt-5 pb-1 z-10 bg-white">
-              
-              {/* Unified Header */}
-              <motion.header 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="flex relative w-full flex-col items-center pb-3 border-b border-zinc-100 mb-2 shrink-0 space-y-2 lg:space-y-0"
-              >
-                <img src={logo} alt="SuviX" className="lg:absolute lg:left-0 lg:top-1.5 h-6 lg:h-8 shrink-0" />
-                <div className="text-center space-y-0.5">
-                  <h1 className="text-xl lg:text-2xl font-bold text-black leading-[1.1] tracking-tight">
-                    Create your account.
-                  </h1>
-                  <p className="text-zinc-500 text-[10px] lg:text-xs font-medium">
-                    As <span className="text-black font-bold">{roleName}</span> — enter your details.
-                  </p>
-                </div>
-              </motion.header>
-            </div>
-
-            {/* Content Area (Animation Wrapper) */}
-            <motion.form 
-              onSubmit={handleSubmit}
-              initial={{ opacity: 0, y: 24 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ duration: 0.8, ease: EASE, delay: 0.1 }} 
-              className="w-full flex-1 flex flex-col min-h-0"
+          {/* TOP-LEFT BACK BUTTON */}
+          <motion.div 
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="flex items-center self-start shrink-0"
+          >
+            <button 
+              type="button"
+              onClick={handleBack}
+              className="group flex items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 sm:px-5 sm:py-2.5 rounded-full bg-white/95 hover:bg-white border border-zinc-200/80 text-zinc-900 text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
             >
+              <ArrowLeft size={15} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
+              <span>Back</span>
+            </button>
+          </motion.div>
+
+          {/* RIGHT SIDE FLOATING SIGNUP CARD */}
+          <motion.div 
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.75, ease: EASE, delay: 0.15 }}
+            className="w-full lg:w-[48vw] xl:w-[44vw] 2xl:w-[42vw] max-w-[620px] flex justify-center lg:justify-end shrink-0 mx-auto lg:mx-0"
+          >
+            {/* White Card with Asymmetric Corners & Smooth Scroll */}
+            <div className="light-card relative w-full bg-white rounded-tl-[1.5rem] sm:rounded-tl-[1.75rem] rounded-tr-[3rem] sm:rounded-tr-[4.5rem] rounded-br-[1.5rem] sm:rounded-br-[1.75rem] rounded-bl-[3rem] sm:rounded-bl-[4.5rem] px-4 py-3.5 sm:px-8 sm:py-5 lg:px-9 lg:py-6 shadow-[0_22px_65px_-15px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.04)] border border-zinc-100 overflow-hidden flex flex-col max-h-[85dvh] lg:max-h-[88vh]" style={{ colorScheme: 'light' }}>
               
-              {/* Fixed Step Bar Container */}
-              <div className="w-full px-5 shrink-0 bg-white z-10">
-                <StepBar categorySlug={tempSignupData?.categorySlug} />
+              {/* ── CARD HEADER: 3-COLUMN CENTERED LAYOUT (20% LOGO | 60% TEXT | 20% PROFILE UPLOAD) ── */}
+              <div className="flex items-center justify-between gap-1.5 sm:gap-3 mb-2 shrink-0 w-full">
+                {/* Column 1: SuviX Logo (20% width, centered) */}
+                <div className="w-[20%] flex items-center justify-center shrink-0 min-w-0">
+                  <Link to="/" className="flex items-center justify-center transition-transform hover:scale-105">
+                    <img src={logo} alt="SuviX" className="h-8 sm:h-9.5 lg:h-11 w-auto max-w-full object-contain" />
+                  </Link>
+                </div>
+
+                {/* Column 2: Create Account Heading (60% width, centered) */}
+                <div className="w-[60%] flex flex-col items-center justify-center text-center min-w-0 px-1">
+                  <h2 className="text-[17px] sm:text-2xl lg:text-[23px] font-extrabold text-zinc-950 tracking-tight leading-[1.1] flex flex-col items-center">
+                    <span>Create your</span>
+                    <span>Account</span>
+                  </h2>
+                </div>
+
+                {/* Column 3: Modern Circular Profile / Brand Logo Component with Black Add Button (20% width, centered) */}
+                <div className="w-[20%] flex flex-col items-center justify-center shrink-0 min-w-0">
+                  <label
+                    className="relative group cursor-pointer flex flex-col items-center justify-center"
+                    title={isBrandClient ? "Upload Brand Logo" : "Upload Profile Picture"}
+                  >
+                    {/* Enlarged Circular Avatar Preview */}
+                    <div className="relative w-11 h-11 sm:w-13 sm:h-13 lg:w-15 lg:h-15 rounded-full bg-[#F8F9FA] group-hover:bg-zinc-100 border-2 border-zinc-200/90 group-hover:border-black shadow-sm flex items-center justify-center overflow-hidden transition-all group-hover:scale-105">
+                      {profilePicturePreview ? (
+                        <img src={profilePicturePreview} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        <User size={20} className="text-zinc-400 group-hover:text-zinc-700 transition-colors sm:w-6 sm:h-6" />
+                      )}
+                    </div>
+
+                    {/* Black Action Button to Add Profile Image (Enlarged) */}
+                    <div className="mt-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-black text-white text-[8.5px] sm:text-[10px] font-bold flex items-center gap-1.5 shadow hover:bg-zinc-800 active:scale-95 transition-all">
+                      <Camera size={10} className="text-white shrink-0 sm:w-3 sm:h-3" />
+                      <span className="leading-none whitespace-nowrap">{profilePicturePreview ? "Change Photo" : "Add Photo"}</span>
+                    </div>
+
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  </label>
+                </div>
+              </div>
+
+              {/* ── ROLE DISPLAY COMPONENT (Above the two tabs) ── */}
+              <div className="shrink-0 mb-1.5 sm:mb-2 px-3 py-1 sm:py-1.5 rounded-xl bg-[#F8F9FA] border border-zinc-200/80 flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-md bg-zinc-200/90 flex items-center justify-center shrink-0">
+                    <User size={12} className="text-black fill-black sm:w-3.5 sm:h-3.5" />
+                  </div>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[8.5px] sm:text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Role</span>
+                    <span className="text-zinc-300 text-xs leading-none">/</span>
+                    <span className="text-[11px] sm:text-xs font-bold text-zinc-950 truncate">{roleName}</span>
+                  </div>
+                </div>
+                <Link
+                  to="/role-selection"
+                  className="text-[9px] sm:text-[10.5px] font-bold text-zinc-500 hover:text-black transition-colors underline decoration-zinc-300 hover:decoration-black shrink-0 ml-2 cursor-pointer"
+                  title="Change your selected role"
+                >
+                  Change
+                </Link>
+              </div>
+
+              {/* ── SUB-LEVEL / STEP SELECTOR TABS ── */}
+              <div className="shrink-0 mb-1.5 sm:mb-2">
+                <div className="flex items-center justify-between p-1 bg-zinc-100 rounded-xl">
+                  {/* Level 1 Tab Button */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentLevel(1)}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[9.5px] sm:text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      currentLevel === 1
+                        ? 'bg-white text-black shadow-sm'
+                        : 'text-zinc-500 hover:text-black'
+                    }`}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex items-center justify-center text-[7.5px] sm:text-[9px] font-black ${
+                        isLevel1Valid
+                          ? 'bg-emerald-500 text-white'
+                          : currentLevel === 1
+                          ? 'bg-black text-white'
+                          : 'bg-zinc-300 text-zinc-600'
+                      }`}
+                    >
+                      {isLevel1Valid ? <Check size={8} strokeWidth={3.5} /> : '1'}
+                    </span>
+                    <span>1. Account Info</span>
+                  </button>
+
+                  {/* Level 2 Tab Button */}
+                  <button
+                    type="button"
+                    onClick={() => isLevel1Valid && setCurrentLevel(2)}
+                    disabled={!isLevel1Valid}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[9.5px] sm:text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      currentLevel === 2
+                        ? 'bg-white text-black shadow-sm'
+                        : isLevel1Valid
+                        ? 'text-zinc-500 hover:text-black cursor-pointer'
+                        : 'text-zinc-400 cursor-not-allowed opacity-60'
+                    }`}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex items-center justify-center text-[7.5px] sm:text-[9px] font-black ${
+                        isFormValid
+                          ? 'bg-emerald-500 text-white'
+                          : currentLevel === 2
+                          ? 'bg-black text-white'
+                          : 'bg-zinc-300 text-zinc-600'
+                      }`}
+                    >
+                      {isFormValid ? <Check size={8} strokeWidth={3.5} /> : '2'}
+                    </span>
+                    <span>2. Security &amp; Region</span>
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable Form Content */}
-              <ReactLenis className="w-full flex-1 overflow-y-auto custom-scrollbar px-5 lg:px-8 pb-8 lg:pb-12">
-                <div className="space-y-3.5 mt-1 lg:mt-4">
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 -mr-1">
+                <form id="signup-form" onSubmit={handleSubmit} className="space-y-1.5 sm:space-y-2 pt-0.5">
+                  
+                  {/* ERROR BANNER */}
                   {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-xs font-semibold">
-                      {error}
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-red-50 border border-red-200/80 text-red-600 text-[10px] sm:text-xs font-semibold flex items-start gap-1.5 sm:gap-2">
+                      <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                      <span>{error}</span>
                     </div>
                   )}
 
-                  <div className="space-y-3.5">
-                {/* Profile Picture Upload */}
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center overflow-hidden">
-                      {profilePicturePreview ? (
-                        <img src={profilePicturePreview} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                        <User size={24} className="text-zinc-400" />
-                      )}
-                    </div>
-                    <label className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-black flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-transform">
-                      <Camera size={14} className="text-white" />
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                    </label>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-black tracking-tight">
-                      {isBrandClient ? "Brand Logo" : "Profile Picture"}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Recommended: Square, under 5MB</p>
-                  </div>
-                </div>
-
-                {/* Name + Handle */}
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField 
-                    label={isBrandClient ? "Company / Brand Name" : "Full Name"} 
-                    name="fullName" 
-                    placeholder={isBrandClient ? "e.g. Nike" : "John Doe"} 
-                    icon={<User size={16} />} 
-                    value={form.fullName} 
-                    onChange={handleChange} 
-                    required 
-                  />
-
-                  <div className="space-y-1">
-                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
-                      {isBrandClient ? "Brand Handle" : "Handle"}
-                    </label>
-                    <div className="relative">
-                      <AtSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                      <input
-                        name="username"
-                        placeholder={isBrandClient ? "brandhandle" : "handle"}
-                        value={form.username}
-                        onChange={handleChange}
-                        required
-                        className={`suvix-input !h-10 !pl-11 pr-12 !text-[13px] bg-white !border-2 text-black transition-all placeholder:text-zinc-400 ${
-                          userStatus === 'available' ? '!border-green-500' :
-                          userStatus === 'taken'     ? '!border-red-500'   : '!border-black'
-                        }`}
-                      />
-                      {userStatus !== 'idle' && (
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                          {userStatus === 'checking' ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+                  {/* ════════════ LEVEL 1: BASIC ACCOUNT INFO ════════════ */}
+                  {currentLevel === 1 && (
+                    <div className="space-y-1.5 sm:space-y-2 animate-in fade-in zoom-in-98 duration-150">
+                      {/* Full Name / Brand Name */}
+                      <div className="space-y-0.5">
+                        <div className="relative bg-[#F8F9FA] hover:bg-zinc-100/70 focus-within:bg-white focus-within:border-zinc-400 border border-zinc-200/80 rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-2 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-2">
+                          {isBrandClient ? (
+                            <Building2 size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
                           ) : (
-                            <span className={`text-[10px] font-black tracking-wide uppercase ${
-                              userStatus === 'available' ? 'text-green-500' : 'text-red-500'
-                            }`}>
-                              {userStatus === 'available' ? '✓ free' : '✗ taken'}
-                            </span>
+                            <User size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
                           )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block mb-0.5 select-none uppercase tracking-wider">
+                              {isBrandClient ? "Brand Name" : "Full Name"}
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              name="fullName"
+                              placeholder={isBrandClient ? "e.g. Nike" : "John Doe"}
+                              value={form.fullName}
+                              onChange={handleChange}
+                              style={{ colorScheme: 'light', backgroundColor: 'transparent' }}
+                              className="w-full text-[10.5px] sm:text-xs font-semibold text-zinc-950 !bg-transparent outline-none placeholder:text-zinc-400 placeholder:font-normal focus:bg-transparent leading-tight"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                {/* Email */}
-                <div>
-                  <InputField 
-                    label={isBrandClient ? "Work Email Address" : "Email Address"} 
-                    name="email" 
-                    type="email" 
-                    placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"} 
-                    icon={<Mail size={16} />} 
-                    value={form.email} 
-                    onChange={handleChange} 
-                    required 
-                    helperText={socialProfile?.email ? (
-                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                        <Check size={11} strokeWidth={3} /> Auto-filled
-                      </span>
-                    ) : undefined}
-                  />
-                  {socialProfile?.email && (
-                    <p className="mt-1 text-[10px] text-zinc-400 font-medium pl-1 flex items-center gap-1">
-                      <span>💡 Pre-filled from Google. You can change this to your preferred business email.</span>
-                    </p>
-                  )}
-                </div>
+                      {/* Handle / Username */}
+                      <div className="space-y-0.5">
+                        <div className={`relative bg-[#F8F9FA] hover:bg-zinc-100/70 focus-within:bg-white border rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-2 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-2 ${
+                          userStatus === 'available' ? 'border-emerald-500 focus-within:border-emerald-500' :
+                          userStatus === 'taken'     ? 'border-red-500 focus-within:border-red-500' :
+                          'border-zinc-200/80 focus-within:border-zinc-400'
+                        }`}>
+                          <AtSign size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block mb-0.5 select-none uppercase tracking-wider">
+                              {isBrandClient ? "Brand Handle" : "Username"}
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              name="username"
+                              placeholder={isBrandClient ? "brandhandle" : "handle"}
+                              value={form.username}
+                              onChange={handleChange}
+                              style={{ colorScheme: 'light', backgroundColor: 'transparent' }}
+                              className="w-full text-[10.5px] sm:text-xs font-semibold text-zinc-950 !bg-transparent outline-none placeholder:text-zinc-400 placeholder:font-normal focus:bg-transparent leading-tight"
+                            />
+                          </div>
+                          {userStatus !== 'idle' && (
+                            <div className="shrink-0 flex items-center">
+                              {userStatus === 'checking' ? (
+                                <Loader2 size={11} className="animate-spin text-zinc-400" />
+                              ) : userStatus === 'available' ? (
+                                <span className="text-[8.5px] sm:text-[9px] font-bold text-emerald-600">✓ Free</span>
+                              ) : (
+                                <span className="text-[8.5px] sm:text-[9px] font-bold text-red-500">✗ Taken</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                {/* Phone + Language/Website */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Phone Number</label>
-                    <PhoneCountryInput
-                      value={form.phone}
-                      country={form.country}
-                      isDetecting={isDetectingCountry}
-                      onValidityChange={setIsPhoneValid}
-                      onChange={(fullPhone, c, _national, valid) => {
-                        setForm((prev) => ({ ...prev, phone: fullPhone, country: c.name }));
-                        if (typeof valid === 'boolean') setIsPhoneValid(valid);
-                      }}
-                      onCountryChange={(c) => {
-                        setForm((prev) => ({ ...prev, country: c.name }));
-                      }}
-                      required
-                      variant="suvix-dark"
-                    />
-                  </div>
+                      {/* Email Address */}
+                      <div className="space-y-0.5">
+                        <div className="relative bg-[#F8F9FA] hover:bg-zinc-100/70 focus-within:bg-white focus-within:border-zinc-400 border border-zinc-200/80 rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-2 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-2">
+                          <Mail size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block mb-0.5 select-none uppercase tracking-wider">
+                                {isBrandClient ? "Work Email Address" : "Email Address"}
+                              </label>
+                              {socialProfile?.email && (
+                                <span className="text-[7.5px] sm:text-[8px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                  <Check size={8} strokeWidth={3} /> Auto-filled
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="email"
+                              required
+                              name="email"
+                              placeholder={isBrandClient ? "partnerships@company.com" : "name@example.com"}
+                              value={form.email}
+                              onChange={handleChange}
+                              style={{ colorScheme: 'light', backgroundColor: 'transparent' }}
+                              className="w-full text-[10.5px] sm:text-xs font-semibold text-zinc-950 !bg-transparent outline-none placeholder:text-zinc-400 placeholder:font-normal focus:bg-transparent leading-tight"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                  {isBrandClient ? (
-                    <InputField 
-                      label="Website / URL" 
-                      name="website" 
-                      placeholder="https://company.com" 
-                      icon={<Globe size={16} />} 
-                      value={form.website} 
-                      onChange={handleChange} 
-                      required 
-                    />
-                  ) : (
-                    <div className="space-y-1">
-                      <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Language</label>
-                      <div className="relative">
-                        <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                        <select
-                          name="motherTongue"
-                          value={form.motherTongue}
-                          onChange={handleChange}
-                          className="suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400 appearance-none"
+                      {/* Continue to Level 2 Next Button */}
+                      <div className="pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => isLevel1Valid && setCurrentLevel(2)}
+                          disabled={!isLevel1Valid}
+                          className={`w-full h-9 sm:h-10 rounded-full font-bold flex items-center justify-center gap-1.5 transition-all text-xs sm:text-[13px] ${
+                            isLevel1Valid
+                              ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 shadow-sm cursor-pointer'
+                              : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
+                          }`}
                         >
-                          {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                        </select>
+                          <span>Continue to Security &amp; Region</span>
+                          <ArrowRight size={13} strokeWidth={2.5} />
+                        </button>
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Country */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
-                      Your Country (for pricing &amp; billing)
-                    </label>
-                  </div>
-                  <CountrySelect
-                    value={form.country}
-                    isDetecting={isDetectingCountry}
-                    onChange={(c) => {
-                      setForm((prev) => ({ ...prev, country: c.name }));
-                    }}
-                    variant="suvix-dark"
-                  />
-                </div>
+                  {/* ════════════ LEVEL 2: SECURITY, REGION & DETAILS ════════════ */}
+                  {currentLevel === 2 && (
+                    <div className="space-y-1.5 sm:space-y-2 animate-in fade-in zoom-in-98 duration-150">
+                      {/* Back to Level 1 Link */}
+                      <div className="flex items-center justify-between pb-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentLevel(1)}
+                          className="text-[9.5px] sm:text-[11px] font-bold text-zinc-600 hover:text-black flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <ArrowLeft size={11} strokeWidth={2.5} />
+                          <span>Edit Account Info (Step 1)</span>
+                        </button>
+                      </div>
 
-                {/* YouTube Channel Preview (yt_influencer only) */}
-                {selectedChannels.length > 0 && (
-                  <div className="space-y-3 pt-2">
-                    <h3 className="text-[10px] font-bold tracking-[0.15em] text-zinc-500 uppercase ml-1">Linked Identity</h3>
-                    <div className="space-y-2">
-                      {selectedChannels.map((ch) => (
-                        <div key={ch?.channelId} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-200 bg-zinc-50 backdrop-blur-sm">
-                          {ch?.thumbnailUrl && (
-                            <img src={ch.thumbnailUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-white" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-black truncate">{ch?.channelName}</h4>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <Youtube size={12} className="text-[#FF0000]" />
-                              <span className="text-[11px] font-semibold text-zinc-400">
-                                {Number(ch?.subscriberCount || 0).toLocaleString()} subscribers
-                                {ch?.subCategorySlug && ` • ${ch.subCategorySlug.replace(/_/g, ' ')}`}
-                              </span>
+                      {/* Phone Number + Language/Website Row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                        {/* Phone Input */}
+                        <div className="space-y-0.5">
+                          <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block pl-1 select-none uppercase tracking-wider">
+                            Phone Number
+                          </label>
+                          <PhoneCountryInput
+                            value={form.phone}
+                            country={form.country}
+                            isDetecting={isDetectingCountry}
+                            onValidityChange={setIsPhoneValid}
+                            onChange={(fullPhone, c, _national, valid) => {
+                              setForm((prev) => ({ ...prev, phone: fullPhone, country: c.name }));
+                              if (typeof valid === 'boolean') setIsPhoneValid(valid);
+                            }}
+                            onCountryChange={(c) => {
+                              setForm((prev) => ({ ...prev, country: c.name }));
+                            }}
+                            required
+                            variant="suvix-dark"
+                            placement="top"
+                          />
+                        </div>
+
+                        {/* Language or Website */}
+                        {isBrandClient ? (
+                          <div className="space-y-0.5">
+                            <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block pl-1 select-none uppercase tracking-wider">
+                              Website / URL
+                            </label>
+                            <div className="relative bg-[#F8F9FA] hover:bg-zinc-100/70 focus-within:bg-white focus-within:border-zinc-400 border border-zinc-200/80 rounded-xl px-2.5 py-1 sm:py-2 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-2">
+                              <Globe size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
+                              <input
+                                type="url"
+                                required
+                                name="website"
+                                placeholder="https://company.com"
+                                value={form.website}
+                                onChange={handleChange}
+                                style={{ colorScheme: 'light', backgroundColor: 'transparent' }}
+                                className="w-full text-[10.5px] sm:text-xs font-semibold text-zinc-950 !bg-transparent outline-none placeholder:text-zinc-400 placeholder:font-normal focus:bg-transparent leading-tight"
+                              />
                             </div>
                           </div>
-                          <CheckCircle2 size={18} className="text-[#00C853] shrink-0" />
+                        ) : (
+                          <div className="space-y-0.5">
+                            <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block pl-1 select-none uppercase tracking-wider">
+                              Language
+                            </label>
+                            <div className="relative bg-[#F8F9FA] hover:bg-zinc-100/70 focus-within:bg-white focus-within:border-zinc-400 border border-zinc-200/80 rounded-xl px-2.5 py-1 sm:py-2 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-2">
+                              <Globe size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
+                              <select
+                                name="motherTongue"
+                                value={form.motherTongue}
+                                onChange={handleChange}
+                                style={{ colorScheme: 'light', backgroundColor: 'transparent' }}
+                                className="w-full text-[10.5px] sm:text-xs font-semibold text-zinc-950 !bg-transparent outline-none cursor-pointer appearance-none leading-tight"
+                              >
+                                {LANGUAGES.map(l => <option key={l} value={l} className="bg-white text-black font-medium">{l}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Country Select */}
+                      <div className="space-y-0.5">
+                        <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block pl-1 select-none uppercase tracking-wider">
+                          Your Country (for currency &amp; billing)
+                        </label>
+                        <CountrySelect
+                          value={form.country}
+                          isDetecting={isDetectingCountry}
+                          onChange={(c) => {
+                            setForm((prev) => ({ ...prev, country: c.name }));
+                          }}
+                          variant="suvix-dark"
+                          placement="bottom"
+                        />
+                      </div>
+
+                      {/* YouTube Channel Preview (yt_influencer only) */}
+                      {selectedChannels.length > 0 && (
+                        <div className="space-y-1 pt-0.5">
+                          <h3 className="text-[8px] sm:text-[9px] font-bold tracking-wider text-zinc-400 uppercase ml-1">Linked YouTube Channel</h3>
+                          <div className="space-y-1">
+                            {selectedChannels.map((ch) => (
+                              <div key={ch?.channelId} className="flex items-center gap-2 p-1.5 sm:p-2 rounded-xl border border-zinc-200/80 bg-[#F8F9FA] hover:bg-zinc-100/70 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                {ch?.thumbnailUrl && (
+                                  <img src={ch.thumbnailUrl} alt="" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 bg-white" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-[11px] sm:text-xs font-bold text-black truncate leading-tight">{ch?.channelName}</h4>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <Youtube size={10} className="text-[#FF0000]" />
+                                    <span className="text-[9px] sm:text-[10px] font-semibold text-zinc-500">
+                                      {Number(ch?.subscriberCount || 0).toLocaleString()} subscribers
+                                    </span>
+                                  </div>
+                                </div>
+                                <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      )}
 
-                {/* Password (email signup only) / Security note (Google signup) */}
-                {!isSocialUser ? (
-                  <div className="space-y-1">
-                    <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">Password</label>
-                    <div className="relative">
-                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-                      <input
-                        name="password"
-                        type={showPass ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        value={form.password}
-                        onChange={handleChange}
-                        required={!isSocialUser}
-                        className="suvix-input !h-10 !pl-11 pr-12 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400"
-                      />
-                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors">
-                        {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                      <Lock size={16} className="text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-black uppercase tracking-wider">Secured via Google</p>
-                      <p className="text-[11px] text-zinc-500 font-medium">No password needed — Google handles your login.</p>
-                    </div>
-                  </div>
-                )}
+                      {/* Password Input or Google Security Note */}
+                      {!isSocialUser ? (
+                        <div className="space-y-0.5">
+                          <div className="relative bg-[#F8F9FA] hover:bg-zinc-100/70 focus-within:bg-white focus-within:border-zinc-400 border border-zinc-200/80 rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-2 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-2">
+                            <Lock size={14} className="text-zinc-700 shrink-0 stroke-[1.8] sm:w-[15px] sm:h-[15px]" />
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <label className="text-[7.5px] sm:text-[9px] text-zinc-400 font-medium leading-none block mb-0.5 select-none uppercase tracking-wider">
+                                Password
+                              </label>
+                              <input
+                                type={showPass ? 'text' : 'password'}
+                                required={!isSocialUser}
+                                name="password"
+                                placeholder="••••••••••••"
+                                value={form.password}
+                                onChange={handleChange}
+                                style={{ colorScheme: 'light', backgroundColor: 'transparent' }}
+                                className="w-full text-[10.5px] sm:text-xs font-semibold text-zinc-950 !bg-transparent outline-none placeholder:text-zinc-400 placeholder:font-normal tracking-wide focus:bg-transparent leading-tight"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowPass(!showPass)}
+                              className="text-zinc-600 hover:text-black transition-colors p-0.5 cursor-pointer shrink-0"
+                              aria-label="Toggle password visibility"
+                            >
+                              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2 sm:p-2.5 rounded-xl border border-zinc-200/80 bg-[#F8F9FA] flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                            <Lock size={12} className="text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="text-[8.5px] sm:text-[9px] font-bold text-black uppercase tracking-wider">Secured via Google</p>
+                            <p className="text-[9.5px] sm:text-[10px] text-zinc-500 font-medium">No password needed — Google manages your authentication.</p>
+                          </div>
+                        </div>
+                      )}
 
-                {/* Notifications Toggle */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 bg-zinc-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-200 flex items-center justify-center">
-                      <Bell size={16} className="text-zinc-500" />
+                      {/* Notifications Toggle */}
+                      <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-xl border border-zinc-200/80 bg-[#F8F9FA] hover:bg-zinc-100/70 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-zinc-200/80 flex items-center justify-center shrink-0">
+                            <Bell size={12} className="text-zinc-600" />
+                          </div>
+                          <div>
+                            <p className="text-[10.5px] sm:text-[11px] font-bold text-black leading-tight">Enable Notifications</p>
+                            <p className="text-[8.5px] sm:text-[9px] text-zinc-500 font-medium">Get updates on your creator projects</p>
+                          </div>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setEnableNotifications(!enableNotifications)}
+                          className={`w-8 h-4.5 sm:w-9 sm:h-5 rounded-full transition-colors relative flex items-center ${enableNotifications ? 'bg-emerald-500' : 'bg-zinc-300'}`}
+                        >
+                          <div className={`w-3 h-3 sm:w-3.5 sm:h-3.5 bg-white rounded-full absolute transition-transform shadow-sm ${enableNotifications ? 'translate-x-3.5 sm:translate-x-4' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-black">Enable Notifications</p>
-                      <p className="text-[10px] text-zinc-500 font-medium">Get updates on your creator journey</p>
-                    </div>
+                  )}
+                </form>
+              </div>
+
+              {/* ── FIXED IN-CARD FOOTER (CLOUDFLARE + DESKTOP CREATE ACCOUNT BUTTON) ── */}
+              <div className="shrink-0 border-t border-zinc-100 bg-white pt-2 pb-0.5 mt-1">
+                {/* Cloudflare Security Status */}
+                <div className="w-full pb-1.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2 select-none overflow-hidden">
+                  {/* Cloudflare Logo */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <img 
+                      src={cloudflareLogo} 
+                      alt="Cloudflare" 
+                      className="h-3.5 sm:h-4 w-auto object-contain shrink-0" 
+                    />
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setEnableNotifications(!enableNotifications)}
-                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center ${enableNotifications ? 'bg-green-500' : 'bg-zinc-300'}`}
+
+                  {/* Turnstile / Success Badge */}
+                  <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end min-w-0 overflow-hidden">
+                    {siteKey ? (
+                      <div className="max-w-full overflow-hidden flex justify-center sm:justify-end scale-[0.76] sm:scale-75 origin-center sm:origin-right">
+                        <Turnstile
+                          siteKey={siteKey}
+                          options={{ theme: 'light' }}
+                          onSuccess={(token) => {
+                            setTurnstileToken(token);
+                            setTurnstileStatus('success');
+                          }}
+                          onError={() => {
+                            setTurnstileToken('');
+                            setTurnstileStatus('error');
+                            setError('Security check failed. Please refresh and try again.');
+                          }}
+                          onExpire={() => {
+                            setTurnstileToken('');
+                            setTurnstileStatus('expired');
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[9px] sm:text-[11px] font-bold text-emerald-700 shrink-0">
+                        <CheckCircle2 size={11} className="text-emerald-600 shrink-0 sm:w-3 sm:h-3" />
+                        <span>Verified & Secured</span>
+                        <span className="text-zinc-400 font-normal text-[9px] hidden sm:inline">Privacy · Terms</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CREATE ACCOUNT BUTTON (DESKTOP IN-CARD ONLY, WITH LOCK REMOVAL ON COMPLETION) */}
+                <div className="hidden lg:block space-y-1.5">
+                  <button
+                    type="submit"
+                    form="signup-form"
+                    disabled={isLoading || !isFormValid}
+                    className={`w-full h-11 sm:h-12 rounded-full font-bold flex items-center justify-center gap-2 transition-all shadow-md text-xs sm:text-sm ${
+                      isFormValid && !isLoading
+                        ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 cursor-pointer'
+                        : 'bg-zinc-200 text-zinc-500 cursor-not-allowed opacity-90'
+                    }`}
                   >
-                    <div className={`w-4 h-4 bg-white rounded-full absolute transition-transform shadow-sm ${enableNotifications ? 'translate-x-6' : 'translate-x-1'}`} />
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
+                    ) : (
+                      <>
+                        {!isFormValid ? (
+                          <Lock size={15} className="text-zinc-500 shrink-0" />
+                        ) : null}
+                        <span>Create Account</span>
+                        {isFormValid ? (
+                          <ArrowRight size={16} strokeWidth={2.5} />
+                        ) : null}
+                      </>
+                    )}
                   </button>
-                </div>
 
+                  <div className="text-center text-xs text-zinc-500 font-medium pt-0.5">
+                    <span>Already have an account? </span>
+                    <Link to="/login" className="font-bold text-black hover:underline inline-flex items-center gap-0.5">
+                      Log In <ArrowRight size={12} className="inline ml-0.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </ReactLenis>
-              {/* Fixed Bottom Action Area */}
-              <div className="w-full shrink-0 bg-white border-t border-zinc-100 px-6 lg:px-10 py-3 lg:py-5 mt-auto">
-                <div className="flex justify-center mb-2.5 scale-85 sm:scale-100 origin-center my-0.5">
-                  <Turnstile
-                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
-                    onSuccess={(token) => setTurnstileToken(token)}
-                    onError={() => setError('Security check failed. Please refresh and try again.')}
-                  />
-                </div>
-                {/* Submit */}
-                <button 
-                  type="submit" 
-                  disabled={isLoading || !isFormValid} 
-                  className={`suvix-btn-primary w-full h-9 lg:h-10 !text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-[0.98] !text-[11px] lg:!text-[13px] ${
-                    isFormValid 
-                      ? '!bg-black hover:opacity-90 shadow-black/10' 
-                      : '!bg-zinc-200 shadow-none cursor-not-allowed !text-zinc-400'
-                  }`}
-                >
-                  {isLoading
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <><span>Create Account</span><ArrowRight size={14} strokeWidth={2.5} /></>
-                  }
-                </button>
-
-                <p className="mt-4 text-center text-[13px] text-zinc-500 font-medium">
-                  Already a member?{' '}
-                  <Link to="/login" className="font-bold text-black hover:opacity-70 transition-opacity">Sign In</Link>
-                </p>
-              </div>
-            </motion.form> {/* Closes Content Area Animation Wrapper */}
-        </div> {/* Closes Floating Card */}
-          
-        {/* Legal Footer (Laptop only, sits below the floating card) */}
-        <div className="hidden lg:block mt-8 text-center text-[11px] text-zinc-400/80 font-bold backdrop-blur-sm px-4 py-1 rounded-full">
-          © 2026 SuviX Inc. All rights reserved.
+            </div>
+          </motion.div>
         </div>
-        
-        {/* Legal Footer (Mobile) */}
-        <div className="lg:hidden mt-auto pt-8 pb-4 text-center text-[11px] text-zinc-400 font-bold">
-          © 2026 SuviX Inc. All rights reserved.
+      </div>
+
+      {/* ── MOBILE FIXED BOTTOM ACTION DOCK (MOBILE ONLY, WITH LOCK REMOVAL ON COMPLETION) ── */}
+      <div className="block lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-2xl border-t border-zinc-200/80 rounded-t-[1.75rem] sm:rounded-t-[2.25rem] shadow-[0_-10px_35px_rgba(0,0,0,0.15)] px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-md mx-auto flex flex-col gap-2">
+          {/* Helper Text: Already have an account? */}
+          <div className="text-center text-[11px] sm:text-xs text-zinc-500 font-medium">
+            <span>Already have an account? </span>
+            <Link to="/login" className="font-bold text-black hover:underline">
+              Log In
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {/* Secondary Button: Log In */}
+            <Link
+              to="/login"
+              className="flex-1 h-10 sm:h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 text-zinc-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border border-zinc-200/80 shadow-sm"
+            >
+              <span>Log In</span>
+            </Link>
+
+            {/* Primary Button: Create Account (or Next on Mobile if in Level 1) */}
+            {currentLevel === 1 && !isFormValid ? (
+              <button
+                type="button"
+                onClick={() => isLevel1Valid && setCurrentLevel(2)}
+                disabled={!isLevel1Valid}
+                className={`flex-1 h-10 sm:h-11 rounded-full font-bold flex items-center justify-center gap-1.5 transition-all shadow-md text-xs sm:text-sm ${
+                  isLevel1Valid
+                    ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 cursor-pointer'
+                    : 'bg-zinc-200 text-zinc-500 cursor-not-allowed opacity-90'
+                }`}
+              >
+                <span>Next Step</span>
+                <ArrowRight size={14} strokeWidth={2.5} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                form="signup-form"
+                disabled={isLoading || !isFormValid}
+                className={`flex-1 h-10 sm:h-11 rounded-full font-bold flex items-center justify-center gap-1.5 transition-all shadow-md text-xs sm:text-sm ${
+                  isFormValid && !isLoading
+                    ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 cursor-pointer'
+                    : 'bg-zinc-200 text-zinc-500 cursor-not-allowed opacity-90'
+                }`}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
+                ) : (
+                  <>
+                    {!isFormValid ? (
+                      <Lock size={14} className="text-zinc-500 shrink-0" />
+                    ) : null}
+                    <span>Create Account</span>
+                    {isFormValid ? (
+                      <ArrowRight size={14} strokeWidth={2.5} />
+                    ) : null}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
-
       </div>
-    </div>
-  </div>
-);
-}
 
-// ── Shared Input Field Component ──────────────────────────────────────────────
-interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  icon: React.ReactNode;
-  helperText?: React.ReactNode;
-}
-
-function InputField({ label, icon, helperText, ...props }: InputFieldProps) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <label className="font-label text-[10px] font-bold tracking-wider text-zinc-500 uppercase">{label}</label>
-        {helperText}
-      </div>
-      <div className="relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">{icon}</span>
-        <input
-          {...props}
-          className={`suvix-input !h-10 !pl-11 pr-4 !text-[13px] bg-white !border-2 !border-black text-black transition-all placeholder:text-zinc-400 ${props.className ?? ''}`}
-        />
-      </div>
     </div>
   );
 }

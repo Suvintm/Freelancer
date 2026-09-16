@@ -677,13 +677,27 @@ export default function ConnectSocials() {
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full">
               
               {/* 1. YOUTUBE CARD */}
-              <div className={`rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
+              <div className={`relative rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
                 isChannelClaimed
                   ? 'border-red-300 bg-red-50/30'
                   : connected
-                    ? 'border-emerald-300 bg-emerald-50/10'
+                    ? 'ring-2 ring-emerald-500/40 border-emerald-500/80 bg-emerald-50/15 shadow-xs'
                     : 'border-zinc-200/90 hover:border-zinc-300'
               }`}>
+                {/* Connected Floating Top Badge (Like Role Selection) */}
+                {connected && !isChannelClaimed && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="absolute -top-2.5 right-3 z-30 bg-zinc-950 text-white px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md border border-zinc-700/70 whitespace-nowrap text-[8.5px] sm:text-[10px] font-bold select-none"
+                  >
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <Check className="w-2 h-2 text-white" strokeWidth={3.5} />
+                    </div>
+                    <span>Connected</span>
+                  </motion.div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <YouTubeIcon />
@@ -695,7 +709,7 @@ export default function ConnectSocials() {
                             Claimed
                           </span>
                         ) : connected ? (
-                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[8.5px] font-semibold flex items-center gap-0.5">
+                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[8.5px] font-bold flex items-center gap-0.5">
                             <Check className="w-2.5 h-2.5 stroke-[3]" /> Connected
                           </span>
                         ) : (
@@ -736,7 +750,7 @@ export default function ConnectSocials() {
                   </div>
                 </div>
 
-                {/* If YouTube is Connected: Show Mini Preview Card + Niche Picker */}
+                {/* If YouTube is Connected: Show Mini Preview Card + Prominent Niche Picker */}
                 {primaryChannel && (
                   <div className="pt-2 border-t border-zinc-100 space-y-2">
                     <div className="flex items-center gap-2 p-1.5 rounded-xl bg-zinc-50 border border-zinc-200/80">
@@ -757,18 +771,29 @@ export default function ConnectSocials() {
 
                     {/* Channel Niche Selection */}
                     {!isChannelClaimed && (
-                      <div className="space-y-1">
-                        <label className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                          <Compass className="w-3 h-3 text-amber-500" />
-                          <span>Channel Niche</span>
-                          <span className="text-rose-500">*</span>
-                        </label>
+                      <div className="space-y-1 pt-0.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-1">
+                            <Compass className="w-3 h-3 text-amber-500" />
+                            <span>Select Channel Niche</span>
+                            <span className="text-rose-500">*</span>
+                          </label>
+                          {!selectedNiche && (
+                            <span className="text-[8.5px] text-amber-600 font-bold animate-pulse">
+                              Required
+                            </span>
+                          )}
+                        </div>
                         <select
                           value={selectedNiche}
                           onChange={(e) => setSelectedNiche(e.target.value)}
-                          className="w-full h-7.5 sm:h-8 px-2 rounded-xl border border-zinc-300 bg-white text-zinc-900 text-[11px] sm:text-xs font-medium focus:outline-none focus:ring-1 focus:ring-black transition-all cursor-pointer shadow-2xs"
+                          className={`w-full h-8 sm:h-8.5 px-2.5 rounded-xl border text-zinc-900 text-[11px] sm:text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-zinc-950 transition-all cursor-pointer shadow-2xs ${
+                            !selectedNiche
+                              ? 'border-amber-300 bg-amber-50/40 ring-1 ring-amber-300/70'
+                              : 'border-zinc-300 bg-white'
+                          }`}
                         >
-                          <option value="" disabled>Select niche...</option>
+                          <option value="" disabled>Choose your channel niche...</option>
                           {availableNiches.map((n) => (
                             <option key={n} value={n}>{n}</option>
                           ))}
@@ -802,11 +827,25 @@ export default function ConnectSocials() {
               </div>
 
               {/* 2. INSTAGRAM CARD */}
-              <div className={`rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
+              <div className={`relative rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
                 instaConnected
-                  ? 'border-emerald-300 bg-emerald-50/10'
+                  ? 'ring-2 ring-emerald-500/40 border-emerald-500/80 bg-emerald-50/15 shadow-xs'
                   : 'border-zinc-200/90 hover:border-zinc-300'
               }`}>
+                {/* Connected Floating Top Badge (Like Role Selection) */}
+                {instaConnected && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="absolute -top-2.5 right-3 z-30 bg-zinc-950 text-white px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md border border-zinc-700/70 whitespace-nowrap text-[8.5px] sm:text-[10px] font-bold select-none"
+                  >
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <Check className="w-2 h-2 text-white" strokeWidth={3.5} />
+                    </div>
+                    <span>Connected</span>
+                  </motion.div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <InstagramIcon />
@@ -814,7 +853,7 @@ export default function ConnectSocials() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs sm:text-sm font-semibold text-zinc-900">Instagram</span>
                         {instaConnected ? (
-                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[8.5px] font-semibold flex items-center gap-0.5">
+                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[8.5px] font-bold flex items-center gap-0.5">
                             <Check className="w-2.5 h-2.5 stroke-[3]" /> Connected
                           </span>
                         ) : hasFreshYoutube ? (
@@ -902,12 +941,17 @@ export default function ConnectSocials() {
               </div>
 
               {/* 3. TIKTOK CARD */}
-              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <TikTokIcon />
                     <div>
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">TikTok</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">TikTok</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] sm:text-[8.5px] font-black tracking-wider uppercase">
+                          BETA
+                        </span>
+                      </div>
                       <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
                         Showcase your content and reach.
                       </p>
@@ -934,12 +978,17 @@ export default function ConnectSocials() {
               </div>
 
               {/* 4. X (TWITTER) CARD */}
-              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <TwitterXIcon />
                     <div>
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">X (Twitter)</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">X (Twitter)</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] sm:text-[8.5px] font-black tracking-wider uppercase">
+                          BETA
+                        </span>
+                      </div>
                       <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
                         Link your profile to show your audience and influence.
                       </p>
@@ -966,12 +1015,17 @@ export default function ConnectSocials() {
               </div>
 
               {/* 5. FACEBOOK CARD */}
-              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <FacebookIcon />
                     <div>
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">Facebook</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">Facebook</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] sm:text-[8.5px] font-black tracking-wider uppercase">
+                          BETA
+                        </span>
+                      </div>
                       <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
                         Connect your page to share your followers and engagement.
                       </p>
@@ -998,12 +1052,17 @@ export default function ConnectSocials() {
               </div>
 
               {/* 6. SNAPCHAT CARD */}
-              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <SnapchatIcon />
                     <div>
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">Snapchat</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">Snapchat</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] sm:text-[8.5px] font-black tracking-wider uppercase">
+                          BETA
+                        </span>
+                      </div>
                       <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
                         Showcase your content and audience.
                       </p>
@@ -1030,12 +1089,17 @@ export default function ConnectSocials() {
               </div>
 
               {/* 7. LINKEDIN CARD */}
-              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <LinkedInIcon />
                     <div>
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">LinkedIn</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">LinkedIn</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] sm:text-[8.5px] font-black tracking-wider uppercase">
+                          BETA
+                        </span>
+                      </div>
                       <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
                         Highlight your professional presence.
                       </p>
@@ -1062,12 +1126,17 @@ export default function ConnectSocials() {
               </div>
 
               {/* 8. SPOTIFY CARD */}
-              <div className="rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <SpotifyIcon />
                     <div>
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-900">Spotify</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-semibold text-zinc-900">Spotify</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] sm:text-[8.5px] font-black tracking-wider uppercase">
+                          BETA
+                        </span>
+                      </div>
                       <p className="text-[9.5px] sm:text-[11px] text-zinc-500 mt-0.5 leading-tight sm:leading-snug line-clamp-2 sm:line-clamp-none font-normal">
                         Connect your artist or creator profile.
                       </p>
@@ -1327,13 +1396,18 @@ export default function ConnectSocials() {
                     key={platform}
                     className="p-3 rounded-xl border border-zinc-200 bg-zinc-50/50 flex items-center justify-between gap-2"
                   >
-                    <span className="text-xs font-bold text-zinc-900">{platform}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-zinc-900">{platform}</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] font-black tracking-wider uppercase">
+                        BETA
+                      </span>
+                    </div>
                     <button
                       onClick={() => {
                         setShowMorePlatformsModal(false);
                         handleOtherPlatformClick(platform);
                       }}
-                      className="px-2.5 py-1 rounded-full bg-black text-white text-[11px] font-bold hover:bg-zinc-800 transition-colors"
+                      className="px-2.5 py-1 rounded-full bg-black text-white text-[11px] font-bold hover:bg-zinc-800 transition-colors shrink-0 cursor-pointer"
                     >
                       Connect
                     </button>
