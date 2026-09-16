@@ -16,6 +16,7 @@ interface PhoneCountryInputProps {
   placeholder?: string;
   className?: string;
   variant?: 'suvix-dark' | 'suvix-light';
+  placement?: 'top' | 'bottom';
 }
 
 export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
@@ -30,6 +31,7 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
   placeholder = '98765 43210',
   className = '',
   variant = 'suvix-dark',
+  placement = 'top',
 }) => {
   // Current selected country
   const [selectedCountry, setSelectedCountry] = useState<CountryData>(() => {
@@ -171,26 +173,26 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
         type="button"
         disabled={disabled || isDetecting}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex items-center gap-1.5 h-10 px-2.5 shrink-0 rounded-l-xl select-none transition-all font-medium text-xs sm:text-[13px] ${
+        className={`flex items-center gap-1 sm:gap-1.5 h-8.5 sm:h-10 px-2 sm:px-2.5 shrink-0 rounded-l-xl select-none transition-all font-medium text-[11px] sm:text-[13px] ${
           disabled || isDetecting ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
         } ${
           isDark
-            ? 'bg-zinc-100 hover:bg-zinc-200 border-2 border-r-0 border-black text-black'
+            ? 'bg-[#F8F9FA] hover:bg-zinc-100/70 border border-r-0 border-zinc-200/80 text-zinc-950 shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
             : 'bg-zinc-50 hover:bg-zinc-100 border border-r-0 border-zinc-300 text-zinc-900'
         }`}
         title={`${selectedCountry.name} (${selectedCountry.dialCode})`}
       >
         {isDetecting ? (
-          <Loader2 size={13} className="animate-spin text-zinc-500" />
+          <Loader2 size={12} className="animate-spin text-zinc-500" />
         ) : (
           <span
             className={`fi fi-${selectedCountry.code.toLowerCase()} rounded-[2px] shadow-2xs shrink-0 inline-block`}
             style={{ width: '1.25em', height: '0.9em' }}
           />
         )}
-        <span className="font-bold text-[12px]">{selectedCountry.dialCode}</span>
+        <span className="font-bold text-[11px] sm:text-[12px] text-zinc-950">{selectedCountry.dialCode}</span>
         <ChevronDown
-          size={13}
+          size={12}
           className={`text-zinc-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
@@ -205,9 +207,10 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
           disabled={disabled}
           placeholder={placeholder}
           autoComplete="tel-national"
-          className={`w-full h-10 pr-8 pl-2.5 rounded-r-xl text-xs sm:text-[13px] font-medium tracking-wide focus:outline-none transition-all placeholder:text-zinc-400 ${
+          style={{ colorScheme: 'light' }}
+          className={`w-full h-8.5 sm:h-10 pr-7 sm:pr-8 pl-2 sm:pl-2.5 rounded-r-xl text-[10.5px] sm:text-[13px] font-semibold tracking-wide focus:outline-none transition-all placeholder:text-zinc-400 ${
             isDark
-              ? 'suvix-input !h-10 !rounded-l-none bg-white !border-2 !border-black text-black'
+              ? 'bg-[#F8F9FA] hover:bg-zinc-100/70 focus:bg-white border border-zinc-200/80 focus:border-zinc-400 text-zinc-950 shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
               : 'bg-white border border-zinc-300 focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 rounded-r-xl text-zinc-900'
           }`}
         />
@@ -215,27 +218,33 @@ export const PhoneCountryInput: React.FC<PhoneCountryInputProps> = ({
         {/* Real-time Validity Indicator */}
         {isValid && nationalNumber.length >= 4 && (
           <span
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-200/70 w-4.5 h-4.5 rounded-full"
+            className="absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-200/70 w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 rounded-full"
             title="Valid phone format"
           >
-            <Check size={11} strokeWidth={3} />
+            <Check size={9} strokeWidth={3} className="sm:w-2.5 sm:h-2.5" />
           </span>
         )}
       </div>
 
       {/* Searchable Country Dropdown Modal */}
       {isOpen && !isDetecting && (
-        <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-72 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className={`absolute left-0 z-50 w-72 sm:w-80 bg-white rounded-2xl overflow-hidden flex flex-col max-h-64 sm:max-h-72 animate-in fade-in zoom-in-95 duration-150 ${
+            placement === 'top'
+              ? 'bottom-[calc(100%+6px)] shadow-[0_-10px_35px_rgba(0,0,0,0.18)]'
+              : 'top-[calc(100%+6px)] shadow-2xl'
+          } border border-zinc-200`}
+        >
           {/* Search Box */}
-          <div className="p-2.5 border-b border-zinc-100 bg-zinc-50/70 flex items-center gap-2">
-            <Search size={14} className="text-zinc-400 shrink-0 ml-1" />
+          <div className="p-2.5 border-b border-zinc-200 bg-zinc-50 flex items-center gap-2">
+            <Search size={14} className="text-zinc-500 shrink-0 ml-1" />
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search country or dial code..."
-              className="w-full bg-transparent text-xs sm:text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+              className="w-full bg-transparent text-xs sm:text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none font-medium"
             />
             {searchQuery && (
               <button
