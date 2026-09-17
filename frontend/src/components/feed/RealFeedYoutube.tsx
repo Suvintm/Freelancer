@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import { Heart, MessageCircle, Share2, Bookmark, Play, Lock, UserCircle } from 'lucide-react';
@@ -15,7 +15,7 @@ import audioWaveLottie from '../../assets/lottie/audio_wave.json';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
-export function RealFeedYoutube({
+export const RealFeedYoutube = memo(function RealFeedYoutube({
   post,
   isDarkMode,
   isActive,
@@ -121,7 +121,7 @@ export function RealFeedYoutube({
           setShowEmbed(true);
         }
       }}
-      className={`relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border cursor-pointer ${
+      className={`feed-item-optimized relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border cursor-pointer ${
         isDarkMode 
           ? 'bg-zinc-950/80 border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
           : 'bg-white border-zinc-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
@@ -325,7 +325,7 @@ export function RealFeedYoutube({
       />
     </motion.article>
   );
-}
+});
 
 function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';

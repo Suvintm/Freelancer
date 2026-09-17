@@ -678,6 +678,8 @@ export default function ConnectSocials() {
               
               {/* 1. YOUTUBE CARD */}
               <div className={`relative rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
+                connected ? 'col-span-2 sm:col-span-1' : 'col-span-1'
+              } ${
                 isChannelClaimed
                   ? 'border-red-300 bg-red-50/30'
                   : connected
@@ -828,6 +830,8 @@ export default function ConnectSocials() {
 
               {/* 2. INSTAGRAM CARD */}
               <div className={`relative rounded-2xl border bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 transition-all ${
+                instaConnected ? 'col-span-2 sm:col-span-1' : 'col-span-1'
+              } ${
                 instaConnected
                   ? 'ring-2 ring-emerald-500/40 border-emerald-500/80 bg-emerald-50/15 shadow-xs'
                   : 'border-zinc-200/90 hover:border-zinc-300'
@@ -941,7 +945,7 @@ export default function ConnectSocials() {
               </div>
 
               {/* 3. TIKTOK CARD */}
-              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="col-span-1 relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <TikTokIcon />
@@ -978,7 +982,7 @@ export default function ConnectSocials() {
               </div>
 
               {/* 4. X (TWITTER) CARD */}
-              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="col-span-1 relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <TwitterXIcon />
@@ -1015,7 +1019,7 @@ export default function ConnectSocials() {
               </div>
 
               {/* 5. FACEBOOK CARD */}
-              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="col-span-1 relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <FacebookIcon />
@@ -1052,7 +1056,7 @@ export default function ConnectSocials() {
               </div>
 
               {/* 6. SNAPCHAT CARD */}
-              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="col-span-1 relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <SnapchatIcon />
@@ -1089,7 +1093,7 @@ export default function ConnectSocials() {
               </div>
 
               {/* 7. LINKEDIN CARD */}
-              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="col-span-1 relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <LinkedInIcon />
@@ -1126,7 +1130,7 @@ export default function ConnectSocials() {
               </div>
 
               {/* 8. SPOTIFY CARD */}
-              <div className="relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
+              <div className="col-span-1 relative rounded-2xl border border-zinc-200/90 bg-white p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-2.5 hover:border-zinc-300 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2.5">
                   <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <SpotifyIcon />

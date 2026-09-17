@@ -106,6 +106,12 @@
     pointer-events: none;
   }
 
+  /* GPU / Browser Rendering Optimization for Feed Feeds */
+  .feed-item-optimized {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 520px;
+  }
+
   body {
     font-family: var(--font-sans) !important;
     background-color: var(--bg-page);

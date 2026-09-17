@@ -1,60 +1,44 @@
-import { Search, Bell, Plus, Sun, Moon, Sparkles, Crown, Zap, Gem, ChevronRight, MessageSquare } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme }  from '../../hooks/useTheme';
+import { 
+  Search, 
+  Bell, 
+  Sun, 
+  Moon, 
+  Sparkles, 
+  MessageSquare, 
+  ChevronDown, 
+  Wand2, 
+  User as UserIcon, 
+  Settings, 
+  CreditCard, 
+  LogOut 
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTheme } from '../../hooks/useTheme';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
-import { addUpload, updateUploadProgress, updateUploadStatus } from '../../store/slices/uploadSlice';
-import { useSubscription } from '../../hooks/useSubscription';
+import { selectUser, clearAuth } from '../../store/slices/authSlice';
 import { useState, useEffect, useRef } from 'react';
 import { SearchDropdown } from './SearchDropdown';
-import { 
-  MdOutlineVideoCameraBack, 
-  MdOutlineImage, 
-  MdOutlinePlayCircle, 
-  MdOutlineCheckCircle, 
-  MdOutlinePoll 
-} from 'react-icons/md';
-import darkLogo  from '../../assets/darklogo.png';
+import darkLogo from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import defaultProfile from '../../assets/defaultprofile.png';
-import LottieComponent from 'lottie-react';
-import upgradeLottieAnimation from '../../assets/lottie/upgrade_lottie.json';
-
-import { api } from '../../api/client';
-
-const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isDarkMode, toggleTheme } = useTheme();
   const user = useSelector(selectUser);
-  const { tier, isPremium } = useSubscription();
   const [query, setQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
-  const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
-  const [isPayLoading, setIsPayLoading] = useState(false);
-  const [payResultModal, setPayResultModal] = useState<{
-    isOpen: boolean;
-    success: boolean;
-    message: string;
-    data?: any;
-  } | null>(null);
-
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const createDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Click outside to close create dropdown
+  // Click outside to close profile dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target as Node)) {
-        setIsCreateDropdownOpen(false);
-      }
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target as Node)) {
         setIsProfileDropdownOpen(false);
       }
@@ -95,47 +79,49 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   }, []);
 
   const userData = {
-    name: user?.name || 'User',
-    username: user?.username || 'user',
+    name: user?.name || 'Suvin T M',
+    username: user?.username || 'suvintm',
     avatar: user?.profilePicture || defaultProfile,
   };
 
   return (
-    <header className={`h-14 w-full shrink-0 border-b border-border-main flex items-center px-4 lg:px-6 z-50 relative ${isDarkMode ? 'bg-[#000000]' : 'bg-white'}`}>
+    <header className={`h-16 w-full shrink-0 border-none flex items-center px-4 lg:px-6 z-50 relative transition-colors duration-200 ${
+      isDarkMode ? 'bg-black' : 'bg-white'
+    }`}>
 
       {/* ── Mobile layout ─────────────────────────────────────────── */}
       <div className="lg:hidden flex items-center justify-between w-full gap-3">
         {/* Mobile Search Overlay */}
         {isMobileSearchExpanded && (
-          <div className={`absolute inset-0 px-4 flex items-center gap-3 ${isDarkMode ? 'bg-[#000000]' : 'bg-white'} z-50 rounded-lg animate-in fade-in duration-200`}>
+          <div className={`absolute inset-0 px-4 flex items-center gap-3 ${isDarkMode ? 'bg-black' : 'bg-white'} z-50 rounded-lg animate-in fade-in duration-200`}>
             <div className="relative flex-1">
               <Search
                 size={16}
-                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
-                  isDarkMode ? 'text-zinc-500' : 'text-zinc-400'
+                className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${
+                  isDarkMode ? 'text-zinc-400' : 'text-white'
                 }`}
               />
               <input
                 type="text"
                 autoFocus
-                placeholder="Search..."
+                placeholder="Search creators, jobs, tools..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className={`
-                  w-full h-9 rounded-full pl-9 pr-10 text-[13px] focus:outline-none border
-                  ${isDarkMode ? 'bg-white border-transparent text-black placeholder:text-zinc-500' : 'bg-black border-transparent text-white placeholder:text-zinc-400'}
-                `}
+                className={`w-full h-9.5 rounded-full pl-9 pr-10 text-[13px] focus:outline-none border ${
+                  isDarkMode 
+                    ? 'bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500' 
+                    : 'bg-black border-black text-white placeholder:text-zinc-400'
+                }`}
               />
               {query && (
                 <button 
                   onClick={() => setQuery('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 animate-in fade-in duration-100"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
                 >
                   ✕
                 </button>
               )}
               
-              {/* Inline Search Dropdown for mobile */}
               <SearchDropdown 
                 query={query} 
                 setQuery={setQuery}
@@ -150,7 +136,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
                 setIsMobileSearchExpanded(false);
                 setQuery('');
               }}
-              className={`text-xs font-bold hover:opacity-80 ${isDarkMode ? 'text-zinc-400' : 'text-[#213130]'}`}
+              className={`text-xs font-bold ${isDarkMode ? 'text-zinc-400' : 'text-zinc-700'}`}
             >
               Cancel
             </button>
@@ -160,44 +146,38 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
         {/* Hamburger */}
         <button 
           onClick={onMenuPress}
-          className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors flex flex-col gap-[3px]" 
+          className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex flex-col gap-[3px]" 
           aria-label="Menu"
         >
-          <div className="w-[22px] h-[3px] bg-current rounded-full" />
-          <div className="w-[16px] h-[3px] bg-current rounded-full" />
+          <div className="w-[20px] h-[2.5px] bg-current rounded-full" />
+          <div className="w-[14px] h-[2.5px] bg-current rounded-full" />
           <span className="text-[8px] font-bold tracking-[0.1em] mt-[1px] leading-none text-current">MENU</span>
         </button>
 
-        {/* Centred logo */}
-        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
-          <img
-            src={isDarkMode ? darkLogo : lightLogo}
-            alt="SuviX"
-            className="h-7 w-auto"
-          />
+        {/* Centered logo */}
+        <div className="absolute left-1/2 -translate-y-1/2 top-1/2 -translate-x-1/2">
+          <Link to="/home">
+            <img
+              src={isDarkMode ? darkLogo : lightLogo}
+              alt="SuviX"
+              className="h-7 w-auto object-contain"
+            />
+          </Link>
         </div>
 
-        {/* Right actions */}
-        <div className="flex items-center gap-0.5">
+        {/* Right mobile actions */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setIsMobileSearchExpanded(true)}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors"
+            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             aria-label="Search"
           >
             <Search size={18} />
           </button>
 
           <button
-            onClick={toggleTheme}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors"
-            aria-label="Toggle theme"
-          >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-
-          <button
             onClick={() => navigate('/communication-hub')}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative animate-fade-in"
+            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             aria-label="Messages"
           >
             <MessageSquare size={18} />
@@ -205,93 +185,69 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
 
           <button
             onClick={() => navigate('/notifications')}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
+            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative"
             aria-label="Notifications"
           >
             <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full border-2 border-nav" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-black" />
           </button>
 
-          {!isPremium && (
-            <button 
-              onClick={() => navigate('/subscription')}
-              className="p-1.5 ml-1 rounded-lg text-yellow-500 hover:bg-yellow-500/10 transition-colors"
-            >
-              <div className="relative">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              </div>
-            </button>
-          )}
-
-          {isPremium && (
-            <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ml-1 flex items-center gap-1 border ${
-              tier === 'creator' ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border-emerald-500/30 text-emerald-400' :
-              tier === 'pro' ? 'bg-gradient-to-r from-indigo-500/15 to-blue-500/15 border-indigo-500/30 text-indigo-400' :
-              'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400/40 text-yellow-400 shadow-sm'
-            }`}>
-              {tier === 'creator' && <Sparkles size={8} className="text-emerald-400" />}
-              {tier === 'pro' && <Zap size={8} className="text-indigo-400" />}
-              {tier === 'elite' && <Gem size={8} className="text-yellow-400 animate-pulse" />}
-              <span>{tier}</span>
-            </div>
-          )}
-
-          <div className="w-7 h-7 rounded-full border border-border-main overflow-hidden ml-1 cursor-pointer relative">
+          <div 
+            onClick={() => navigate('/profile')}
+            className="w-7 h-7 rounded-full overflow-hidden ml-1 border border-zinc-200 dark:border-zinc-700 cursor-pointer"
+          >
             <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
 
-      {/* ── Desktop layout ─────────────────────────────────────────── */}
-      <div className="hidden lg:grid lg:grid-cols-[160px_1fr_auto] items-center w-full gap-4">
+      {/* ── Desktop layout (Matches the Reference Image exactly) ───────── */}
+      <div className="hidden lg:flex items-center justify-between w-full gap-4">
 
-        {/* 1. Logo — aligns with left sidebar */}
-        <div className="flex items-center pl-2">
-          <img
-            src={isDarkMode ? darkLogo : lightLogo}
-            alt="SuviX"
-            className="h-8 w-auto"
-          />
-        </div>
+        {/* Left Side: Logo & Capsule Search Bar */}
+        <div className="flex items-center flex-1 max-w-[620px] xl:max-w-[700px]">
+          {/* SuviX Logo */}
+          <Link to="/home" className="flex items-center shrink-0 hover:opacity-95 transition-opacity mr-6 xl:mr-8">
+            <img
+              src={isDarkMode ? darkLogo : lightLogo}
+              alt="SuviX"
+              className="h-7.5 lg:h-8 w-auto object-contain"
+            />
+          </Link>
 
-        {/* 2. Search bar with Power-User Hint */}
-        <div className="flex items-center w-full">
-          <div ref={searchContainerRef} className="relative w-full max-w-[750px] group">
-            <Search
-              size={14}
-              className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors z-10 ${
-                isDarkMode 
-                  ? 'text-zinc-500 group-focus-within:text-black' 
-                  : 'text-zinc-400 group-focus-within:text-white'
-              }`}
-            />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search creators, jobs, or inspiration…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              className={`
-                w-full h-9 rounded-full pl-9 pr-12 text-[13px]
-                focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500
-                transition-all border relative z-0
-                ${isDarkMode 
-                  ? 'bg-white border-transparent text-black placeholder:text-zinc-500 focus:border-zinc-300' 
-                  : 'bg-black border-transparent text-white placeholder:text-zinc-400 focus:border-zinc-700'
-                }
-              `}
-            />
-            <div className={`absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded border opacity-40 group-focus-within:opacity-100 transition-opacity z-10 ${
+          {/* Capsule Search Bar */}
+          <div ref={searchContainerRef} className="relative w-full group">
+            <div className={`relative flex items-center w-full h-10 rounded-full border transition-all ${
               isDarkMode 
-                ? 'border-zinc-300 bg-zinc-200 text-zinc-600' 
-                : 'border-zinc-700 bg-zinc-800 text-zinc-300'
+                ? 'bg-[#18181B] hover:bg-[#202024] focus-within:bg-[#09090B] border-transparent focus-within:border-zinc-700 shadow-sm' 
+                : 'bg-black hover:bg-zinc-900 focus-within:bg-black border-black shadow-sm'
             }`}>
-              <span className="text-[10px] font-bold">⌘</span>
-              <span className="text-[10px] font-bold">K</span>
+              <Search
+                size={15}
+                strokeWidth={2}
+                className={`absolute left-4 pointer-events-none transition-colors ${
+                  isDarkMode ? 'text-zinc-400 group-focus-within:text-zinc-300' : 'text-white group-focus-within:text-white'
+                }`}
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search creators, jobs, tools, inspirations..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                className="w-full h-full pl-10 pr-16 text-xs sm:text-[13px] font-medium bg-transparent text-white placeholder:text-zinc-400 focus:outline-none"
+              />
+              <div className={`absolute right-3 hidden sm:flex items-center px-1.5 py-0.5 rounded border text-[10px] font-semibold select-none pointer-events-none ${
+                isDarkMode 
+                  ? 'bg-zinc-800 border-zinc-700/60 text-zinc-400' 
+                  : 'bg-white/15 border-white/20 text-zinc-300'
+              }`}>
+                Ctrl K
+              </div>
             </div>
 
-            {/* Dropdown list exactly below the input */}
+            {/* Dropdown list below input */}
             {isSearchFocused && (
               <SearchDropdown 
                 query={query} 
@@ -300,375 +256,169 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               />
             )}
           </div>
+        </div>
 
-          <div className="flex items-center gap-1">
-            {/* Upgrade Lottie Animation Box */}
-            <div className="w-10 h-10 mr-1 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform hidden sm:flex" onClick={() => navigate('/subscription')}>
-              <Lottie 
-                animationData={upgradeLottieAnimation} 
-                loop={true} 
-                style={{ width: '150%', height: '150%', objectFit: 'contain' }} 
-              />
-            </div>
+        {/* Right Side: Notification, Chat, Credits, Creative Tool, Theme Toggle, User Profile */}
+        <div className="flex items-center gap-2 xl:gap-2.5 shrink-0 ml-auto">
 
-            {/* Subscription Badge */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/subscription');
-              }}
-              className="relative z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7c42f8] text-white hover:bg-[#6b35e0] transition-all duration-200 active:scale-[0.98] shadow-[0_2px_8px_rgba(124,66,248,0.25)] group shrink-0 mr-2 cursor-pointer pointer-events-auto"
-            >
-              {tier === 'free' && <Crown size={12} className="text-white fill-white/10" />}
-              {tier === 'creator' && <Sparkles size={12} className="text-white fill-white/10" />}
-              {tier === 'pro' && <Zap size={12} className="text-white fill-white/10" />}
-              {tier === 'elite' && <Gem size={12} className="text-white fill-white/10" />}
-              
-              <span className="text-[10.5px] font-black uppercase tracking-wider text-white">
-                {tier === 'free' ? 'Upgrade' : `${tier}`}
-              </span>
-              
-              <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors ml-0.5">
-                <ChevronRight size={10} className="text-white stroke-[3.5]" />
-              </div>
-            </button>
-
-            <button
-              onClick={toggleTheme}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors"
-              aria-label="Toggle theme"
-            >
-              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-
-            <button
-              onClick={() => navigate('/communication-hub')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#213130] hover:bg-border-secondary hover:opacity-80 transition-colors relative"
-              aria-label="Messages"
-            >
-              <MessageSquare size={16} />
-              <span className={`text-[15.5px] font-semibold uppercase hidden xl:inline ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>Chat</span>
-            </button>
-
-            <button
-              onClick={() => navigate('/notifications')}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:bg-border-secondary hover:text-text-main transition-colors relative"
-              aria-label="Notifications"
-            >
-              <Bell size={16} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full border-2 border-nav" />
-            </button>
-          </div>
-
-          <div className="h-5 w-px bg-border-main shrink-0" />
-
-          {/* SuviX Credits */}
-          <div 
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-all group shrink-0"
-            title="SuviX Credits"
-            onClick={() => navigate('/subscription')}
+          {/* 1. Notification Bell with Red Badge */}
+          <button
+            onClick={() => navigate('/notifications')}
+            className="p-2 rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-850 hover:text-black dark:hover:text-white transition-all cursor-pointer relative"
+            title="Notifications"
           >
-            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-sm group-hover:scale-110 transition-transform">
-              <Sparkles size={10} className="text-white" />
+            <Bell size={19} strokeWidth={1.9} />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-black" />
+          </button>
+
+          {/* 2. Messages / Chat Bubble */}
+          <button
+            onClick={() => navigate('/communication-hub')}
+            className="p-2 rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-850 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+            title="Messages"
+          >
+            <MessageSquare size={19} strokeWidth={1.9} />
+          </button>
+
+          {/* 3. SuviX Credits Pill (Purple Badge with Sparkles/Gem) */}
+          <div 
+            onClick={() => navigate('/subscription')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F5F3FF] dark:bg-[#7C3AED]/15 border border-[#EDE9FE] dark:border-[#7C3AED]/30 text-[#7C3AED] dark:text-[#A78BFA] cursor-pointer hover:bg-[#EDE9FE] dark:hover:bg-[#7C3AED]/25 transition-all shadow-sm select-none"
+            title="SuviX Credits"
+          >
+            <div className="w-4 h-4 rounded-full bg-[#7C3AED] flex items-center justify-center shrink-0 shadow-sm">
+              <Sparkles size={9} className="text-white fill-white" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-[15.5px] font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-400 dark:to-purple-400">
-                1,250
-              </span>
-            </div>
+            <span className="text-xs sm:text-[12.5px] font-extrabold tracking-tight">1,250</span>
           </div>
 
-          <div className="h-5 w-px bg-border-main shrink-0 mr-1" />
+          {/* 4. Creativity / Tools Icon */}
+          <button
+            onClick={() => navigate('/creator-tools')}
+            className="p-2 rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-850 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+            title="Creator Tools"
+          >
+            <Wand2 size={18} strokeWidth={1.9} />
+          </button>
 
-          <div ref={createDropdownRef} className="relative shrink-0 z-40">
-            {/* Test Upload Button (Temporary) */}
-            <button
-              onClick={() => {
-                const id = Math.random().toString(36).substring(7);
-                const types: ('reel' | 'post' | 'youtube')[] = ['reel', 'post', 'youtube'];
-                const type = types[Math.floor(Math.random() * types.length)];
-                
-                dispatch(addUpload({
-                  id,
-                  type,
-                  status: 'uploading',
-                  progress: 0,
-                  message: `Uploading ${type}...`
-                }));
+          {/* 5. Theme Toggle (Sun / Moon) */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-850 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? <Moon size={18} strokeWidth={1.9} /> : <Sun size={18} strokeWidth={1.9} />}
+          </button>
 
-                // Simulate progress
-                let progress = 0;
-                const interval = setInterval(() => {
-                  progress += Math.floor(Math.random() * 20) + 5;
-                  if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
-                    
-                    // Simulate success or failure
-                    const isSuccess = Math.random() > 0.3;
-                    dispatch(updateUploadStatus({
-                      id,
-                      status: isSuccess ? 'success' : 'failed',
-                      message: isSuccess ? 'Upload successful!' : 'Failed: Redis Unavailable',
-                      progress: 100
-                    }));
-                  } else {
-                    dispatch(updateUploadProgress({ id, progress }));
-                    if (progress > 50) {
-                      dispatch(updateUploadStatus({ id, status: 'processing', message: `Processing ${type}...` }));
-                    }
-                  }
-                }, 1000);
-              }}
-              className="
-                inline-flex items-center justify-center gap-1.5 h-8 px-3 mr-2 rounded-full
-                bg-zinc-800 hover:bg-zinc-700
-                text-[13.5px] font-semibold text-white cursor-pointer
-                shadow-sm active:scale-[0.98] transition-all shrink-0
-              "
-            >
-              Test Upload
-            </button>
-
-            <button
-              onClick={async () => {
-                setIsPayLoading(true);
-                try {
-                  const testOrderId = `suvix_order_${Date.now()}`;
-                  const idempotencyKey = `idemp_${Date.now()}`;
-                  
-                  // Calls Nginx Gateway -> Java Payment Service: POST /api/v1/payments/create-order
-                  const response = await api.post('/payments/create-order', {
-                    orderId: testOrderId,
-                    amount: 499.00,
-                    currency: 'INR',
-                    clientId: user?.id || 'client_test_user',
-                    editorId: 'editor_test_user',
-                    provider: 'razorpay'
-                  }, {
-                    headers: {
-                      'Idempotency-Key': idempotencyKey
-                    }
-                  });
-
-                  setPayResultModal({
-                    isOpen: true,
-                    success: true,
-                    message: '✅ Java Payment Service Order Created!',
-                    data: response.data
-                  });
-                } catch (error: any) {
-                  setPayResultModal({
-                    isOpen: true,
-                    success: false,
-                    message: error?.response?.data?.message || error.message || 'Failed to call Java Payment Service',
-                    data: error?.response?.data || null
-                  });
-                } finally {
-                  setIsPayLoading(false);
-                }
-              }}
-              disabled={isPayLoading}
-              className="
-                inline-flex items-center justify-center gap-1.5 h-8 px-3.5 mr-2 rounded-full
-                bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50
-                text-[13px] font-bold text-white cursor-pointer
-                shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all shrink-0
-              "
-            >
-              <Zap size={13} className={isPayLoading ? "animate-spin" : ""} />
-              {isPayLoading ? "Calling Java..." : "Test Pay (Java)"}
-            </button>
-
-            <button 
-              onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-              className="
-                inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full
-                bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90
-                text-[13.5px] font-semibold text-white cursor-pointer
-                shadow-sm active:scale-[0.98] transition-all shrink-0
-              "
-            >
-              <Plus size={13} strokeWidth={2.5} />
-              Create post
-            </button>
-
-            {isCreateDropdownOpen && (
-              <div className={`
-                absolute right-0 mt-2 w-64 rounded-2xl border shadow-xl p-2 flex flex-col gap-0.5 z-50 animate-in fade-in slide-in-from-top-1
-                ${isDarkMode 
-                  ? 'bg-[#0d0d10] border-zinc-850 text-zinc-300' 
-                  : 'bg-white border-zinc-200/80 text-zinc-800'
-                }
-              `}>
-                {[
-                  {
-                    title: 'Upload Reel',
-                    subtitle: 'Share short-form videos',
-                    url: '/upload-portal?type=reel',
-                    icon: <MdOutlineVideoCameraBack size={16} />
-                  },
-                  {
-                    title: 'Upload Post',
-                    subtitle: 'Post updates, text or images',
-                    url: '/upload-portal?type=post',
-                    icon: <MdOutlineImage size={16} />
-                  },
-                  {
-                    title: 'Upload YT Videos',
-                    subtitle: 'Link or sync YouTube videos',
-                    url: '/upload-portal?type=yt_video',
-                    icon: <MdOutlinePlayCircle size={16} />
-                  },
-                  {
-                    title: 'Create Thumbnail Voting',
-                    subtitle: 'Get feedback on thumbnails',
-                    url: '/upload-portal?type=thumbnail_vote',
-                    icon: <MdOutlineCheckCircle size={16} />
-                  },
-                  {
-                    title: 'Create Polls',
-                    subtitle: 'Gather feedback from audience',
-                    url: '/upload-portal?type=post',
-                    icon: <MdOutlinePoll size={16} />
-                  }
-                ].map((item) => (
-                  <button
-                    key={item.title}
-                    onClick={() => {
-                      navigate(item.url);
-                      setIsCreateDropdownOpen(false);
-                    }}
-                    className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer ${
-                      isDarkMode 
-                        ? 'hover:bg-zinc-900/40 text-zinc-400 hover:text-white' 
-                        : 'hover:bg-zinc-50 text-zinc-600 hover:text-zinc-950'
-                    }`}
-                  >
-                    {/* Circle icon wrapper matching Google/Meta style */}
-                    <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center transition-all ${
-                      isDarkMode ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-950'
-                    }`}>
-                      {item.icon}
-                    </div>
-                    <div className="min-w-0">
-                      <p className={`text-[12.5px] font-bold leading-none ${isDarkMode ? 'text-zinc-300' : 'text-zinc-800'}`}>{item.title}</p>
-                      <p className={`text-[9.5px] leading-tight mt-1.5 truncate ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>{item.subtitle}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 3. Right identity — aligns with right sidebar */}
-        <div className="flex items-center justify-end gap-3 pr-4">
-          
-          {/* Profile Details */}
-
-          <div className="text-right hidden xl:block">
-            <p className={`text-[15.5px] font-semibold leading-tight ${isDarkMode ? 'text-zinc-100' : 'text-[#213130]'}`}>{userData.name}</p>
-            <p className={`text-[13px] font-medium opacity-70 leading-tight ${isDarkMode ? 'text-zinc-400' : 'text-[#213130]'}`}>@{userData.username}</p>
-          </div>
-          
+          {/* 6. User Profile Pill Button with Dropdown */}
           <div className="relative" ref={profileDropdownRef}>
-            <div 
-              className="w-8 h-8 rounded-full border border-border-main overflow-hidden cursor-pointer hover:ring-2 hover:ring-border-main transition-all relative"
+            <button
               onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-850 border border-transparent hover:border-zinc-200/80 dark:hover:border-zinc-800 transition-all cursor-pointer"
             >
-              <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
-            </div>
+              {/* Avatar with Online Blue Dot */}
+              <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 border border-zinc-200/90 dark:border-zinc-700 shadow-sm">
+                <img src={userData.avatar} alt={userData.name} className="w-full h-full object-cover" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white dark:ring-black" />
+              </div>
 
+              {/* User Name & Handle */}
+              <div className="hidden sm:flex flex-col text-left leading-none">
+                <span className="text-[12.5px] font-bold text-zinc-900 dark:text-white leading-tight">
+                  {userData.name}
+                </span>
+                <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 leading-tight mt-0.5">
+                  @{userData.username}
+                </span>
+              </div>
+
+              {/* Chevron Down */}
+              <ChevronDown 
+                size={14} 
+                strokeWidth={2.5} 
+                className={`text-zinc-400 shrink-0 ml-0.5 transition-transform duration-200 ${
+                  isProfileDropdownOpen ? 'rotate-180 text-zinc-700 dark:text-zinc-200' : ''
+                }`} 
+              />
+            </button>
+
+            {/* Profile Dropdown Menu */}
             {isProfileDropdownOpen && (
-              <div className={`absolute right-0 top-full mt-2 w-48 rounded-xl border overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200 z-50 ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                <div className="flex flex-col py-1">
-                  <button 
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
-                      navigate('/profile');
-                    }}
-                    className={`px-4 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}
-                  >
-                    View Personal Profile
-                  </button>
-                  
-                  {(user?.role === 'creator' || user?.role === 'editor') && (
-                    <button 
-                      onClick={() => {
-                        setIsProfileDropdownOpen(false);
-                        navigate(`/${user.username}`);
-                      }}
-                      className={`px-4 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}
-                    >
-                      View Public Profile
-                    </button>
-                  )}
-                  
-                  <div className={`h-px w-full my-1 ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-                  
-                  <button 
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
-                      // TODO: Logout handler if needed, or navigate to settings
-                      navigate('/settings');
-                    }}
-                    className={`px-4 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}
-                  >
-                    Settings
-                  </button>
+              <div className={`absolute right-0 top-full mt-2 w-52 rounded-2xl border shadow-xl p-1.5 flex flex-col gap-0.5 z-50 animate-in fade-in zoom-in-95 duration-150 ${
+                isDarkMode ? 'bg-[#121215] border-zinc-800 text-zinc-200' : 'bg-white border-zinc-200/90 text-zinc-800'
+              }`}>
+                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/80">
+                  <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{userData.name}</p>
+                  <p className="text-[10.5px] font-medium text-zinc-400 truncate">@{userData.username}</p>
                 </div>
+
+                <button 
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
+                >
+                  <UserIcon size={14} className="text-zinc-500" />
+                  <span>View Personal Profile</span>
+                </button>
+
+                {(user?.role === 'creator' || user?.role === 'editor') && (
+                  <button 
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      navigate(`/${user.username}`);
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
+                  >
+                    <Sparkles size={14} className="text-zinc-500" />
+                    <span>View Public Profile</span>
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    navigate('/subscription');
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
+                >
+                  <CreditCard size={14} className="text-zinc-500" />
+                  <span>Subscription &amp; Plans</span>
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    navigate('/settings');
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
+                >
+                  <Settings size={14} className="text-zinc-500" />
+                  <span>Settings</span>
+                </button>
+
+                <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
+                <button 
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    dispatch(clearAuth());
+                    navigate('/login');
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left cursor-pointer"
+                >
+                  <LogOut size={14} className="text-red-500" />
+                  <span>Log Out</span>
+                </button>
               </div>
             )}
           </div>
+
         </div>
+
       </div>
 
-      {/* Java Payment Service Result Modal */}
-      {payResultModal?.isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in">
-          <div className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl animate-in zoom-in-95 ${
-            isDarkMode ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'
-          }`}>
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-800/40">
-              <div className="flex items-center gap-2">
-                <span className={`w-3 h-3 rounded-full ${payResultModal.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                <h3 className="text-[16px] font-bold">Java Payment Service Response</h3>
-              </div>
-              <button 
-                onClick={() => setPayResultModal(null)}
-                className="text-zinc-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="py-4 space-y-3">
-              <p className={`text-[14px] font-semibold ${payResultModal.success ? 'text-emerald-400' : 'text-red-400'}`}>
-                {payResultModal.message}
-              </p>
-
-              {payResultModal.data && (
-                <div className={`p-3 rounded-xl font-mono text-[12px] max-h-60 overflow-y-auto ${
-                  isDarkMode ? 'bg-black/50 text-zinc-300' : 'bg-zinc-100 text-zinc-800'
-                }`}>
-                  <pre>{JSON.stringify(payResultModal.data, null, 2)}</pre>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setPayResultModal(null)}
-                className="px-5 py-2 rounded-xl text-sm font-semibold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
