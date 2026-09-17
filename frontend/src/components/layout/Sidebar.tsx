@@ -1,19 +1,35 @@
 import { useState, useEffect } from 'react';
 import { ReactLenis }       from 'lenis/react';
 import { motion } from 'framer-motion';
-import { Plus, ExternalLink, TrendingUp, Settings, Sparkles, BarChart3, ChevronRight, Users, Youtube, ArrowRight, Scan } from 'lucide-react';
+import { 
+  Plus, 
+  ExternalLink, 
+  TrendingUp, 
+  Settings, 
+  Sparkles, 
+  BarChart3, 
+  ChevronRight, 
+  ChevronDown,
+  Youtube, 
+  ArrowRight, 
+  Share2,
+  Award,
+  SquarePen,
+  PlaySquare,
+  Briefcase,
+  Radio,
+  Check
+} from 'lucide-react';
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useTheme }         from '../../hooks/useTheme';
+import { api }              from '../../api/client';
 import auth1                from '../../assets/auth/auth_1.png';
 import defaultProfile       from '../../assets/defaultprofile.png';
 import officialLogo         from '../../assets/officiallogo.png';
 import { AccountSwitcher } from '../profile/AccountSwitcher';
 import LottieComponent from 'lottie-react';
-import verifyLottieAnimation from '../../assets/lottie/verify_lottie.json';
-import verifyLottieBlue from '../../assets/lottie/verify_lottie_blue.json';
-import verifyLottiePurple from '../../assets/lottie/verify_lottie_purple.json';
 import { bioApiService } from '../../linkinbio-v2/services/bioApiService';
 
 import { VerifiedBadge } from '../ui/VerifiedBadge';
@@ -21,12 +37,26 @@ import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
 import { OnboardingSyncOverlay } from '../onboarding/OnboardingSyncOverlay';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
+
+const COMMUNITY_MEMBERS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+];
+
 const HIGHLIGHTS = [
   { id: 1, label: 'New',      img: null,  isNew: true  },
   { id: 2, label: 'Garden',   img: auth1, isNew: false },
   { id: 3, label: 'Cameras',  img: auth1, isNew: false },
   { id: 4, label: 'Wildlife', img: auth1, isNew: false },
 ];
+
+const formatNumber = (num: number | string): string => {
+  const n = typeof num === 'string' ? parseFloat(num) || 0 : num;
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return n.toLocaleString();
+};
 
 // ── Main Sidebar ─────────────────────────────────────────────────────────────
 
@@ -38,6 +68,30 @@ export const Sidebar = () => {
   const [showTestSync, setShowTestSync] = useState(false);
   const [qrSvgData, setQrSvgData] = useState<string | null>(null);
   const [isLoadingQr, setIsLoadingQr] = useState(true);
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  const handleShareProfile = async () => {
+    const profileUrl = `${window.location.origin}/${user?.username || 'suvintm'}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${user?.name || 'Creator'}'s Profile on SuviX`,
+          text: 'Check out my creator profile and link in bio on SuviX!',
+          url: profileUrl,
+        });
+        return;
+      } catch {
+        // Fallback to clipboard
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     setIsLoadingQr(true);
@@ -87,364 +141,496 @@ export const Sidebar = () => {
     categorySlugStr.includes('user') ||
     categorySlugStr.includes('brand');
 
-  const userCategory = user?.primaryRole?.category || user?.role || '';
-  let activeLottie = verifyLottieAnimation;
-  if (isClientCategory || userCategory.toLowerCase().includes('client') || userCategory.toLowerCase().includes('brand')) {
-    activeLottie = verifyLottieBlue;
-  } else if (userCategory.toLowerCase().includes('editor')) {
-    activeLottie = verifyLottiePurple;
-  }
+  const youtubeChannels = user?.youtubeProfile || [];
+  const ytVideoCount = youtubeChannels.reduce((acc: number, p: { video_count?: number | string }) => acc + (Number(p.video_count) || 0), 0);
+  const userFollowing = Array.isArray(user?.followingIds) 
+    ? user.followingIds.length 
+    : (Number(user?.following) || 0);
+  const userFollowers = Number(user?.followers) || Number(user?.followersCount) || 0;
+  const userPosts = Number(user?.postsCount) || Number(user?.posts?.length) || ytVideoCount || 0;
+
+  const [stats, setStats] = useState({
+    posts: userPosts,
+    followers: userFollowers,
+    following: userFollowing,
+  });
+
+  useEffect(() => {
+    setStats({
+      posts: userPosts,
+      followers: userFollowers,
+      following: userFollowing,
+    });
+
+    if (!user?.id) return;
+
+    let isMounted = true;
+    const fetchLiveStats = async () => {
+      try {
+        const [postsRes, profileRes] = await Promise.allSettled([
+          api.get(`/profile/${user.id}/posts`),
+          api.get(`/profile/${user.id}`),
+        ]);
+
+        if (!isMounted) return;
+
+        let livePosts = userPosts;
+        let liveFollowers = userFollowers;
+        let liveFollowing = userFollowing;
+
+        if (postsRes.status === 'fulfilled' && postsRes.value.data?.success) {
+          const items = postsRes.value.data.items || [];
+          livePosts = Math.max(items.length, ytVideoCount);
+          if (items.length > 0 && ytVideoCount > 0) {
+            livePosts = items.length + ytVideoCount;
+          }
+        }
+
+        if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
+          const pData = profileRes.value.data.data;
+          if (pData?.followers !== undefined && pData?.followers !== null) {
+            liveFollowers = Number(pData.followers) || 0;
+          }
+          if (pData?.following !== undefined && pData?.following !== null) {
+            liveFollowing = Number(pData.following) || 0;
+          }
+          if (pData?.postsCount !== undefined && pData?.postsCount !== null) {
+            livePosts = Math.max(livePosts, Number(pData.postsCount) || 0);
+          }
+        }
+
+        setStats({
+          posts: livePosts,
+          followers: liveFollowers,
+          following: liveFollowing,
+        });
+      } catch {
+        // Keep stats from user object
+      }
+    };
+
+    fetchLiveStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, userFollowers, userFollowing, userPosts, ytVideoCount]);
+
   const CHANNEL = {
-    name:           user?.name || 'User',
-    handle:         `@${user?.username || 'user'}`,
+    name:           user?.name || 'Suvin T M',
+    handle:         `@${user?.username || 'suvintm'}`,
     avatar:         user?.profilePicture || defaultProfile,
     subscribers:    '0',
     views:          '0',
-    videos:         0,
+    videos:         stats.posts,
     category:       user?.primaryRole?.category || 'Member',
     role:           user?.primaryRole?.subCategory || 'Member',
     bio:            user?.bio || (isClientCategory 
                       ? 'Brand Sponsor looking to collaborate with top creators for video sponsorships and integrations.' 
                       : 'Professional Creator · UI Designer · Lifestyle Blogger · Building in public 🚀'),
-    followers:      user?.followers || 0,
-    following:      user?.following || 0,
+    followers:      stats.followers,
+    following:      stats.following,
   };
-
-  const youtubeChannels = user?.youtubeProfile || [];
 
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
-      <div className="flex flex-col h-full gap-6 p-6">
+      <div className="flex flex-col h-full gap-3.5 p-3.5 xl:p-4 select-none">
 
-        {/* ── 1. User Identity Card ─────────────────────────────────── */}
-        <div className={`relative rounded-[32px] border transition-all duration-300 ${isDarkMode ? 'bg-black border-border-main shadow-xl lg:shadow-none' : 'bg-zinc-50/50 border-zinc-950 border-[1.5px] shadow-sm hover:shadow-md hover:-translate-y-0.5'} p-6 space-y-3`}>
+        {/* ── 1. User Identity & Stats Card ─────────────────────────── */}
+        <div className={`relative rounded-2xl border transition-all duration-300 p-4 space-y-3 shadow-xs ${
+          isDarkMode ? 'bg-[#121215] border-zinc-800/80 text-white' : 'bg-white border-zinc-200/80 text-zinc-900'
+        }`}>
 
           {/* Premium Plan Badge */}
           {user?.subscription && (user.subscription.tier !== 'free' || user.subscription.planTier) && (
-            <div className="absolute top-4 right-4 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1 z-10 bg-gradient-to-r from-blue-600 to-indigo-600 text-white animate-pulse">
+            <div className="absolute top-3.5 right-24 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-xs flex items-center gap-1 z-10 bg-gradient-to-r from-blue-600 to-indigo-600 text-white animate-pulse">
               <Sparkles size={8} className="text-white fill-white" />
-              <span>{user.subscription.tier || user.subscription.planTier || 'PREMIUM'}</span>
+              <span>{user.subscription.tier || user.subscription.planTier || 'PRO'}</span>
             </div>
           )}
 
-          {/* Avatar + name + role */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          {/* Avatar + name + online status */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative shrink-0">
                 <img
                   src={CHANNEL.avatar}
                   alt={CHANNEL.name}
-                  className={`w-11 h-11 rounded-full object-cover border-2 ${isDarkMode ? 'border-border-main' : 'border-zinc-200'}`}
+                  className={`w-11 h-11 rounded-full object-cover border-2 ${isDarkMode ? 'border-zinc-700' : 'border-zinc-200'}`}
                 />
-                {/* Removed hardcoded avatar badge */}
+                {/* Blue Checkmark Badge */}
+                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-blue-500 rounded-full ring-2 ring-white dark:ring-black flex items-center justify-center">
+                  <svg width="7" height="6" viewBox="0 0 10 8" fill="none">
+                    <path d="M1.5 4L3.8 6.5L8.5 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
+
+              <div className="min-w-0">
                 <div 
                   className="flex items-center gap-1 cursor-pointer group"
                   onClick={() => setIsSwitcherOpen(true)}
+                  title="Switch Account"
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <p className="text-[14px] font-semibold text-text-main font-display leading-tight truncate">
-                      {CHANNEL.name}
-                    </p>
-                    <VerifiedBadge isVerified={user?.is_verified} role={user?.primaryRole?.category || user?.role} />
-                  </div>
-                  <svg 
-                    width="12" 
-                    height="12" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    className="text-text-muted group-hover:text-text-main transition-colors"
-                  >
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
+                  <p className="text-[13.5px] font-bold leading-tight truncate text-zinc-900 dark:text-white">
+                    {CHANNEL.name}
+                  </p>
+                  <VerifiedBadge isVerified={user?.is_verified} role={user?.primaryRole?.category || user?.role} />
+                  <ChevronDown size={12} className="text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 shrink-0" />
                 </div>
-                <p className="text-[12px] text-text-muted leading-tight mt-0.5 truncate">
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium leading-tight mt-0.5 truncate">
                   {CHANNEL.handle}
                 </p>
               </div>
             </div>
+
+            {/* Online Status Pill */}
+            <div className="shrink-0 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/50 text-[10.5px] font-bold select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Online</span>
+            </div>
           </div>
 
           {/* Bio */}
-          <p className="text-[12px] text-text-muted leading-relaxed line-clamp-2">
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-2">
             {CHANNEL.bio}
           </p>
 
-          {/* ── Dynamic Bio QR Code Card (WhatsApp/Instagram Style) ── */}
-          <div className="flex flex-col items-center pt-1 pb-1">
-            <div className={`relative w-full max-w-[190px] aspect-square rounded-2xl p-3.5 flex items-center justify-center border shadow-xs transition-all ${
-              isDarkMode ? 'bg-zinc-900/90 border-zinc-800' : 'bg-white border-zinc-200'
-            }`}>
-              
-              {/* 4 Green Corner Scanner Frame Brackets with Simultaneous Pulse and Green Glow */}
-              <motion.div 
-                animate={{
-                  opacity: [0.75, 1, 0.75],
-                  scale: [1, 1.06, 1],
-                  filter: [
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
-                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
-                  ]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-                className="absolute top-1.5 left-1.5 w-4 h-4 border-t-[2.5px] border-l-[2.5px] border-emerald-500 rounded-tl-md pointer-events-none z-10" 
-              />
-
-              <motion.div 
-                animate={{
-                  opacity: [0.75, 1, 0.75],
-                  scale: [1, 1.06, 1],
-                  filter: [
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
-                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
-                  ]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-                className="absolute top-1.5 right-1.5 w-4 h-4 border-t-[2.5px] border-r-[2.5px] border-emerald-500 rounded-tr-md pointer-events-none z-10" 
-              />
-
-              <motion.div 
-                animate={{
-                  opacity: [0.75, 1, 0.75],
-                  scale: [1, 1.06, 1],
-                  filter: [
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
-                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
-                  ]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-                className="absolute bottom-1.5 left-1.5 w-4 h-4 border-b-[2.5px] border-l-[2.5px] border-emerald-500 rounded-bl-md pointer-events-none z-10" 
-              />
-
-              <motion.div 
-                animate={{
-                  opacity: [0.75, 1, 0.75],
-                  scale: [1, 1.06, 1],
-                  filter: [
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))',
-                    'drop-shadow(0 0 8px rgba(16, 185, 129, 0.95))',
-                    'drop-shadow(0 0 2px rgba(16, 185, 129, 0.4))'
-                  ]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-                className="absolute bottom-1.5 right-1.5 w-4 h-4 border-b-[2.5px] border-r-[2.5px] border-emerald-500 rounded-br-md pointer-events-none z-10" 
-              />
-
-              {/* QR Code Matrix Area */}
-              <div className="relative w-full h-full flex items-center justify-center">
-                {qrSvgData ? (
-                  <div 
-                    id="sidebar-bio-qr-svg-container"
-                    className="w-full h-full flex items-center justify-center relative [&>svg]:w-full [&>svg]:h-full"
-                    dangerouslySetInnerHTML={{ __html: qrSvgData }}
-                  />
-                ) : (
-                  <svg 
-                    viewBox="0 0 200 200" 
-                    className="w-full h-full text-black fill-current"
-                  >
-                    {/* Top-Left Corner */}
-                    <rect x="16" y="16" width="48" height="48" rx="8" fill="black" />
-                    <rect x="24" y="24" width="32" height="32" rx="4" fill="white" />
-                    <rect x="32" y="32" width="16" height="16" rx="2" fill="black" />
-
-                    {/* Top-Right Corner */}
-                    <rect x="136" y="16" width="48" height="48" rx="8" fill="black" />
-                    <rect x="144" y="24" width="32" height="32" rx="4" fill="white" />
-                    <rect x="152" y="32" width="16" height="16" rx="2" fill="black" />
-
-                    {/* Bottom-Left Corner */}
-                    <rect x="16" y="136" width="48" height="48" rx="8" fill="black" />
-                    <rect x="24" y="144" width="32" height="32" rx="4" fill="white" />
-                    <rect x="32" y="152" width="16" height="16" rx="2" fill="black" />
-
-                    {/* Dots */}
-                    <circle cx="85" cy="24" r="4.5" />
-                    <circle cx="105" cy="24" r="4.5" />
-                    <circle cx="115" cy="38" r="4.5" />
-                    <circle cx="90" cy="52" r="4.5" />
-                    <circle cx="75" cy="75" r="4.5" />
-                    <circle cx="95" cy="75" r="4.5" />
-                    <circle cx="125" cy="75" r="4.5" />
-                    <circle cx="145" cy="75" r="4.5" />
-                    <circle cx="165" cy="75" r="4.5" />
-                    <circle cx="35" cy="95" r="4.5" />
-                    <circle cx="55" cy="95" r="4.5" />
-                    <circle cx="145" cy="95" r="4.5" />
-                    <circle cx="165" cy="95" r="4.5" />
-                    <circle cx="35" cy="115" r="4.5" />
-                    <circle cx="55" cy="115" r="4.5" />
-                    <circle cx="145" cy="115" r="4.5" />
-                    <circle cx="165" cy="115" r="4.5" />
-                    <circle cx="75" cy="130" r="4.5" />
-                    <circle cx="105" cy="130" r="4.5" />
-                    <circle cx="125" cy="130" r="4.5" />
-                    <circle cx="75" cy="148" r="4.5" />
-                    <circle cx="95" cy="148" r="4.5" />
-                    <circle cx="125" cy="148" r="4.5" />
-                    <circle cx="165" cy="148" r="4.5" />
-                    <circle cx="85" cy="165" r="4.5" />
-                    <circle cx="105" cy="165" r="4.5" />
-                    <circle cx="148" cy="165" r="4.5" />
-                    <circle cx="182" cy="165" r="4.5" />
-                    <circle cx="75" cy="182" r="4.5" />
-                    <circle cx="115" cy="182" r="4.5" />
-                    <circle cx="135" cy="182" r="4.5" />
-                    <circle cx="165" cy="182" r="4.5" />
-                  </svg>
-                )}
-
-                {/* Center Official Brand Logo Shield (WhatsApp / Instagram style) */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                  <div className="w-8 h-8 rounded-full bg-white ring-3 ring-white shadow-md flex items-center justify-center overflow-hidden p-0.5">
-                    <img 
-                      src={officialLogo} 
-                      alt="SuviX Official" 
-                      className="w-full h-full object-contain rounded-full" 
-                    />
-                  </div>
-                </div>
-
-                {/* Up and Down Scanning Laser Line Animation when QR is Loading */}
-                {isLoadingQr && (
-                  <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden rounded-lg">
-                    {/* Glowing Emerald Scanning Laser Bar */}
-                    <motion.div
-                      animate={{
-                        top: ['0%', '94%', '0%'],
-                      }}
-                      transition={{
-                        duration: 1.6,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                      }}
-                      className="absolute left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_12px_3px_rgba(16,185,129,0.9)] z-30"
-                    >
-                      {/* Laser Beam Soft Gradient Trail */}
-                      <div className="w-full h-7 -mt-3.5 bg-gradient-to-b from-emerald-500/20 via-emerald-500/5 to-transparent pointer-events-none" />
-                    </motion.div>
-                  </div>
-                )}
-              </div>
+          {/* Stats Grid: Posts, Followers, Following */}
+          <div className="grid grid-cols-3 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+            <div>
+              <p className="text-xs sm:text-[13px] font-extrabold text-zinc-900 dark:text-white leading-tight">
+                {formatNumber(stats.posts)}
+              </p>
+              <p className="text-[10.5px] font-medium text-zinc-400 dark:text-zinc-500">
+                Posts
+              </p>
             </div>
+            <div>
+              <p className="text-xs sm:text-[13px] font-extrabold text-zinc-900 dark:text-white leading-tight">
+                {formatNumber(stats.followers)}
+              </p>
+              <p className="text-[10.5px] font-medium text-zinc-400 dark:text-zinc-500">
+                Followers
+              </p>
+            </div>
+            <div>
+              <p className="text-xs sm:text-[13px] font-extrabold text-zinc-900 dark:text-white leading-tight">
+                {formatNumber(stats.following)}
+              </p>
+              <p className="text-[10.5px] font-medium text-zinc-400 dark:text-zinc-500">
+                Following
+              </p>
+            </div>
+          </div>
 
-            {/* Dynamic Status Text with Scanning animation during Loading */}
-            <div className="flex items-center justify-center gap-1.5 text-[10px] font-medium mt-2">
-              {isLoadingQr ? (
-                <motion.div 
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-                  className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold"
-                >
-                  <Scan className="w-3 h-3 text-emerald-500 animate-spin" />
-                  <span>Scanning...</span>
-                </motion.div>
+          {/* Action Row: View Profile + Settings */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => navigate('/profile')}
+              className={`flex-1 py-1.5 px-3 rounded-xl border text-[11.5px] font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                isDarkMode 
+                  ? 'border-zinc-700 bg-transparent text-white hover:bg-zinc-800' 
+                  : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 shadow-2xs'
+              }`}
+            >
+              View Profile
+            </button>
+            <button
+              onClick={() => navigate('/settings')}
+              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                isDarkMode 
+                  ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white' 
+                  : 'border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 shadow-2xs'
+              }`}
+              title="Settings"
+            >
+              <Settings size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── 2. QR Code / Creator Identity Card ────────────────────── */}
+        <div className={`rounded-2xl border transition-all p-3 flex items-center gap-3 shadow-xs ${
+          isDarkMode ? 'bg-[#121215] border-zinc-800/80' : 'bg-white border-zinc-200/80'
+        }`}>
+          {/* Left: QR Code Matrix Box with Scanner Frame */}
+          <div className={`relative w-[84px] h-[84px] rounded-xl border shrink-0 p-1.5 flex items-center justify-center overflow-hidden transition-all ${
+            isDarkMode ? 'bg-zinc-900/90 border-zinc-800' : 'bg-white border-zinc-200 shadow-2xs'
+          }`}>
+            {/* Animated Scanner Brackets */}
+            <motion.div 
+              animate={{ opacity: [0.75, 1, 0.75], scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-1 left-1 w-3 h-3 border-t-[2px] border-l-[2px] border-emerald-500 rounded-tl pointer-events-none z-10" 
+            />
+            <motion.div 
+              animate={{ opacity: [0.75, 1, 0.75], scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-1 right-1 w-3 h-3 border-t-[2px] border-r-[2px] border-emerald-500 rounded-tr pointer-events-none z-10" 
+            />
+            <motion.div 
+              animate={{ opacity: [0.75, 1, 0.75], scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute bottom-1 left-1 w-3 h-3 border-b-[2px] border-l-[2px] border-emerald-500 rounded-bl pointer-events-none z-10" 
+            />
+            <motion.div 
+              animate={{ opacity: [0.75, 1, 0.75], scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute bottom-1 right-1 w-3 h-3 border-b-[2px] border-r-[2px] border-emerald-500 rounded-br pointer-events-none z-10" 
+            />
+
+            {/* QR SVG / Fallback */}
+            <div className="relative w-full h-full flex items-center justify-center">
+              {qrSvgData ? (
+                <div 
+                  className="w-full h-full flex items-center justify-center relative [&>svg]:w-full [&>svg]:h-full"
+                  dangerouslySetInnerHTML={{ __html: qrSvgData }}
+                />
               ) : (
-                <div className="flex items-center gap-1 text-slate-400 dark:text-zinc-500">
-                  <Scan className="w-3 h-3 text-slate-400 shrink-0" />
-                  <span>Scan to view your bio page</span>
+                <svg viewBox="0 0 200 200" className="w-full h-full text-black dark:text-white fill-current">
+                  <rect x="16" y="16" width="48" height="48" rx="8" fill="currentColor" />
+                  <rect x="24" y="24" width="32" height="32" rx="4" fill={isDarkMode ? '#18181B' : '#FFFFFF'} />
+                  <rect x="32" y="32" width="16" height="16" rx="2" fill="currentColor" />
+                  <rect x="136" y="16" width="48" height="48" rx="8" fill="currentColor" />
+                  <rect x="144" y="24" width="32" height="32" rx="4" fill={isDarkMode ? '#18181B' : '#FFFFFF'} />
+                  <rect x="152" y="32" width="16" height="16" rx="2" fill="currentColor" />
+                  <rect x="16" y="136" width="48" height="48" rx="8" fill="currentColor" />
+                  <rect x="24" y="144" width="32" height="32" rx="4" fill={isDarkMode ? '#18181B' : '#FFFFFF'} />
+                  <rect x="32" y="152" width="16" height="16" rx="2" fill="currentColor" />
+                  <circle cx="85" cy="24" r="4.5" />
+                  <circle cx="105" cy="24" r="4.5" />
+                  <circle cx="90" cy="52" r="4.5" />
+                  <circle cx="75" cy="75" r="4.5" />
+                  <circle cx="95" cy="75" r="4.5" />
+                  <circle cx="125" cy="75" r="4.5" />
+                  <circle cx="145" cy="75" r="4.5" />
+                  <circle cx="75" cy="130" r="4.5" />
+                  <circle cx="105" cy="130" r="4.5" />
+                  <circle cx="125" cy="130" r="4.5" />
+                  <circle cx="165" cy="148" r="4.5" />
+                  <circle cx="85" cy="165" r="4.5" />
+                  <circle cx="105" cy="165" r="4.5" />
+                  <circle cx="148" cy="165" r="4.5" />
+                </svg>
+              )}
+
+              {/* Official Center Logo */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                <div className="w-5.5 h-5.5 rounded-full bg-white ring-2 ring-white shadow-sm flex items-center justify-center overflow-hidden p-0.5">
+                  <img src={officialLogo} alt="SuviX" className="w-full h-full object-contain" />
+                </div>
+              </div>
+
+              {/* Scanning Laser Line Animation */}
+              {isLoadingQr && (
+                <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden rounded-lg">
+                  <motion.div
+                    animate={{ top: ['0%', '92%', '0%'] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute left-0 right-0 h-[2px] bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.9)] z-30"
+                  />
                 </div>
               )}
             </div>
           </div>
 
-          {/* View full profile */}
-          <button
-            onClick={() => navigate('/profile')}
-            className={`
-              w-full h-8 rounded-lg border transition-all duration-300
-              text-[12px] font-semibold
-              ${isDarkMode 
-                ? 'border-border-main text-text-main bg-zinc-900 hover:bg-border-secondary' 
-                : 'border-zinc-950 text-zinc-950 bg-zinc-100 hover:bg-zinc-950 hover:text-white hover:shadow-sm cursor-pointer'}
-            `}
-          >
-            View full profile
-          </button>
-        </div>
+          {/* Right: Info & Share Button */}
+          <div className="min-w-0 flex-1">
+            <h4 className="text-[12.5px] font-bold text-zinc-900 dark:text-white leading-tight">
+              Your Creator Identity
+            </h4>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug mt-0.5 mb-2 line-clamp-2">
+              Scan to view your bio page and share with the world.
+            </p>
 
-        {/* ── 1.25 Get Verified Lottie ────────────────────────────────────────────── */}
-        <div className="w-full flex justify-center -mt-2 -mb-1">
-          <div 
-            onClick={() => navigate('/subscription')}
-            className={`w-[90%] flex flex-row items-center justify-between px-3 cursor-pointer z-10 relative group py-1 rounded-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] ${
-              isDarkMode ? 'bg-white text-black' : 'bg-zinc-950 text-white'
-            }`}
-            title="Get Verified"
-          >
-            <div className="flex items-center gap-2">
-              <Lottie 
-                animationData={activeLottie} 
-                loop={true} 
-                style={{ width: '38px', height: '38px', objectFit: 'contain' }} 
-              />
-              <span className="text-[12px] font-black tracking-tight group-hover:translate-x-1 transition-transform">
-                {user?.is_verified ? 'Already Verified !!' : 'Get Verified !!'}
-              </span>
-            </div>
-            <div className={`flex items-center justify-center w-7 h-7 rounded-full transition-transform group-hover:translate-x-1 ${
-              isDarkMode ? 'bg-zinc-100 text-black' : 'bg-zinc-800 text-white'
-            }`}>
-              <ChevronRight size={14} strokeWidth={3} />
-            </div>
+            <button
+              onClick={handleShareProfile}
+              className={`px-3 py-1 rounded-full border text-[10.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 ${
+                copiedShare 
+                  ? 'bg-emerald-500 text-white border-emerald-500' 
+                  : isDarkMode 
+                    ? 'border-zinc-700 bg-zinc-850 hover:bg-zinc-800 text-white' 
+                    : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800'
+              }`}
+            >
+              {copiedShare ? (
+                <>
+                  <Check size={11} strokeWidth={2.5} />
+                  <span>Copied Link!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 size={11} strokeWidth={2.2} />
+                  <span>Share Profile</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* ── Community Link ── */}
-        <div
-          onClick={() => navigate('/community')}
-          className={`w-[90%] mx-auto py-2 rounded-xl text-xs font-community font-bold shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer border ${
+        {/* ── 3. Get Verified Card ──────────────────────────────────── */}
+        <div 
+          onClick={() => navigate('/subscription')}
+          className={`rounded-2xl p-3 flex items-center justify-between cursor-pointer transition-all duration-200 shadow-sm border ${
             isDarkMode 
-              ? 'bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800' 
-              : 'bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50'
+              ? 'bg-[#18181B] hover:bg-[#202024] border-zinc-800 text-white' 
+              : 'bg-black hover:bg-zinc-900 border-black text-white'
           }`}
+          title="Get Verified"
         >
-          <Users size={14} />
-          Community
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Golden Badge */}
+            <div className="w-8 h-8 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shrink-0">
+              <Award size={17} className="text-amber-400 fill-amber-400/30" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-[12.5px] font-black text-white leading-tight">
+                {user?.is_verified ? 'Verified Creator' : 'Get Verified'}
+              </h4>
+              <p className="text-[10px] text-zinc-400 leading-tight mt-0.5 truncate">
+                {user?.is_verified ? 'Priority search & official badge' : 'Build credibility. Unlock more.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-6.5 h-6.5 rounded-full bg-white/10 flex items-center justify-center text-white/80 shrink-0 ml-2">
+            <ChevronRight size={14} strokeWidth={2.5} />
+          </div>
         </div>
 
-        {/* ── Test Sync Button ── */}
+        {/* ── 4. Quick Create ───────────────────────────────────────── */}
+        <div className="space-y-1.5">
+          <h4 className="text-[11.5px] font-bold text-zinc-900 dark:text-white px-0.5">
+            Quick Create
+          </h4>
+
+          <div className="grid grid-cols-2 gap-2">
+            {/* Create Post */}
+            <button
+              onClick={() => navigate('/create')}
+              className={`p-2.5 rounded-xl border flex items-center gap-2 text-left transition-all active:scale-[0.98] cursor-pointer shadow-2xs ${
+                isDarkMode 
+                  ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850' 
+                  : 'bg-white border-zinc-200/80 hover:border-zinc-300 hover:bg-zinc-50'
+              }`}
+            >
+              <div className="w-6.5 h-6.5 rounded-lg bg-indigo-500/15 text-indigo-500 flex items-center justify-center shrink-0">
+                <SquarePen size={13} strokeWidth={2.2} />
+              </div>
+              <span className="text-[11px] font-bold text-zinc-900 dark:text-white truncate">
+                Create Post
+              </span>
+            </button>
+
+            {/* Upload Reel */}
+            <button
+              onClick={() => navigate('/reels')}
+              className={`p-2.5 rounded-xl border flex items-center gap-2 text-left transition-all active:scale-[0.98] cursor-pointer shadow-2xs ${
+                isDarkMode 
+                  ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850' 
+                  : 'bg-white border-zinc-200/80 hover:border-zinc-300 hover:bg-zinc-50'
+              }`}
+            >
+              <div className="w-6.5 h-6.5 rounded-lg bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0">
+                <PlaySquare size={13} strokeWidth={2.2} />
+              </div>
+              <span className="text-[11px] font-bold text-zinc-900 dark:text-white truncate">
+                Upload Reel
+              </span>
+            </button>
+
+            {/* Start a Project */}
+            <button
+              onClick={() => navigate('/jobs')}
+              className={`p-2.5 rounded-xl border flex items-center gap-2 text-left transition-all active:scale-[0.98] cursor-pointer shadow-2xs ${
+                isDarkMode 
+                  ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850' 
+                  : 'bg-white border-zinc-200/80 hover:border-zinc-300 hover:bg-zinc-50'
+              }`}
+            >
+              <div className="w-6.5 h-6.5 rounded-lg bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+                <Briefcase size={13} strokeWidth={2.2} />
+              </div>
+              <span className="text-[11px] font-bold text-zinc-900 dark:text-white truncate">
+                Start a Project
+              </span>
+            </button>
+
+            {/* Go Live */}
+            <button
+              onClick={() => navigate('/create')}
+              className={`p-2.5 rounded-xl border flex items-center gap-2 text-left transition-all active:scale-[0.98] cursor-pointer shadow-2xs ${
+                isDarkMode 
+                  ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850' 
+                  : 'bg-white border-zinc-200/80 hover:border-zinc-300 hover:bg-zinc-50'
+              }`}
+            >
+              <div className="w-6.5 h-6.5 rounded-lg bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0">
+                <Radio size={13} strokeWidth={2.2} />
+              </div>
+              <span className="text-[11px] font-bold text-zinc-900 dark:text-white truncate">
+                Go Live
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── 5. Join Our Creator Community Card ────────────────────── */}
+        <div
+          onClick={() => navigate('/community')}
+          className={`p-2.5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer shadow-xs ${
+            isDarkMode 
+              ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850' 
+              : 'bg-white border-zinc-200/80 hover:border-zinc-300 hover:bg-zinc-50'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* 3 overlapping member avatars */}
+            <div className="flex items-center -space-x-2 shrink-0">
+              {COMMUNITY_MEMBERS.map((avatar, idx) => (
+                <img
+                  key={idx}
+                  src={avatar}
+                  alt="Community"
+                  className="w-6 h-6 rounded-full object-cover border-2 border-white dark:border-zinc-900 ring-1 ring-black/5"
+                />
+              ))}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[11.5px] font-bold text-zinc-900 dark:text-white leading-tight truncate">
+                Join Our Creator Community
+              </p>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight mt-0.5 truncate">
+                Connect. Collaborate. Grow together.
+              </p>
+            </div>
+          </div>
+
+          <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 shrink-0 ml-1.5">
+            <ChevronRight size={13} strokeWidth={2.5} />
+          </div>
+        </div>
+
+        {/* ── Test Sync Button (Preserved) ── */}
         <button
           onClick={() => setShowTestSync(true)}
-          className="w-[90%] mx-auto py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
           <Youtube size={14} />
-          Test Sync UI
+          <span>Test Sync UI</span>
         </button>
         {showTestSync && <OnboardingSyncOverlay nextRoute="/home" />}
 
-        {/* ── Creator Tools Promotion Widget ── */}
+        {/* ── Creator Tools Promotion Widget (Preserved) ── */}
         <div 
           onClick={() => navigate('/creator-tools')}
-          className={`w-[90%] mx-auto rounded-2xl overflow-hidden flex flex-col cursor-pointer transition-all border ${
-            isDarkMode ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+          className={`w-full rounded-2xl overflow-hidden flex flex-col cursor-pointer transition-all border shadow-xs ${
+            isDarkMode ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700' : 'bg-white border-zinc-200/80 hover:border-zinc-300'
           }`}
         >
-          <div className="w-full aspect-video items-center justify-center p-4">
+          <div className="w-full aspect-[16/9] flex items-center justify-center p-3">
             <Lottie 
               animationData={sidebarLottieAnimation} 
               loop={true} 
@@ -452,42 +638,42 @@ export const Sidebar = () => {
             />
           </div>
           <div className="w-full p-3 pt-0 flex justify-center">
-            <button className={`w-full text-xs font-bold uppercase tracking-wider py-2.5 rounded-xl shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-1.5 ${
+            <button className={`w-full text-[11px] font-bold uppercase tracking-wider py-2 rounded-xl shadow-xs transition-transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer ${
               isDarkMode 
                 ? 'bg-white text-black hover:bg-zinc-200' 
                 : 'bg-black text-white hover:bg-zinc-800'
             }`}>
-              Explore Tools
-              <ArrowRight size={14} />
+              <span>Explore Tools</span>
+              <ArrowRight size={13} />
             </button>
           </div>
         </div>
 
-        {/* ── 1.5 Growth Tools ────────────────────────────────────────────── */}
+        {/* ── 1.5 Growth Tools (Preserved) ────────────────────────────────── */}
         {isCreator && (
           <button
             onClick={() => navigate('/polls/create')}
             className={`
-              w-full py-4 px-4 rounded-[24px] border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all duration-300 group
+              w-full py-3 px-3.5 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 transition-all duration-300 group cursor-pointer
               ${isDarkMode 
                 ? 'border-rose-500/30 bg-rose-500/5 hover:border-rose-500 hover:bg-rose-500/10' 
-                : 'border-rose-400/40 bg-rose-50/50 hover:border-rose-500 hover:bg-rose-50 hover:shadow-md'}
+                : 'border-rose-400/40 bg-rose-50/50 hover:border-rose-500 hover:bg-rose-50 shadow-xs'}
             `}
           >
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-rose-500 text-white' : 'bg-rose-600 text-white'} group-hover:scale-110 transition-transform shadow-lg shadow-rose-500/20`}>
-              <BarChart3 size={20} />
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-rose-500 text-white' : 'bg-rose-600 text-white'} group-hover:scale-110 transition-transform shadow-md shadow-rose-500/20`}>
+              <BarChart3 size={16} />
             </div>
             <div className="text-center">
-              <span className={`block text-[14px] font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Create poll for the growth</span>
-              <span className={`block text-[11px] font-semibold mt-1 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>Engage & Grow Your Channel</span>
+              <span className={`block text-[12.5px] font-extrabold tracking-tight ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Create poll for growth</span>
+              <span className={`block text-[10px] font-semibold mt-0.5 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>Engage &amp; Grow Your Channel</span>
             </div>
           </button>
         )}
 
         {/* ── 2. YouTube Channel Overview (YouTube Creators only) ──────────── */}
         {isCreator && (
-          <div className="space-y-3">
-            <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-[0.12em] px-1 mb-1">
+          <div className="space-y-2.5">
+            <h4 className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-wider px-1">
               Connected Channel
             </h4>
 
@@ -498,10 +684,10 @@ export const Sidebar = () => {
                   <div 
                     key={channel.channel_id} 
                     className={`
-                      relative overflow-hidden rounded-[24px] border transition-all duration-300 group
+                      relative overflow-hidden rounded-2xl border transition-all duration-300 group shadow-xs
                       ${isDarkMode 
-                        ? 'bg-zinc-950/40 border-border-main hover:border-zinc-700 shadow-xl' 
-                        : 'bg-white border-zinc-950 border-[1.5px] shadow-sm hover:shadow-md hover:-translate-y-0.5'}
+                        ? 'bg-[#121215] border-zinc-800/80 hover:border-zinc-700' 
+                        : 'bg-white border-zinc-200/80 hover:border-zinc-300'}
                     `}
                   >
                     {/* Top YouTube accent stripe */}

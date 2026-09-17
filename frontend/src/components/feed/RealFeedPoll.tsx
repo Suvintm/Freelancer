@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { MoreHorizontal, Heart, Send, CheckCircle2, MessageSquare, Image as ImageIcon, Smile, Lightbulb, Bookmark, Share2, Lock } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
@@ -30,7 +30,7 @@ interface Poll {
   userResponse?: { optionId?: string; text_response?: string };
 }
 
-export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode: boolean }) {
+export const RealFeedPoll = memo(function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode: boolean }) {
   const resolveImg = (url: string | null | undefined) => {
     if (!url) return null;
     if (url.startsWith('http')) return url;
@@ -119,7 +119,7 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
   if (!isMultipleChoice) {
     return (
       <motion.article 
-        className={`relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border ${
+        className={`feed-item-optimized relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border ${
           isDarkMode 
             ? 'bg-zinc-950/80 border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
             : 'bg-white border-zinc-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
@@ -312,7 +312,7 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
   return (
     <motion.article 
       onDoubleClick={() => triggerLike()}
-      className={`relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border ${
+      className={`feed-item-optimized relative w-full rounded-[20px] lg:rounded-[28px] overflow-hidden group transition-all duration-500 mb-4 lg:mb-8 border ${
         isDarkMode 
           ? 'bg-zinc-950/80 border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(229,9,20,0.15)]' 
           : 'bg-white border-zinc-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)]'
@@ -511,4 +511,4 @@ export function RealFeedPoll({ post, isDarkMode }: { post: RealPost, isDarkMode:
       </div>
     </motion.article>
   );
-}
+});

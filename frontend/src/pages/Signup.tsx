@@ -295,6 +295,10 @@ export default function Signup() {
           alt="SuviX Mobile Background" 
           className="block lg:hidden absolute inset-x-0 -top-14 sm:-top-0 w-full h-[calc(100%+56px)] sm:h-full object-cover object-[center_35%] opacity-100"
         />
+
+        {/* Mobile Bottom-to-Middle Black Gradient Overlay Effect */}
+        <div className="block lg:hidden absolute inset-0 bg-gradient-to-t from-black via-black/85 via-40% to-transparent to-70% pointer-events-none" />
+
         {/* Desktop Background */}
         {loginBg ? (
           <img 
@@ -341,11 +345,11 @@ export default function Signup() {
             {/* White Card with Asymmetric Corners & Smooth Scroll */}
             <div className="light-card relative w-full bg-white rounded-tl-[1.5rem] sm:rounded-tl-[1.75rem] rounded-tr-[3rem] sm:rounded-tr-[4.5rem] rounded-br-[1.5rem] sm:rounded-br-[1.75rem] rounded-bl-[3rem] sm:rounded-bl-[4.5rem] px-4 py-3.5 sm:px-8 sm:py-5 lg:px-9 lg:py-6 shadow-[0_22px_65px_-15px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.04)] border border-zinc-100 overflow-hidden flex flex-col max-h-[85dvh] lg:max-h-[88vh]" style={{ colorScheme: 'light' }}>
               
-              {/* ── CARD HEADER: 3-COLUMN CENTERED LAYOUT (20% LOGO | 60% TEXT | 20% PROFILE UPLOAD) ── */}
-              <div className="flex items-center justify-between gap-1.5 sm:gap-3 mb-2 shrink-0 w-full">
-                {/* Column 1: SuviX Logo (20% width, centered) */}
-                <div className="w-[20%] flex items-center justify-center shrink-0 min-w-0">
-                  <Link to="/" className="flex items-center justify-center transition-transform hover:scale-105">
+              {/* ── CARD HEADER: 3-COLUMN LAYOUT (20% LOGO | 60% TEXT | 20% PROFILE UPLOAD) ── */}
+              <div className="flex items-start justify-between gap-1.5 sm:gap-3 mb-2 shrink-0 w-full">
+                {/* Column 1: SuviX Logo (20% width, top-left aligned) */}
+                <div className="w-[20%] flex items-start justify-start shrink-0 min-w-0 self-start pt-0.5">
+                  <Link to="/" className="flex items-start justify-start transition-transform hover:scale-105">
                     <img src={logo} alt="SuviX" className="h-8 sm:h-9.5 lg:h-11 w-auto max-w-full object-contain" />
                   </Link>
                 </div>
@@ -462,7 +466,7 @@ export default function Signup() {
               </div>
 
               {/* Scrollable Form Content */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 -mr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 -mr-1">
                 <form id="signup-form" onSubmit={handleSubmit} className="space-y-1.5 sm:space-y-2 pt-0.5">
                   
                   {/* ERROR BANNER */}
@@ -777,7 +781,7 @@ export default function Signup() {
               </div>
 
               {/* ── FIXED IN-CARD FOOTER (CLOUDFLARE + DESKTOP CREATE ACCOUNT BUTTON) ── */}
-              <div className="shrink-0 border-t border-zinc-100 bg-white pt-2 pb-0.5 mt-1">
+              <div className="shrink-0 border-t border-zinc-100 bg-white pt-2 pb-0.5 mt-auto">
                 {/* Cloudflare Security Status */}
                 <div className="w-full pb-1.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2 select-none overflow-hidden">
                   {/* Cloudflare Logo */}
@@ -821,32 +825,48 @@ export default function Signup() {
                   </div>
                 </div>
 
-                {/* CREATE ACCOUNT BUTTON (DESKTOP IN-CARD ONLY, WITH LOCK REMOVAL ON COMPLETION) */}
-                <div className="hidden lg:block space-y-1.5">
-                  <button
-                    type="submit"
-                    form="signup-form"
-                    disabled={isLoading || !isFormValid}
-                    className={`w-full h-11 sm:h-12 rounded-full font-bold flex items-center justify-center gap-2 transition-all shadow-md text-xs sm:text-sm ${
-                      isFormValid && !isLoading
-                        ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 cursor-pointer'
-                        : 'bg-zinc-200 text-zinc-500 cursor-not-allowed opacity-90'
-                    }`}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
-                    ) : (
-                      <>
-                        {!isFormValid ? (
-                          <Lock size={15} className="text-zinc-500 shrink-0" />
-                        ) : null}
-                        <span>Create Account</span>
-                        {isFormValid ? (
-                          <ArrowRight size={16} strokeWidth={2.5} />
-                        ) : null}
-                      </>
-                    )}
-                  </button>
+                {/* ── DESKTOP FIXED FOOTER CTA (ALWAYS FIXED AT CARD BOTTOM WITHOUT SCROLLING) ── */}
+                <div className="hidden lg:block space-y-1.5 pt-1">
+                  {currentLevel === 1 && !isFormValid ? (
+                    <button
+                      type="button"
+                      onClick={() => isLevel1Valid && setCurrentLevel(2)}
+                      disabled={!isLevel1Valid}
+                      className={`w-full h-10 sm:h-11 rounded-full font-bold flex items-center justify-center gap-2 transition-all shadow-md text-xs sm:text-sm ${
+                        isLevel1Valid
+                          ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 cursor-pointer'
+                          : 'bg-zinc-200 text-zinc-500 cursor-not-allowed opacity-90'
+                      }`}
+                    >
+                      <span>Next Step: Security &amp; Region</span>
+                      <ArrowRight size={15} strokeWidth={2.5} />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      form="signup-form"
+                      disabled={isLoading || !isFormValid}
+                      className={`w-full h-10 sm:h-11 rounded-full font-bold flex items-center justify-center gap-2 transition-all shadow-md text-xs sm:text-sm ${
+                        isFormValid && !isLoading
+                          ? 'bg-black text-white hover:bg-zinc-800 active:scale-98 cursor-pointer'
+                          : 'bg-zinc-200 text-zinc-500 cursor-not-allowed opacity-90'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
+                      ) : (
+                        <>
+                          {!isFormValid ? (
+                            <Lock size={15} className="text-zinc-500 shrink-0" />
+                          ) : null}
+                          <span>Create Account</span>
+                          {isFormValid ? (
+                            <ArrowRight size={16} strokeWidth={2.5} />
+                          ) : null}
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   <div className="text-center text-xs text-zinc-500 font-medium pt-0.5">
                     <span>Already have an account? </span>

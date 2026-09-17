@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import { MoreHorizontal, Volume2, VolumeX, Heart, MessageCircle, Share2, Bookmark, Youtube, Lock } from 'lucide-react';
@@ -17,7 +17,7 @@ function getClampedRatio(width?: number, height?: number): number {
   return Math.min(MAX_RATIO, Math.max(MIN_RATIO, raw));
 }
 
-export function RealFeedReel({ 
+export const RealFeedReel = memo(function RealFeedReel({ 
   post, 
   isDarkMode, 
   isActive, 
@@ -142,7 +142,7 @@ export function RealFeedReel({
   return (
     <motion.article 
       data-post-id={post.id}
-      className={`rounded-t-[16px] lg:border lg:border-border-main lg:rounded-[24px] overflow-hidden group lg:shadow-xl mb-6 lg:mb-0 pb-4 lg:pb-0 relative ${
+      className={`feed-item-optimized rounded-t-[16px] lg:border lg:border-border-main lg:rounded-[24px] overflow-hidden group lg:shadow-xl mb-6 lg:mb-0 pb-4 lg:pb-0 relative ${
         isDarkMode ? 'bg-black lg:bg-[#0a0a0a]' : 'bg-white shadow-sm lg:shadow-2xl'
       }`}
     >
@@ -349,7 +349,7 @@ export function RealFeedReel({
       />
     </motion.article>
   );
-}
+});
 
 function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';

@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Loader2 } from 'lucide-react';
+import { ReactLenis, useLenis, type LenisRef } from 'lenis/react';
+import { Plus, Loader2, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser, updateUser } from '../store/slices/authSlice';
 import { MdChevronRight } from 'react-icons/md';
 import defaultProfile from '../assets/defaultprofile.png';
 import { VerifiedBadge } from '../components/ui/VerifiedBadge';
-import { FeatureGallery } from '../components/home/FeatureGallery';
+import ytBadge from '../assets/verifiedBadges/yt_badge.png';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
 import darkLogo from '../assets/darklogo.png';
@@ -37,14 +38,93 @@ type TabType = 'all' | 'posts' | 'reels' | 'youtube';
 
 export default function Home() {
   const { storyId } = useParams<{ storyId?: string }>();
-  const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const storiesLenisRef = useRef<LenisRef | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const isMouseDownRef = useRef(false);
+  const startXRef = useRef(0);
+  const startScrollRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+  const lastScrollYRef = useRef(0);
+  const isResettingStoriesRef = useRef(false);
+  const rafDragRef = useRef<number | null>(null);
+
+  const resetStoriesToStart = useCallback(() => {
+    const lenis = storiesLenisRef.current?.lenis;
+    if (!lenis || lenis.scroll <= 8 || isResettingStoriesRef.current) return;
+    isResettingStoriesRef.current = true;
+    lenis.scrollTo(0, { 
+      lerp: 0.08,
+      onComplete: () => {
+        isResettingStoriesRef.current = false;
+      }
+    });
+    setTimeout(() => {
+      isResettingStoriesRef.current = false;
+    }, 600);
+  }, []);
+
+  const scrollStories = (direction: 'left' | 'right') => {
+    const lenis = storiesLenisRef.current?.lenis;
+    if (!lenis) return;
+    const step = 320;
+    const target = direction === 'left' ? lenis.scroll - step : lenis.scroll + step;
+    lenis.scrollTo(target, { lerp: 0.08 });
+  };
+
+  const handleStoriesScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const canLeft = target.scrollLeft > 15;
+    const canRight = target.scrollLeft < (target.scrollWidth - target.clientWidth - 15);
+    setCanScrollLeft(prev => (prev !== canLeft ? canLeft : prev));
+    setCanScrollRight(prev => (prev !== canRight ? canRight : prev));
+  }, []);
+
+  // Mouse drag handlers on laptop for Lenis smooth swipe with RAF throttling
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isMouseDownRef.current = true;
+    startXRef.current = e.clientX;
+    startScrollRef.current = storiesLenisRef.current?.lenis?.scroll || 0;
+    hasDraggedRef.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDownRef.current) return;
+    const deltaX = e.clientX - startXRef.current;
+    if (Math.abs(deltaX) > 4) {
+      hasDraggedRef.current = true;
+    }
+    const lenis = storiesLenisRef.current?.lenis;
+    if (lenis) {
+      if (rafDragRef.current) cancelAnimationFrame(rafDragRef.current);
+      rafDragRef.current = requestAnimationFrame(() => {
+        lenis.scrollTo(startScrollRef.current - deltaX, { immediate: false, lerp: 0.18 });
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    isMouseDownRef.current = false;
+    if (rafDragRef.current) {
+      cancelAnimationFrame(rafDragRef.current);
+      rafDragRef.current = null;
+    }
+  };
+
+  // 1. Parent Lenis smooth scroll trigger - throttled reset stories without main thread churn
+  useLenis((lenis) => {
+    if (Math.abs(lenis.velocity) > 0.1 && !isMouseDownRef.current) {
+      resetStoriesToStart();
+    }
+  });
+
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
   const user = useSelector(selectUser);
   const userAvatar = user?.profilePicture || defaultProfile;
 
   const [globalMuted, setGlobalMuted] = useState(true);
+  const handleToggleMute = useCallback(() => setGlobalMuted(prev => !prev), []);
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [activePostId, setActivePostId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -146,10 +226,11 @@ export default function Home() {
   const stories: Story[] = [
     {
       _id: 'me',
-      username: 'Your Story',
+      username: user?.name || 'Suvin T M',
       avatar: userAvatar,
       isUser: true,
       hasActive: true,
+      verifiedColor: '#EF4444',
       slides: [
         {
           id: 'me_1',
@@ -173,18 +254,27 @@ export default function Home() {
     const scrollContainer = document.querySelector('main')?.closest('.overflow-y-auto') || document.querySelector('main');
     if (!scrollContainer) return;
 
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolling(true);
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => setIsScrolling(false), 150);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = scrollContainer.scrollTop || window.scrollY || 0;
+          const diff = Math.abs(currentScrollY - lastScrollYRef.current);
+          if (diff > 8 && !isMouseDownRef.current) {
+            resetStoriesToStart();
+          }
+          lastScrollYRef.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
-    scrollContainer.addEventListener('scroll', handleScroll);
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       scrollContainer.removeEventListener('scroll', handleScroll);
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
-  }, []);
+  }, [resetStoriesToStart]);
 
 
 
@@ -342,7 +432,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="relative w-full pb-20">
+      <div className="relative w-full">
         {needsSync && !showSyncOverlay && (
           <div className="w-full max-w-3xl mx-auto mb-4 px-4 pt-4">
             <div className={`p-4 rounded-2xl border border-orange-500/30 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-lg ${
@@ -383,58 +473,194 @@ export default function Home() {
           }
         ` }} />
       
-      {/* ─── 1. FULL-WIDTH BANNER SECTION (Takes 100% width of central column with zero outer space) ─── */}
-      <section className="w-full">
+      {/* ─── 1. HERO BANNER SECTION ─── */}
+      <section className="w-full px-3 sm:px-3 lg:px-4 pt-2 sm:pt-2.5 pb-1">
         <UnifiedBanner />
       </section>
 
       {/* ─── 2. LOWER FEED & STORIES CONTENT WRAPPER ─── */}
-      <div className="max-w-4xl mx-auto px-4 lg:px-6 pt-6 flex flex-col gap-8">
-        {/* Stories & Feature Gallery (Side by Side on Desktop, Stacked on Mobile) */}
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center w-full">
-          {/* Stories Section (Horizontal Carousel across all devices) */}
-          <section className="w-full lg:w-[60%]">
-            <div className="flex gap-3.5 sm:gap-4 overflow-x-auto pb-2 sm:pb-4 scrollbar-hide overscroll-x-contain touch-pan-x">
-              {stories.map((story) => (
+      <div className="w-full px-0 sm:px-3 lg:px-4 pt-2 sm:pt-2.5 flex flex-col gap-6">
+        {/* ─── STORIES SECTION (Matches Reference Design media_1789648035258.png) ─── */}
+        <section className="w-full flex flex-col">
+          {/* Stories Section Header */}
+          <div className="flex items-center justify-between w-full mb-3 px-3 sm:px-1">
+            <div className="flex items-baseline gap-2.5">
+              <h2 className="text-base sm:text-[17px] font-black tracking-tight text-zinc-950 dark:text-white">
+                Stories
+              </h2>
+              <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 hidden sm:inline">
+                Creators. Ideas. Moments. Every day.
+              </span>
+            </div>
+            <button 
+              type="button"
+              onClick={() => navigate('/explore')}
+              className="text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 transition-colors cursor-pointer group"
+            >
+              <span>View All</span>
+              <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+
+          {/* Stories Carousel Wrapper (Powered by Lenis for Ultra-Smooth Horizontal Scroll) */}
+          <div className="relative w-full group/carousel select-none">
+            <ReactLenis
+              ref={storiesLenisRef}
+              root={false}
+              data-lenis-prevent
+              onScroll={handleStoriesScroll}
+              options={{
+                orientation: 'horizontal',
+                gestureOrientation: 'horizontal',
+                smoothWheel: true,
+                syncTouch: true,
+                syncTouchLerp: 0.08,
+                touchInertiaExponent: 1.8,
+                lerp: 0.09,
+                wheelMultiplier: 1.1,
+                touchMultiplier: 1.4,
+                autoResize: true,
+              }}
+              className="w-full overflow-x-auto scrollbar-hide py-2 px-3 sm:px-1 cursor-grab active:cursor-grabbing overscroll-x-contain"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              <div className="flex items-center gap-2.5 sm:gap-3 w-max">
+                {/* 1. Add Story Card */}
                 <div 
-                  key={story._id} 
-                  onClick={() => navigate(`/stories/${story._id}`)}
-                  className="flex flex-col items-center gap-1.5 sm:gap-2 flex-shrink-0 cursor-pointer group relative"
+                  onClick={() => {
+                    if (!hasDraggedRef.current) navigate('/create');
+                  }}
+                  className="relative w-[88px] sm:w-[96px] lg:w-[102px] min-w-[88px] sm:min-w-[96px] lg:min-w-[102px] h-[122px] sm:h-[130px] lg:h-[134px] rounded-[18px] sm:rounded-[20px] -skew-x-[7deg] overflow-hidden bg-[#16161a] border border-white/10 hover:border-white/30 shadow-md transition-all duration-200 hover:-translate-y-1 cursor-pointer flex flex-col items-center justify-between pt-3 pb-2.5 px-2 shrink-0 group/card"
                 >
-                  <div className="relative w-[56px] h-[56px] sm:w-[62px] sm:h-[62px] lg:w-[68px] lg:h-[68px] flex items-center justify-center">
-                    <svg className="absolute inset-0 w-full h-full -rotate-90 opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110 group-hover:scale-100">
-                      <circle cx="50%" cy="50%" r="48%" className={`fill-none stroke-current stroke-1 ${isDarkMode ? 'text-white' : 'text-black'}`} strokeDasharray="4 8" strokeLinecap="round" />
-                    </svg>
-                    <div className={`absolute inset-0 rounded-full p-[2px] transition-transform duration-500 group-active:scale-95 ${story.hasActive || story.isUser ? (isDarkMode ? 'bg-white' : 'bg-black') : (isDarkMode ? 'bg-white/20' : 'bg-black/20')}`}>
-                      <div className="w-full h-full rounded-full bg-container p-[2px]">
-                        <img src={story.avatar} alt={story.username} className="w-full h-full rounded-full object-cover bg-border-secondary shadow-inner" />
+                  {/* Background Dim / Side Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#222228] to-[#121215] pointer-events-none" />
+                  <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/70 to-transparent pointer-events-none" />
+                  <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-black/70 to-transparent pointer-events-none" />
+
+                  {/* Counter-skew inner content so circle and text remain perfectly upright */}
+                  <div className="relative z-10 skew-x-[7deg] flex flex-col items-center justify-between h-full w-full">
+                    {/* Consistent SOLID Circular Border Pattern (No fuzzy glow) */}
+                    <div className="w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] rounded-full p-[2px] bg-white flex items-center justify-center shrink-0">
+                      <div className="w-full h-full rounded-full p-[2px] bg-[#121215] flex items-center justify-center">
+                        <div className="w-full h-full rounded-full bg-[#1c1c22] group-hover/card:bg-[#25252c] transition-colors flex items-center justify-center text-white">
+                          <Plus size={20} strokeWidth={2.5} />
+                        </div>
                       </div>
                     </div>
-                    {story.isUser && (
-                      <div className="absolute bottom-0 right-0 bg-blue-500 rounded-[6px] border-2 border-container w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex items-center justify-center shadow-lg">
-                        <Plus size={9} className="text-white" strokeWidth={4} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 max-w-[56px] sm:max-w-[62px] lg:max-w-[68px]">
-                    <span className={`text-[9.5px] sm:text-[10px] font-medium truncate ${story.hasActive ? 'text-text-main' : 'text-text-muted'}`}>{story.username}</span>
-                    {story.verifiedColor && <VerifiedDecagram size={9} color={story.verifiedColor} className="flex-shrink-0" />}
+
+                    {/* Label */}
+                    <span className="text-[10px] sm:text-[10.5px] font-bold text-white tracking-tight truncate text-center leading-tight">
+                      Add Story
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Feature Gallery */}
-          <section className="w-full lg:w-[40%] -mt-2 lg:mt-0">
-            <FeatureGallery paused={isScrolling} />
-          </section>
-        </div>
+                {/* 2. Creator & User Story Cards */}
+                {stories.map((story) => {
+                  const thumbnail = story.slides?.[0]?.url || story.avatar;
+
+                  return (
+                    <div 
+                      key={story._id}
+                      onClick={() => {
+                        if (!hasDraggedRef.current) navigate(`/stories/${story._id}`);
+                      }}
+                      className="relative w-[88px] sm:w-[96px] lg:w-[102px] min-w-[88px] sm:min-w-[96px] lg:min-w-[102px] h-[122px] sm:h-[130px] lg:h-[134px] rounded-[18px] sm:rounded-[20px] -skew-x-[7deg] overflow-hidden bg-[#121215] border border-white/10 hover:border-white/30 shadow-md transition-all duration-200 hover:-translate-y-1 cursor-pointer flex flex-col items-center justify-between pt-3 pb-2.5 px-2 shrink-0 group/card"
+                    >
+                      {/* Actual Story Image / Thumbnail as Card Background */}
+                      {thumbnail && (
+                        <img 
+                          src={thumbnail} 
+                          alt={story.username} 
+                          loading="lazy"
+                          decoding="async"
+                          className="absolute inset-0 w-full h-full object-cover pointer-events-none group-hover/card:scale-105 transition-transform duration-500" 
+                        />
+                      )}
+
+                      {/* Side Black Overlays + Bottom Darkening Vignette */}
+                      <div className="absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-black/85 via-black/40 to-transparent pointer-events-none" />
+                      <div className="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-black/85 via-black/40 to-transparent pointer-events-none" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/50 pointer-events-none" />
+
+                      {/* Counter-skew inner content so circle and text remain perfectly upright */}
+                      <div className="relative z-10 skew-x-[7deg] flex flex-col items-center justify-between h-full w-full">
+                        {/* Consistent SOLID Circular Border Pattern (No fuzzy glow) */}
+                        <div className="w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] rounded-full p-[2px] bg-white flex items-center justify-center shrink-0">
+                          <div className="w-full h-full rounded-full p-[2px] bg-[#121215] flex items-center justify-center">
+                            <div className="w-full h-full rounded-full overflow-hidden">
+                              <img 
+                                src={story.avatar} 
+                                alt={story.username} 
+                                loading="lazy"
+                                decoding="async"
+                                className="w-full h-full rounded-full object-cover select-none group-hover/card:scale-105 transition-transform duration-300" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Username + Official Red Verified Badge yt_badge.png */}
+                        <div className="flex items-center justify-center gap-1 w-full min-w-0">
+                          <span className="text-[10px] sm:text-[10.5px] font-bold text-white tracking-tight truncate max-w-[58px] sm:max-w-[66px] leading-tight text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                            {story.username}
+                          </span>
+                          <img 
+                            src={ytBadge} 
+                            alt="Verified" 
+                            className="w-3.5 h-3.5 object-contain shrink-0 drop-shadow-xs" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ReactLenis>
+
+            {/* Left Floating Circular Chevron Button */}
+            <AnimatePresence>
+              {canScrollLeft && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  type="button"
+                  onClick={() => scrollStories('left')}
+                  className="absolute left-1 sm:left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-[0_4px_16px_rgba(0,0,0,0.3)] border border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-20 cursor-pointer"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft size={16} strokeWidth={2.5} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Right Floating Circular Chevron Button */}
+            <AnimatePresence>
+              {canScrollRight && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  type="button"
+                  onClick={() => scrollStories('right')}
+                  className="absolute right-1 sm:right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-[0_4px_16px_rgba(0,0,0,0.3)] border border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-20 cursor-pointer"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+        </section>
 
         {/* 4. Unified Feed */}
         <section className="w-full lg:mx-auto mt-6 lg:mt-0 lg:max-w-[470px]">
           {/* Feed Type Tabs */}
-          <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center gap-6 border-b mb-6 pb-0 overflow-x-auto scrollbar-hide px-3 sm:px-2 lg:px-0 transition-colors border-zinc-200 dark:border-zinc-800">
             {(['all', 'posts', 'reels', 'youtube'] as TabType[]).map((tab) => (
               <button
                 key={tab}
@@ -462,7 +688,7 @@ export default function Home() {
                 const isActive = activePostId === post.id;
                 let postEl = null;
                 if (post.contentType === 'REEL') {
-                  postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={() => setGlobalMuted(!globalMuted)} />;
+                  postEl = <RealFeedReel key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} onToggleMute={handleToggleMute} />;
                 } else if (post.contentType === 'YOUTUBE_POST') {
                   postEl = <RealFeedYoutube key={post.id} post={post} isDarkMode={isDarkMode} isActive={isActive} isMuted={globalMuted} />;
                 } else if (post.contentType === 'POLL') {
@@ -509,16 +735,6 @@ export default function Home() {
       </AnimatePresence>
       </div>
     </Fragment>
-  );
-}
-
-
-
-function VerifiedDecagram({ size, color, className }: { size: number, color: string, className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
-      <path d="M23,12L20.56,9.22L20.9,5.54L17.29,4.72L15.4,1.54L12,3L8.6,1.54L6.71,4.72L3.1,5.53L3.44,9.21L1,12L3.44,14.78L3.1,18.47L6.71,19.29L8.6,22.47L12,21L15.4,22.46L17.29,19.28L20.9,18.46L20.56,14.79L23,12M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z" />
-    </svg>
   );
 }
 
@@ -628,7 +844,7 @@ const MOCK_SUGGESTED_CREATORS = [
   }
 ];
 
-function SuggestedEditorsCarousel({ index }: { index: number }) {
+const SuggestedEditorsCarousel = memo(function SuggestedEditorsCarousel({ index }: { index: number }) {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const user = useSelector(selectUser);
@@ -715,7 +931,7 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
   return (
     <div className="w-full lg:-mx-8 lg:w-[calc(100%+4rem)] py-2 my-2 sm:my-4">
       {/* Title Header */}
-      <div className="flex items-center justify-between px-2 mb-2 sm:mb-4">
+      <div className="flex items-center justify-between px-3 sm:px-2 mb-2 sm:mb-4">
         <h4 className="text-sm sm:text-base font-bold text-text-main tracking-tight">
           {isEditor ? 'Suggested Creators for you' : 'Suggested Editors for you'}
         </h4>
@@ -738,7 +954,7 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
       `}</style>
 
       {/* Horizontal List Scrollable container */}
-      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto py-6 scrollbar-hide snap-x px-2">
+      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto py-6 scrollbar-hide snap-x px-3 sm:px-2">
         {shiftedProfiles.map((profileItem, idx) => (
           <div
             key={profileItem.id}
@@ -795,5 +1011,5 @@ function SuggestedEditorsCarousel({ index }: { index: number }) {
       </div>
     </div>
   );
-}
+});
 

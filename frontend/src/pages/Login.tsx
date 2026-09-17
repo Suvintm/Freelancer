@@ -161,6 +161,10 @@ export default function Login() {
           alt="SuviX Mobile Background" 
           className="block lg:hidden absolute inset-x-0 -top-14 sm:-top-0 w-full h-[calc(100%+56px)] sm:h-full object-cover object-[center_35%] opacity-100"
         />
+
+        {/* Mobile Bottom-to-Middle Black Gradient Overlay Effect */}
+        <div className="block lg:hidden absolute inset-0 bg-gradient-to-t from-black via-black/85 via-40% to-transparent to-70% pointer-events-none" />
+
         {/* Desktop Background */}
         {loginBg ? (
           <img 
@@ -207,11 +211,11 @@ export default function Login() {
             <div className="light-card relative w-full max-w-[480px] sm:max-w-[600px] lg:max-w-none bg-white rounded-tl-[1.5rem] sm:rounded-tl-[1.75rem] rounded-tr-[3rem] sm:rounded-tr-[4.5rem] rounded-br-[1.5rem] sm:rounded-br-[1.75rem] rounded-bl-[3rem] sm:rounded-bl-[4.5rem] px-4 py-3.5 sm:px-10 sm:py-6 lg:px-12 xl:px-14 lg:py-7 shadow-[0_22px_65px_-15px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.04)] border border-zinc-100 overflow-hidden" style={{ colorScheme: 'light' }}>
               
               {/* ── CARD HEADER: 2-COLUMN SIDE-BY-SIDE (LOGO & WELCOME TEXT) ── */}
-              <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
-                {/* Column 1: SuviX Logo (Reduced Size) */}
-                <div className="shrink-0">
+              <div className="flex items-start gap-3 sm:gap-4 mb-2 sm:mb-3">
+                {/* Column 1: SuviX Logo (Top-Left aligned, reduced size) */}
+                <div className="shrink-0 flex items-start justify-start self-start pt-0.5">
                   <Link to="/" className="inline-block transition-transform hover:scale-102">
-                    <img src={logo} alt="SuviX" className="h-7 sm:h-8.5 lg:h-9.5 w-auto object-contain" />
+                    <img src={logo} alt="SuviX" className="h-5.5 sm:h-7 lg:h-8 w-auto object-contain" />
                   </Link>
                 </div>
 
