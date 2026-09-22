@@ -11,6 +11,8 @@ import type { OnboardingSliceState } from './slices/onboardingSlice';
 import { uiReducer } from './slices/uiSlice';
 import { uploadReducer } from './slices/uploadSlice';
 import type { UploadState } from './slices/uploadSlice';
+import { connectedAppsReducer } from './slices/connectedAppsSlice';
+import type { ConnectedAppsState } from './slices/connectedAppsSlice';
 
 const authPersistConfig = {
   key: 'auth',
@@ -30,6 +32,7 @@ export const store = configureStore({
     onboarding: persistReducer(onboardingPersistConfig, onboardingReducer) as unknown as Reducer,
     ui: uiReducer,
     upload: uploadReducer,
+    connectedApps: connectedAppsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -48,6 +51,7 @@ export interface RootState {
     sidebarOpen: boolean;
   };
   upload: UploadState;
+  connectedApps: ConnectedAppsState;
 }
 
 export type AppDispatch = typeof store.dispatch;

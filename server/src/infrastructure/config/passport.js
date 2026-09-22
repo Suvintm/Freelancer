@@ -51,8 +51,9 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                 callbackURL: GOOGLE_CALLBACK_URL,
                 state: false,
                 scope: ["profile", "email"],
+                passReqToCallback: true,
             },
-            async (accessToken, refreshToken, profile, done) => {
+            async (req, accessToken, refreshToken, profile, done) => {
                 try {
                     // Extract user info from Google profile
                     const googleId = profile.id;
@@ -65,7 +66,23 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
                         displayName: profile.displayName 
                     });
 
+                    // 🛡️ Support YouTube Brand Accounts (Google does NOT return an email address for Brand Accounts)
+                    const isYoutubeConnect = req?.query?.state === 'connect_youtube' || req?.query?.state?.includes('youtube');
+
                     if (!email) {
+                        if (isYoutubeConnect || profile.displayName) {
+                            logger.info(`[OAuth] YouTube Brand Account detected (no email) - allowing connection: ${profile.displayName} (Google ID: ${googleId})`);
+                            const brandSocialProfile = {
+                                isNewUser: true,
+                                isBrandAccount: true,
+                                email: null,
+                                googleId,
+                                name: profile.displayName || "YouTube Brand Channel",
+                                picture: profilePicture,
+                                accessToken,
+                            };
+                            return done(null, brandSocialProfile);
+                        }
                         return done(new Error("No email provided by Google"), null);
                     }
 

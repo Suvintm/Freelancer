@@ -23,6 +23,7 @@ import {
 import { useNavigate }      from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
+import { useUserRole } from '../../hooks/useUserRole';
 import { useTheme }         from '../../hooks/useTheme';
 import { api }              from '../../api/client';
 import auth1                from '../../assets/auth/auth_1.png';
@@ -35,6 +36,7 @@ import { bioApiService } from '../../linkinbio-v2/services/bioApiService';
 import { VerifiedBadge } from '../ui/VerifiedBadge';
 import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
 import { OnboardingSyncOverlay } from '../onboarding/OnboardingSyncOverlay';
+import { AskSuvixCard } from './AskSuvixCard';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 
@@ -118,28 +120,8 @@ export const Sidebar = () => {
       });
   }, [user?.id, user?.username]);
 
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    !!user?.creatorProfile;
-
-  const isClientCategory =
-    roleStr === 'user' ||
-    roleStr === 'brand' ||
-    roleStr === 'direct_client' ||
-    categoryStr.includes('brand') ||
-    categoryStr.includes('user') ||
-    categorySlugStr.includes('user') ||
-    categorySlugStr.includes('brand');
+  const { isCreator, isBrand, isUser } = useUserRole();
+  const isClientCategory = isBrand || isUser;
 
   const youtubeChannels = user?.youtubeProfile || [];
   const ytVideoCount = youtubeChannels.reduce((acc: number, p: { video_count?: number | string }) => acc + (Number(p.video_count) || 0), 0);
@@ -235,6 +217,8 @@ export const Sidebar = () => {
   return (
     <ReactLenis className="w-full h-full flex flex-col overflow-y-auto scrollbar-hide">
       <div className="flex flex-col h-full gap-3.5 p-3.5 xl:p-4 select-none">
+        {/* ── 0. Ask SuviX AI Card ──────────────────────────────────── */}
+        <AskSuvixCard />
 
         {/* ── 1. User Identity & Stats Card ─────────────────────────── */}
         <div className={`relative rounded-2xl border transition-all duration-300 p-4 space-y-3 shadow-xs ${

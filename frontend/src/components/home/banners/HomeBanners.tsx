@@ -166,7 +166,7 @@ export const BannerEcosystem: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode 
 };
 
 // ─────────────────────────────────────────────────────────────
-// 2. BANNER 2: Link in Bio Studio
+// 2. BANNER 2: Link in Bio (One Link. Endless Opportunities.)
 // ─────────────────────────────────────────────────────────────
 export const BannerLinkInBio: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
   const navigate = useNavigate();

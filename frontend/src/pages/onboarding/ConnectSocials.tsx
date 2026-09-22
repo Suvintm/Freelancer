@@ -14,6 +14,8 @@ import {
   RefreshCw,
   LayoutGrid,
   X as CloseIcon,
+  Play,
+  Eye,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -770,6 +772,56 @@ export default function ConnectSocials() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Latest 5 Videos Preview */}
+                    {Array.isArray(primaryChannel.videos) && primaryChannel.videos.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-1.5">
+                            <span className="w-1.5 h-3 bg-red-600 rounded-full" />
+                            <span>Recent Uploads ({Math.min(primaryChannel.videos.length, 5)})</span>
+                          </span>
+                          <span className="text-[8.5px] text-zinc-400 font-medium">YouTube Preview</span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin scrollbar-thumb-zinc-300">
+                          {primaryChannel.videos.slice(0, 5).map((vid: any, idx: number) => (
+                            <div
+                              key={vid.id || idx}
+                              className="shrink-0 w-36 sm:w-40 rounded-xl border border-zinc-200/90 bg-zinc-50/70 hover:bg-white hover:border-zinc-300 overflow-hidden flex flex-col group transition-all"
+                            >
+                              <div className="relative aspect-video w-full bg-black overflow-hidden">
+                                <img
+                                  src={vid.thumbnail || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
+                                  alt={vid.title}
+                                  referrerPolicy="no-referrer"
+                                  crossOrigin="anonymous"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md">
+                                    <Play size={10} fill="currentColor" className="ml-0.5" />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-1.5 flex flex-col justify-between flex-1 gap-1">
+                                <p className="text-[9.5px] font-semibold text-zinc-900 line-clamp-2 leading-tight" title={vid.title}>
+                                  {vid.title}
+                                </p>
+                                <div className="flex items-center justify-between text-[8.5px] text-zinc-500 pt-0.5">
+                                  <span className="flex items-center gap-0.5 truncate">
+                                    <Eye size={9} className="shrink-0 text-zinc-400" />
+                                    {formatCount(vid.viewCount)} views
+                                  </span>
+                                  <span className="shrink-0">
+                                    {vid.publishedAt ? new Date(vid.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Channel Niche Selection */}
                     {!isChannelClaimed && (

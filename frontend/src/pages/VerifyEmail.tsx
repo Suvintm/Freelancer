@@ -4,13 +4,13 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { AuthBackground } from '../components/auth/AuthBackground';
 import logo from '../assets/lightlogo.png';
-import { authService } from '../api/services/auth.service';
 import { useDispatch } from 'react-redux';
-import { setAuth } from '../store/slices/authSlice';
+import { setAuth, normalizeRole } from '../store/slices/authSlice';
 import { useQueryClient } from '@tanstack/react-query';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 import { api } from '../api/client';
+import { authService } from '../api/services/auth.service';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -128,15 +128,14 @@ export default function VerifyEmail() {
 
         // Redirect dynamically based on onboarding, sync mode, and preferences state
         const user = data.user;
-        const roleStr = (user.role || '').toLowerCase();
-        const categoryStr = (user.primaryRole?.category || '').toLowerCase();
-        const isCreator = roleStr === 'creator' || categoryStr === 'creator' || categoryStr === 'youtube creator' || categoryStr === 'yt_influencer';
-        const isBrand = roleStr === 'brand' || categoryStr === 'brand' || categoryStr === 'social_promoter';
+        const normalizedRole = normalizeRole(user.role, user.primaryRole?.category, user.primaryRole?.categorySlug);
+        const isCreator = normalizedRole === 'creator';
+        const isBrand = normalizedRole === 'brand';
         const hasChannels = (user.youtubeChannels?.length ?? 0) > 0 || (Array.isArray(user.youtubeProfile) ? user.youtubeProfile.length : 0) > 0 || (user.creatorProfile?.channels?.length ?? 0) > 0 || Boolean(user.youtubeProfile);
         const hasInstagram = (user.instagramAccounts?.length ?? 0) > 0 || Boolean(user.instagramProfile);
         const showSync = isCreator && (hasChannels || hasInstagram);
 
-        console.log("VerifyEmail Route Decision:", { roleStr, categoryStr, isCreator, hasChannels, hasInstagram, showSync, syncMode: data.syncMode || data.ytSyncMode });
+        console.log("VerifyEmail Route Decision:", { normalizedRole, isCreator, isBrand, hasChannels, hasInstagram, showSync, syncMode: data.syncMode || data.ytSyncMode });
 
         const targetRoute = user.isOnboarded && user.preferencesCompleted
           ? '/home'

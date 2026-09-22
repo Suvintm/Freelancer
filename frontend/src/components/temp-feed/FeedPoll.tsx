@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { MoreHorizontal, Heart, Send, CheckCircle2, MessageSquare, Image as ImageIcon, Smile, Lightbulb, Bookmark, Share2 } from 'lucide-react';
 import defaultProfile from '../../assets/defaultprofile.png';
-import ytBadge from '../../assets/verifiedBadges/yt_badge.png';
+import { VerifiedBadge } from '../ui/VerifiedBadge';
 import { useLottie } from 'lottie-react';
 import successLottieData from '../../assets/success_lottie.json';
 import { api } from '../../api/client';
@@ -187,8 +187,8 @@ export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean
                 <h4 className={`text-[13px] font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-black'}`}>
                   {post.user?.profile?.name || post.user?.username || 'Creator'}
                 </h4>
-                {/* Red verified badge if they have Youtube connected or are a creator */}
-                <img src={ytBadge} alt="Verified Creator" className="w-[14px] h-[14px] object-contain" />
+                {/* Official verified badge */}
+                <VerifiedBadge isVerified={true} role="Creator" className="w-[14px] h-[14px]" />
               </div>
               <p className={`text-[12px] font-medium leading-tight ${isDarkMode ? 'text-[#888]' : 'text-[#666]'}`}>Content Creator</p>
               <div className="flex items-center gap-1.5 mt-1">
@@ -385,7 +385,7 @@ export function FeedPoll({ post, isDarkMode }: { post: Post, isDarkMode: boolean
               <h4 className={`text-[13px] font-bold leading-none ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
                 {post.user?.profile?.name || post.user?.username || 'Creator'}
               </h4>
-              <img src={ytBadge} alt="Verified Creator" className="w-5 h-5 object-contain" />
+              <VerifiedBadge isVerified={true} role="Creator" className="w-5 h-5" />
             </div>
             <p className="text-[11px] font-medium text-zinc-500">Ask the Community • 2h ago</p>
           </div>

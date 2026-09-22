@@ -26,7 +26,7 @@ import blackLogo from '../../assets/blackbglogo.png';
 interface DropdownItem {
   title: string;
   desc: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   href: string;
   badge?: string;
 }

@@ -39,6 +39,7 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const TempUploadPortal = lazy(() => import('./pages/TempUploadPortal'));
 const CreateContent = lazy(() => import('./pages/CreateContent'));
 const YTDashboard = lazy(() => import('./pages/YTDashboard'));
+const ConnectedApps = lazy(() => import('./pages/ConnectedApps'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const About = lazy(() => import('./pages/About'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -622,6 +623,22 @@ function App() {
                 </RoleGuard>
               </AuthGuard>
             } 
+          />
+          <Route 
+            path="/connected-apps" 
+            element={
+              <AuthGuard>
+                <RoleGuard allowedCategories={['creator', 'yt_influencer']}>
+                  <AppLayout>
+                    <ConnectedApps />
+                  </AppLayout>
+                </RoleGuard>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/connected-accounts" 
+            element={<Navigate to="/connected-apps" replace />} 
           />
 
           {/* Public Link-in-Bio Visitor Routes (Level 4) */}

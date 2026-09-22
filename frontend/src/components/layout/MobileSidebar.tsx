@@ -2,12 +2,13 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, Search, Compass, MapPin, PlaySquare, Briefcase, PlusSquare, Settings, User,
-  LogOut, Plus, Moon, X, MessageSquare, BarChart3, Check
+  LogOut, Plus, Moon, X, MessageSquare, BarChart3, Check, Layers
 } from 'lucide-react';
 import { FaYoutube, FaInstagram, FaMeta } from 'react-icons/fa6';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
+import { useUserRole } from '../../hooks/useUserRole';
 import { useLogout } from '../../mutations/useLogout';
 import { useTheme } from '../../hooks/useTheme';
 import defaultProfile from '../../assets/defaultprofile.png';
@@ -37,6 +38,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector(selectUser);
+  const { isCreator } = useUserRole();
   const { mutateAsync: logout } = useLogout();
   const { isDarkMode, toggleTheme } = useTheme();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
@@ -54,8 +56,18 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   );
 
   const menuItems = useMemo(() => {
-    return [...NAV_ITEMS];
-  }, []);
+    const items = [...NAV_ITEMS];
+    if (isCreator) {
+      const ytIndex = items.findIndex(item => item.path === '/youtube-dashboard');
+      const insertAt = ytIndex !== -1 ? ytIndex + 1 : items.length - 2;
+      items.splice(insertAt, 0, {
+        icon: Layers,
+        label: 'Connected Apps',
+        path: '/connected-apps'
+      });
+    }
+    return items;
+  }, [isCreator]);
 
   const handleNavigate = (path: string) => {
     navigate(path);

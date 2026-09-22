@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
+import { useUserRole } from '../../hooks/useUserRole';
 import { useTheme } from '../../hooks/useTheme';
 import { 
   MdHome, 
@@ -45,7 +44,7 @@ interface SearchItem {
 export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps) => {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
-  const user = useSelector(selectUser);
+  const { user, isCreator, isBrand, isUser } = useUserRole();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('suvix_recent_searches');
@@ -241,29 +240,9 @@ export const SearchDropdown = ({ query, setQuery, onClose }: SearchDropdownProps
     }
   ];
 
-  // Filter lists based on role/category
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isYtInfluencer =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    !!user?.creatorProfile;
-
-  const isClientCategory =
-    roleStr === 'user' ||
-    roleStr === 'brand' ||
-    roleStr === 'direct_client' ||
-    categoryStr.includes('brand') ||
-    categoryStr.includes('user') ||
-    categorySlugStr.includes('user') ||
-    categorySlugStr.includes('brand');
+    // Filter lists based on role/category
+    const isYtInfluencer = isCreator;
+    const isClientCategory = isBrand || isUser;
 
   const filteredNavItems = navigationItems.filter(item => {
     if (isClientCategory) {

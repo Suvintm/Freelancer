@@ -1,8 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../store/slices/authSlice';
+import { useUserRole } from '../hooks/useUserRole';
 import { 
   Youtube, Eye, ThumbsUp, MessageSquare, MapPin, 
   MessageCircle, Send, ShieldAlert, ArrowLeft, Loader2, Play
@@ -59,15 +58,12 @@ export default function ChannelProfilePage() {
   const { channelId } = useParams<{ channelId: string }>();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
-  const user = useSelector(selectUser);
+  const { user, isCreator, isBrand, isUser, isAdmin } = useUserRole();
 
   // 🛡️ Redirect Guard: Prevent creators/influencers from accessing client-facing media kit
   useEffect(() => {
     if (user) {
-      const userCat = user?.primaryRole?.category || user?.role || '';
-      const isClient = ['user', 'brand', 'social_promoter', 'direct_client'].includes(userCat);
-      const isAdmin = user?.role === 'admin';
-      const isCreator = ['creator', 'yt_influencer'].includes(userCat);
+      const isClient = isBrand || isUser;
 
       if (!isClient && !isAdmin) {
         if (isCreator) {
@@ -85,7 +81,7 @@ export default function ChannelProfilePage() {
         }
       }
     }
-  }, [user, channelId, navigate]);
+  }, [user, isCreator, isBrand, isUser, isAdmin, channelId, navigate]);
 
   // 1. Fetch Specific YouTube Channel Details
   const { data: channelData, isLoading, error } = useQuery<ChannelProfileData | null>({

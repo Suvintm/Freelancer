@@ -5,7 +5,7 @@ import storageService from "../../../infrastructure/storage/storage-client.js";
 import { redis, redisAvailable } from "../../../infrastructure/cache/redis.client.js";
 import { emitToUser } from '../../../platform/socket/socket.gateway.js';
 import logger from "../../../infrastructure/monitoring/logger.js";
-import { deleteCache, CacheKey } from "../../../infrastructure/cache/cache.service.js";
+import { deleteCache, getCache, setCache, CacheKey, TTL } from "../../../infrastructure/cache/cache.service.js";
 import { smartResolveMediaUrl } from "../../../infrastructure/storage/media-resolver.js";
 import { formatAuthResponse, USER_INCLUDE } from "../../auth/services/identity.service.js";
 
@@ -439,6 +439,117 @@ export const updatePreferences = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Claim credits by watching an ad or completing an offer
+// @route   POST /api/user/credits/claim
+// @access  Private
+export const claimAdCredits = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const reward = Math.min(Math.max(Number(req.body.reward) || 10, 1), 100);
+  const offerId = String(req.body.offerId || 'offer');
+
+  // 1. Atomic database increment
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      credits: { increment: reward },
+    },
+    select: { id: true, credits: true },
+  });
+
+  // 2. Synchronize Redis profile cache in-place (cost-saver write-through pattern)
+  const cacheKey = CacheKey.userProfile(userId);
+  const cachedUser = await getCache(cacheKey);
+  if (cachedUser) {
+    cachedUser.credits = updatedUser.credits;
+    await setCache(cacheKey, cachedUser, TTL.USER_PROFILE);
+  }
+
+  logger.info(`💰 [CREDITS] User ${userId} claimed +${reward} credits via offer ${offerId}. New balance: ${updatedUser.credits}`);
+
+  return res.status(200).json({
+    success: true,
+    message: `Successfully earned +${reward} credits!`,
+    credits: updatedUser.credits,
+    reward,
+  });
+});
+
+// @desc    Deduct credits for using an AI tool or platform feature
+// @route   POST /api/user/credits/deduct
+// @access  Private
+export const deductCredits = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const amount = Math.max(Number(req.body.amount) || 0, 1);
+
+  // Check balance first
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { credits: true },
+  });
+
+  if (!user || user.credits < amount) {
+    throw new ApiError(400, "Insufficient credits to perform this action.");
+  }
+
+  // Atomic decrement
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      credits: { decrement: amount },
+    },
+    select: { id: true, credits: true },
+  });
+
+  // Update Redis cache in-place
+  const cacheKey = CacheKey.userProfile(userId);
+  const cachedUser = await getCache(cacheKey);
+  if (cachedUser) {
+    cachedUser.credits = updatedUser.credits;
+    await setCache(cacheKey, cachedUser, TTL.USER_PROFILE);
+  }
+
+  return res.status(200).json({
+    success: true,
+    credits: updatedUser.credits,
+    deducted: amount,
+  });
+});
+
+// @desc    Get user's current credits
+// @route   GET /api/user/credits
+// @access  Private
+export const getMyCredits = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  // Check Redis cache first (0 DB queries)
+  const cacheKey = CacheKey.userProfile(userId);
+  const cachedUser = await getCache(cacheKey);
+  if (cachedUser && typeof cachedUser.credits === 'number') {
+    return res.status(200).json({
+      success: true,
+      credits: cachedUser.credits,
+      _fromCache: true,
+    });
+  }
+
+  // Fallback to DB
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { credits: true },
+  });
+
+  const credits = user?.credits ?? 0;
+  return res.status(200).json({
+    success: true,
+    credits,
+  });
+});
+
 export default {
   getMyBasicInfo,
   updateMyBasicInfo,
@@ -447,6 +558,10 @@ export default {
   updateCoverBanner,
   followUser,
   unfollowUser,
-  updatePreferences
+  updatePreferences,
+  claimAdCredits,
+  deductCredits,
+  getMyCredits,
 };
+
 

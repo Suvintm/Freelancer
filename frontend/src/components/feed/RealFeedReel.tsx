@@ -196,7 +196,7 @@ export const RealFeedReel = memo(function RealFeedReel({
           <div className="flex flex-col justify-center">
             <h4 className="text-[13px] font-semibold text-white tracking-wide leading-tight drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.9)] flex items-center gap-1.5">
               {userName}
-              <VerifiedBadge isVerified={post.user?.is_verified} role={post.user?.role} className="w-[12px] h-[12px]" />
+              <VerifiedBadge isVerified={post.user?.is_verified} role={post.user?.role} color="white" className="w-3.5 h-3.5" />
               {post.created_at && (
                 <>
                   <span className="text-white/80 font-normal text-[11px]">•</span>

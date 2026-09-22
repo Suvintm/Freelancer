@@ -2,51 +2,21 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, ArrowRight, Sparkles, ShieldCheck, Briefcase, Zap } from 'lucide-react';
 import { FaYoutube, FaInstagram } from 'react-icons/fa6';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
+import { useUserRole } from '../../hooks/useUserRole';
 import { useTheme } from '../../hooks/useTheme';
 
 export const UnlinkedChannelModal: React.FC = () => {
   const navigate = useNavigate();
-  const user = useSelector(selectUser);
+  const { user, isCreator, hasYouTube, hasInstagram } = useUserRole();
   const { isDarkMode } = useTheme();
-
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    Boolean(user?.creatorProfile);
 
   // Only apply modal to Creators
   if (!user || !isCreator) {
     return null;
   }
 
-  // Check if creator has at least ONE social account linked (YouTube OR Instagram)
-  const hasYoutube = Boolean(
-    (Array.isArray(user?.youtubeChannels) && user.youtubeChannels.length > 0) ||
-    (Array.isArray(user?.youtubeProfile) && user.youtubeProfile.length > 0) ||
-    user?.channelLinkStatus === 'LINKED' ||
-    user?.channel_link_status === 'LINKED' ||
-    Boolean(user?.creatorProfile?.channels && user.creatorProfile.channels.length > 0)
-  );
-
-  const hasInstagram = Boolean(
-    user?.instagramProfile ||
-    (Array.isArray(user?.instagramAccounts) && user.instagramAccounts.length > 0) ||
-    Boolean(user?.creatorProfile?.instagramAccounts && user.creatorProfile.instagramAccounts.length > 0)
-  );
-
   // If creator has linked at least one social account, do not show modal
-  if (hasYoutube || hasInstagram) {
+  if (hasYouTube || hasInstagram) {
     return null;
   }
 

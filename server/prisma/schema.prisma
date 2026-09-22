@@ -24,6 +24,7 @@ model User {
   login_attempts            Int                        @default(0) @map("login_attempts")
   locked_until              DateTime?                  @map("locked_until") @db.Timestamptz(6)
   is_onboarded              Boolean                    @default(false) @map("is_onboarded")
+  credits                   Int                        @default(0) @map("credits")
   last_login_at             DateTime?                  @map("last_login_at") @db.Timestamptz(6)
   deleted_at                DateTime?                  @map("deleted_at") @db.Timestamptz(6)
   created_at                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)

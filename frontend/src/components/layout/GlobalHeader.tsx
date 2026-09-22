@@ -10,7 +10,8 @@ import {
   User as UserIcon, 
   Settings, 
   CreditCard, 
-  LogOut 
+  LogOut,
+  Plus 
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
@@ -21,6 +22,8 @@ import { SearchDropdown } from './SearchDropdown';
 import darkLogo from '../../assets/darklogo.png';
 import lightLogo from '../../assets/lightlogo.png';
 import defaultProfile from '../../assets/defaultprofile.png';
+import { WatchAdsCreditsModal } from './WatchAdsCreditsModal';
+import { UserRoleBadge } from './UserRoleBadge';
 
 export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const navigate = useNavigate();
@@ -31,6 +34,28 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
+  const [credits, setCredits] = useState<number>(() => {
+    const saved = localStorage.getItem('suvix_user_credits');
+    return saved !== null ? parseInt(saved, 10) : (user?.credits ?? 0);
+  });
+
+  const handleCreditsEarned = (amount: number) => {
+    setCredits((prev) => {
+      const next = prev + amount;
+      localStorage.setItem('suvix_user_credits', next.toString());
+      return next;
+    });
+  };
+
+  // Dynamically sync credits from user API request (if available) and cache in localStorage
+  useEffect(() => {
+    const apiCredits = user?.credits ?? user?.credit ?? user?.profile?.credits ?? user?.stats?.credits;
+    if (typeof apiCredits === 'number' && !isNaN(apiCredits)) {
+      setCredits(apiCredits);
+      localStorage.setItem('suvix_user_credits', apiCredits.toString());
+    }
+  }, [user]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -85,7 +110,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   };
 
   return (
-    <header className={`h-16 w-full shrink-0 border-none flex items-center px-4 lg:px-6 z-50 relative transition-colors duration-200 ${
+    <header className={`h-16 w-full shrink-0 border-none flex items-center px-4 lg:px-6 z-30 relative transition-colors duration-200 ${
       isDarkMode ? 'bg-black' : 'bg-white'
     }`}>
 
@@ -204,10 +229,10 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
       {/* ── Desktop layout (Matches the Reference Image exactly) ───────── */}
       <div className="hidden lg:flex items-center justify-between w-full gap-4">
 
-        {/* Left Side: Logo & Capsule Search Bar */}
-        <div className="flex items-center flex-1 max-w-[620px] xl:max-w-[700px]">
+        {/* Left Side: Logo, Capsule Search Bar & Dynamic Role Badge */}
+        <div className="flex items-center flex-1 max-w-[760px] xl:max-w-[860px] gap-2.5 xl:gap-3">
           {/* SuviX Logo */}
-          <Link to="/home" className="flex items-center shrink-0 hover:opacity-95 transition-opacity mr-6 xl:mr-8">
+          <Link to="/home" className="flex items-center shrink-0 hover:opacity-95 transition-opacity mr-2 xl:mr-4">
             <img
               src={isDarkMode ? darkLogo : lightLogo}
               alt="SuviX"
@@ -216,7 +241,7 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
           </Link>
 
           {/* Capsule Search Bar */}
-          <div ref={searchContainerRef} className="relative w-full group">
+          <div ref={searchContainerRef} className="relative flex-1 group min-w-[200px]">
             <div className={`relative flex items-center w-full h-10 rounded-full border transition-all ${
               isDarkMode 
                 ? 'bg-[#18181B] hover:bg-[#202024] focus-within:bg-[#09090B] border-transparent focus-within:border-zinc-700 shadow-sm' 
@@ -256,10 +281,17 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
               />
             )}
           </div>
+
+          {/* Dynamic Actual User Role Badge (Positioned directly next to Search Bar, matching reference image) */}
+          <div className="shrink-0 hidden md:flex items-center">
+            <UserRoleBadge />
+          </div>
         </div>
 
-        {/* Right Side: Notification, Chat, Credits, Creative Tool, Theme Toggle, User Profile */}
+        {/* Right Side: Divider, Notification, Chat, Credits, Creative Tool, Theme Toggle, User Profile */}
         <div className="flex items-center gap-2 xl:gap-2.5 shrink-0 ml-auto">
+          {/* Subtle Vertical Divider separating Search+Role and Actions */}
+          <div className="h-5 w-[1px] bg-zinc-200 dark:bg-zinc-800 mx-0.5 hidden xl:block" />
 
           {/* 1. Notification Bell with Red Badge */}
           <button
@@ -280,16 +312,67 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
             <MessageSquare size={19} strokeWidth={1.9} />
           </button>
 
-          {/* 3. SuviX Credits Pill (Purple Badge with Sparkles/Gem) */}
+          {/* 3. SuviX Modern Credits Pill */}
           <div 
-            onClick={() => navigate('/subscription')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F5F3FF] dark:bg-[#7C3AED]/15 border border-[#EDE9FE] dark:border-[#7C3AED]/30 text-[#7C3AED] dark:text-[#A78BFA] cursor-pointer hover:bg-[#EDE9FE] dark:hover:bg-[#7C3AED]/25 transition-all shadow-sm select-none"
-            title="SuviX Credits"
+            onClick={() => setIsCreditsModalOpen(true)}
+            className="flex items-center gap-2 sm:gap-2.5 pl-2.5 pr-1.5 py-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50/90 dark:hover:bg-zinc-850/80 transition-all cursor-pointer select-none group"
+            title={`SuviX Credits: ${credits.toLocaleString()}`}
           >
-            <div className="w-4 h-4 rounded-full bg-[#7C3AED] flex items-center justify-center shrink-0 shadow-sm">
-              <Sparkles size={9} className="text-white fill-white" />
+            {/* Stacked purple coins icon */}
+            <svg 
+              width="22" 
+              height="22" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="shrink-0 group-hover:scale-105 transition-transform"
+            >
+              {/* Bottom Disc */}
+              <g>
+                <path d="M4 14.5C4 16.8 7.6 18.5 12 18.5C16.4 18.5 20 16.8 20 14.5V16.5C20 18.8 16.4 20.5 12 20.5C7.6 20.5 4 18.8 4 16.5V14.5Z" fill="#6366F1" />
+                <ellipse cx="12" cy="14.5" rx="8" ry="3.2" fill="#7C3AED" />
+                <path d="M4 14.5C4 16.5 7.6 18 12 18C16.4 18 20 16.5 20 14.5" stroke="#A78BFA" strokeWidth="0.75" />
+              </g>
+
+              {/* Middle Disc */}
+              <g>
+                <path d="M4 9.5C4 11.8 7.6 13.5 12 13.5C16.4 13.5 20 11.8 20 9.5V11.5C20 13.8 16.4 15.5 12 15.5C7.6 15.5 4 13.8 4 11.5V9.5Z" fill="#7C3AED" />
+                <ellipse cx="12" cy="9.5" rx="8" ry="3.2" fill="#8B5CF6" />
+                <path d="M4 9.5C4 11.5 7.6 13 12 13C16.4 13 20 11.5 20 9.5" stroke="#C4B5FD" strokeWidth="0.75" />
+              </g>
+
+              {/* Top Disc */}
+              <g>
+                <path d="M4 4.5C4 6.8 7.6 8.5 12 8.5C16.4 8.5 20 6.8 20 4.5V6.5C20 8.8 16.4 10.5 12 10.5C7.6 10.5 4 8.8 4 6.5V4.5Z" fill="#8B5CF6" />
+                <ellipse cx="12" cy="4.5" rx="8" ry="3.2" fill="#A855F7" />
+                <ellipse cx="12" cy="4.5" rx="7.5" ry="2.9" stroke="#E9D5FF" strokeWidth="0.7" />
+                {/* Center hole */}
+                <ellipse cx="12" cy="4.5" rx="3" ry="1.3" fill="white" />
+              </g>
+            </svg>
+
+            {/* Middle text column: Credits / dynamic */}
+            <div className="flex flex-col text-left leading-none">
+              <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 leading-none">
+                Credits
+              </span>
+              <span className="text-[13px] font-bold text-zinc-900 dark:text-white leading-none mt-0.5 tracking-tight">
+                {credits.toLocaleString()}
+              </span>
             </div>
-            <span className="text-xs sm:text-[12.5px] font-extrabold tracking-tight">1,250</span>
+
+            {/* Black + Button on the right */}
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreditsModalOpen(true);
+              }}
+              className="w-5.5 h-5.5 rounded-full bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center shrink-0 ml-1 shadow-xs transition-transform active:scale-95 cursor-pointer"
+              title="Add credits"
+            >
+              <Plus size={13} strokeWidth={2.6} />
+            </button>
           </div>
 
           {/* 4. Creativity / Tools Icon */}
@@ -418,6 +501,14 @@ export const GlobalHeader = ({ onMenuPress }: { onMenuPress?: () => void }) => {
         </div>
 
       </div>
+
+      {/* Watch Ads & Earn Credits Modal */}
+      <WatchAdsCreditsModal 
+        isOpen={isCreditsModalOpen} 
+        onClose={() => setIsCreditsModalOpen(false)} 
+        onCreditsEarned={handleCreditsEarned}
+        currentCredits={credits}
+      />
 
     </header>
   );

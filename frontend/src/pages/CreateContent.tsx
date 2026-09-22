@@ -50,7 +50,7 @@ export default function CreateContent() {
     { id: 'REEL', label: 'Reel', icon: Video, desc: 'Share a short vertical video' },
     ...(isYoutubeCreator ? [{ id: 'YOUTUBE', label: 'YouTube', icon: Youtube, desc: 'Share a YouTube video link' }] : []),
     { id: 'POLL', label: 'Poll', icon: BarChart2, desc: 'Ask your audience' },
-  ] as { id: TabType; label: string; icon: React.ElementType; desc: string }[];
+  ] as { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[];
 
   const handleTabChange = (tab: TabType) => {
     if (tab === 'POLL') {
