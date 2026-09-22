@@ -92,11 +92,16 @@ export default function Welcome() {
     setActive((p) => Math.min(p + 1, SLIDES.length - 1));
   }, []);
 
-  // Auto-advance every 5 seconds
+  // Auto-advance every 5 seconds (configurable in E2E tests for speed and reliability)
   useEffect(() => {
+    const slideInterval =
+      typeof window !== 'undefined' && (window as unknown as { __E2E_SLIDE_INTERVAL__?: number }).__E2E_SLIDE_INTERVAL__
+        ? Number((window as unknown as { __E2E_SLIDE_INTERVAL__?: number }).__E2E_SLIDE_INTERVAL__)
+        : 5000;
+
     const t = setTimeout(() => {
       if (!isLast) goNext();
-    }, 5000);
+    }, slideInterval);
     return () => clearTimeout(t);
   }, [active, isLast, goNext]);
 

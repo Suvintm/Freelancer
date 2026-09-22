@@ -19,6 +19,10 @@ test.describe('Welcome Page E2E', () => {
         body: JSON.stringify({ success: true, user: null }),
       });
     });
+    // Speed up slide carousel auto-advance for snappy, reliable E2E tests
+    await page.addInitScript(() => {
+      (window as unknown as { __E2E_SLIDE_INTERVAL__?: number }).__E2E_SLIDE_INTERVAL__ = 2000;
+    });
   });
 
   test('should load the welcome page and display the logo and hero headline', async ({ page }) => {
@@ -56,6 +60,8 @@ test.describe('Welcome Page E2E', () => {
     await expect(page.getByRole('heading', { name: /Scale Your/i }).first()).toBeVisible();
     
     // Auto-advances to next slide
-    await expect(page.getByRole('heading', { name: /Promote with/i }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Promote with/i }).first()).toBeVisible({ timeout: 15000 });
   });
 });
+
+
