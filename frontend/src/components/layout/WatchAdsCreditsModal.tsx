@@ -126,7 +126,7 @@ export const WatchAdsCreditsModal: React.FC<WatchAdsCreditsModalProps> = ({
 
   // Handle Ad Countdown Timer
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (activeAd && countdown > 0 && !isCompleted) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);

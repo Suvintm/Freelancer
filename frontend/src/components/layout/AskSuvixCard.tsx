@@ -16,7 +16,6 @@ import {
 import asksuvixBg from '../../assets/asksuvixbg.png';
 import asksuvixWhiteBg from '../../assets/asksuvixwhitebg.png';
 import officialLogo from '../../assets/officiallogo.png';
-import lightLogo from '../../assets/lightlogo.png';
 import { useAskSuvix } from '../../context/AskSuvixContext';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -309,6 +308,7 @@ export const AskSuvixCard: React.FC<{ className?: string }> = ({ className = '' 
   };
 
   const handleSelectSuggestion = (item: SuggestionItem) => {
+    setCurrentPromptTitle(item.text);
     openAskSuvix(item.text);
   };
 

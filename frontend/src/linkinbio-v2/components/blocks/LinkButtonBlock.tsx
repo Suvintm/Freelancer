@@ -25,7 +25,7 @@ interface LinkButtonBlockProps {
   onClick?: () => void;
 }
 
-const ICON_MAP: Record<string, React.ElementType> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Globe,
   Play,
   Camera,

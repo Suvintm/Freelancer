@@ -15,7 +15,6 @@ import {
   Plus,
   Play,
   Eye,
-  ExternalLink,
 } from 'lucide-react';
 import {
   FaYoutube,

@@ -12,17 +12,11 @@ import {
   X, 
   LayoutGrid, 
   PlaySquare, 
-  Youtube, 
-  Image as ImageIcon,
-  Users2, 
-  Tag, 
-  Star,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Upload,
   Plus,
-  ExternalLink,
   MoreVertical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -809,7 +803,7 @@ export const CreatorMediaGrid: React.FC<CreatorMediaGridProps> = ({
                 {/* Header */}
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="text-[10.5px] font-bold text-zinc-400">
-                    {new Date(poll.createdAt || poll.created_at || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    {(poll.createdAt || poll.created_at) ? new Date(poll.createdAt || poll.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent'}
                   </span>
                   <span className="text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                     Active Poll
@@ -1024,7 +1018,7 @@ export const CreatorMediaGrid: React.FC<CreatorMediaGridProps> = ({
                   )}
 
                   <div className="text-[10px] font-medium text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                    Uploaded {new Date(selectedMedia.createdAt || selectedMedia.created_at || selectedMedia.published_at || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Uploaded {(selectedMedia.createdAt || selectedMedia.created_at || selectedMedia.published_at) ? new Date(selectedMedia.createdAt || selectedMedia.created_at || selectedMedia.published_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'}
                   </div>
                 </div>
 

@@ -20,7 +20,7 @@ interface MetricCardProps {
   value: string;
   delta: string;
   isPositive: boolean;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
 }

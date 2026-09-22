@@ -13,7 +13,6 @@ import {
   Briefcase, 
   Lightbulb, 
   TrendingUp, 
-  Clock,
   Sun,
   Moon,
   ChevronLeft

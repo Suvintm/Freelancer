@@ -1,4 +1,3 @@
-import React from 'react';
 import { VscVerifiedFilled } from 'react-icons/vsc';
 
 export interface VerifiedBadgeProps {

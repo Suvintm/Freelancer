@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CURRENT_USER_QUERY_KEY } from '../queries/useCurrentUser';
 import { OnboardingSyncOverlay } from '../components/onboarding/OnboardingSyncOverlay';
 import { api } from '../api/client';
+import { authService } from '../api/services/auth.service';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 

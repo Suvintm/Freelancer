@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ReactLenis }       from 'lenis/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Plus, 
   ExternalLink, 
@@ -37,8 +37,6 @@ import { VerifiedBadge } from '../ui/VerifiedBadge';
 import sidebarLottieAnimation from '../../assets/lottie/sidebar_lottie.json';
 import { OnboardingSyncOverlay } from '../onboarding/OnboardingSyncOverlay';
 import { AskSuvixCard } from './AskSuvixCard';
-import { ExpandedAskSuvixPanel } from './ExpandedAskSuvixPanel';
-import { useAskSuvix } from '../../context/AskSuvixContext';
 
 const Lottie = (LottieComponent as unknown as { default: typeof LottieComponent })?.default || LottieComponent;
 

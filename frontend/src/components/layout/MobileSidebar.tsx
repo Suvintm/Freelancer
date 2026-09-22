@@ -56,7 +56,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   );
 
   const menuItems = useMemo(() => {
-    let items = [...NAV_ITEMS];
+    const items = [...NAV_ITEMS];
     if (isCreator) {
       const ytIndex = items.findIndex(item => item.path === '/youtube-dashboard');
       const insertAt = ytIndex !== -1 ? ytIndex + 1 : items.length - 2;

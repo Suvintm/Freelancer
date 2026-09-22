@@ -22,6 +22,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, isOpen
   const initialWebsite = (user?.website && !user.website.includes('linktr.ee')) 
     ? user.website 
     : `suvix.in/u/${cleanUsername}`;
+  const [location, setLocation] = useState(user?.location || 'Bengaluru, India');
   const [website, setWebsite] = useState(initialWebsite);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);

@@ -8,7 +8,7 @@ interface SocialBarBlockProps {
   theme?: Theme;
 }
 
-const PLATFORM_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
+const PLATFORM_ICONS: Record<string, { icon: React.ComponentType<any>; label: string; color: string }> = {
   instagram: { icon: FaInstagram, label: 'Instagram', color: '#E4405F' },
   youtube: { icon: FaYoutube, label: 'YouTube', color: '#FF0000' },
   twitter: { icon: FaTwitter, label: 'X (Twitter)', color: '#1DA1F2' },

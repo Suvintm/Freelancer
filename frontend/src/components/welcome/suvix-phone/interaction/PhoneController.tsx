@@ -20,7 +20,7 @@ export function PhoneController({ children }: PhoneControllerProps) {
   const targetRotation = useRef({ x: 0.1, y: -0.25 });
   const isDragging = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
-  const lastInteractionTime = useRef(Date.now());
+  const lastInteractionTime = useRef(0);
 
   // Tuning constants
   const MAX_TILT_X = 0.55; // ~31.5 degrees max vertical tilt
