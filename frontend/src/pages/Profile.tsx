@@ -1,24 +1,11 @@
-import { useSelector } from 'react-redux';
-import { selectUser } from '../store/slices/authSlice';
+import { useUserRole } from '../hooks/useUserRole';
 import { ProfileDispatcher, type UserRole } from '../components/profile/ProfileDispatcher';
 
 export default function Profile() {
-  const user = useSelector(selectUser);
+  const { user, isCreator } = useUserRole();
 
-  const roleStr = (user?.role || '').toLowerCase();
   const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
   const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    !!user?.creatorProfile ||
-    !!user?.youtubeProfile?.length;
 
   let activeRole: UserRole = 'default';
 
@@ -29,7 +16,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       <ProfileDispatcher role={activeRole} viewType="main" data={user} />
     </div>
   );

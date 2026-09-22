@@ -31,7 +31,7 @@ import { setTempSignupData } from '../../store/slices/onboardingSlice';
 import type { RootState } from '../../store';
 import { selectUser } from '../../store/slices/authSlice';
 import logo from '../../assets/lightlogo.png';
-import editorBadge from '../../assets/verifiedBadges/editor_badge.png';
+import { VerifiedBadge } from '../../components/ui/VerifiedBadge';
 
 // ── SPECIALIZATIONS CATALOG WITH MODERN LUCIDE ICONS ─────────────────────────
 interface SpecializationOption {
@@ -294,11 +294,7 @@ export default function EditorSpecialization() {
 
                 {/* Verified Editor Badge */}
                 <div className="flex flex-col items-end shrink-0">
-                  <img
-                    src={editorBadge}
-                    alt="Verified Editor"
-                    className="h-6.5 w-auto object-contain"
-                  />
+                  <VerifiedBadge isVerified={true} role="Editor" className="w-6.5 h-6.5" />
                   <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mt-1">
                     Verified Talent
                   </span>

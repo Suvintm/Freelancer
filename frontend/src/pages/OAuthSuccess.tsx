@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
+import { FaYoutube } from 'react-icons/fa6';
 import LottieComponent from 'lottie-react';
 import securityLoaderAnimation from '../assets/lottie/security_loader.json';
 
@@ -34,6 +36,7 @@ export default function OAuthSuccess() {
   const queryClient = useQueryClient();
   const exchangeStarted = useRef(false);
   const codeRef = useRef<string | null>(null);
+  const [isPopupSuccess, setIsPopupSuccess] = useState(false);
 
   useEffect(() => {
     // 🛡️ Support both URL fragment (#code=...) and query (?code=...)
@@ -71,10 +74,19 @@ export default function OAuthSuccess() {
           return;
         }
 
-        const userEmail = response.data.socialProfile?.email || response.data.user?.email;
-        if (!isAccessAllowed(userEmail)) {
-          navigate('/login?error=maintenance_restricted');
-          return;
+        const oauthIntent = sessionStorage.getItem('oauth_intent') || (window.location.search.includes('connect_youtube') ? 'connect_youtube' : null);
+        const isFromConnectedApps = 
+          sessionStorage.getItem('oauth_origin') === 'connected_apps' ||
+          localStorage.getItem('oauth_origin') === 'connected_apps';
+        const isExplicitYoutubeConnect = Boolean(response.data.isExplicitYoutubeConnect) || oauthIntent === 'connect_youtube' || Boolean(sessionStorage.getItem('youtube_access_token'));
+
+        // Whitelist check: only enforce for standard registration/login; bypass for brand account connecting from connected apps
+        if (!isFromConnectedApps && !isExplicitYoutubeConnect) {
+          const userEmail = response.data.socialProfile?.email || response.data.user?.email;
+          if (!isAccessAllowed(userEmail)) {
+            navigate('/login?error=maintenance_restricted');
+            return;
+          }
         }
 
         // Read intent and state from tempSignupData, with synchronous sessionStorage recovery
@@ -94,12 +106,92 @@ export default function OAuthSuccess() {
           }
         }
 
-        const oauthIntent = sessionStorage.getItem('oauth_intent') || (window.location.search.includes('connect_youtube') ? 'connect_youtube' : null);
-        const isExplicitYoutubeConnect = Boolean(response.data.isExplicitYoutubeConnect) || oauthIntent === 'connect_youtube' || Boolean(sessionStorage.getItem('youtube_access_token'));
         const intent = tempSignupData?.intent ?? (isExplicitYoutubeConnect ? 'register' : 'login');
 
-        // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW ──────────────────────────────
-        // ONLY trigger YouTube channel fetch if user explicitly clicked "Connect YouTube"
+        // ── 0. CONNECTED APPS MODAL / POPUP FLOW ──────────────────────────────
+        // If the user initiated connect from /connected-apps, NEVER send to /connect-socials!
+        if (isFromConnectedApps) {
+          sessionStorage.removeItem('oauth_origin');
+          localStorage.removeItem('oauth_origin');
+          sessionStorage.removeItem('oauth_intent');
+
+          const tokenToUse = response.data.googleAccessToken || response.data.socialProfile?.accessToken;
+          const isPopup = Boolean(window.opener) || window.name === 'suvix_oauth_popup' || window.name.includes('popup');
+
+          // Broadcast token across tabs/windows regardless of window.opener
+          if (tokenToUse) {
+            try {
+              const broadcast = new BroadcastChannel('suvix_oauth_channel');
+              broadcast.postMessage({
+                type: 'SUVIX_OAUTH_SUCCESS',
+                platform: 'youtube',
+                token: tokenToUse,
+                googleUser: response.data.socialProfile || response.data.user,
+              });
+              broadcast.close();
+            } catch (err) {
+              console.warn('[OAuth] BroadcastChannel failed:', err);
+            }
+
+            try {
+              localStorage.setItem(
+                'suvix_oauth_event',
+                JSON.stringify({
+                  type: 'SUVIX_OAUTH_SUCCESS',
+                  platform: 'youtube',
+                  token: tokenToUse,
+                  timestamp: Date.now(),
+                })
+              );
+            } catch {
+              // ignore
+            }
+          }
+
+          if (isPopup) {
+            // If window.opener is still alive, postMessage directly too
+            if (window.opener && !window.opener.closed) {
+              try {
+                window.opener.postMessage(
+                  {
+                    type: 'SUVIX_OAUTH_SUCCESS',
+                    platform: 'youtube',
+                    token: tokenToUse,
+                    googleUser: response.data.socialProfile || response.data.user,
+                  },
+                  window.location.origin
+                );
+              } catch (err) {
+                console.warn('[OAuth] Popup postMessage failed:', err);
+              }
+            }
+
+            setIsPopupSuccess(true);
+            window.close();
+            setTimeout(() => {
+              window.close();
+            }, 600);
+            return;
+          }
+
+          // Fallback: full-page redirect back to /connected-apps with state
+          if (tokenToUse) {
+            sessionStorage.setItem('connected_apps_token', tokenToUse);
+            sessionStorage.setItem('connected_apps_platform', 'youtube');
+          }
+          navigate('/connected-apps#youtube', {
+            state: {
+              oauthToken: tokenToUse,
+              platform: 'youtube',
+              autoOpen: true,
+            },
+            replace: true,
+          });
+          return;
+        }
+
+        // ── CHANNEL FETCH / YOUTUBE CONNECT FLOW (ONBOARDING ONLY) ───────────
+        // ONLY trigger YouTube channel fetch if user explicitly clicked "Connect YouTube" during onboarding
         if (isExplicitYoutubeConnect) {
           sessionStorage.removeItem('oauth_intent');
           dispatch(resetYoutubeDiscovery());
@@ -121,9 +213,6 @@ export default function OAuthSuccess() {
           } : undefined);
 
           if (profileData?.email) {
-            // ✅ CRITICAL: Read the ORIGINAL authMethod before overwriting.
-            // Email users connecting YouTube (YouTube Data API OAuth) must keep authMethod:'email'.
-            // Only Google-auth users should get authMethod:'google' and isSocialSignup:true.
             const existingAuthMethod = tempSignupData?.authMethod;
             const isGoogleAuthFlow = existingAuthMethod === 'google';
 
@@ -134,7 +223,6 @@ export default function OAuthSuccess() {
                 picture: profileData.picture || undefined,
                 googleId: profileData.googleId || '',
               },
-              // Only overwrite these for actual Google-auth users, not email users
               ...(isGoogleAuthFlow ? { isSocialSignup: true, authMethod: 'google' as const } : {}),
             };
             dispatch(setTempSignupData(profileUpdate));
@@ -232,6 +320,47 @@ export default function OAuthSuccess() {
 
     exchangeCode();
   }, [searchParams, navigate, dispatch, queryClient]);
+
+  if (isPopupSuccess) {
+    return (
+      <div className="h-screen w-full bg-[#121316] text-white flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3">
+          <CheckCircle2 size={32} />
+        </div>
+        <h3 className="text-base font-bold">Google Authorization Complete</h3>
+        <p className="text-xs text-zinc-400 mt-1">
+          Returning to SuviX Creator Ecosystem...
+        </p>
+        <button
+          onClick={() => window.close()}
+          className="mt-4 px-4 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition-colors cursor-pointer"
+        >
+          Close Window
+        </button>
+      </div>
+    );
+  }
+
+  const isConnectedAppsExchange =
+    sessionStorage.getItem('oauth_origin') === 'connected_apps' ||
+    localStorage.getItem('oauth_origin') === 'connected_apps';
+
+  if (isConnectedAppsExchange) {
+    return (
+      <div className="h-screen w-full bg-[#121316] text-white flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="relative w-16 h-16 flex items-center justify-center mb-4">
+          <div className="absolute inset-0 rounded-full border-2 border-red-500/20 border-t-red-600 animate-spin" />
+          <div className="w-10 h-10 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center">
+            <FaYoutube size={22} />
+          </div>
+        </div>
+        <h3 className="text-base font-bold">Connecting YouTube Channel</h3>
+        <p className="text-xs text-zinc-400 mt-1">
+          Securing authorization credentials...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-[#FAFAFA] flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">

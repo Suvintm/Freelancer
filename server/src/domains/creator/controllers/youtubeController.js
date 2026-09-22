@@ -156,9 +156,29 @@ export const deleteChannel = async (req, res, next) => {
       `🗑️ [CONTROLLER] User ${userId} requested deletion of YouTube channel: ${profileId}`
     );
 
-    // 1. Fetch channel and verify ownership
+    // 0. Guard: Creator must maintain at least one connected account on SuviX across all platforms
+    const [ytCount, igCount] = await Promise.all([
+      prisma.youTubeChannel.count({ where: { userId } }),
+      prisma.instagramAccount.count({ where: { userId } }),
+    ]);
+    const totalConnected = ytCount + igCount;
+
+    if (totalConnected <= 1) {
+      throw new ApiError(
+        400,
+        "As a creator on SuviX, you must maintain at least one connected account on your profile. You cannot delete your only remaining account."
+      );
+    }
+
+    // 1. Fetch channel and verify ownership (supports both UUID id and YouTube channel_id)
     const channel = await prisma.youTubeChannel.findFirst({
-      where: { id: profileId, userId },
+      where: {
+        userId,
+        OR: [
+          { id: profileId },
+          { channel_id: profileId },
+        ],
+      },
       include: {
         videos: {
           select: { thumbnail: true },
@@ -182,7 +202,7 @@ export const deleteChannel = async (req, res, next) => {
 
     // 3. Delete from Database (Cascades to videos and logs)
     await prisma.youTubeChannel.delete({
-      where: { id: profileId },
+      where: { id: channel.id },
     });
 
     // 4. Cleanup S3 Media in background
@@ -463,6 +483,9 @@ export const getUserVideos = async (req, res, next) => {
 
             return {
               ...v,
+              channel_id: v.channel_id || p.channel_id || p.id,
+              channel_name: v.channel_name || p.channel_name || p.title || p.channelTitle,
+              channel_avatar: v.channel_avatar || p.thumbnail_url || p.channel_avatar || p.avatar,
               video_id: v.video_id || null,
               view_count: v.view_count != null ? String(v.view_count) : "0",
               like_count: v.like_count != null ? String(v.like_count) : "0",

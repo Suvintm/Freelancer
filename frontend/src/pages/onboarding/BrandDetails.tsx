@@ -32,7 +32,7 @@ import { setTempSignupData } from '../../store/slices/onboardingSlice';
 import type { RootState } from '../../store';
 import { selectUser } from '../../store/slices/authSlice';
 import logo from '../../assets/lightlogo.png';
-import brandBadge from '../../assets/verifiedBadges/brand_badge.png';
+import { VerifiedBadge } from '../../components/ui/VerifiedBadge';
 
 // ── INDUSTRY VERTICALS CATALOG ───────────────────────────────────────────────
 interface IndustryOption {
@@ -273,11 +273,7 @@ export default function BrandDetails() {
 
                 {/* Verified Sponsor Badge */}
                 <div className="flex flex-col items-end shrink-0">
-                  <img
-                    src={brandBadge}
-                    alt="Verified Brand"
-                    className="h-6.5 w-auto object-contain"
-                  />
+                  <VerifiedBadge isVerified={true} role="Brand" className="w-6.5 h-6.5" />
                   <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mt-1">
                     Verified Sponsor
                   </span>

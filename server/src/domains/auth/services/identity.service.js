@@ -164,5 +164,6 @@ export const formatAuthResponse = (user, subscription = null) => {
     following: user.stats?.following_count || 0,
     followingIds: (user.follows || []).map((f) => f.followingId),
     subscription,
+    credits: typeof user.credits === 'number' ? user.credits : 0,
   };
 };

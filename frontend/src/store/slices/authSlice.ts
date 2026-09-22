@@ -1,12 +1,57 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+import type { AppRole } from '../../types/auth';
+
+/**
+ * Normalizes any incoming role/category string into a strict canonical AppRole.
+ * Guarantees conflict-free role consistency across the entire frontend.
+ */
+export const normalizeRole = (rawRole?: string, rawCategory?: string, rawCategorySlug?: string): AppRole => {
+  const role = (rawRole || '').toLowerCase().trim();
+  const cat = (rawCategory || '').toLowerCase().trim();
+  const catSlug = (rawCategorySlug || '').toLowerCase().trim();
+
+  if (
+    role === 'creator' ||
+    cat === 'creator' ||
+    catSlug === 'creator' ||
+    cat.includes('creator') ||
+    catSlug.includes('creator') ||
+    cat.includes('influencer') ||
+    catSlug.includes('influencer')
+  ) {
+    return 'creator';
+  }
+  if (
+    role === 'editor' ||
+    cat === 'editor' ||
+    catSlug === 'editor' ||
+    cat.includes('editor') ||
+    catSlug.includes('editor')
+  ) {
+    return 'editor';
+  }
+  if (
+    role === 'brand' ||
+    cat === 'brand' ||
+    catSlug === 'brand' ||
+    cat.includes('brand') ||
+    catSlug.includes('brand')
+  ) {
+    return 'brand';
+  }
+  if (role === 'admin') {
+    return 'admin';
+  }
+  return 'user';
+};
 
 export interface AuthUser {
   id: string;
   name: string;
   username: string;
   email: string;
-  role: string;
+  role: AppRole | string;
   profilePicture?: string;
   coverBanner?: string | null;
   is_verified?: boolean;
@@ -75,6 +120,7 @@ export interface AuthUser {
     daysRemaining?: number;
     planTier?: string;
   };
+  credits?: number;
   [key: string]: any;
 }
 
@@ -164,39 +210,52 @@ export const authSlice = createSlice({
   reducers: {
     setAuth: (state, action: PayloadAction<{ user: AuthUser; token: string; refreshToken: string }>) => {
       const { user, token, refreshToken } = action.payload;
-      const existingSessionIndex = state.sessions.findIndex(s => s.user.id === user.id);
+      const normalizedUser: AuthUser = {
+        ...user,
+        role: normalizeRole(user.role, user.primaryRole?.category, user.primaryRole?.categorySlug),
+      };
+      const existingSessionIndex = state.sessions.findIndex(s => s.user.id === normalizedUser.id);
       
       if (existingSessionIndex !== -1) {
-        state.sessions[existingSessionIndex] = { user, token, refreshToken };
+        state.sessions[existingSessionIndex] = { user: normalizedUser, token, refreshToken };
       } else {
-        state.sessions.push({ user, token, refreshToken });
+        state.sessions.push({ user: normalizedUser, token, refreshToken });
       }
       
-      state.activeUserId = user.id;
+      state.activeUserId = normalizedUser.id;
       state.isInitialized = true;
     },
     setTokens: (state, action: PayloadAction<{ token: string; refreshToken: string; user?: AuthUser }>) => {
       const activeSession = state.sessions.find(s => s.user.id === state.activeUserId);
+      const normalizedUser = action.payload.user ? {
+        ...action.payload.user,
+        role: normalizeRole(action.payload.user.role, action.payload.user.primaryRole?.category, action.payload.user.primaryRole?.categorySlug),
+      } : undefined;
+
       if (activeSession) {
         activeSession.token = action.payload.token;
         activeSession.refreshToken = action.payload.refreshToken;
-        if (action.payload.user) {
-          activeSession.user = action.payload.user;
+        if (normalizedUser) {
+          activeSession.user = normalizedUser;
         }
-      } else if (action.payload.user) {
+      } else if (normalizedUser) {
         // Fallback if no active session but user is provided
         state.sessions.push({
-          user: action.payload.user,
+          user: normalizedUser,
           token: action.payload.token,
           refreshToken: action.payload.refreshToken,
         });
-        state.activeUserId = action.payload.user.id;
+        state.activeUserId = normalizedUser.id;
       }
     },
     updateUser: (state, action: PayloadAction<Partial<AuthUser>>) => {
       const activeSession = state.sessions.find(s => s.user.id === state.activeUserId);
       if (activeSession) {
-        activeSession.user = { ...activeSession.user, ...action.payload };
+        const merged: AuthUser = { ...activeSession.user, ...action.payload };
+        if (action.payload.role || action.payload.primaryRole) {
+          merged.role = normalizeRole(merged.role, merged.primaryRole?.category, merged.primaryRole?.categorySlug);
+        }
+        activeSession.user = merged;
       }
     },
     clearAuth: (state) => {

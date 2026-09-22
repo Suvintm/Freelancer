@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { Users, Plus, Search, SlidersHorizontal, Bell } from 'lucide-react';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../store/slices/authSlice';
+import { useUserRole } from '../hooks/useUserRole';
 import defaultProfile from '../assets/defaultprofile.png';
 import CreateCommunityModal from '../components/community/CreateCommunityModal';
 import { useQuery } from '@tanstack/react-query';
@@ -24,20 +23,7 @@ const BUBBLE_COMMUNITIES = [
 const Community = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
-  const user = useSelector(selectUser);
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    !!user?.creatorProfile;
+  const { user, isCreator } = useUserRole();
   const [activeTab, setActiveTab] = useState('Discover');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 

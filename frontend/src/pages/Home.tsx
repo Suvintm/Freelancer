@@ -9,7 +9,6 @@ import { selectUser, updateUser } from '../store/slices/authSlice';
 import { MdChevronRight } from 'react-icons/md';
 import defaultProfile from '../assets/defaultprofile.png';
 import { VerifiedBadge } from '../components/ui/VerifiedBadge';
-import ytBadge from '../assets/verifiedBadges/yt_badge.png';
 import { UnifiedBanner } from '../components/home/UnifiedBanner';
 import { useTheme } from '../hooks/useTheme';
 import darkLogo from '../assets/darklogo.png';
@@ -507,7 +506,7 @@ export default function Home() {
             <ReactLenis
               ref={storiesLenisRef}
               root={false}
-              data-lenis-prevent
+              data-lenis-prevent-horizontal
               onScroll={handleStoriesScroll}
               options={{
                 orientation: 'horizontal',
@@ -542,11 +541,22 @@ export default function Home() {
 
                   {/* Counter-skew inner content so circle and text remain perfectly upright */}
                   <div className="relative z-10 skew-x-[7deg] flex flex-col items-center justify-between h-full w-full">
-                    {/* Consistent SOLID Circular Border Pattern (No fuzzy glow) */}
-                    <div className="w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] rounded-full p-[2px] bg-white flex items-center justify-center shrink-0">
-                      <div className="w-full h-full rounded-full p-[2px] bg-[#121215] flex items-center justify-center">
-                        <div className="w-full h-full rounded-full bg-[#1c1c22] group-hover/card:bg-[#25252c] transition-colors flex items-center justify-center text-white">
-                          <Plus size={20} strokeWidth={2.5} />
+                    {/* Consistent Gradient Circular Border Pattern */}
+                    {/* Outer: Thin White Border + Main Gradient (Top White, Bottom Black, Mixed in Middle) */}
+                    <div 
+                      style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 28%, #787882 50%, #000000 72%, #000000 100%)' }}
+                      className="w-[54px] h-[54px] sm:w-[58px] sm:h-[58px] rounded-full p-[2px] sm:p-[2.5px] border border-white/80 flex items-center justify-center shrink-0 shadow-sm"
+                    >
+                      {/* Inside Thin Border: Top Half Black, Bottom Half White, Mixed in Middle (Softened Opacity) */}
+                      <div 
+                        style={{ background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.7) 28%, rgba(120, 120, 130, 0.7) 50%, rgba(255, 255, 255, 0.7) 72%, rgba(255, 255, 255, 0.7) 100%)' }}
+                        className="w-full h-full rounded-full p-[1px] flex items-center justify-center"
+                      >
+                        {/* Dark Spacer Ring */}
+                        <div className="w-full h-full rounded-full p-[1.5px] bg-[#121215] flex items-center justify-center">
+                          <div className="w-full h-full rounded-full bg-[#1c1c22] group-hover/card:bg-[#25252c] transition-colors flex items-center justify-center text-white">
+                            <Plus size={19} strokeWidth={2.5} />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -588,17 +598,28 @@ export default function Home() {
 
                       {/* Counter-skew inner content so circle and text remain perfectly upright */}
                       <div className="relative z-10 skew-x-[7deg] flex flex-col items-center justify-between h-full w-full">
-                        {/* Consistent SOLID Circular Border Pattern (No fuzzy glow) */}
-                        <div className="w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] rounded-full p-[2px] bg-white flex items-center justify-center shrink-0">
-                          <div className="w-full h-full rounded-full p-[2px] bg-[#121215] flex items-center justify-center">
-                            <div className="w-full h-full rounded-full overflow-hidden">
-                              <img 
-                                src={story.avatar} 
-                                alt={story.username} 
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-full rounded-full object-cover select-none group-hover/card:scale-105 transition-transform duration-300" 
-                              />
+                        {/* Consistent Gradient Circular Border Pattern */}
+                        {/* Outer: Thin White Border + Main Gradient (Top White, Bottom Black, Mixed in Middle) */}
+                        <div 
+                          style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 28%, #787882 50%, #000000 72%, #000000 100%)' }}
+                          className="w-[54px] h-[54px] sm:w-[58px] sm:h-[58px] rounded-full p-[2px] sm:p-[2.5px] border border-white/80 flex items-center justify-center shrink-0 shadow-sm"
+                        >
+                          {/* Inside Thin Border: Top Half Black, Bottom Half White, Mixed in Middle (Softened Opacity) */}
+                          <div 
+                            style={{ background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.7) 28%, rgba(120, 120, 130, 0.7) 50%, rgba(255, 255, 255, 0.7) 72%, rgba(255, 255, 255, 0.7) 100%)' }}
+                            className="w-full h-full rounded-full p-[1px] flex items-center justify-center"
+                          >
+                            {/* Dark Spacer Ring */}
+                            <div className="w-full h-full rounded-full p-[1.5px] bg-[#121215] flex items-center justify-center">
+                              <div className="w-full h-full rounded-full overflow-hidden">
+                                <img 
+                                  src={story.avatar} 
+                                  alt={story.username} 
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="w-full h-full rounded-full object-cover select-none group-hover/card:scale-105 transition-transform duration-300" 
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -608,11 +629,7 @@ export default function Home() {
                           <span className="text-[10px] sm:text-[10.5px] font-bold text-white tracking-tight truncate max-w-[58px] sm:max-w-[66px] leading-tight text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                             {story.username}
                           </span>
-                          <img 
-                            src={ytBadge} 
-                            alt="Verified" 
-                            className="w-3.5 h-3.5 object-contain shrink-0 drop-shadow-xs" 
-                          />
+                          <VerifiedBadge isVerified={true} color="white" className="w-3.5 h-3.5 shrink-0" />
                         </div>
                       </div>
                     </div>
@@ -977,7 +994,7 @@ const SuggestedEditorsCarousel = memo(function SuggestedEditorsCarousel({ index 
               </div>
               {profileItem.isVerified && (
                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 z-10 overflow-hidden ${isDarkMode ? 'border-zinc-900 bg-zinc-900' : 'border-white bg-white'}`}>
-                  <VerifiedBadge isVerified={profileItem.isVerified} role={isEditor ? 'yt_influencer' : 'video_editor'} className="w-full h-full object-cover scale-110" />
+                  <VerifiedBadge isVerified={profileItem.isVerified} role={isEditor ? 'yt_influencer' : 'video_editor'} className="w-full h-full p-0.5" />
                 </div>
               )}
             </div>

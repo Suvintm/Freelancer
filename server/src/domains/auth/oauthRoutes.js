@@ -114,17 +114,18 @@ router.get(
 
             const isExplicitYoutubeConnect = req.query.state === 'connect_youtube';
 
-            // [NEW] Handle Discovery Flow for Unregistered Users
+            // [NEW] Handle Discovery Flow for Unregistered Users or Brand Accounts
             if (user.isNewUser) {
                 const otc = await generateOTC({
                     isNewUser: true,
                     isExplicitYoutubeConnect,
                     socialProfile: {
-                        email: user.email,
+                        email: user.email || null,
                         name: user.name,
                         picture: user.picture,
                         googleId: user.googleId,
-                        accessToken: user.accessToken
+                        accessToken: user.accessToken,
+                        isBrandAccount: Boolean(user.isBrandAccount),
                     }
                 });
                 return res.redirect(`${redirectBase}/oauth-success#code=${otc}`);
@@ -244,9 +245,9 @@ router.post("/exchange-code", authLimiter, async (req, res) => {
 
         const data = JSON.parse(storedData);
 
-        // CASE A: Discovery Flow (New User)
+        // CASE A: Discovery Flow (New User or Brand Account)
         if (data.isNewUser) {
-            logger.info(`[OAuth] Discovery OTC Exchanged: ${data.socialProfile.email}`);
+            logger.info(`[OAuth] Discovery OTC Exchanged: ${data.socialProfile?.email || data.socialProfile?.name || 'Brand Channel'}`);
             return res.status(200).json({
                 success: true,
                 isNewUser: true,

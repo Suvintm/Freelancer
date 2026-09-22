@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../store/slices/authSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectUser, updateUser } from '../store/slices/authSlice';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
+import { authService } from '../api/services/auth.service';
 import { 
   Youtube, Eye, ArrowLeft, ExternalLink, 
   ChevronDown, Search, Play, ArrowUpRight, MapPin, 
-  TrendingUp, ShieldAlert, Sparkles, Clock, Plus
+  TrendingUp, ShieldAlert, Sparkles, Clock, Plus,
+  Trash2, AlertTriangle, AlertCircle, X
 } from 'lucide-react';
 
 interface YouTubeVideo {
@@ -67,7 +69,14 @@ export default function YTDashboard() {
   const user = useSelector(selectUser);
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { channelId } = useParams<{ channelId?: string }>();
+
+  // Delete Channel State & Modal Type
+  const [channelToDelete, setChannelToDelete] = useState<any | null>(null);
+  const [deleteModalType, setDeleteModalType] = useState<'blocked' | 'warning_last' | 'confirm' | null>(null);
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const channels = useMemo(() => user?.youtubeProfile || [], [user?.youtubeProfile]);
 
@@ -201,6 +210,59 @@ export default function YTDashboard() {
     }
   };
 
+  // ── Channel Disconnection / Deletion Handlers ────────────────────────────
+  const handleInitiateDelete = (channel: any) => {
+    setDeleteError(null);
+    setChannelToDelete(channel);
+
+    // Total connected accounts across YouTube and Instagram (or other platforms)
+    const totalAccounts = (user?.youtubeProfile?.length || 0) + (user?.instagramAccounts?.length || 0);
+
+    if (totalAccounts <= 1) {
+      setDeleteModalType('blocked');
+    } else if (totalAccounts === 2) {
+      setDeleteModalType('warning_last');
+    } else {
+      setDeleteModalType('confirm');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!channelToDelete) return;
+    setIsDeletingChannel(true);
+    setDeleteError(null);
+
+    try {
+      const idToUse = channelToDelete.id || channelToDelete.channel_id;
+      await api.delete(`/youtube-creator/channel/${idToUse}`);
+
+      // Optimistically update Redux user
+      const remainingYt = (user?.youtubeProfile || []).filter(
+        (ch: any) => (ch.id || ch.channel_id) !== idToUse && ch.channel_id !== channelToDelete.channel_id
+      );
+      dispatch(updateUser({ youtubeProfile: remainingYt, youtubeChannels: remainingYt }));
+
+      // Fetch me to synchronize
+      const meRes = await authService.fetchMe();
+      if (meRes?.success && meRes?.user) {
+        dispatch(updateUser(meRes.user));
+      }
+
+      setDeleteModalType(null);
+      setChannelToDelete(null);
+
+      // If active channel was deleted, navigate to main hub entrance
+      if (channelId && (channelId === channelToDelete.id || channelId === channelToDelete.channel_id)) {
+        navigate('/youtube-dashboard');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to delete channel.';
+      setDeleteError(msg);
+    } finally {
+      setIsDeletingChannel(false);
+    }
+  };
+
   // Empty state if no channels connected
   if (channels.length === 0) {
     return (
@@ -218,7 +280,7 @@ export default function YTDashboard() {
           <YouTubeVerificationBadge />
         </div>
         <button
-          onClick={() => navigate('/connect-socials')}
+          onClick={() => navigate('/connected-apps')}
           className={`px-8 py-3 rounded-full font-bold text-sm tracking-wide shadow-sm hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer ${
             isDarkMode 
               ? 'bg-rose-600 text-white hover:bg-rose-500 shadow-rose-950/20' 
@@ -231,10 +293,241 @@ export default function YTDashboard() {
     );
   }
 
+  // ── Render Disconnect / Delete Modal ──────────────────────────────────────
+  const renderDeleteModal = () => (
+    <AnimatePresence>
+      {deleteModalType && channelToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !isDeletingChannel && setDeleteModalType(null)}
+            className="fixed inset-0 bg-black/75 backdrop-blur-xs"
+          />
+
+          {/* Modal Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            className={`relative w-full max-w-sm sm:max-w-md rounded-2xl sm:rounded-3xl border p-5 sm:p-6 shadow-2xl z-10 select-none ${
+              isDarkMode ? 'bg-[#141418] border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
+            }`}
+          >
+            {/* Close Button */}
+            <button
+              disabled={isDeletingChannel}
+              onClick={() => setDeleteModalType(null)}
+              className="absolute top-4 right-4 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-40"
+            >
+              <X size={18} />
+            </button>
+
+            {/* CASE 1: BLOCKED (Minimum 1 account required) */}
+            {deleteModalType === 'blocked' && (
+              <div className="text-center space-y-3.5 pt-1">
+                <div className="w-13 h-13 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto ring-1 ring-amber-500/20 shadow-xs">
+                  <ShieldAlert size={26} />
+                </div>
+
+                <div>
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-1.5">
+                    Minimum 1 Account Required
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold">Cannot Delete Channel</h3>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-zinc-900/60 dark:bg-zinc-900/80 border border-zinc-800 text-left space-y-2">
+                  <p className="text-xs text-zinc-400 dark:text-zinc-400 leading-relaxed">
+                    As a verified Creator on SuviX, your profile must maintain at least one active connected channel or account to preserve your analytics workspace, deals, and verified status.
+                  </p>
+                  <p className="text-xs text-amber-400 font-semibold leading-relaxed">
+                    This is your only connected account. You cannot delete this channel until you connect another channel or social platform first.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalType(null)}
+                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                      isDarkMode ? 'border-zinc-800 hover:bg-zinc-900 text-zinc-300' : 'border-zinc-200 hover:bg-zinc-100 text-zinc-700'
+                    }`}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteModalType(null);
+                      navigate('/connected-apps');
+                    }}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                  >
+                    Connect Another Account
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CASE 2: WARNING_LAST (2 accounts left -> will leave 1 account which cannot be deleted) */}
+            {deleteModalType === 'warning_last' && (
+              <div className="space-y-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 ring-1 ring-amber-500/20">
+                    <AlertTriangle size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold">Delete YouTube Channel?</h3>
+                    <p className="text-xs text-zinc-400">Review before confirming disconnection</p>
+                  </div>
+                </div>
+
+                {/* Channel Summary Card */}
+                <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+                  isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                }`}>
+                  <img
+                    src={channelToDelete.thumbnail_url || DEFAULT_AVATAR}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-black/10"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold truncate">{channelToDelete.channel_name}</p>
+                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                      {formatCount(channelToDelete.subscriber_count)} Subscribers • {channelToDelete.video_count || 0} Videos
+                    </p>
+                  </div>
+                </div>
+
+                {/* Important Rule Notice (As requested by user) */}
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1.5">
+                  <p className="font-bold flex items-center gap-1.5 text-amber-400">
+                    <AlertCircle size={14} className="shrink-0" />
+                    Important Creator Notice:
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-zinc-300 dark:text-zinc-300">
+                    You currently have <strong>2 connected accounts</strong> on SuviX. If you delete <strong>{channelToDelete.channel_name}</strong>, you will have <strong>only 1 connected account remaining</strong>.
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-amber-300 font-semibold">
+                    Please note: Your final remaining account CANNOT be deleted under SuviX policies unless you link another channel first.
+                  </p>
+                </div>
+
+                {deleteError && (
+                  <p className="text-xs text-red-500 font-medium">{deleteError}</p>
+                )}
+
+                <div className="flex items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    disabled={isDeletingChannel}
+                    onClick={() => setDeleteModalType(null)}
+                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                      isDarkMode ? 'border-zinc-800 hover:bg-zinc-900 text-zinc-300' : 'border-zinc-200 hover:bg-zinc-100 text-zinc-700'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeletingChannel}
+                    onClick={handleConfirmDelete}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
+                  >
+                    {isDeletingChannel ? (
+                      <span>Deleting...</span>
+                    ) : (
+                      <>
+                        <Trash2 size={13} />
+                        <span>Delete Channel</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CASE 3: CONFIRM (3+ accounts left) */}
+            {deleteModalType === 'confirm' && (
+              <div className="space-y-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 ring-1 ring-red-500/20">
+                    <Trash2 size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold">Delete YouTube Channel?</h3>
+                    <p className="text-xs text-zinc-400">Remove channel from your SuviX workspace</p>
+                  </div>
+                </div>
+
+                {/* Channel Summary Card */}
+                <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+                  isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                }`}>
+                  <img
+                    src={channelToDelete.thumbnail_url || DEFAULT_AVATAR}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-black/10"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold truncate">{channelToDelete.channel_name}</p>
+                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                      {formatCount(channelToDelete.subscriber_count)} Subscribers • {channelToDelete.video_count || 0} Videos
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  This will permanently disconnect <strong>{channelToDelete.channel_name}</strong> and remove its synced metrics and videos from your SuviX profile.
+                </p>
+
+                {deleteError && (
+                  <p className="text-xs text-red-500 font-medium">{deleteError}</p>
+                )}
+
+                <div className="flex items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    disabled={isDeletingChannel}
+                    onClick={() => setDeleteModalType(null)}
+                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                      isDarkMode ? 'border-zinc-800 hover:bg-zinc-900 text-zinc-300' : 'border-zinc-200 hover:bg-zinc-100 text-zinc-700'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeletingChannel}
+                    onClick={handleConfirmDelete}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
+                  >
+                    {isDeletingChannel ? (
+                      <span>Deleting...</span>
+                    ) : (
+                      <>
+                        <Trash2 size={13} />
+                        <span>Delete Channel</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
   // ─── STAGE A: Main Hub Entrance Page ───
   if (!channelId) {
     return (
       <div className="w-full h-full flex flex-col space-y-5">
+        {renderDeleteModal()}
         {/* Creator Hub Header & Welcome */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-main pb-6">
           <div>
@@ -258,7 +551,7 @@ export default function YTDashboard() {
               <span>Create YouTube Post</span>
             </button>
             <button
-              onClick={() => navigate('/connect-socials')}
+              onClick={() => navigate('/connected-apps')}
               className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-md hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer ${
                 isDarkMode 
                   ? 'bg-zinc-800 text-white hover:bg-zinc-700 shadow-zinc-950/20' 
@@ -354,6 +647,19 @@ export default function YTDashboard() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                     
+                    {/* Delete Channel action on banner top-left */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInitiateDelete(channel);
+                      }}
+                      className="absolute top-3 left-3 z-10 w-7 h-7 rounded-lg bg-black/60 hover:bg-red-600 text-white/80 hover:text-white backdrop-blur-md border border-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                      title={`Disconnect ${channel.channel_name}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+
                     {/* Achievement badge */}
                     {hasMilestone && (
                       <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1 shadow-md">
@@ -405,18 +711,34 @@ export default function YTDashboard() {
                       </div>
                     </div>
 
-                    {/* Entrance Button */}
+                    {/* Entrance Button & Delete Action */}
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-border-main/20">
                       <span className="text-[10px] font-semibold text-rose-500 uppercase tracking-widest flex items-center gap-1">
                         {channel.subCategoryName || 'YouTube Workspace'}
                       </span>
-                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-[10px] font-semibold uppercase tracking-wider transition-colors duration-200 ${
-                        isDarkMode 
-                          ? 'border-border-main text-text-muted group-hover:text-white group-hover:bg-border-secondary' 
-                          : 'border-zinc-200 text-zinc-600 group-hover:border-zinc-950 group-hover:bg-zinc-950 group-hover:text-white'
-                      }`}>
-                        <span>Workspace</span>
-                        <ArrowUpRight size={12} />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInitiateDelete(channel);
+                          }}
+                          className={`p-1.5 rounded-lg border transition-colors cursor-pointer text-zinc-400 hover:text-red-500 hover:bg-red-500/10 ${
+                            isDarkMode ? 'border-zinc-800' : 'border-zinc-200'
+                          }`}
+                          title={`Delete ${channel.channel_name}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+
+                        <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-[10px] font-semibold uppercase tracking-wider transition-colors duration-200 ${
+                          isDarkMode 
+                            ? 'border-border-main text-text-muted group-hover:text-white group-hover:bg-border-secondary' 
+                            : 'border-zinc-200 text-zinc-600 group-hover:border-zinc-950 group-hover:bg-zinc-950 group-hover:text-white'
+                        }`}>
+                          <span>Workspace</span>
+                          <ArrowUpRight size={12} />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -453,6 +775,9 @@ export default function YTDashboard() {
   // ─── STAGE B: Active Channel Details View ───
   return (
     <div className="w-full h-full flex flex-col space-y-4">
+      {/* Delete Confirmation / Restriction Modal */}
+      {renderDeleteModal()}
+
       
       {/* ─── Top Header: Dropdown Channel Selector ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border-main pb-4">
@@ -582,6 +907,19 @@ export default function YTDashboard() {
             <Youtube size={14} className="fill-red-500 stroke-none" />
             <span>Link Another Channel</span>
           </button>
+          {activeChannel && (
+            <button
+              type="button"
+              onClick={() => handleInitiateDelete(activeChannel)}
+              className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all active:scale-[0.98] cursor-pointer text-red-500 hover:text-red-400 hover:bg-red-500/10 ${
+                isDarkMode ? 'border-zinc-800' : 'border-zinc-200 hover:bg-red-50'
+              }`}
+              title="Delete this channel from profile"
+            >
+              <Trash2 size={13} />
+              <span className="hidden sm:inline">Delete Channel</span>
+            </button>
+          )}
         </div>
       </div>
 

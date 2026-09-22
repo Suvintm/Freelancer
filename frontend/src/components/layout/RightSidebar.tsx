@@ -16,11 +16,11 @@ import {
   Check,
   Crown,
   ArrowRight,
-  ChevronsDown
+  ChevronsDown,
+  Layers
 } from 'lucide-react';
 import { FaYoutube, FaInstagram, FaMeta } from 'react-icons/fa6';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
+import { useUserRole } from '../../hooks/useUserRole';
 import { useTheme } from '../../hooks/useTheme';
 import defaultProfile from '../../assets/defaultprofile.png';
 import { useLogout } from '../../mutations/useLogout';
@@ -44,34 +44,11 @@ export const RightSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
-  const user = useSelector(selectUser);
+  const { user, isCreator, isBrand, isUser, hasYouTube: hasYoutube, hasInstagram } = useUserRole();
   const avatarUrl = user?.profilePicture || defaultProfile;
   const { mutateAsync: logout } = useLogout();
 
-  const hasYoutube = Boolean(
-    (Array.isArray(user?.youtubeChannels) && user.youtubeChannels.length > 0) ||
-    (Array.isArray(user?.youtubeProfile) && user.youtubeProfile.length > 0) ||
-    user?.channelLinkStatus === 'LINKED' ||
-    Boolean(user?.creatorProfile?.channels && user.creatorProfile.channels.length > 0)
-  );
-
-  const hasInstagram = Boolean(
-    user?.instagramProfile ||
-    (Array.isArray(user?.instagramAccounts) && user.instagramAccounts.length > 0)
-  );
-
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isClientCategory =
-    roleStr === 'user' ||
-    roleStr === 'brand' ||
-    roleStr === 'direct_client' ||
-    categoryStr.includes('brand') ||
-    categoryStr.includes('user') ||
-    categorySlugStr.includes('user') ||
-    categorySlugStr.includes('brand');
+  const isClientCategory = isBrand || isUser;
 
   const menuItems = useMemo(() => {
     let items = [...NAV_ITEMS];
@@ -86,11 +63,22 @@ export const RightSidebar = () => {
       });
     }
 
+    // Insert Connected Apps exclusively for Creators
+    if (isCreator) {
+      const ytIndex = items.findIndex(item => item.path === '/youtube-dashboard');
+      const insertAt = ytIndex !== -1 ? ytIndex + 1 : items.length - 2;
+      items.splice(insertAt, 0, {
+        icon: Layers,
+        label: 'Connected Apps',
+        path: '/connected-apps'
+      });
+    }
+
     if (isClientCategory) {
       items = items.filter(item => item.path !== '/upload-portal');
     }
     return items;
-  }, [isClientCategory]);
+  }, [isClientCategory, isCreator]);
 
   const navRef = useRef<HTMLElement>(null);
   const [canScrollMore, setCanScrollMore] = useState(true);

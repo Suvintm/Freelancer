@@ -2,49 +2,20 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { FaYoutube, FaInstagram } from 'react-icons/fa6';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
+import { useUserRole } from '../../hooks/useUserRole';
 import { useTheme } from '../../hooks/useTheme';
 
 export const UnlinkedChannelBanner: React.FC = () => {
   const navigate = useNavigate();
-  const user = useSelector(selectUser);
+  const { user, isCreator, hasYouTube, hasInstagram } = useUserRole();
   const { isDarkMode } = useTheme();
-
-  const roleStr = (user?.role || '').toLowerCase();
-  const categoryStr = (user?.primaryRole?.category || '').toLowerCase();
-  const categorySlugStr = (user?.primaryRole?.categorySlug || '').toLowerCase();
-
-  const isCreator =
-    roleStr === 'creator' ||
-    roleStr === 'yt_influencer' ||
-    categoryStr === 'creator' ||
-    categoryStr === 'youtube creator' ||
-    categoryStr === 'yt_influencer' ||
-    categorySlugStr === 'creator' ||
-    categorySlugStr === 'yt_influencer' ||
-    Boolean(user?.creatorProfile);
 
   if (!user || !isCreator) {
     return null;
   }
 
-  const hasYoutube = Boolean(
-    (Array.isArray(user?.youtubeChannels) && user.youtubeChannels.length > 0) ||
-    (Array.isArray(user?.youtubeProfile) && user.youtubeProfile.length > 0) ||
-    user?.channelLinkStatus === 'LINKED' ||
-    user?.channel_link_status === 'LINKED' ||
-    Boolean(user?.creatorProfile?.channels && user.creatorProfile.channels.length > 0)
-  );
-
-  const hasInstagram = Boolean(
-    user?.instagramProfile ||
-    (Array.isArray(user?.instagramAccounts) && user.instagramAccounts.length > 0) ||
-    Boolean(user?.creatorProfile?.instagramAccounts && user.creatorProfile.instagramAccounts.length > 0)
-  );
-
   // If at least one social account is linked, do not show banner
-  if (hasYoutube || hasInstagram) {
+  if (hasYouTube || hasInstagram) {
     return null;
   }
 

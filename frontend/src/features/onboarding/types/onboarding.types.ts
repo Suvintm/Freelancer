@@ -24,6 +24,9 @@ export interface YouTubeVideoItem {
   title: string;
   thumbnail: string;
   publishedAt: string;
+  viewCount?: string | number;
+  likeCount?: string | number;
+  commentCount?: string | number;
 }
 
 export interface YouTubeChannel {

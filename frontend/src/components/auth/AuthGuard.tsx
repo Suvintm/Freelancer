@@ -1,6 +1,6 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectIsAuthenticated, selectIsInitialized, selectUser, selectIsAddingAccount } from '../../store/slices/authSlice';
+import { selectIsAuthenticated, selectIsInitialized, selectUser, selectIsAddingAccount, normalizeRole } from '../../store/slices/authSlice';
 import { setTempSignupData } from '../../store/slices/onboardingSlice';
 import type { RootState } from '../../store';
 import { queryClient } from '../../queries/queryClient';
@@ -96,19 +96,14 @@ export const RoleGuard = ({ children, allowedCategories }: RoleGuardProps) => {
     return <>{children}</>;
   }
 
-  const userCategorySlug = user.primaryRole?.category || user.role;
-  const isAllowed = allowedCategories.some(cat => 
-    cat === userCategorySlug || 
-    cat === user.role ||
-    (cat === 'yt_influencer' && (userCategorySlug === 'creator' || user.role === 'creator')) ||
-    (cat === 'video_editor' && (userCategorySlug === 'editor' || user.role === 'editor')) ||
-    (cat === 'social_promoter' && (userCategorySlug === 'brand' || user.role === 'brand')) ||
-    (cat === 'direct_client' && (userCategorySlug === 'user' || user.role === 'user')) ||
-    (cat === 'creator' && (userCategorySlug === 'yt_influencer' || user.role === 'creator')) ||
-    (cat === 'editor' && (userCategorySlug === 'video_editor' || user.role === 'editor')) ||
-    (cat === 'brand' && (userCategorySlug === 'social_promoter' || user.role === 'brand')) ||
-    (cat === 'user' && (userCategorySlug === 'direct_client' || user.role === 'user'))
-  );
+  const userCategorySlug = user.primaryRole?.category || user.primaryRole?.categorySlug || user.role;
+  const userCanonicalRole = normalizeRole(user.role, user.primaryRole?.category, user.primaryRole?.categorySlug);
+
+  const isAllowed = allowedCategories.some(cat => {
+    if (cat === userCategorySlug || cat === user.role) return true;
+    const catCanonical = normalizeRole(cat);
+    return catCanonical === userCanonicalRole;
+  });
 
   if (!isAllowed) {
     return <Navigate to="/home" replace />;

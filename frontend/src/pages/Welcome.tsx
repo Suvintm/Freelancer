@@ -12,6 +12,7 @@ import { HeroBrandsRow } from '../components/shared/HeroBrandsRow';
 import { HeroStatsBar } from '../components/shared/HeroStatsBar';
 import { CreatorMetricsTicker } from '../components/shared/CreatorMetricsTicker';
 import { FeaturedCreatorsCarousel } from '../components/welcome/FeaturedCreatorsCarousel';
+import { SuviXPhoneSection } from '../components/welcome/suvix-phone/SuviXPhoneSection';
 import { WelcomePricingSection } from '../components/welcome/WelcomePricingSection';
 import { WelcomeFooter } from '../components/common/WelcomeFooter';
 import { useConsent } from '../features/consent';
@@ -479,6 +480,9 @@ export default function Welcome() {
         >
           <FeaturedCreatorsCarousel />
         </motion.div>
+
+        {/* 3D SUVIX PROCEDURAL PHONE INTERACTIVE SHOWCASE */}
+        <SuviXPhoneSection />
 
         {/* TRUSTED CREATOR & BRAND PARTNERS ROW */}
         <motion.div

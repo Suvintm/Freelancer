@@ -1,6 +1,7 @@
 import React from 'react';
 import { Banner1, BANNER_1_CONFIG, BANNER_1_DURATION } from './Banner1';
 import { Banner2, BANNER_2_CONFIG, BANNER_2_DURATION } from './Banner2';
+import { Banner3, BANNER_3_CONFIG, BANNER_3_DURATION } from './Banner3';
 
 export interface BannerItem {
   id: string;
@@ -18,8 +19,10 @@ export interface BannerItem {
 export const BANNERS_LIST: BannerItem[] = [
   BANNER_1_CONFIG,
   BANNER_2_CONFIG,
+  BANNER_3_CONFIG,
 ];
 
 export { Banner1, BANNER_1_DURATION, BANNER_1_CONFIG };
 export { Banner2, BANNER_2_DURATION, BANNER_2_CONFIG };
+export { Banner3, BANNER_3_DURATION, BANNER_3_CONFIG };
 export { BannerHost } from './BannerHost';

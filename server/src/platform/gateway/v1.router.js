@@ -39,7 +39,9 @@ v1Router.use("/social", postRouter); // Mount social base after specific sub-rou
 v1Router.use("/profile", profileRouter);
 v1Router.use("/public-profile", publicProfileRouter);
 v1Router.use("/youtube-creator", creatorRouter);
+v1Router.use("/creator/youtube", creatorRouter);
 v1Router.use("/instagram-creator", instagramRouter);
+v1Router.use("/creator/instagram", instagramRouter);
 v1Router.use("/communities", communityRouter);
 v1Router.use("/messages", messagingRouter);
 v1Router.use("/polls", pollRouter);
